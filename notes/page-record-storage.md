@@ -233,10 +233,10 @@ bucket reuse/new-head behavior, rule/fixed insertion order, no-room returns,
 publication root/header fields, and render-record bridge copies because each is
 backed by disassembly and named fixtures.
 
-Medium for full live scheduler handoff because current fixtures model the
-allocator result and bridge state but do not execute every scheduler path in
-one dense live CPU trace. The shared `0x170c` / `0x1710` / `0x18b4` heap
-contract itself is covered by the macro/parser firmware checkpoint.
+Medium for allocator provenance because current fixtures model the allocator
+result and bridge state for dense pages. This is not a remaining
+software-visible page-record edge. The shared `0x170c` / `0x1710` / `0x18b4`
+heap contract itself is covered by the macro/parser firmware checkpoint.
 
 ## Remaining Edges
 
@@ -244,5 +244,5 @@ contract itself is covered by the macro/parser firmware checkpoint.
   accounting, compact/raster bucket object layout, rule/fixed list layout,
   local no-room returns, `0xff1e` publication fields, or `0x1ed84` /
   `0x1edc6` bridge fields.
-- Remaining work is live CPU/register-memory continuity for dense mixed pages,
-  plus physical engine/scheduler pacing after the render-record bridge.
+- Remaining work is new byte-stream variants that expose different page-record
+  state, plus physical engine/scheduler pacing after the render-record bridge.

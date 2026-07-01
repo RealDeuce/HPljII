@@ -228,10 +228,11 @@ the board-facing boundary is tracked in
   restored record `A5 = 0x78299e - 6`, accepted/overflow words
   `+0x04/+0x06`, row word `+0x02`, current root `0x78297a`, bucket/key caches
   `0x782a7c/0x782a7e`, stream chunk state `0x782a70/0x782a76/0x782a80`, and
-  copy-stop flag `0x782996`. The exact remaining raster boundary is live CPU
-  continuity through `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` in
-  one dense parser-produced memory image. It is not an unresolved
-  software-visible raster-object field, bridge field, or render dispatch.
+  copy-stop flag `0x782996`. No remaining ROM semantic boundary is assigned to
+  that handoff: live CPU continuity through
+  `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` would be stronger
+  provenance for the addressed fixture, but it is not an unresolved
+  raster-object field, bridge field, render dispatch, or reproduction contract.
 - Page publication:
   ROM evidence is `0xff1e..0x10080`.
   Reproduction evidence is

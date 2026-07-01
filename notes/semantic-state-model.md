@@ -8797,10 +8797,10 @@ page root for queued rows, and passes the state block to `0x13070` /
     store accepted/overflow counts, ensure a root, drain input, and advance
     without creating a raster object.
 - Unknown for this checkpoint:
-  - exact live CPU register/memory trace through `0x105d0` into the dense
-    mixed text/rule/raster stream. Addressed `0x1381c` storage is fixture-backed
-    for that stream, but it is still modeled rather than captured from one live
-    68000 parser run.
+  - no unresolved software-visible raster object, bridge, or render-dispatch
+    field remains for the covered dense text/rule/raster stream. A live
+    CPU/register trace would be provenance for the addressed fixture, not a
+    separate reproduction requirement.
 
 ### Writers
 
@@ -11802,24 +11802,19 @@ than executing the full page scheduler in one dense live CPU trace.
 ### Unresolved Middle Edges
 
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and
-  second-chunk rollover are modeled, but not captured from live 68000
-  memory during a dense parser-produced page.
+  second-chunk rollover are fixture-backed for the documented object layouts.
+  Remaining work is new byte-stream variants that expose different allocator
+  or object state, not repeating the same addressed fixture as a live trace.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed in `Raster
   Transfer Gate And Encoded Rows` and address-aware stream allocation is
-  composed in this shared allocator checkpoint, but exact live
-  register/memory state through the full raster producer remains unresolved.
-  The exact closure boundary is `0x105d0 -> 0x10084 -> 0x13070`: parser scratch
-  through the delayed `ESC *b#W` record, `0x121cc` snapshot, `0x12218` restore,
-  handler dispatch, and payload offset is known, and canonical output after
-  `0x13070` is known, but the live CPU register/memory handoff into page-root
-  allocation and encoded-row production still needs a trace or memory snapshot.
+  composed in this shared allocator checkpoint. Parser scratch through the
+  delayed `ESC *b#W` record, `0x121cc` snapshot, `0x12218` restore, handler
+  dispatch, and payload offset is known, and canonical output after
+  `0x13070` is known.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned
   for lower, higher, and equal bucket bytes, and local no-room returns are
-  fixture-backed for both root `+0x24` and root `+0x28`. The remaining
-  closure boundary is live CPU/register memory through the full
-  parser-produced allocation chain
-  `0x10898 -> 0x13386 -> 0x133aa -> 0x1381c` and
-  `0x12714 -> 0x136d2 -> 0x1381c`, not the local no-room return.
+  fixture-backed for both root `+0x24` and root `+0x28`. Remaining work is
+  broader parser-produced allocation variants, not the local no-room return.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, active-record
   selection, and scheduler-produced multi-band render calls are fixture-backed.
   Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` covers

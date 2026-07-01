@@ -554,44 +554,38 @@ A byte-stream reproduction must preserve these behaviors:
 
 ## Remaining Edges
 
-- `0x105d0..0x13250` is modeled and address-aware, but the mixed
-  text/rule/raster stream still lacks a full live 68000 execution trace through
-  `0x105d0` into allocator memory. The covered parser edge is exact through
+- `0x105d0..0x13250`: no unresolved ROM-local raster object layout or dispatch
+  edge remains for the covered streams. The parser edge is exact through
   `0x11f82` scheduling, `0x121cc` snapshot layout, `0x12218` restore and
   direct dispatch, and `0x105d0` re-reading the restored six-byte record from
   `0x78299e - 6`.
-- The disassembly-derived handoff inside that remaining edge is now known: `0x105d0`
-  carries state pointer `A4 = 0x783170`, restored parser record `A5 = 0x78299e - 6`,
-  absolute byte count `D5`, orientation-derived row longword `D4`, accepted count
-  `+0x04`, overflow `+0x06`, and stored row `+0x02`; `0x10084` either returns an
-  existing `0x78297a` root or allocates, initializes, and bucket-clears a new root;
-  `0x13070` consumes the same state pointer, derives `0x782a7c` / `0x782a7e`, passes
-  size and mode to `0x13250`, and uses `0x132b6` stream-chunk state `0x782a70` /
-  `0x782a76` / `0x782a80` before `0x138de` copies payload bytes. The composed semantic
-  ledger is in
+- The disassembly-derived handoff is documented: `0x105d0` carries state pointer `A4 =
+  0x783170`, restored parser record `A5 = 0x78299e - 6`, absolute byte count `D5`,
+  orientation-derived row longword `D4`, accepted count `+0x04`, overflow `+0x06`, and
+  stored row `+0x02`; `0x10084` either returns an existing `0x78297a` root or allocates,
+  initializes, and bucket-clears a new root; `0x13070` consumes the same state pointer,
+  derives `0x782a7c` / `0x782a7e`, passes size and mode to `0x13250`, and uses `0x132b6`
+  stream-chunk state `0x782a70` / `0x782a76` / `0x782a80` before `0x138de` copies
+  payload bytes. The composed semantic ledger is in
   [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
-- The remaining closure edge is no longer field discovery; it is live
-  confirmation. We still need a 68000 trace or memory snapshot proving that a
-  dense parser-produced stream arrives at `0x105d0`, `0x10084`, `0x13070`,
-  `0x13250`, and `0x132b6` with the modeled register values, heap chunk choices,
-  and page-root pointers. Canonical output state is already fixture-pinned as
-  the page-root `+0x1c` raster chain and object bytes written by
-  `0x13070`/`0x13250`; derived/cache state is the bucket/key and render-record
-  copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed `80 57 ...`
-  command record, snapshot, payload offset, and drained payload bytes; firmware
-  bookkeeping is the modeled allocation result and stream-storage cursor.
-  The local MAME binary is useful for `unidasm` and adjacent printer-driver
-  experiments, but it does not expose a LaserJet II/LJII driver; closing this
-  edge therefore requires a new emulator target, an instrumented 68000
-  execution harness, or physical/logic capture.
+- A 68000 trace or memory snapshot through `0x105d0`, `0x10084`, `0x13070`,
+  `0x13250`, and `0x132b6` would be provenance for the addressed fixture, not a
+  prerequisite for the ROM-derived reproduction contract. Canonical output
+  state is fixture-pinned as the page-root `+0x1c` raster chain and object
+  bytes written by `0x13070`/`0x13250`; derived/cache state is the bucket/key
+  and render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the
+  delayed `80 57 ...` command record, snapshot, payload offset, and drained
+  payload bytes; firmware bookkeeping is the modeled allocation result and
+  stream-storage cursor.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
-  text/rule/raster publication fixture, but the heap allocator result is still
-  a modeled fixture result rather than a memory snapshot from one live parser
-  run.
+  text/rule/raster publication fixture. The allocator result is a modeled
+  addressed fixture result, which is acceptable for the documented ROM contract
+  unless a later byte stream exposes a conflicting allocation or row-output
+  behavior.
 - Page-image coverage is no longer missing only because the raster fixture is
   isolated: checked-in fixtures now include mixed text/rule/raster publication,
   geometry-changing publication streams, font-selection streams, downloaded
   glyph FF publication, and a parser-driven downloaded-glyph/rule/raster page.
-  The remaining page-image gap is broader physical/device comparison and live
-  CPU continuity, not the software-visible raster object layout or render
-  dispatch.
+  The remaining page-image gap is broader physical/device comparison and new
+  byte-stream variants that expose different ROM state, not the
+  software-visible raster object layout or render dispatch.

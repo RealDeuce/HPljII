@@ -2333,21 +2333,19 @@ resolve saved id `0x782a94`, build a non-replay `0xe4f4` frame, re-enter
 selector-7 rectangle rule, publish through `0xff1e`, and render both
 layers through `0x1ed84`/`0x1ef6a`.
 
-This is still not enough for pixel-perfect reproduction by itself. The
-mixed text/rule/raster/FF fixture is now the first complete byte-stream
+The mixed text/rule/raster/FF fixture is now the first complete byte-stream
 page-image contract through host fetch, parser handlers, addressed
-page-record storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and
-final row comparison. The suite has since been broadened with font
+page-record storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and final
+row comparison. The suite has since been broadened with font
 selection and downloaded-glyph page-image cases: primary/secondary
 font-selection streams render visible compact rows, downloaded-glyph FF
 publication renders through `0xff1e` / `0x1ed84` / `0x1ef6a`, and
 fixture `parser-driven downloaded glyph rule raster stream composes
-through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule,
-and mode-0 raster row in one parser-driven page stream. The next
-unresolved step is therefore not adding those fixture families, but
-replacing remaining modeled font-install and producer-state handoffs with
-full live parser-state runs that populate current records, source/page
-objects, and raster/text buckets in CPU memory before imaging. The reset,
+through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule, and
+mode-0 raster row in one parser-driven page stream. Remaining work should
+target byte streams or ROM paths that expose different output state; a live CPU
+trace of the same addressed fixture would improve provenance, but it is not an
+unresolved raster/imaging semantic edge. The reset,
 FF, page-size, orientation, paper-source, and copies publication fixtures
 now start without a current page root and mark the first printable queue
 step as the modeled page-record root allocation point. Those six
@@ -2357,7 +2355,7 @@ publication paths now also have addressed variants:
 `0x1387c`/`0x1381c`, materialize the page record, publish through the same
 `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same
 rows. That closes the software-visible compact-text publication contract while
-leaving live CPU allocation/register capture as the remaining fidelity edge.
+leaving only provenance/physical-output validation outside the ROM contract.
 The host-fetched text/rule/raster fixture now also
 publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
@@ -2408,16 +2406,11 @@ active-resolution-ignore, end-raster, and host-fetched chained-lowercase
 are composed in [raster-graphics.md](raster-graphics.md): lower-resolution
 streams now start from modeled `0xa904` host bytes, cross the ROM parser table
 and delayed `0x105d0` restore, queue encoded raster modes 1/2/3, then render
-through `0x1ed84` / `0x1ef6a`. The remaining raster edge is narrower: a full
-CPU/parser-state fixture that executes `0x105d0 -> 0x10084 -> 0x13070` in one
-live 68000 memory image after the already pinned `0x121cc` / `0x12218` delayed
-record restore. The dense text/rule/raster stream already has addressed
-`0x1381c` page/control storage for the raster object and published record
-fields.
-Because the local MAME binary provides disassembly support but no LaserJet II/LJII
-driver, this proof still needs a new emulator target, an instrumented 68000
-execution harness, or physical/logic capture rather than another modeled
-fixture.
+through `0x1ed84` / `0x1ef6a`. The dense text/rule/raster stream already has
+addressed `0x1381c` page/control storage for the raster object and published
+record fields, so the documented raster edge is now closed for those
+software-visible fields. Further work belongs on new byte-stream variants,
+resource-window data, or physical output comparison.
 The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the selected inline/downloaded
 page-record object now crosses `0x1edc6` with context slot `3` intact

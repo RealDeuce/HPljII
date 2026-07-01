@@ -7496,22 +7496,23 @@ fields and broader selected-font state combinations have not been page-compared.
   separate fixtures cover `0x0020`, `0x0040`, `0x0080`, `0x0081`, and `0x0082`.
   Still-open comparisons are bounded cross-products: physical/pixel behavior after
   printable downloaded spans wrap in the current one-byte page source span field into
-  fully classified compact mode-0 invalid helper-table targets, visible behavior for
-  segmented-wide row words and spans
-  outside the sampled row `0x0082`, `0x0083`, `0x0181`, `0x0182`, `0x01ff`,
-  `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`,
-  `0x0482`, and `0x04ff` matrix below the parser payload-count cap,
-  broader
-  publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
-  short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
-  low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
-  split-plane segmented, segmented-wide, compact-wide matrix,
-  segmented-wide matrix, even-span wide, payload-control wide, no-install, and
-  status-`2` compact bucket variants, and return-boundary siblings
-  outside the covered normal even-span, no-install, status-`2`, bit-30-clear
-  fixed-record current-record, bit-30-clear fixed-record continuation,
-  linear-segmented publication, split-plane segmented publication, and segmented-wide
-  publication fixtures. The normal even-span fixture
+  fully classified compact mode-0 invalid helper-table targets; visible behavior for
+  segmented-wide row words and spans outside sampled rows `0x0082`, `0x0083`,
+  `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
+  `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and `0x04ff` below the parser
+  payload-count cap; broader publication combinations beyond the documented normal,
+  non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
+  row-count-matrix short/segmented, rows-`0x0102` low-byte-truncated table-limit
+  boundary, linear-segmented, rows-`0x82` segmented, split-plane segmented,
+  segmented-wide, compact-wide matrix, segmented-wide matrix, high-row segmented-wide
+  matrix, even-span wide, payload-control wide, no-install, and status-`2` compact
+  bucket variants; and return-boundary siblings outside the covered normal even-span,
+  no-install, status-`2`, bit-30-clear fixed-record current-record, bit-30-clear
+  fixed-record continuation, row-count matrix, wide-remainder matrix,
+  segmented-wide matrix, high-row segmented-wide matrix, linear-segmented publication,
+  split-plane segmented publication, segmented-wide publication, combined
+  segmented-wide publication, and payload-control publication fixtures. The normal
+  even-span fixture
   `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
   pins
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with zero remaining budget and next

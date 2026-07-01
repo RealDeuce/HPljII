@@ -1185,14 +1185,14 @@ The next work should follow dataflow, not isolated handlers:
    payload end offset for each oversized case.
    Remaining downloaded-character publication work is therefore limited to
    physical/pixel behavior after the fully documented wrapped source-byte mode-0
-   invalid-helper boundaries, broader
-   higher-row segmented-wide fallback combinations beyond sampled rows `0x0181`,
-   `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, and
-   `0x03ff`, plus `0x0481`, `0x0482`, and `0x04ff` below the payload-count cap, broader
-   publication combinations, and
-   full-success return-boundary siblings outside the named row-count, wide-remainder,
-   segmented-wide, normal, row-`0x80`, linear-segmented, split-plane segmented,
-   segmented-wide, no-install, status-`2`, and payload-control cases. It is not the
+   invalid-helper boundaries, broader higher-row segmented-wide fallback combinations
+   outside the sampled rows `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
+   `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and `0x04ff` below the
+   payload-count cap, broader publication combinations, and full-success
+   return-boundary siblings outside the named row-count, wide-remainder,
+   segmented-wide matrix, high-row segmented-wide matrix, normal, row-`0x80`,
+   linear-segmented, split-plane segmented, segmented-wide publication, no-install,
+   status-`2`, bit-30-clear fixed-record, and payload-control cases. It is not the
    documented mode-byte-`0` visible recovery boundary. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
    and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,

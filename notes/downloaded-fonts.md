@@ -335,16 +335,20 @@ Published page-record state:
   record`, `host-fetched row-0x80 downloaded character remains short compact`,
   `host-fetched segmented downloaded character renders through 0x1f1f0`, and
   `host-fetched rows-0x82 segmented downloaded glyph FF publication renders page record`
-  cover the omitted threshold rows. The remaining row-count risk is therefore not the
-  `0x80`/`0x81` selector boundary or the short/segmented row-count matrix; it is row
-  words above `0x00ff` that cross the one-byte printable source-row field, plus broader
-  publication cross-products that combine those row words with split-plane, wide,
-  segmented-wide, and payload-control selector families. Live CPU continuity also
-  remains for full-success return siblings outside the pinned normal even-span,
-  no-install, status-`2`, bit-30-clear fixed-record current-record,
-  bit-30-clear fixed-record continuation, row-count-matrix, linear-segmented
-  publication, split-plane segmented publication, segmented-wide, and
-  payload-control publication return fixtures. Accepted descriptor-record mode
+  cover the omitted threshold rows. Row words above `0x00ff` are no longer an
+  undifferentiated publication gap: fixture `downloaded segmented-wide row-byte
+  boundary truncates page-record segments` proves the low-byte page-source boundary for
+  span `0x11` row words through `0x0201`, and the high-row segmented-wide matrix
+  fixtures extend selected-segment rendering through sampled rows up to `0x04ff`
+  below the parser payload-count cap. Remaining row-count risk is now broader
+  row/span cross-products outside those sampled matrices and physical/pixel behavior
+  after the fully classified wrapped source-byte invalid-helper targets. Live CPU
+  continuity remains for full-success return siblings outside the pinned normal
+  even-span, no-install, status-`2`, bit-30-clear fixed-record current-record,
+  bit-30-clear fixed-record continuation, row-count-matrix, wide-remainder matrix,
+  segmented-wide matrix, high-row segmented-wide matrix, linear-segmented publication,
+  split-plane segmented publication, segmented-wide publication, and payload-control
+  publication return fixtures. Accepted descriptor-record mode
   bytes are no longer a vague open edge for
   this helper table: fixture `0x16b1a descriptor width helper emits only mode 1/2`
   proves `0x16b1a` writes only mode `1`/`2`, while mode-byte-`0` is documented as an
@@ -1681,9 +1685,12 @@ boundary` covers the adjacent large-remainder sibling. It reaches the same
 parser/install/publication path for row word `0x0181`, span `31`, selected
 segment `1`, and renderer `0x1f264`, but `validate_wide_compact_row_copy`
 detects source read past the compact segmented-wide fallback A2 bitmap at
-offset `+0xb50`. This narrows the remaining higher-row segmented-wide gap to
-broader row/span combinations around the now-sampled successful spans `17`,
-`18`, and `32`, plus the explicit span-31 source boundary.
+offset `+0xb50`. Later row-`0x0182`, row-`0x01ff`, row-`0x0281`, `0x02xx`,
+and `0x03xx` fixtures repeat the same success/source-boundary split, while the
+`0x04xx` fixture separates below-cap selected-segment rendering from the
+parser-count cap. This narrows the remaining higher-row segmented-wide gap to
+broader row/span combinations outside the sampled matrices, plus physical
+comparison for the explicit source-boundary and parser-count-boundary cases.
 
 Fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
 segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits source

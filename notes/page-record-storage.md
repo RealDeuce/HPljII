@@ -43,6 +43,11 @@ Primary fixtures:
 - `0x133aa no-room return preserves rule-list head`
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
 - `0x136d2 no-room return preserves fixed-list head after search`
+- `0x12714 portrait text span flush queues segment-list span`
+- `0x12714 landscape text span flush queues fixed-width span`
+- `live CR span flush materializes 0x12714 page object`
+- `left-margin parser span flush materializes 0x12714 page object`
+- `vertical-cursor parser span flush materializes 0x12714 page object`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render entry`
@@ -84,9 +89,12 @@ Derived producer keys:
 Canonical object fields:
 
 - Compact/raster bucket object `+0`: next pointer.
-- Compact/raster bucket object `+4`: selector or class byte.
-- Compact/raster bucket object `+6`: count/capacity.
-- Compact/raster payload begins at `+8` or `+0a`, depending on object class.
+- Bucket object `+4`: class/selector byte. `0x00..0x3f` selects compact
+  glyph/text rendering, `0x40..0x7f` selects segment-list rendering, and
+  `0x80..0xff` selects encoded-raster rendering.
+- Bucket object `+6`: count/capacity.
+- Bucket payload begins at `+8` for compact objects and at `+0a` for
+  segment-list or encoded-raster objects.
 - Rule/fixed object `+0`: next pointer.
 - Rule/fixed object `+4`: bucket byte.
 - Rule/fixed object `+5`: selector or mode.
@@ -140,6 +148,14 @@ Unknown:
 - `0x1387c` writes compact/raster bucket heads under root `+0x1c`, reuses
   matching selector objects while count `+6` is below capacity, and links a new
   head when the matching object is full.
+- `0x12714` packages pending text span state. In portrait orientation it
+  reaches `0x13520` / `0x1354a` / `0x135f0`, writing segment-list bucket
+  objects under root `+0x1c` through `0x1387c`; in landscape orientation it
+  reaches `0x136d2`, writing fixed-list objects under root `+0x28`.
+- `0x13070` / `0x13250` write encoded-raster bucket objects under root
+  `+0x1c`. Helper `0x132b6` selects each raster object's payload capacity
+  from `0x782a70` / `0x782a76` and can split a dense row across multiple
+  encoded-span objects before `0x138de` copies payload bytes.
 - `0x133aa` writes ordered rectangle/rule nodes under root `+0x24`.
 - `0x136d2` writes ordered fixed-rule nodes under root `+0x28`.
 - `0xff1e` copies root fields into a published pool record, writes published
@@ -157,8 +173,10 @@ Unknown:
   nodes through `0x13386` / `0x133aa`.
 - Raster transfer through `0x105d0` consumes the current root and queues
   encoded-span objects through `0x13070` / `0x13250`.
-- Span flush through `0x12714` consumes the fixed-list path through
-  `0x136d2`.
+- Span flush through `0x12714` consumes pending span state and then branches by
+  orientation: portrait spans become root `+0x1c` segment-list bucket objects
+  consumed by `0x1f812`, while landscape spans become root `+0x28` fixed-list
+  objects consumed by `0x1f756`.
 - Publication through `0xff1e` consumes bucket/list/context root fields.
 - Rendering through `0x1ed84` / `0x1edc6` / `0x1ef6a` consumes the published or
   active page record and dispatches compact, encoded-span, rule, and fixed-list
@@ -199,6 +217,26 @@ inside `0x133aa`, root `+0x24` and existing rule nodes remain unchanged; if
 remain unchanged. Later publication therefore sees the prior visible objects,
 not a partial failed insertion.
 
+The span fixtures split `0x12714` storage by orientation and by producer. The
+portrait fixture queues selector-`0x4000` segment-list objects under bucket
+class `0x40`, copied through render root `+0x18` and consumed by `0x1f812`.
+The landscape fixture queues fixed-width objects through `0x136d2`, copied
+through render root `+0x20` and consumed by `0x1f756`. Direct-control fixtures
+`live CR span flush materializes 0x12714 page object`,
+`left-margin parser span flush materializes 0x12714 page object`, and
+`vertical-cursor parser span flush materializes 0x12714 page object` prove
+parsed CR, left-margin, and vertical-cursor commands can all materialize the
+same portrait selector-`0x4000` segment-list object before following compact
+text is queued.
+
+Raster storage also has a per-object capacity split beneath the same root
+`+0x1c` bucket array. `0x132b6` may return only the current chunk tail or a
+fresh capped chunk payload capacity in `0x782a80`; `0x13070` then writes object
+word `+0x06` from that capacity, copies payload through `0x138de`, advances
+the packed key, and loops until the accepted transfer bytes are represented by
+one or more encoded-span objects. The detailed dense-row split is documented
+in [raster-graphics.md](raster-graphics.md#allocation-capacity-and-dense-rows).
+
 The bridge fixtures split storage from rendering. `0x1edc6 page-record bridge
 copies compact bucket and context slots` proves the compact bucket root and
 selected-font context slots survive into render-record fields. `0x1ed84 active
@@ -221,6 +259,10 @@ A byte-stream renderer must preserve:
 - `0x1381c` chunk accounting and link behavior;
 - `0x1387c` bucket object reuse/new-head behavior;
 - short versus segmented compact bucket object shapes;
+- portrait text-span storage as class-`0x40` segment-list bucket objects under
+  root `+0x1c`;
+- landscape text-span storage as fixed-list objects under root `+0x28`;
+- encoded-raster dense-row splitting through `0x132b6` and `0x13070`;
 - ordered rule/fixed-list insertion through `0x133aa` and `0x136d2`;
 - no-room returns that leave existing visible lists unchanged;
 - publication through `0xff1e` before commands such as reset, FF, page-size,

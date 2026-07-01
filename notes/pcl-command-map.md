@@ -1135,6 +1135,12 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   different `0x13eb8`, `0x156de`, `0x17708`, or `0xc580` state transitions
   before visible output, not repeat the already documented six non-Roman
   streams or the current final-`X` / final-`@` cases.
+- Treat `ESC &k#S/s` pitch-mode as already covered at the producer boundary
+  unless it is paired with a stream that changes the selected context or
+  rendered rows. [font-context-metrics.md](font-context-metrics.md) documents
+  `0xc390` selectors `0`, `2`, and `4` rewriting synthetic pitch records and
+  rejoining `0xc89c` / `0xc580`; [semantic-state-model.md](semantic-state-model.md)
+  records the same writer path in `Built-In Font Selection To Visible Text`.
 - Treat font metric producer behavior as regression expansion unless it
   exposes a new page-visible selected-font boundary. The metric formulas and
   producer/consumer cross-products are documented in

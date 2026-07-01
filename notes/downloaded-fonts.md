@@ -2253,13 +2253,23 @@ and the final `0x1b04c` refresh even when `0x16c14` installs no replacement.
 
 ## End-To-End Downloaded Glyph Path
 
-The strongest current byte-stream fixture is:
+This checkpoint is the downloaded-glyph byte-stream-to-publication cluster. It
+starts with the largest current segmented-wide stream:
 
 ```text
 ESC *c4660d37e5F
 ESC )s2193W <0x0891 payload bytes>
 % FF
 ```
+
+The same section also records the even-span rule/raster handoff, the
+parser-produced FF publication sibling, normal/wide/segmented row-count
+publication siblings, payload-control nonzero-drain return, and the legal
+type-1/type-2 short/wide/segmented resource publication siblings below. These
+are one semantic family because each begins with host-fetched font-control or
+font-payload bytes, installs or reuses a downloaded glyph context, queues a
+compact page-record object, crosses `0xff1e` publication when present, and
+renders through `0x1ed84` / `0x1ef6a`.
 
 The modeled `0xa904` ring source drains all bytes. The control part routes
 through handlers `0x11eb6`, `0x11ec8`, `0x11eda`, `0x15a56`, `0x15a18`, and

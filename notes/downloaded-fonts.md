@@ -2681,10 +2681,10 @@ A byte-stream renderer must preserve:
   `downloaded segmented-wide high-row parser-limit matrix renders selected segment`
   extend it through sampled rows up to `0x0787`; their oversized siblings classify
   adjacent payloads as parser-count-cap boundaries before `0x16498` renderer entry.
-  Remaining parser-produced comparisons are
-  bounded cross-products: physical/pixel behavior after the fully documented wrapped
-  source-byte mode-0 invalid-helper boundaries, broader publication combinations beyond
-  the documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
+  Remaining parser-produced comparisons are bounded cross-products:
+  physical/pixel behavior after the fully documented wrapped source-byte
+  mode-0 invalid-helper boundaries, publication combinations beyond the
+  documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
   row-`0x80`, row-count-matrix short/segmented, rows-`0x0102` truncated,
   linear-segmented, rows-`0x82` segmented, split-plane segmented, segmented-glyph plus
   raster, split-plane segmented-glyph plus raster, segmented-glyph/raster FF
@@ -2747,8 +2747,10 @@ A byte-stream renderer must preserve:
   record` pins the segmented-wide zero-drain return before handler `0xd04a`; fixture
   `host-fetched payload-control downloaded glyph FF publishes page record` pins the
   payload-control wide nonzero drain where `0x12328` consumes `&` and leaves FF for
-  handler `0xf0f0`. Other uncomposed full-success return siblings are still bounded
-  cross-products. Accepted descriptor-record mode bytes are closed for the covered
+  handler `0xf0f0`. Other uncomposed full-success return siblings are regression
+  cross-products of the same zero-drain join unless they expose a different
+  `0x783140` remainder, drain status, next handler, or page-record selector.
+  Accepted descriptor-record mode bytes are closed for the covered
   helper table by fixture `0x16b1a descriptor width helper emits only mode 1/2`:
   disassembly `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and
   `0x16b26..0x16b34` rejects invalid widths without writing scratch. The mode-byte-`0`

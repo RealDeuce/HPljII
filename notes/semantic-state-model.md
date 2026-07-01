@@ -6810,16 +6810,22 @@ Field groups:
   The byte-24 handoff fixture records the delayed-payload bookkeeping after the
   font install as `pending_flag = 0`, handler `0`, and retained snapshot record
   `80 57 00 12 00 00`.
-- Unknown for this checkpoint: full-success return-boundary siblings outside
-  the segmented downloaded-glyph plus raster stream and outside the separate
-  no-install/status-`2`, row-count matrix, wide-remainder matrix,
-  segmented-wide matrix, high-row segmented-wide matrix, segmented-publication,
-  combined segmented-wide publication, payload-control, bit-30-clear
-  fixed-record, and even-span glyph/rule/raster publication visible fixtures.
-  The even-span page stream itself now drives the glyph, rule, and raster
+- Unknown for this checkpoint: no additional return-boundary state is implied
+  by full-success siblings outside the cited fixtures. The covered fixtures
+  classify the shared post-copy boundary as zero-drain success through
+  `0x15dcc -> 0x12328`, no-install rejected-payload drain, status-`2`
+  partial-install resume, bit-30-clear fixed-record current/continuation
+  success, or payload-control nonzero drain. Siblings outside the segmented
+  downloaded-glyph plus raster stream, row-count matrix, wide-remainder
+  matrix, segmented-wide matrix, high-row segmented-wide matrix,
+  segmented-publication, combined segmented-wide publication,
+  payload-control, bit-30-clear fixed-record, and even-span glyph/rule/raster
+  publication fixtures are regression cross-products unless they introduce a
+  new drain status, nonzero remaining budget, or page-record selector. The
+  even-span page stream itself now drives the glyph, rule, and raster
   producers together from a fixture-backed byte-24 `final_header` memory
-  handoff. The residual gap is only stronger live 68000 register/memory capture
-  across the same font/page boundary.
+  handoff. The residual gap is stronger live 68000 register/memory capture
+  across the same font/page boundary, not an unmodeled ROM state field.
 
 The modeled resource image is now a pinned byte-24 handoff, not an implicit
 fixture shortcut. Fixture `downloaded glyph byte-24 state handoff feeds
@@ -6851,10 +6857,11 @@ segmented-wide sibling: copied record
 `00 00 00 00 0c 02 00 81 00 88 00 00`, table entry `0x00de`, bitmap size
 `0x0891`, copy status `1`, copy stream position `0x0891`, remaining
 `0x783140 = 0`, zero-byte `0x12328` drain, and next handler `0xd04a` for the
-printable `%` before FF publication. Other full-success return siblings remain
-open cross-products. The bit-30-clear fixed-record current-record and
-linear/split-plane continuation siblings are pinned by the `0x16606`/`0x15c4c`
-fixtures above.
+printable `%` before FF publication. Other full-success return siblings are
+classified as cross-products of the same zero-drain join unless a fixture
+exposes a different `0x783140` remainder, `0x12328` drain result, or next
+handler. The bit-30-clear fixed-record current-record and linear/split-plane
+continuation siblings are pinned by the `0x16606`/`0x15c4c` fixtures above.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -7540,12 +7547,7 @@ fields and broader selected-font state combinations have not been page-compared.
   separate fixtures cover `0x0020`, `0x0040`, `0x0080`, `0x0081`, and `0x0082`.
   Still-open comparisons are bounded cross-products: physical/pixel behavior after
   printable downloaded spans wrap in the current one-byte page source span field into
-  fully classified compact mode-0 invalid helper-table targets; visible behavior for
-  segmented-wide row words and spans outside sampled rows `0x0082`, `0x0083`,
-  `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
-  `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`, `0x0581`, `0x0582`,
-  `0x05ff`, `0x0681`, `0x0682`, `0x06ff`, `0x0781`, `0x0782`, and `0x0787`
-  below the parser payload-count cap; broader publication
+  fully classified compact mode-0 invalid helper-table targets; publication
   combinations beyond the documented normal,
   non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
   row-count-matrix short/segmented, rows-`0x0102` low-byte-truncated table-limit
@@ -7585,7 +7587,9 @@ fields and broader selected-font state combinations have not been page-compared.
   zero-drain publication return before handler `0xd04a`; fixture
   `host-fetched payload-control downloaded glyph FF publishes page record` pins the
   payload-control wide nonzero drain that consumes `&` and leaves FF for handler
-  `0xf0f0`. Other uncomposed full-success return siblings remain open cross-products.
+  `0xf0f0`. Other uncomposed full-success return siblings are regression
+  cross-products of the same zero-drain join unless they expose a different
+  `0x783140` remainder, drain status, next handler, or page-record selector.
   Accepted
   descriptor-record mode bytes are closed for the covered helper table by fixture
   `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes

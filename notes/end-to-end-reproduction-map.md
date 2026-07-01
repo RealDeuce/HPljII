@@ -902,10 +902,11 @@ The next work should follow dataflow, not isolated handlers:
    composed selection-to-RAM handoff visible-output streams. The highest-value
    ROM-only expansion target is now the bounded downloaded-character matrix:
    physical/device behavior after wrapped source-width bytes choose invalid
-   compact mode-0 helpers, plus publication/return-boundary siblings outside
-   the named row-count, wide-remainder, segmented-wide, high-row segmented-wide,
-   no-install, status-`2`, payload-control, and bit-30-clear fixed-record
-   cases.
+   compact mode-0 helpers, plus any publication/return-boundary sibling that
+   exposes a new `0x783140` remainder, `0x12328` drain status, next handler,
+   or page-record selector beyond the named row-count, wide-remainder,
+   segmented-wide, high-row segmented-wide, no-install, status-`2`,
+   payload-control, and bit-30-clear fixed-record cases.
    Downloaded-font live-continuity work is a
    separate proof target:
    fixtures `combined host-fetched font download stream prints installed glyph` and
@@ -1209,11 +1210,13 @@ The next work should follow dataflow, not isolated handlers:
    entry.
    Remaining downloaded-character publication work is therefore limited to
    physical/pixel behavior after the fully documented wrapped source-byte mode-0
-   invalid-helper boundaries, broader publication combinations, and full-success
-   return-boundary siblings outside the named row-count, wide-remainder,
-   segmented-wide matrix, high-row segmented-wide matrix, normal, row-`0x80`,
-   linear-segmented, split-plane segmented, segmented-wide publication, no-install,
-   status-`2`, bit-30-clear fixed-record, and payload-control cases. It is not the
+   invalid-helper boundaries, publication combinations that introduce a new
+   page-record selector, and return-boundary siblings that introduce a new
+   `0x783140` remainder, drain status, or next handler outside the named
+   row-count, wide-remainder, segmented-wide matrix, high-row segmented-wide
+   matrix, normal, row-`0x80`, linear-segmented, split-plane segmented,
+   segmented-wide publication, no-install, status-`2`, bit-30-clear
+   fixed-record, and payload-control cases. It is not the
    documented mode-byte-`0` visible recovery boundary. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
    and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,

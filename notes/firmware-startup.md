@@ -208,6 +208,72 @@ variable `0x783972`, stores payload-base pointer `0x784c40` in variable
 `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst` and fixture
 `0x164a initializes heap allocator bitmap and payload base`.
 
+## Startup `0x0078xxxx` Write Cross-Reference
+
+This section is the startup-state write ledger for the ROM paths above. It
+groups the early `0x0078xxxx` fields by writer and semantic class, so later
+parser/render notes can cite the initialized state without rediscovering the
+reset sequence.
+
+- `0x780000..0x780173`: firmware bookkeeping. Writer
+  `0x0298..0x02ac` copies table `0x04c0`; destinations are decoded in
+  `generated/analysis/ic30_ic13_startup_tables.txt`. These are RAM
+  exception/trap stubs, so vectors enter six-byte `JMP absolute` records
+  instead of ROM directly.
+- `0x7828fa`, `0x7828f9`, `0x7828f6`: derived/cache MMIO shadows.
+  Writer `0x0266..0x027e` seeds defaults for later `$aa01`, `$a801`,
+  and `$a400` output paths; `0x0b78` also toggles `0x7828f9.7` during
+  scratch/video RAM tests.
+- `0x783eee`: firmware bookkeeping. Writers `0x0244`, `0x0740`,
+  `0x0770`, and `0x0b78..0x0bb6` use it as startup-test gate and
+  expanded-memory-test flag before parser entry.
+- `0x780e4c`: canonical startup config. Writer `0x071c..0x0734`
+  stores the inverted `$ff8000` nibble; `0x02de..0x02ea` tests bit `3`
+  to decide whether optional probe `0x05ba` supplies the memory selector.
+- `0x780e59`, `0x780e5a`, `0x780e60`: canonical startup config.
+  Writer `0x02b2..0x031e`, optionally using `0x05ba`, derives formatter
+  memory/resource sizing. `0x0b18` consumes `0x780e5a` and `0x780e60`
+  to derive heap and resource-window bounds.
+- `0x780e44..0x780e58`: firmware bookkeeping. Writer `0x2c84..0x2d3c`
+  seeds default-environment startup flags after `0x5f96`; the semantic
+  consumer side is composed in `Default Environment Record Producers`.
+- `0x78017f`, `0x780180`, `0x780181`: derived/cache timer divider
+  seeds. Writer `0x038e..0x03a4`; consumer is the periodic trampoline at
+  `0x0d52`.
+- `0x782900`, `0x7828fe`, `0x783edc`, `0x783edd`: derived/cache
+  output/debounce state. Writer `0x03a6..0x03e6`; consumers are later
+  `$a200`/`$a400` rotation and `$8000.6/.7` status handling.
+- `0x780efa`, `0x780efe`, `0x7810b4`, `0x7810b8`: canonical startup
+  memory fields. Writer `0x0b18..0x0b5c` computes heap start/count and
+  resource/fallback window base/span. `0x164a` consumes heap inputs;
+  `0x2feb6` scans the resource window.
+- `0x780e86`, `0x783972`, `0x783976`, `0x78397a`, `0x78397e`,
+  `0x783982`, `0x783986`, `0x783988`: canonical heap allocator state.
+  Writer `0x164a..0x1700` stores the free-unit count plus allocator
+  bitmap/payload cursors consumed by `0x170c`, `0x1710`, and `0x18b4`.
+- `0x7820bc`, `0x7820c0`, `0x7820c8`, `0x78212c`: derived/cache
+  render-work state. Writer `0x2feb6..0x2ff0` seeds selectors and clear
+  counters before the active render scheduler starts.
+- `0x783e54..0x783e8e`, `0x7821c4`: canonical host input state.
+  Writer `0x3178..0x31c8` initializes the host ring and two LIFO
+  byte-source buffers consumed by `0xa904` and the byte-source helpers.
+- `0x783ed2`, `0x783ed4`, `0x783ed8`: canonical host output state.
+  Writer `0x31d6..0x31ea` initializes the 64-byte interface-output FIFO
+  consumed by `0xb022`, `0xb090`, and `0xb0c0`.
+- `0x780182..0x780262` wait-object records: canonical scheduler state.
+  Writer `0x0c24..0x0c7a` uses table `0x15d0` to build the eight-record
+  scheduler ring. `0x1266`, `0x1036`, `0x108e`, and `0x123a` consume
+  the links, priorities, stack pointers, and restart PCs.
+
+Parser scratch: none in this startup block. The first PCL parser scratch
+fields are initialized later by parser/reset paths such as `0xe146` and
+`0x11774`, not by reset entry `0x0110`.
+
+Unknowns: this section does not name the physical devices behind `$8000`,
+`$8c01`, `$a200`, `$a400`, `$a601`, `$a801`, `$aa01`, `$ff8000`, or the
+computed address-control writes. Those remain board/MMIO correlation tasks,
+not unresolved software field ownership inside `0x0078xxxx`.
+
 ## RAM Trampoline Initialization
 
 Routine `0x00000298` copies a table from ROM address `0x000004c0` into
@@ -366,5 +432,3 @@ before treating any startup defaults as fixed.
 - Extend the `HEAD`/`0x000000be` record model beyond the verified
   built-in resource window if cartridge or external resource images are
   available.
-- Start a cross-reference table from writes into `0x0078xxxx`, because
-  this range appears to hold early firmware state and copied handlers.

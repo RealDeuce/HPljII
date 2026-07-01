@@ -36,15 +36,23 @@ Primary fixtures:
 - `font sample carried run 2 buckets render through 0x1ed84 and 0x1ef6a`
 - `font sample source heading carries default plus first two Courier rows`
 - `font sample resolver carries first two Courier rows`
+- `font sample run 1 prefix crosses page-record render entry`
+- `font sample run 1 full row spans compact buckets`
+- `font sample run 2 full row spans compact buckets`
+- `font sample non-internal source groups follow modes 0..2`
+- `font sample source headings 0..2 compose page records`
 - `font sample full printout source placement follows firmware order`
 - `font sample full printout rows reuse ROM sample byte runs`
 - `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
 - `font sample first internal source group follows 0x1c334 row loop`
 - `font sample internal class-one source group follows 0x1c334 row loop`
+- `font sample page-limit branches trigger continuation calls`
 - `font sample heading continuation emits fresh source heading page record`
 - `font sample cartridge heading continuations emit source-specific page records`
 - `font sample row continuation emits fresh source heading page record`
 - `font sample class-one row continuation emits fresh source heading page record`
+- `font sample alternate row fit gate follows 0x1d868`
+- `font sample multi-probe preflight follows 0x1dcf2`
 - `font sample alternate-row continuation emits preadvanced row page record`
 
 ## Field Groups
@@ -101,6 +109,14 @@ Derived/cache state:
 - `0x1cf34` derives the run-2 x origin by resetting x through `0xf06e`,
   advancing vertically through `0x1d050`, then adding `0x31` horizontal units
   through `0x1d152`.
+- `0x1d868` derives the selected/alternate row fit flag consumed by the
+  `0x1c4a4..0x1c4f2` continuation caller. Fixture
+  `font sample alternate row fit gate follows 0x1d868` pins clear
+  `0x783132` as D7 `0` and set `0x783132` as a projected-bottom comparison
+  against `0x782db6`.
+- `0x1dcf2` derives the later multi-probe current/alternate fit decision
+  through shared calculator `0x1dc38`, including reset-y mode `1` probing
+  before returning to the caller at `0x1d964`.
 - Page-record bucket sets and object hashes are derived render-facing
   artifacts, not canonical firmware fields.
 
@@ -167,6 +183,27 @@ rows` pins the actual internal-source start: `INTERNAL FONTS`, row
 and page-record buckets `[0, 2, 3, 4, 6, 7, 10, 11, 13, 14, 15, 18, 21,
 22, 23]`.
 
+Fixture `font sample non-internal source groups follow modes 0..2` covers
+the other source selectors in the same `0x1c334..0x1c5e4` row loop. Source
+`0` uses resolver mode `0` for `"PERMANENT" SOFT FONTS`, emits no rows in
+either class pass, and writes `0x783f02 = 1`. Source `1` uses mode `1` for
+`LEFT FONT CARTRIDGE`; source `2` uses mode `2` for `RIGHT FONT CARTRIDGE`.
+Both cartridge sources emit only request-`0` rows in each class pass, then
+write `0x783f03 = 1` and `0x783f04 = 1`.
+
+Fixture `font sample source headings 0..2 compose page records` carries
+those source labels through page-record production. Source `0` queues a
+heading-only record with aggregate object digest
+`89fb4143a293f80bb8c07bab86d5c94940ba73039f2bd9ba1e3de0c2c6c4fb4c`.
+Source `1` queues `LEFT FONT CARTRIDGE` plus `L00LINE PRINTER10128U`, with
+class-zero/class-one digests
+`cc583ac71b083d3cf241a1a72ff6345e22d585a9eef1a0ba850427b6d43e2aba` /
+`51dade4f3a0af13cb533c9f62c5ea955a63f02046622e39a00b4ac8b072f63d6`.
+Source `2` queues `RIGHT FONT CARTRIDGE` plus `R00LINE PRINTER10128U`, with
+digests
+`eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1` /
+`3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
+
 Fixture `font sample full printout source placement follows firmware order`
 composes all eight source/class segments `(0,0)..(1,3)`: row counts
 `[0, 1, 1, 14, 0, 1, 1, 14]`, context-slot counts
@@ -186,6 +223,23 @@ rendered bucket-row totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`, and
 surface digest
 `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
 
+Fixture `font sample page-limit branches trigger continuation calls` pins
+the shared page-limit state block before the forced page-object cases. At
+heading entry, `0x1ca2c` compares cursor y word `32` plus row height `13`
+against `0x782db6`: limit `45` calls `0x1c9f6`, while limit `95` stays on
+the current page. At row advance, `0x1d050` moves first `COURIER` from y
+`0x00520000` to `0x00900000`; limit `100` calls `0x1c9f6` and then
+`0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, while
+limit `1010` does not.
+
+Fixture `font sample alternate-row continuation emits preadvanced row page
+record` covers the `0x1d868` D7 `1` caller path
+`0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
+0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`. It emits
+`I01COURIER101210U` after pre-row y advance
+`0x00520000 -> 0x00900000` and pins bucket digest
+`c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
+
 ## Reproduction Contract
 
 A byte-stream-to-pixels renderer that also supports firmware-generated sample
@@ -202,16 +256,19 @@ pages must preserve:
 - sample run tables `0x1c1cf` and `0x1c1e9`;
 - row-to-row and alternate-row placement through `0x1d050`, `0x1d868`, and
   `0x1dcf2`;
+- source `0..3` resolver modes and source-status writes
+  `0x783f02..0x783f05`;
 - page-record and render bridge consumption through `0x12f2e`, `0x1ed84`,
   and `0x1ef6a`.
 
 ## Confidence
 
 High for helper roles, loop order, candidate-row traversal, current-font setup,
-printable byte emission, page-record placement, rendered segment surfaces, and
-the major forced-continuation object forms because each is backed by named
-fixtures and disassembly. Medium for physical baseline/cell interpretation
-because comparison against a known printed/self-test sample remains open.
+printable byte emission, source `0..3` behavior, page-record placement,
+rendered segment surfaces, and the major forced-continuation object forms
+because each is backed by named fixtures and disassembly. Medium for physical
+baseline/cell interpretation because comparison against a known printed/self-test
+sample remains open.
 
 ## Remaining Edges
 

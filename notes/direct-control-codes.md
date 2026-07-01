@@ -181,9 +181,11 @@ Unknown:
 
 - Manual-facing names for latches `0x782a57`, `0x782a58`, `0x782a5a`,
   `0x782a6d`, `0x78318e`, and `0x783185` remain provisional.
-- The exact live CPU-memory sequence for every `0xd04a` source-object write
-  before modeled `0x12f2e` page-record queueing is not fully traced, although
-  representative byte-stream page records and rows are fixture-backed.
+- Broader source-object variants should be added only when they expose new
+  `0xd04a` field values, a new `0x12f2e` queueing shape, or different visible
+  rows. The existing direct-control byte streams already define the covered
+  ROM contract from parsed command through page-record queueing and render
+  entry.
 
 ## Writers
 
@@ -387,15 +389,15 @@ High for `ESC &s#C` selector handling and printable precheck consumption,
 because the `0xedb0` writer and paired `0xd28a` / `0xd6bc` consumers are pinned
 by fixtures and by disassembly reads of `0x783190`.
 
-Medium for manual-facing latch names and complete live CPU-memory continuity
-inside every `0xd04a -> 0x12f2e` source-object write. The documented fixtures
-cover the renderer contract, but a full 68000 trace of all internal object
-writes would still improve provenance.
+Medium only for manual-facing latch names and untested source-object variants
+inside `0xd04a -> 0x12f2e`. The documented handlers and fixtures cover the
+renderer contract for the byte-stream cases listed above.
 
 ## Remaining Edges
 
 - No ROM parser-to-page-record middle edge remains for the documented
   CR/LF/FF/HT/BS plus `ESC &k#G` control family.
 - Remaining work is broader full-page physical/reference-output validation
-  and optional live CPU-memory continuity for all `0xd04a` source-object
-  writes, not new direct-control field discovery.
+  plus byte-stream cases that create new `0xd04a` source-object fields or
+  `0x12f2e` bucket shapes, not live CPU-state proof for already documented
+  direct-control fields.

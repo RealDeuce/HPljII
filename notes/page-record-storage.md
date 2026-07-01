@@ -114,9 +114,11 @@ Derived render bridge state:
 
 Unknown:
 
-- Full live CPU-memory continuity for dense parser-produced pages that cross
-  root allocation, multiple producer families, publication, and scheduler
-  handoff in one trace.
+- Manual-facing names for some page/control pool header fields remain outside
+  this storage checkpoint. Dense parser-produced pages should be added here
+  only when they expose a new root field, stream-allocation transition,
+  producer object shape, publication field, or bridge output not already
+  covered by the fixtures above.
 
 ## Writers
 

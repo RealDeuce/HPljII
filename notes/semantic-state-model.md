@@ -1705,8 +1705,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - Unknown:
   - exact manual-facing names for some pending-text latches
     `0x782a57`, `0x782a58`, `0x782a5a`, and `0x782a6d`.
-  - complete live CPU/memory trace for every `0xd04a` source-object
-    write before the modeled `0x12f2e` / `0x1387c` page-record object.
+  - source-object variants beyond the covered direct-control byte streams,
+    only if they create new `0xd04a` field values, a new `0x12f2e` /
+    `0x1387c` page-record shape, or different visible rows.
 
 ### Writers
 
@@ -2039,9 +2040,9 @@ their disassembly reads of `0x783190`.
 ### Unresolved Middle Edges
 
 - `0xd04a..0x12f2e`: source-object field semantics and compact bucket
-  production are composed in `Text Source Objects And Compact Buckets`;
-  remaining work is full live CPU-register/memory capture for dense
-  parser-produced pages across every source class.
+  production are composed in `Text Source Objects And Compact Buckets`.
+  Remaining work is new byte-stream/source-class variants that expose new
+  source fields, bucket shapes, or visible row output.
 - `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush and
   re-arm state are composed in `Text Span Flush And Fixed-Width Spans`;
   allocation-failure retry publication and nonempty fixed-list insertion are
@@ -2800,10 +2801,9 @@ short or segmented compact bucket entries consumed by `0x1387c`,
 
 High for source field meanings, paired writer behavior, `0x12f2e`
 short/segmented object shapes, selector bits, and rendered compact rows
-because all are backed by disassembly and executable fixtures. Medium
-for full live CPU/register continuity across the entire path because
-the fixtures model selected source/page objects rather than running a
-full 68000 interpreter through every source class and allocator branch.
+because all are backed by disassembly and executable fixtures. Medium for
+broader source-class and allocator-branch coverage that could expose new
+object shapes or visible rows.
 
 ### Fixtures
 
@@ -8988,10 +8988,9 @@ asserted by named harness fixtures and by disassembly addresses
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
 selection, consecutive transfers, and lowercase same-family `*b` chaining
 because each has parser-dispatch, restored-record, object, and render-entry
-fixtures. Medium for live CPU/register fidelity inside `0x105d0..0x13250`
-during a dense parser-produced page because the register/memory contract above
-is disassembly-derived and fixture-correlated, but still not captured from one
-live 68000 execution trace.
+fixtures. Medium for broader dense parser-produced page variants inside
+`0x105d0..0x13250` only if they expose new gate outcomes, encoded object
+fields, bridge fields, or rendered rows.
 
 ### Fixtures
 
@@ -10190,8 +10189,9 @@ state combinations and physical/reference page comparisons.
   portrait text spans; broader orientation/page-size cross-checks still need
   visible page comparisons.
 - `0x13070..0x1f88e`: raster producers and encoded renderers are connected for
-  modes `0..3`; the live CPU/register edge through dense mixed pages remains
-  modeled/address-aware rather than captured as one full 68000 trace.
+  modes `0..3`; remaining work is byte-stream variants that change encoded
+  object fields, bridge state, or rendered rows, plus physical/reference page
+  comparison.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the cited selectors. Remaining work is broader selector/page
   combinations and physical-device comparison.

@@ -1925,6 +1925,12 @@ Field groups:
   - selector `0x3003` for segmented-wide selected segment `1` with buckets
     `0` and `8`;
   - render bucket word chosen by `0x1ed84` / `0x1ef6a`.
+- Derived/cache row-span state:
+  - `0x12f2e` consumes only the low row byte for selector choice, as proved
+    by `downloaded segmented-wide row-byte boundary truncates page-record
+    segments`;
+  - span controls compact helper selection, full-chunk/remainder metadata,
+    and the `ESC )s#W` payload count checked against the `0x7fff` parser cap.
 - Parser scratch and firmware bookkeeping:
   - restored records such as `80 57 01 04 00 00` and
     `80 57 02 04 00 00`;
@@ -1935,6 +1941,8 @@ Field groups:
   - rows above `0x00ff` are no longer unknown as installed object state, but
     short compact high-row fallback pixels past the `0x1fe76` valid table
     index remain an exact visible-output boundary, not a solved render.
+  - broader segmented-wide high-row row/span combinations below the parser
+    cap add regression breadth, but do not add a new semantic state boundary.
 
 Writers and readers:
 
@@ -1991,7 +1999,9 @@ Confidence:
   `0x05xx` fixtures, plus the parser-limit matrix through row `0x0787`, extend
   the same `0x1f264` success model beyond the earlier `0x01xx` samples. The
   oversized fixtures classify the parser-count boundary separately from
-  renderer behavior.
+  renderer behavior. The row-byte boundary fixture collapses unsampled
+  high-row variants into row-low-byte selector choice plus span-driven
+  renderer/parser-cap behavior.
 
 Unresolved middle edges:
 
@@ -1999,11 +2009,13 @@ Unresolved middle edges:
   short/segmented publication family.
 - `0x1fe76` fallback table indices above `128` remain the exact unresolved
   visible-output boundary for the short compact rows `0x0101..0x0103`.
-- Broader high-row segmented-wide row/span combinations outside the sampled
-  rows and spans below `0x0787` remain bounded cross-products. Rows above
-  `0x0787` cannot reach segmented-wide renderer entry in this host-fetched
-  `ESC )s#W` shape because even minimum span `17` exceeds the `0x7fff`
-  parser payload cap.
+- No unresolved semantic middle edge remains for segmented-wide high-row
+  row/span combinations in this host-fetched `ESC )s#W` shape. Unsampled
+  below-cap combinations are regression cross-products of the preserved
+  16-bit installed row word, low-byte selector truncation, span-selected
+  renderer helper, and parser payload-count cap. Rows above `0x0787` cannot
+  reach segmented-wide renderer entry because even minimum span `17` exceeds
+  the `0x7fff` parser payload cap.
 
 Fixture `host-fetched split-plane segmented downloaded character renders
 through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`

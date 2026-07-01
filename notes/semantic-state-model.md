@@ -12637,13 +12637,12 @@ covered.
   wait-states and the physical engine/MMIO events that wake them.
 - `0x1cf8..0x1ea8`: helper return predicates around `0xa668` and
   `0xa680` are modeled; the unresolved edge is the external engine
-  timing that makes `0x7828f9.6` ready or busy in real hardware.
-  Exact CPU clock source belongs to this physical timing edge: it is
-  required for cycle-accurate host/engine timing, but it is not a separate
-  byte-to-bitmap semantic dependency unless it changes the observed
-  `0x78399e/0x78399f`, `0x7828f9`, wait-object, active-source, or render
-  work-record sequence documented above. The board-facing register/signal
-  boundary is tracked in [dc-controller-engine.md](dc-controller-engine.md).
+  timing that makes `0x7828f9.6` ready or busy in real hardware. This is a
+  physical timing boundary, not a separate byte-to-bitmap semantic dependency,
+  unless it changes the observed `0x78399e/0x78399f`, `0x7828f9`,
+  wait-object, active-source, or render work-record sequence documented
+  above. The board-facing register/signal boundary is tracked in
+  [dc-controller-engine.md](dc-controller-engine.md).
 
 ## Vertical Forms Control
 

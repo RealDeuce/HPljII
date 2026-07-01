@@ -23,20 +23,29 @@ host bytes
 Every reproduction claim below requires both a ROM address boundary and an
 executable fixture or generated analysis note.
 
-CPU clock source is outside the current logical byte-stream-to-pixels
-contract except where it changes firmware-visible event order. The
-bounded timing surfaces are host fetch/polling (`0xa904..0xab8a`),
-scan/status interrupt and wait-object dispatch (`0x0f84..0x1282`), and
-active render scheduling (`0x1eb2a..0x1ed84`). The current fixtures prove
-the state effects after those events are observed: pending bytes
-`0x78399e/0x78399f`, shadow byte `0x7828f9`, wait-object state, active
-source `0x780eae`, active work pointer `0x783a18`, and band words.
-Exact oscillator identity remains board-level work for cycle-accurate
-host I/O, engine handshake, timeout, and physical registration fidelity.
-The named physical formatter/DC edge is connector `J205`: `BD`, `VDO`,
-`VSREQ`, `VSYNC`, `PRNT`, command/status strobes, and ready signals.
-Current ROM evidence does not yet map those signals to exact MMIO bits;
-the board-facing boundary is tracked in
+Coverage means a checked-in note names the ROM address range, field
+writers, field readers/consumers, visible or state output, fixtures, and
+disassembly evidence for that edge. For example, host byte-source coverage
+means `0xa904..0xabf0` and its fixtures define which firmware byte source
+feeds parser `0xda9a` / `0xdaf0` / `0xdb74`; it does not mean every
+physical bus signal has been named. Render coverage means
+`0x1ed84` / `0x1edc6` / `0x1ef6a` plus the compact, segment-list, rule,
+fixed-list, and raster helpers define the byte-to-bitmap state for the cited
+fixtures; it does not require formatter/DC timing proof.
+
+The physical timing boundary is separate from ROM-local reproduction
+coverage. Timing-sensitive surfaces are host fetch/polling
+(`0xa904..0xab8a`), scan/status interrupt and wait-object dispatch
+(`0x0f84..0x1282`), and active render scheduling
+(`0x1eb2a..0x1ed84`). The current fixtures prove the state effects after
+those events are observed: pending bytes `0x78399e/0x78399f`, shadow byte
+`0x7828f9`, wait-object state, active source `0x780eae`, active work pointer
+`0x783a18`, and band words. Board evidence is only needed when a claim
+depends on mapping physical formatter/DC connector signals or MMIO bits that
+the ROM treats as external events. The named physical formatter/DC edge is
+connector `J205`: `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, command/status
+strobes, and ready signals. Current ROM evidence does not yet map those
+signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
 ## Current End-To-End Coverage

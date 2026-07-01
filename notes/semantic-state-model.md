@@ -2079,10 +2079,10 @@ their disassembly reads of `0x783190`.
   bucket `456`, not primary high-control value cross-products or the
   command-family parser-to-page-record boundary.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
-  are fixture-backed for this cluster, but a dense live parser page that
-  exercises same-chunk and rollover allocation for all cursor variants
-  is still covered by the shared page-record storage checkpoint rather
-  than this section.
+  are fixture-backed for this cluster. Same-chunk and rollover allocation
+  variants for broader cursor streams are covered by the shared page-record
+  storage checkpoint unless they expose new root fields, allocator topology,
+  object bytes, bridge state, or rendered rows.
 - `0xe9ba`, `0xf176`, and `0x12622`: representative host-fetched
   page-record/render streams are now fixture-backed for the exact terminal
   commands `ESC 9`, `ESC =`, and `ESC &d`. Remaining work here is
@@ -4538,9 +4538,9 @@ selector mismatch only copies the remembered word and installs no context.
     fixtures start without a root; it is `0` in the live secondary handoff
     fixture because the root already exists before SO.
 - Unknown:
-  - lower-level CPU-register fidelity inside the modeled `0x13eb8` refresh
-    remains indirect; the primary and secondary parser-to-printable state edge
-    is now covered by inline mixed-stream fixtures.
+  - broader `0x13eb8` refresh variants that change selected context, map
+    rebuild, page-root slot install, object bytes, or rendered rows beyond the
+    covered primary and secondary parser-to-printable state edges.
   - broader non-Roman command combinations remain open only if they expose
     different state boundaries; the primary and secondary visible-output paths
     for `0N`, `10U`, and `11U` are fixture-backed.
@@ -4851,8 +4851,8 @@ metadata, HMI, compact object bytes, render context slot, and final rows
 because they are all fixture-pinned against ROM-derived helpers. High for the
 primary and secondary parser-to-printable state edge because the inline
 fixtures preserve one mixed-stream state from selection handlers through
-following printable source capture and row comparison. Medium for lower-level
-CPU-register fidelity inside the modeled `0x13eb8` refresh.
+following printable source capture and row comparison. Medium for broader
+`0x13eb8` refresh variants not yet carried to visible output.
 High for primary and secondary visible-output handling of `0N`, `10U`, and
 `11U` because fixture `non-Roman symbol streams select visible built-ins`
 preserves symbol-set parsing, font-selection refresh, SO for secondary,
@@ -5006,8 +5006,8 @@ install events.
   cache-hit no-dispatch exits are now carried through preserved visible tails:
   the transient path ends at prior primary context `0xc0089fb0`, and the
   cache-hit path ends at prior secondary context `0xc40ad87a`. Remaining risk
-  is lower-level CPU-register fidelity inside the modeled refresh, plus broader
-  font-selection variants that expose new state boundaries.
+  is broader font-selection variants that expose new selected contexts, map
+  rebuilds, page-root slot installs, object bytes, or rendered rows.
 - `0xc580..0xc428`: the common-refresh branch cluster is now modeled for
   dirty-1 install/reuse/full/selector-mismatch paths and dirty-2
   selector-match/mismatch paths. The remaining risk is not which branch writes
@@ -10912,8 +10912,8 @@ proves startup bulk load and active-record failure reporting through
 - `0xba48 -> normal rendering`: the loop exit sequence
   `0xc108 -> 0x19dd2 -> 0x36e4` is now fixture-backed at the caller contract:
   scheduler side effects may perturb page/font state, but scheduler `D7` is not
-  consumed before the status aggregate writes `0x780e08`. Remaining work is a
-  full live loop execution with physical `$fffee00b` transition, not the ROM
+  consumed before the status aggregate writes `0x780e08`. Remaining work is the
+  physical `$fffee00b` transition that wakes or stalls the loop, not the ROM
   caller handoff.
 
 ## Page/Font Scheduler Handoff

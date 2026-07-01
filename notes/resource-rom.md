@@ -915,10 +915,10 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    `ESC (0@ ESC )0@ ESC )1@ ESC )2@ ESC (3@` through the ROM `0x120be`
    terminal handler and real-record-backed words from `0x1b250`, `0x1b50e`,
    `0x1ab84`, and `0x1b060`.
-4. Replace only the residual modeled handoff boundaries with a full live
-   parser-state run that populates current records, source objects, and
-   page-record memory in one CPU execution. The current boundary coverage already chains
-   fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W`,
+4. Add new downloaded-font streams only when they change installed records,
+   source objects, page-record memory, or rendered rows. The current boundary
+   coverage already chains fetched `ESC *c4660d37e5F` state into fetched
+   `ESC )s0W`,
    `ESC )s80W`, and `ESC )s2193W` streams, with fetched `ESC )s2193W`
    now crossing `0x1ed84`/`0x1ef6a`; the fetched
    `ESC )s18W` payload-control path now crosses `0x1edc6` and

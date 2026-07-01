@@ -1254,10 +1254,10 @@ ROM work needed:
   `A4 = 0x783170`, `A5 = 0x78299e - 6`, accepted/overflow words
   `+0x04/+0x06`, row word `+0x02`, root `0x78297a`, bucket/key caches
   `0x782a7c/0x782a7e`, stream chunk state `0x782a70/0x782a76/0x782a80`,
-  and stop flag `0x782996`. The remaining raster edge is live parser-state
-  confirmation of that ledger in one dense text/rule/raster 68000 run, not
-  command-family decoding, parser-to-handler dispatch, or object-field
-  discovery.
+  and stop flag `0x782996`. The remaining raster edge is byte-stream variants
+  that change the gate result, encoded-row fields, page-record bridge state,
+  or rendered rows, not command-family decoding, parser-to-handler dispatch,
+  or object-field discovery.
   Downloaded-font payloads already cover normal, wide, segmented,
   split-plane, segmented-wide, FF-publication, and rule/raster composition
   cases in [downloaded-fonts.md](downloaded-fonts.md) and

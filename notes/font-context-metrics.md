@@ -1432,9 +1432,10 @@ A byte-stream reproduction must preserve these behaviors:
   `parsed secondary selection current-font RAM feeds SO visible rows` tie
   host-fetched font-selection bytes to those RAM handoff fixtures and matching
   visible rows for existing page roots.
-  Remaining handoff risk is lower-level CPU-register fidelity inside the
-  modeled `0x13eb8` refresh and broader command combinations that expose new
-  state boundaries, not the listed parser-to-printable edges.
+  Remaining handoff risk is broader command combinations that change
+  `0x13eb8` refresh state, selected context, page-root slot install, map
+  rebuild, compact object bytes, or rendered rows, not the listed
+  parser-to-printable edges.
 - Broader metric producer combinations remain incomplete at the
   parser-produced page boundary. Existing
   host-stream downloaded-font fixtures prove install, visible glyph rendering,

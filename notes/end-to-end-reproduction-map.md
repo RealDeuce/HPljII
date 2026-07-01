@@ -729,15 +729,18 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    unresolved variant boundaries for those resource-object fixtures are composed in
    `notes/semantic-state-model.md` under
    `Fixed-Record Resource Object Checkpoint`. Other release variants and
-   full-success return-boundary siblings outside
-   the even-span rule/raster path and outside the row-count matrix, wide-remainder
-   matrix, segmented-wide matrix, high-row segmented-wide matrix, segmented,
-   split-plane segmented, segmented-wide, payload-control publication, and
-   bit-30-clear fixed-record fixtures are still not proven against every PCL form. The
-   wrapped source-width-byte branch is now fully classified for `0x00..0x10` and
-   `0x11..0xff`; remaining work there is physical/device behavior after the documented
-   invalid compact-mode-0 helper targets, not parser-state discovery. Fixture `0x15c4c
-   partial resource resumes update continuation state` covers the fixed-record
+   full-success return-boundary siblings are now classified as regression
+   cross-products unless they expose a different `0x783140` remainder,
+   `0x12328` drain status, next handler, or page-record selector from the
+   even-span rule/raster path, row-count matrix, wide-remainder matrix,
+   segmented-wide matrix, high-row segmented-wide matrix, segmented,
+   split-plane segmented, segmented-wide publication, payload-control
+   publication, and bit-30-clear fixed-record fixtures. The wrapped
+   source-width-byte branch is now fully classified for `0x00..0x10` and
+   `0x11..0xff`; remaining work there is physical/device behavior after the
+   documented invalid compact-mode-0 helper targets, not parser-state
+   discovery. Fixture `0x15c4c partial resource resumes update continuation
+   state` covers the fixed-record
    continuation route's status-`2` resave behavior for linear and split-plane
    bit-30-clear resource objects.
    ROM-internal descriptor-validation error visibility is documented at the rejecting

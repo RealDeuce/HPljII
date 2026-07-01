@@ -408,8 +408,8 @@ phase pairs `1 -> 3`, `5 -> 7`, and `1 -> 0`
 
 ### PCL command map
 
-Status: Anchored, handlers need deeper annotation and macro allocator/frame
-internals
+Status: Anchored for command handlers; macro allocator/frame internals are
+composed in the macro checkpoint
 
 Evidence: flattened generated map links high-value PCL commands to
 handlers for page geometry, raster, rectangles, font selection,

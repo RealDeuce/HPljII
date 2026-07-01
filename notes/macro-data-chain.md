@@ -175,6 +175,46 @@ Unknown:
   reset-cleared record is documented, but physical failure behavior after an
   over-deep call stack has not been externally validated.
 
+## Selector Dispatch
+
+`ESC &f#X` reaches `0xdd08`, which rewinds `0x78299e`, resolves the current
+macro id through `0xe0a4`, and dispatches the absolute selector through the
+ROM list below. The list is canonical command-family behavior; output pixels
+appear only when the selected control builds or replays a payload that later
+passes through `0xa904`, parser dispatch, page-record queueing, and render
+entry.
+
+Selector effects:
+
+- `0`: handler `0xdd86` starts definition mode. Lowercase `x` seeds
+  lowercase auto-prefix bytes through `0xe002`; uppercase `X` seeds a single
+  zero byte.
+- `1`: handler `0xddfc` stops definition mode, normalizes raw chunk counts,
+  clears empty or auto-prefix-only records, and leaves nonempty payload records
+  selectable.
+- `2`: handler `0xde7c` executes the selected macro through an `0xe418`
+  data-chain frame with frame byte `+9 = 2`.
+- `3`: handler `0xdea2` calls the selected macro through an `0xe418`
+  data-chain frame with frame byte `+9 = 3` and a pushed macro context entry.
+- `4`: handler `0xdec8` enables overlay state `0x782a92` and saves current
+  macro id in `0x782a94` when the record exists.
+- `5`: handler `0xdef4` disables overlay state.
+- `6`: handler `0xdefe` deletes all macro records.
+- `7`: handler `0xdf08` deletes temporary macro records by testing permanence
+  byte `+0x0a`.
+- `8`: handler `0xdf12` deletes the current macro record selected by id.
+- `9`: handler `0xdf24` marks the current record temporary by clearing byte
+  `+0x0a`.
+- `10`: handler `0xdf36` marks the current record permanent by setting byte
+  `+0x0a`.
+
+Guard behavior is part of the same selector contract. Fixture
+`macro command stream respects definition and active-chain guards` proves the
+selector cases that the ROM suppresses while definition mode is active or an
+active data-chain frame is present. The alternate/data parser table still
+routes `x/X` to `0xdd08`, so selector `1` can stop a definition while payload
+bytes are otherwise appended instead of dispatched.
+
 ## Writers
 
 - `0xe112` writes current macro id `0x783164`.

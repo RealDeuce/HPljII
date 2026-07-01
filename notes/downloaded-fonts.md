@@ -132,6 +132,8 @@ Primary fixtures:
 - `downloaded segmented-wide row-0x0281 fallbacks render selected segment`
 - `downloaded segmented-wide high-row 0x02xx matrix renders selected segment`
 - `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
+- `downloaded segmented-wide high-row 0x03xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -1692,6 +1694,17 @@ segments `1` and `0`, and render selected bucket-8 segment `1` through
 `96` fallback rows matching the installed bitmap; span `31` for both rows
 stops at the same fallback A2 source read boundary `+0xb50`.
 
+Fixtures `downloaded segmented-wide high-row 0x03xx matrix renders selected
+segment` and `downloaded segmented-wide high-row 0x03xx span-31 matrix hits
+source boundary` extend the sampled high-row family into the next high-byte
+range. Row words `0x0381`, `0x0382`, and `0x03ff` remain canonical in the
+installed record, but the printable source still exposes only low row bytes
+`0x81`, `0x82`, and `0xff` to `0x12f2e`. Spans `17`, `18`, and `32` publish
+selector `0x3003` buckets `0` and `8`, dispatch selected segment `1` through
+`0x1f264`, and render the same `32` current rows plus `96` fallback rows from
+the installed bitmap. Span `31` reaches the same selected-segment path for all
+three row words and stops at fallback A2 source boundary `+0xb50`.
+
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
 It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
@@ -1862,9 +1875,9 @@ Output effect:
   `0x1fe76` is valid through index `128`, while row `0x0102` would read
   fallback target `0x329ad3c0` at index `200`.
 - Segmented-wide high-row selected-segment pixels are fixture-backed at rows
-  `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, and `0x02ff` for spans
-  `17`, `18`, and `32`; the adjacent span-31 cases stop at the exact A2 source
-  boundary `+0xb50`.
+  `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
+  `0x0382`, and `0x03ff` for spans `17`, `18`, and `32`; the adjacent span-31
+  cases stop at the exact A2 source boundary `+0xb50`.
 
 Confidence:
 
@@ -2531,7 +2544,10 @@ A byte-stream renderer must preserve:
   hits source boundary` prove the same split for row `0x01ff`. Fixtures `downloaded
   segmented-wide high-row 0x02xx matrix renders selected segment` and `downloaded
   segmented-wide high-row 0x02xx span-31 matrix hits source boundary` prove the same
-  split for rows `0x0282` and `0x02ff`. Remaining parser-produced comparisons are
+  split for rows `0x0282` and `0x02ff`. Fixtures `downloaded segmented-wide high-row
+  0x03xx matrix renders selected segment` and `downloaded segmented-wide high-row
+  0x03xx span-31 matrix hits source boundary` prove the same split for rows `0x0381`,
+  `0x0382`, and `0x03ff`. Remaining parser-produced comparisons are
   bounded cross-products: physical/pixel behavior after the fully documented wrapped
   source-byte mode-0 invalid-helper boundaries, broader publication combinations beyond
   the documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,

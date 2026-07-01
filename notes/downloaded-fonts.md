@@ -1624,8 +1624,14 @@ cases and carries the valid compact-wide side to pixels: source width bytes
 produce visible rows matching the installed bitmap for spans `0x00ff`,
 `0x0111`, `0x017f`, `0x0180`, and `0x01fe`. Source width bytes `0x00..0x10`
 enter compact mode-0 at `0x1effe` across the full low-byte range and read
-helper-table entries outside decoded row-copy helper heads, including
-`0x20700000`, `0x4e90202c`, and `0x4e904cdf`; those low-byte cases remain
+full-span helper-table entries outside decoded row-copy helper heads. The
+fixture now records the exact helper-entry class for each wrapped case:
+`0x0100` and `0x0101` target out-of-firmware longwords `0x20700000` and
+`0x4e90202c`; `0x0102` targets in-firmware address `0x0066cc` but starts at
+opcode `0x4a39`, not a decoded row-copy helper head; `0x0103`, `0x0104`,
+`0x0105..0x010b`, `0x010c`, `0x010d..0x0110`, and `0x020d` target
+out-of-firmware longwords `0x4cdf1030`, `0x4e750001`, `0xf4e00001`,
+`0xf5960001`, `0xf4e00001`, and `0x4e904cdf`. Those low-byte cases remain
 explicit non-pixel invalid-helper boundaries.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact

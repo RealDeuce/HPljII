@@ -1810,8 +1810,12 @@ Output effect:
   cases to pixels: spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and `0x01fe`
   render through `0x1f0d2` and match the installed bitmap rows. Low source
   bytes `0x00..0x10` still dispatch through compact mode-0 at `0x1effe`,
-  reading helper entries outside decoded row-copy helper heads, including targets
-  `0x20700000`, `0x4e90202c`, and `0x4e904cdf`.
+  reading helper entries outside decoded row-copy helper heads. The fixture
+  records exact target classes: `0x0102` is the only sampled low-byte case that
+  stays in firmware, at address `0x0066cc` with opcode `0x4a39`; the other
+  sampled low-byte cases target out-of-firmware longwords including
+  `0x20700000`, `0x4e90202c`, `0x4cdf1030`, `0x4e750001`, `0xf4e00001`,
+  `0xf5960001`, and `0x4e904cdf`.
 - Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as
@@ -2002,8 +2006,9 @@ Unresolved middle edges:
   through `0x020d` at the current printable handoff: canonical installed width
   words survive, but `0x12f2e` consumes only the low source byte. Source width
   bytes `0x00..0x10` queue selector `0x0003` and read compact mode-0 helper
-  entries outside decoded row-copy helper heads; source width bytes
-  `0x11..0xff` queue selector `0x1003` and stay on compact-wide `0x1f0d2`.
+  entries outside decoded row-copy helper heads, with exact target classes now
+  recorded by the fixture; source width bytes `0x11..0xff` queue selector
+  `0x1003` and stay on compact-wide `0x1f0d2`.
   Fixture
   `downloaded segmented-wide row-byte boundary truncates page-record segments`
   now classifies the sampled row side: row words `0x0100`, `0x0101`, and

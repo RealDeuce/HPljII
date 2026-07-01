@@ -1094,7 +1094,10 @@ The next work should follow dataflow, not isolated handlers:
    compact-wide `0x1f0d2` and now render rows matching the installed bitmap for spans
    `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and `0x01fe`; every source width byte
    `0x00..0x10` selects compact mode-0 helper entries outside decoded row-copy helper
-   heads. Fixture
+   heads. The fixture now records the exact derived helper target class for those
+   wrapped cases: all sampled low-byte cases except `0x0102` leave firmware address
+   space, and `0x0102` targets firmware address `0x0066cc` with opcode `0x4a39`
+   instead of a row-copy helper head. Fixture
    `downloaded segmented-wide row-byte boundary truncates page-record segments` pins the
    row-byte sibling for installed row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
    `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`,

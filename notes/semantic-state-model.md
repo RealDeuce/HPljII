@@ -5696,9 +5696,13 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     rows matching the installed bitmap for spans `0x00ff`, `0x0111`,
     `0x017f`, `0x0180`, and `0x01fe`; source width bytes `0x00..0x10` enter
     compact mode-0 at `0x1effe` across the full low-byte range and read
-    helper-table entries outside the decoded row-copy helper heads, including
-    targets `0x20700000`,
-    `0x4e90202c`, and `0x4e904cdf`.
+    helper-table entries outside the decoded row-copy helper heads. The
+    fixture classifies the exact derived helper targets: `0x0100` and
+    `0x0101` leave firmware address space at `0x20700000` and `0x4e90202c`;
+    `0x0102` stays in firmware at `0x0066cc` but starts at opcode `0x4a39`;
+    `0x0103`, `0x0104`, `0x0105..0x010b`, `0x010c`, `0x010d..0x0110`, and
+    `0x020d` leave firmware address space at `0x4cdf1030`, `0x4e750001`,
+    `0xf4e00001`, `0xf5960001`, `0xf4e00001`, and `0x4e904cdf`.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
     canonical width words `0x0088..0x0100`, row word `0x0081`, mode bytes
@@ -7193,7 +7197,8 @@ installed width words, the one-byte
 source records, the resulting `0x12f2e` selectors, and the render split.
 Source width bytes `0x11..0xff` select compact-wide `0x1f0d2` and now render
 rows matching the installed bitmap; source width bytes `0x00..0x10` select
-compact mode-0 helper entries outside the decoded row-copy helper heads.
+compact mode-0 helper entries outside the decoded row-copy helper heads, with exact
+target classes recorded by fixture field `helper_target_class`.
 High for segmented-wide downloaded rendering because
 fixture `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 asserts spans `17..32`, rows `0x81`, mode-byte parity, split-plane copies for odd spans,

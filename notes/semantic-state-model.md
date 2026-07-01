@@ -8366,6 +8366,27 @@ published page record carries selector-7 rule object
 `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, rendered through `0x1f596` and
 mutated to `00 00 00 00 01 07 82 02 00 07 00 02 ff ca`. The composed page rows
 have digest `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`.
+Fixture `macro overlay vertical-decipoint payload publishes with page rule`
+keeps the same canonical overlay frame state at `0x782a92`/`0x782a94`, but
+uses parser scratch for stored payload `ESC &a72V!`. Replay routes `ESC &a72V`
+through `0xf60a`, consumes canonical vertical state `0x782c8e` with the
+top/min/max page limits, moves y from packed `20` to packed `30`, and leaves
+x at packed `10`. The following printable handler `0xd04a` queues compact
+text payload `00 01 20 90 01` plus context padding at coord `0x9001`. The
+same published page record carries selector-7 rule object
+`00 00 00 00 01 07 88 01 00 07 00 02 00 00`, rendered through `0x1f596` and
+mutated to `00 00 00 00 01 07 88 01 00 07 00 02 ff ca`. The composed page rows
+have digest `7ef1cc5d5557fa5a30c57e8ad6918b09747c210daed2639e9d75ccfed727e964`.
+Field grouping for this fixture adds no new unknowns: canonical fields are
+the overlay id/gate at `0x782a94`, vertical cursor `0x782c8e`, and the
+page-record bucket/rule objects; parser scratch is the restored `ESC &a72V!`
+payload and parser-state byte `0x782a92 = 0x63`; derived/cache fields are
+the compact coord `0x9001`, rule key `0x8801`, and rule decoder offsets; and
+firmware bookkeeping is the non-replay frame byte count plus mode bytes
+`+8/+9 = 4/4`. Writers are `0xe4f4` for the non-replay frame, `0xf60a` for
+the vertical cursor, and `0xd04a` for compact text; readers/consumers are
+`0xa904`/`0x11774` for replay dispatch, `0x1edc6` for page-record bridge, and
+`0x1f596` plus `0x1ed84`/`0x1ef6a` for rule and row rendering.
 Fixture `macro overlay chained cursor-position payload publishes with page rule`
 covers the same overlay replay family with stored payload `ESC &a2c+1R!`.
 `0x11774` routes lowercase-final horizontal command `ESC &a2c` through
@@ -8504,6 +8525,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `macro overlay skip gates preserve base page publication`
 - `macro overlay mixed-control payload publishes with page rule`
 - `macro overlay cursor-position payload publishes with page rule`
+- `macro overlay vertical-decipoint payload publishes with page rule`
 - `macro overlay chained cursor-position payload publishes with page rule`
 - `macro overlay chained margin payload publishes with page rule`
 - `macro overlay transparent payload publishes with page rule`
@@ -8547,14 +8569,15 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - None remaining for macro execute/call replay, macro font-context refresh, first
   overlay-publication, repeated enabled-overlay publication across two page boundaries,
   mixed-control overlay payload publication, cursor-position overlay payload family
-  publication, chained-margin overlay payload publication, raster overlay payload
-  publication, multi-row raster overlay payload publication, span-flush overlay payload
-  publication, transparent-data overlay payload publication, or the
+  publication, vertical-decipoint overlay payload publication, chained-margin overlay
+  payload publication, raster overlay payload publication, multi-row raster overlay
+  payload publication, span-flush overlay payload publication, transparent-data
+  overlay payload publication, or the
   disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk is
   broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, `ESC &a2C!`,
-  `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered raster payloads, and
-  `ESC &a6L!`, plus final-device comparison, not the `0xdd08` selector-4 to
-  `0xff1e` visible-output path or its skip gates.
+  `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered raster
+  payloads, and `ESC &a6L!`, plus final-device comparison, not the `0xdd08`
+  selector-4 to `0xff1e` visible-output path or its skip gates.
 
 ## Raster Transfer Gate And Encoded Rows
 

@@ -581,9 +581,9 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    nonzero; below-limit, zero-limit, and disabled-skip cases return `D7 = 1`
    without publication.
 3. Macro replay, overlay publication, repeated enabled-overlay publication,
-   mixed-control, chained cursor-position, chained margin, transparent-data, raster,
-   multi-row raster, and span-flush overlay payloads, and overlay skip gates are
-   anchored. The covered overlay path is selector
+   mixed-control, vertical-decipoint, chained cursor-position, chained margin,
+   transparent-data, raster, multi-row raster, and span-flush overlay payloads,
+   and overlay skip gates are anchored. The covered overlay path is selector
    `4` state through `0xff1e` re-entry, `0xe0a4`, `0xe4f4`, parser loop `0x11774`, and
    rendered page-record composition with selector-7 rectangle rules on two page
    boundaries. The mixed-control overlay fixture stores `ESC &k1G!\r!`, replays it
@@ -592,6 +592,11 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    `ESC &a2C!`, replays `0xf39e` then `0xd04a`, queues compact text at coord `0x0a02`,
    preserves selector-7 rule object `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, and
    renders digest `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`.
+   The vertical-decipoint overlay fixture stores `ESC &a72V!`, replays `0xf60a` then
+   `0xd04a`, moves packed vertical cursor `20 -> 30`, queues compact text at coord
+   `0x9001`, preserves selector-7 rule object
+   `00 00 00 00 01 07 88 01 00 07 00 02 00 00`, and renders digest
+   `7ef1cc5d5557fa5a30c57e8ad6918b09747c210daed2639e9d75ccfed727e964`.
    The chained cursor-position overlay fixture stores `ESC &a2c+1R!`, replays `0xf39e`,
    `0xf560`, and `0xd04a`, queues compact text at coord `0x3a02`, preserves selector-7
    rule object `00 00 00 00 01 07 a6 02 00 06 00 02 00 00`, and renders digest
@@ -620,14 +625,16 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`. The skip path is
    covered for disabled overlay mode, missing selected record, and page-root retry flag.
    Remaining macro risk is broader overlay payload variants beyond `!\r`, `ESC
-   &k1G!\r!`, `ESC &a2C!`, `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered
-   raster payloads, and `ESC &a6L!`, plus physical output comparison. Evidence:
+   &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &a6l9M!`,
+   `ESC &p2X!!`, the covered raster payloads, and `ESC &a6L!`, plus physical output
+   comparison. Evidence:
    [macro-data-chain.md](macro-data-chain.md), `Macro Definition And Data-Chain
    Replay` in `notes/semantic-state-model.md`,
    fixture `macro overlay finalization replays before page publication`, fixture
    `macro overlay replays across repeated page publications`, fixture `macro overlay
    skip gates preserve base page publication`, fixture `macro overlay mixed-control
    payload publishes with page rule`, fixture `macro overlay cursor-position payload
+   publishes with page rule`, fixture `macro overlay vertical-decipoint payload
    publishes with page rule`, fixture `macro overlay chained cursor-position payload
    publishes with page rule`, fixture `macro overlay chained margin payload publishes
    with page rule`, fixture `macro overlay transparent payload publishes with page

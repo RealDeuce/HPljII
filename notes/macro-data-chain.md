@@ -71,6 +71,7 @@ Primary fixtures:
 - `macro overlay skip gates preserve base page publication`
 - `macro overlay mixed-control payload publishes with page rule`
 - `macro overlay cursor-position payload publishes with page rule`
+- `macro overlay vertical-decipoint payload publishes with page rule`
 - `macro overlay chained cursor-position payload publishes with page rule`
 - `macro overlay chained margin payload publishes with page rule`
 - `macro overlay transparent payload publishes with page rule`
@@ -306,6 +307,8 @@ The overlay payload matrix now crosses multiple command families:
   entries with a selector-7 rule.
 - `ESC &a2C!` queues compact text at coord `0x0a02` after replayed horizontal
   cursor positioning.
+- `ESC &a72V!` routes vertical decipoint positioning through `0xf60a`, writes
+  vertical cursor state, then queues compact text at coord `0x9001`.
 - `ESC &a2c+1R!` crosses lowercase chaining through `0xf39e`, relative row
   positioning through `0xf560`, and printable text through `0xd04a`.
 - `ESC &a6l9M!` writes left/right margins through `0xeb58` and `0xec0c`
@@ -365,10 +368,10 @@ failure case is validated.
 - No ROM middle edge remains for macro execute/call replay, macro
   font-context refresh, first overlay publication, repeated enabled-overlay
   publication, mixed-control overlay payloads, cursor-position overlay
-  payloads, chained-margin overlay payloads, transparent-data overlay
-  payloads, raster overlay payloads, multi-row raster overlay payloads,
-  span-flush overlay payloads, or the disabled/missing-record/retry-flag
-  overlay skip gates.
+  payloads, vertical-decipoint overlay payloads, chained-margin overlay
+  payloads, transparent-data overlay payloads, raster overlay payloads,
+  multi-row raster overlay payloads, span-flush overlay payloads, or the
+  disabled/missing-record/retry-flag overlay skip gates.
 - Remaining macro work is broader overlay payload variants beyond the listed
   command-family matrix, external/manual naming, and final physical/reference
   output comparison.

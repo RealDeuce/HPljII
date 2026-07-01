@@ -3474,8 +3474,9 @@ for how resource records become ordinary page-record text.
     `[0, 3, 4, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, and pins bucket digest
     `842dd781a1093819f918e128999786f94f16cc3562ca25c3a82503ced74f3f3c`.
     The normal full source/class placement is composed as eight page-record
-    segments; broader forced-continuation cross-products remain open only
-    outside the covered page-record object forms listed above.
+    segments; broader forced-continuation streams are regression
+    cross-products unless they expose a page-record object form outside the
+    covered forms listed above.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
@@ -3865,9 +3866,10 @@ because physical/self-test comparison is still open.
   `font sample class-one row continuation emits fresh source heading page record`, and
   `font sample alternate-row continuation emits preadvanced row page record`
   cover the internal/cartridge heading-preflight, internal class-zero/class-one
-  row-overrun, and alternate-row forced page-record objects. Remaining gaps are
-  broader row-overrun cross-products and physical baseline/cell
-  comparison against a known printed/self-test sample.
+  row-overrun, and alternate-row forced page-record objects. Additional
+  row-overrun streams are regression cross-products unless they expose a new
+  page-record object form; physical baseline/cell comparison against a known
+  printed/self-test sample remains separate.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
@@ -3892,11 +3894,12 @@ because physical/self-test comparison is still open.
   `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
   pins the aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  The remaining sample-printout boundaries are broader row-overrun
-  cross-products beyond the covered heading-preflight, internal/cartridge
-  headings, class-zero row-overrun `I01`, class-one row-overrun `I16`, and
-  alternate-row `I01` cases; comparison against a known printed/self-test page
-  remains a separate external validation boundary.
+  Additional sample-printout row-overrun streams are regression cross-products
+  unless they produce a page-record object form beyond the covered
+  heading-preflight, internal/cartridge headings, class-zero row-overrun
+  `I01`, class-one row-overrun `I16`, and alternate-row `I01` cases;
+  comparison against a known printed/self-test page remains a separate external
+  validation boundary.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
   `0x13bca`; physical baseline/cell correlation remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by

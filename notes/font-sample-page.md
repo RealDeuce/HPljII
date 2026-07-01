@@ -123,9 +123,10 @@ Derived/cache state:
 Unknown:
 
 - Full physical comparison against a known printed/self-test sample.
-- Broader forced continuation cross-products beyond the heading-preflight,
-  class-zero/class-one row-overrun, cartridge heading, and alternate-row
-  forms already fixture-backed.
+- Forced continuation variants remain future regression work unless they
+  expose a page-object form different from the covered heading-preflight,
+  cartridge heading, class-zero/class-one row-overrun, and alternate-row
+  continuation forms.
 - Manual-facing names for record `+0x28/+0x2a` and `+0x2f..+0x31`; their ROM
   roles are known from `0x1519a` and `0x1428c`.
 
@@ -182,6 +183,16 @@ rows` pins the actual internal-source start: `INTERNAL FONTS`, row
 `I02COURIER101211U`, context slots `[0x4008004c, 0x44080418, 0x44080868]`,
 and page-record buckets `[0, 2, 3, 4, 6, 7, 10, 11, 13, 14, 15, 18, 21,
 22, 23]`.
+
+Fixture `font sample built-in row fields format through 0x1cabe` covers the
+row-field formatting cluster before the sample bytes for both a named
+`COURIER` row and a named `LINE_PRINTER` row. The first `LINE_PRINTER` record
+`0x0146b4` / context `0x440946b4` emits prefix `I07`, name `LINE_PRINTER`,
+pitch `16.6`, height `8.5`, symbol `10U`, printable bytes
+`49 30 37 4c 49 4e 45 5f 50 52 49 4e 54 45 52 31 36 2e 36 38 2e 35 31 30 55`,
+three fixed-space calls through `0xd0f0`, and eight explicit horizontal units
+through `0x1d152`. The height value is rounded by the mode-1 `0x1cc6e`
+add-five path.
 
 Fixture `font sample non-internal source groups follow modes 0..2` covers
 the other source selectors in the same `0x1c334..0x1c5e4` row loop. Source
@@ -273,10 +284,11 @@ sample remains open.
 ## Remaining Edges
 
 - `0x1c334..0x1c5e4`: no unresolved middle edge remains for the normal
-  source/class row traversal currently modeled. The open work is broader
-  forced-continuation cross-products outside the covered heading-preflight,
-  cartridge heading, internal class-zero row-overrun, internal class-one
-  row-overrun, and alternate-row cases.
+  source/class row traversal currently modeled. Additional forced-continuation
+  streams should be treated as regression cross-products unless they expose a
+  page-object form outside the covered heading-preflight, cartridge heading,
+  internal class-zero row-overrun, internal class-one row-overrun, and
+  alternate-row cases.
 - `0x1c5e8..0x1ef6a`: selected resource setup, row formatting,
   printable-byte emission, page-record queueing, bridge, and render dispatch
   are documented for the composed segments. Remaining work is external

@@ -918,15 +918,19 @@ The next work should follow dataflow, not isolated handlers:
    default-table streams, final-`X` built-in, final-`X` inline/downloaded,
    final-`X` preserved-output exits, primary/secondary current-font-RAM
    handoff, and composed selection-to-RAM handoff visible-output streams.
-   The highest-value ROM-only expansion target is now the bounded
-   downloaded-character matrix:
-   physical/device behavior after wrapped source-width bytes choose invalid
-   compact mode-0 helpers, plus any publication/return-boundary sibling that
-   exposes a new `0x783140` remainder, `0x12328` drain status, next handler,
-   or page-record selector beyond the named row-count, wide-remainder,
-   segmented-wide, high-row segmented-wide, no-install, status-`2`,
-   payload-control, type-1/type-2 short/wide/segmented publication, and
-   bit-30-clear fixed-record cases.
+   The bounded downloaded-character matrix has one ROM-facing expansion rule:
+   add a case only when it exposes a new publication selector, a new `0x783140`
+   remainder, a new `0x12328` drain status, or a new next handler beyond the
+   named row-count, wide-remainder, segmented-wide, high-row segmented-wide,
+   no-install, status-`2`, payload-control, type-1/type-2
+   short/wide/segmented publication, and bit-30-clear fixed-record cases.
+   The wrapped source-width-byte cases are already classified by fixture
+   `downloaded glyph width-byte boundary truncates page-record span`: low
+   source bytes `0x00..0x10` choose compact mode-0 helper entries outside
+   decoded row-copy helper heads, while high source bytes `0x11..0xff` render
+   through compact-wide `0x1f0d2`. The remaining invalid-helper question is
+   physical/device behavior after those bad targets are selected, not another
+   ROM parser or page-record tracing target.
    Downloaded-font live-continuity work is a
    separate proof target:
    fixtures `combined host-fetched font download stream prints installed glyph` and

@@ -219,9 +219,9 @@ Current milestone status:
   page geometry, font/resource records, downloaded fonts, page records,
   publication, render bridge, and render dispatch all have tracked notes.
 - Behavioral fixtures now cover the major parser-to-render command families
-  named above. Remaining fixture work is targeted at live CPU/register
-  continuity or broader cross-product validation, not first discovery of the
-  main byte-to-pixel path.
+  named above. Remaining fixture work should target new byte-stream variants
+  that expose different ROM state or broader cross-product validation, not
+  first discovery of the main byte-to-pixel path.
 
 ## Documentation Status
 
@@ -267,13 +267,10 @@ Expected ROM-only unknowns:
   and [io-interfaces.md](io-interfaces.md): the two direct-input banks now
   have ROM-visible ready, data, acknowledge/status, and control-shadow roles.
   Their remaining unknown is physical connector/interface mapping and timing.
-- Live CPU/register continuity for a few already-modeled handoffs, especially
-  dense raster producer state `0x105d0 -> 0x10084 -> 0x13070` and the
-  downloaded-font install-to-page boundary after `ESC )s18W`.
-  The current local MAME binary is useful for disassembly tooling, but
-  `../mame/mame -listfull` does not expose a LaserJet II/LJII driver; closing
-  these live-capture gaps therefore needs either a new emulator target,
-  instrumented 68000 execution harness, or physical/logic capture rather than
-  another existing `tools/render_fixture_harness.py` fixture.
+- Optional provenance for already-modeled handoffs, such as dense raster
+  producer state `0x105d0 -> 0x10084 -> 0x13070` and the downloaded-font
+  install-to-page boundary after `ESC )s18W`. These are not current
+  ROM-semantic blockers when the checked-in notes already document field
+  ownership, consumers, fixtures, and output rows.
 - Broader command cross-products only where they expose a new state boundary;
   already-covered command families should be treated as regression expansion.

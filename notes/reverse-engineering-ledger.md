@@ -1210,9 +1210,9 @@ ROM work needed:
   and the 32-entry macro/data-chain pool at `0x782a98` is composed in
   `Macro Definition And Data-Chain Replay` in
   [semantic-state-model.md](semantic-state-model.md).
-- Broaden the already documented direct-control and printable stream
-  fixtures only where they still lack full live parser/register traces across
-  every `0xd04a` source-object write. The transparent secondary segment-57
+- Broaden the already documented direct-control and printable stream fixtures
+  only where they expose new ROM state or output effects. The transparent
+  secondary segment-57
   bitmap physical/resource-window source interpretation remains open beyond
   the page-record and render-prefix boundary pinned by fixtures `transparent
   secondary high-control byte enters segmented page-record path` and
@@ -1241,7 +1241,8 @@ ROM work needed:
   the printable source-object fields are composed in `Text Source Objects And
   Compact Buckets`.
 - Continue binary payload work only where the command family is not already
-  composed or where live CPU continuity is still missing. Raster graphics
+  composed or where a new byte stream exposes different output state. Raster
+  graphics
   `ESC *t#R` / `ESC *r#A/B` / `ESC *b#W` is documented in
   [raster-graphics.md](raster-graphics.md), including lower-resolution modes,
   chained transfers, cap/drain gates, page-object bytes, and render dispatch;
@@ -1435,8 +1436,9 @@ ROM work needed:
   helper as the page memory image at stream byte `24`. The fixture asserts that
   this final header matches the install event header, reports table pointer,
   record, bitmap bytes, next handler `0x10e68`, and the rendered-row digest.
-  The remaining edge is stronger live-68000 register/memory capture across the
-  same already-modeled byte-24 handoff.
+  A live 68000 register/memory capture across the same byte-24 handoff would
+  improve provenance, but the current documentation should treat new
+  byte-stream/state variants as the next ROM-semantic work.
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
@@ -1548,13 +1550,12 @@ ROM work needed:
 - Treat executable row-copy behavior with real page objects from the
   parser/imaging path as covered for the documented mixed text/rule/raster,
   downloaded-glyph, and publication streams. Remaining row-copy work is
-  broader cross-feature/full-page variants and live CPU/register capture,
-  not the basic parser-produced page-object integration.
+  broader cross-feature/full-page variants, not the basic parser-produced
+  page-object integration.
 - Broaden the documented printable and inline/downloaded `0x1393a` /
   `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` source-object and compact
-  bucket fixtures into full live parser/register runs with real
-  font-download parser records, real HMI/font metrics, glyph indices,
-  and parser-produced page objects, building on the current host-fetched
+  bucket fixtures only with streams that expose new font metrics, glyph
+  indices, or parser-produced page objects, building on the current host-fetched
   plain `!!`, mixed `ESC &k1G!\r!`,
   LF-positioned `ESC &k2G!\n!`, HT/BS-positioned `ESC &k0G HT BS !`,
   left/right-margin-positioned `ESC &a1L!` / `ESC &a1M!`,

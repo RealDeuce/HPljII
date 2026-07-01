@@ -798,14 +798,11 @@ control-code anchor.
   [pcl-parser-core.md](pcl-parser-core.md), and the pool rooted at
   `0x782a98` is composed in `Macro Definition And Data-Chain Replay` in
   [semantic-state-model.md](semantic-state-model.md).
-- Continue parser-produced heterogeneous page-object work only at the exact
-  live continuity boundary now named in the semantic model:
-  `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6`. The page-record
-  object layouts, parser scratch, allocator bookkeeping, publication, bridge,
-  and rendered rows are documented for the mixed text/rule/raster fixtures;
-  the remaining proof is a live 68000 trace or memory snapshot of one dense
-  parser-produced stream carrying the modeled registers and heap pointers
-  through that boundary.
+- Treat parser-produced heterogeneous page-object work as documented for the
+  covered ROM semantics. The page-record object layouts, parser scratch,
+  allocator bookkeeping, publication, bridge, and rendered rows are documented
+  for the mixed text/rule/raster fixtures. Continue only where a new byte
+  stream exposes different output state or field ownership.
 - Keep transparent secondary segment-57 work classified as a physical
   resource-window problem. Disassembly of `0x1f354` and `0x1f1f0` fixes the
   zero-offset glyph-entry interpretation, segment skip, and byte range
@@ -819,8 +816,8 @@ control-code anchor.
   [host-byte-fetch.md](host-byte-fetch.md) and the `Host Byte Fetch And
   Data-Chain Input` semantic checkpoint.
 - Treat compact-text `ESC E` publication as covered through page-record and
-  addressed allocation fixtures; keep pursuing live CPU allocation/state
-  capture for broader heterogeneous streams. The current host-fetched
+  addressed allocation fixtures; pursue broader heterogeneous streams only
+  when they expose new state. The current host-fetched
   publication fixtures already prove the modeled `0xff1e` publication headers,
   bridge, and rendered queued compact buckets before reset, FF, page-size, and
   orientation consume the current page root. The text/rule/raster page-record

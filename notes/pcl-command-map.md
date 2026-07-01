@@ -1098,21 +1098,17 @@ The next work should follow the dataflow checkpoints in
 [semantic-state-model.md](semantic-state-model.md) and should start at
 unresolved byte-stream-to-pixel edges, not already-composed handlers.
 
-- Close the remaining dense raster live-memory boundary. The semantic
-  checkpoint `Raster Transfer Gate And Encoded Rows` already documents the
-  parser scratch, field groups, writers, consumers, output rows, fixtures, and
-  disassembly for `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 -> 0x10084 ->
-  0x13070 -> 0x13250 -> 0x1f88e`. The next useful proof is one live 68000
-  trace or memory snapshot for a parser-produced dense page that confirms the
-  disassembly-derived register/memory handoff across
-  `0x105d0..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, and
-  `0x132b6..0x13382`. The local MAME binary does not provide a LaserJet II/LJII
-  execution target, so this proof needs a new emulator target, instrumented
-  68000 harness, or physical/logic capture. Existing fixtures already cover
-  parser dispatch, delayed record restore, capped/drained rows,
-  lower-resolution modes, consecutive rows, same-family lowercase `*b`
-  chaining, bridge fields, and final rows.
-- Close the downloaded-font install-to-page hardware-capture residual.
+- Treat the dense raster handoff as documented for ROM semantics. The
+  checkpoint `Raster Transfer Gate And Encoded Rows` documents parser scratch,
+  field groups, writers, consumers, output rows, fixtures, and disassembly for
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 -> 0x10084 -> 0x13070 ->
+  0x13250 -> 0x1f88e`. Existing fixtures cover parser dispatch, delayed record
+  restore, capped/drained rows, lower-resolution modes, consecutive rows,
+  same-family lowercase `*b` chaining, bridge fields, and final rows. Continue
+  raster work only for new byte-stream variants or physical/page comparison
+  that changes the documented output state.
+- Treat the downloaded-font install-to-page byte-24 handoff as documented for
+  the covered rule/raster stream.
   `Downloaded Glyph
   Rule/Raster Composition` in [semantic-state-model.md](semantic-state-model.md)
   documents the current exact split: the `ESC )s18W` install fixture emits the
@@ -1123,10 +1119,11 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   next handler `0x10e68`, page object bytes, raster payload offset `28`, and
   the composed-row digest before page handlers `0x10e68`, `0x10e22`,
   `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and delayed `0x105d0` render
-  through `0x1ef6a`. The remaining boundary is stronger live
-  CPU/register/memory capture across the `0x16c14` / `0x16498` return after
-  byte `24` into parser loop `0x11774`, not byte-source identity, modeled
-  resource bytes, rule/raster producers, or render-entry rows.
+  through `0x1ef6a`. A live CPU/register/memory capture across the
+  `0x16c14` / `0x16498` return after byte `24` into parser loop `0x11774`
+  would improve provenance, but the current ROM-semantic work should focus on
+  new byte-stream variants rather than byte-source identity, modeled resource
+  bytes, rule/raster producers, or render-entry rows already documented here.
 - Broaden visible-output compatibility only when a new selected-font state
   boundary is exposed. `Built-In Font Selection To Visible Text` already
   covers primary and secondary built-in selection, primary/secondary

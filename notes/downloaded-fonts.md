@@ -1387,11 +1387,14 @@ boundary. The page parser routes through `0x10e68`, `0x10e22`, `0x10898`,
 `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and the same mode-0 raster object
 `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry `0x1ed84`/`0x1ef6a`
 dispatches the raster object to `0x1f88e`, the glyph object to
-`0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three composed
-rows. The remaining limitation is not byte fetch; the modeled font-install
-memory boundary is now explicit. The fixture uses the font-command helper's
-`final_header` as the parser-driven page memory image and asserts that it matches
-the install event header before resolving the printable downloaded glyph.
+`0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three
+composed rows. The font-install memory boundary is explicit for this stream:
+the fixture uses the font-command helper's `final_header` as the parser-driven
+page memory image and asserts that it matches the install event header before
+resolving the printable downloaded glyph. Remaining variant work starts only
+where a byte stream changes that header, installed record, post-install drain,
+following parser handler, page-object bytes, bucket assignment, dispatch, or
+rows.
 
 The modeled install-to-page handoff is now documented as a concrete resource
 image contract rather than a vague fixture split. In fixture
@@ -2379,8 +2382,8 @@ payload-control downloaded glyph FF publishes page record` still copies bucket a
 entry `1`, preserves empty rule/fixed lists and context slots `0,0,0,0`, clears the
 current root, and renders bucket word `1` through `0x1ed84`/`0x1ef6a`, compact target
 `0x1effe`, and `0x1f0d2`; it is evidence for the installed object and publication
-renderer, while the live same-stream printable handoff is the nonzero `0x12328` drain
-described above.
+renderer, while the same-stream printable handoff is the nonzero `0x12328`
+drain described above.
 
 Fixture `downloaded normal row-0x80 and segmented glyph FF publications
 render page records` extends that publication concept to the normal,

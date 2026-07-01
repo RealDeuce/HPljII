@@ -1262,9 +1262,11 @@ ROM work needed:
   split-plane, segmented-wide, FF-publication, and rule/raster composition
   cases in [downloaded-fonts.md](downloaded-fonts.md) and
   `Downloaded Glyph Rule/Raster Composition` in
-  [semantic-state-model.md](semantic-state-model.md). Remaining work is live
-  parser/register continuity across the install-to-page transition, broader
-  cross-product validation, and comparison against physical/full-page output.
+  [semantic-state-model.md](semantic-state-model.md). Remaining work is
+  byte-stream/state variants that change the install-to-page header, installed
+  record, drain status, following parser handler, page-object bytes, bucket
+  assignment, dispatch, or rows, plus broader cross-product validation and
+  comparison against physical/full-page output.
 - Use `notes/pcl-command-map.md` to prioritize page geometry, raster,
   rectangle, font, and macro handlers.
 - Record malformed/combined escape behavior that is not explicit in the

@@ -6869,6 +6869,8 @@ low-level ledger remains in [downloaded-fonts.md](downloaded-fonts.md) under
 `host-fetched resource payload stream installs selected 0x1719c font`,
 `host-fetched font control state drives resource payload stream`,
 `0x16c14-installed 0x1719c payload dispatches as bit-30 resource form`,
+`host-fetched resource header plus glyph payload renders offset-table downloaded
+glyph`,
 `0x1719c-backed inline payload dispatches through 0x14c64`,
 `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed
 record`, `host-fetched 0x1719c payload metrics feed d4ac span rows`, and
@@ -6883,6 +6885,11 @@ record `80 57 00 50 00 00`, payload length `80`, validation status `1`,
 allocation size `10`, current id `0x1234`, replacement release of old payload
 `0x456789`, installed candidate longword `0x40000000`, and class-one insertion
 at the candidate-list head. Fixture
+`host-fetched resource header plus glyph payload renders offset-table downloaded
+glyph` adds canonical downloaded-pointer glyph state inside that same installed
+payload: table entry `0x00ce`, record delta `0x0180`, record
+`00 00 00 00 0c 01 00 03 00 04 00 00`, bitmap offset `0x018c`, bitmap bytes
+`f0 f0 f0`, span `1`, width `4`, and row count `3`. Fixture
 `0x172c0-modeled font resource record scan statuses` pins the current-record
 scan outcomes that feed this install path: existing id status `0`, missing id
 with a free record status `1`, and missing id with no free record status `2`.
@@ -6897,6 +6904,10 @@ through `0x16c68 -> 0x12328`. The command-stream fixture pins parser handlers
 `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, modes
 `1 -> 4 -> 13 -> 0`, restored handler `0x16c14`, payload offset `6`, and
 payload prefix `00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34`.
+The downloaded-pointer glyph fixture then restores a second fetched record
+`80 57 00 03 00 00` for `ESC )s3W`, starts its payload at offset `5`, consumes
+three bytes through the same `0x16c14 -> 0x16498` handler route, and returns
+with copy status `1`, stream position `3`, and zero remaining byte budget.
 
 Derived/cache state is the selected font map and printable source path. For the
 real `0x16c14` installed candidate, `0x14c64` takes the bit-30 offset-table
@@ -6909,6 +6920,11 @@ and snapshots `0x158be` from byte `+0x17`. That control case is still useful
 because the following fixture proves the allocated payload's fixed-record table
 can queue selector `0x0003` and render three mode-0 rows from bitmap
 `0x00a0`. Fixture
+`host-fetched resource header plus glyph payload renders offset-table downloaded
+glyph` proves the integrated bit-30 resource form after `0x16498`: printable
+`!` maps to glyph `0x21`, resolves through context `0x40000000` to record
+`0x0180`, queues compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders
+the installed `f0 f0 f0` rows beside the `d8fc` span object. Fixture
 `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
 renderer records` is the type-2 sibling of that isolation control: it proves
 setup type `2` allocates payload units `0x100`, copies symbol bytes at
@@ -6937,15 +6953,28 @@ fixture consumes the bit-30 offset-table form after installing a glyph pointer
 for printable `!`: payload words `+0x16 = 4`, `+0x18 = 4`, and `+0x1a = 5`
 drive high-y `16`, segment-list key `0x0406`, record delta `0x0180`, bitmap
 `f0 f0 f0`, and visible rows from the flagged glyph plus span-fill pixels.
+The integrated downloaded-pointer fixture proves the same row shape without the
+manual glyph-table mutation used by the metric fixture: the fetched glyph
+payload writes the table entry, record, and bitmap first, then the following
+printable byte and `d8fc` span consumer produce the same compact object and span
+object chain.
+
+Confidence is high for the integrated bit-30 resource-header plus
+downloaded-pointer glyph path because fixture
+`host-fetched resource header plus glyph payload renders offset-table downloaded
+glyph` asserts both fetched streams, the installed table entry, record and
+bitmap bytes, context `0x40000000`, queued compact/span objects, and rendered
+rows.
 
 Unresolved middle edges after this checkpoint are no longer the parser restore,
-allocation, candidate insertion, or page-visible metric consumers. The exact
-remaining boundary is a fully integrated host byte stream that first installs
-this bit-30 offset-table candidate, then supplies the downloaded-character
-glyph pointer/bitmap data without fixture-side mutation before printable
-output. The bit-30-clear fixed-record render remains deliberately classified as
-an isolation control for the `0x1719c` payload layout, not as the real
-`0x16c14` installed resource form.
+allocation, candidate insertion, selected-map dispatch, basic integrated
+bit-30 downloaded-pointer glyph install, or page-visible metric consumers. The
+remaining boundaries are variant breadth: resource-header types beyond the
+covered type-0 header, downloaded-pointer glyph row/span/continuation shapes
+beyond the covered three-row linear glyph, and publication variants beyond this
+page-record render checkpoint. The bit-30-clear fixed-record render remains
+deliberately classified as an isolation control for the `0x1719c` payload
+layout, not as the real `0x16c14` installed resource form.
 
 ### Fixed-Record Resource Object Checkpoint
 
@@ -7198,6 +7227,8 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x17026/0x1719c-modeled font resource allocation and header initialization`
 - `0x16c14 routes installed font resource through 0x1bc38 slot`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
+- `host-fetched resource header plus glyph payload renders offset-table
+  downloaded glyph`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`
 - `0x16606 no-install exits clear stale continuation without payload writes`

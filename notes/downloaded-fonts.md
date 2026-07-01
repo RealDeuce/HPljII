@@ -69,6 +69,8 @@ Primary fixtures:
 - `host-fetched resource payload stream installs selected 0x1719c font`
 - `host-fetched font control state drives resource payload stream`
 - `0x16c14-installed 0x1719c payload dispatches as bit-30 resource form`
+- `host-fetched resource header plus glyph payload renders offset-table downloaded
+  glyph`
 - `0x1719c-backed inline payload dispatches through 0x14c64`
 - `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed record`
 - `0x17708 font-ID selects inline/downloaded candidate`
@@ -671,6 +673,21 @@ The `ESC )s80W` fixture proves the parser-to-install boundary:
 - `0x14c64` later dispatches that candidate as an offset-table resource,
   selecting symbol `0x1234` and range `0x0000..0x007f`.
 
+Fixture
+`host-fetched resource header plus glyph payload renders offset-table downloaded
+glyph` composes the next stream boundary without fixture-side glyph-table
+mutation. It starts from the fetched `ESC )s80W` header above, then feeds a
+separate fetched `ESC )s3W f0 f0 f0` payload into `0x16498` with current
+character `0x21`. The second stream restores record `80 57 00 03 00 00`, writes
+table entry `0x00ce` to record delta `0x0180`, installs record
+`00 00 00 00 0c 01 00 03 00 04 00 00`, copies bitmap bytes `f0 f0 f0` at
+`0x018c`, and leaves the installed resource context `0x40000000` resolving
+glyph `0x21` through the downloaded-pointer form. The following printable `!`
+uses the bit-30 offset-table map, queues the compact object
+`00 00 00 00 00 00 00 01 21 5a 00`, publishes the span object
+`00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and renders the three installed
+glyph rows plus the `d8fc` span rows.
+
 The selected inline/downloaded path is also fixture-backed through final-`X`
 font-ID selection, not only by direct `0x16c14` installation. Fixture
 `0x17708 font-ID selects inline/downloaded candidate` proves a bit-30-clear
@@ -747,9 +764,12 @@ The composed semantic checkpoint for this cluster is `Nonzero Resource Payload
 Checkpoint` in [semantic-state-model.md](semantic-state-model.md). It groups
 the `0x16c14` current-record/candidate state as canonical, the restored
 handler record and `0x16fae` staging as parser scratch, `0x14c64` maps and
-source objects as derived/cache state, and the remaining fully integrated
-bit-30 offset-table font-header plus downloaded-character glyph data stream as
-the open middle edge.
+source objects as derived/cache state, and the `0x16498` downloaded-pointer
+glyph table entry as canonical installed glyph state. The former open edge for
+the basic integrated bit-30 font-header plus downloaded-character glyph stream
+is now closed for the covered type-0 header and linear three-row glyph; broader
+resource-header types, row/span shapes, continuation states, and publication
+variants remain separate variant work.
 
 The invalid-resource-type sibling uses a full host-fetched `ESC )s80W` stream
 whose descriptor bytes begin `00 01 02 03`. Parser dispatch walks `0x11eb6`,

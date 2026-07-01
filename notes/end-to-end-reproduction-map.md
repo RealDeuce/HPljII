@@ -671,10 +671,13 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    `notes/semantic-state-model.md` under `Nonzero Resource Payload Checkpoint`:
    the documented state now spans ROM parser restore, `0x16fae` validation,
    `0x17026`/`0x1719c` allocation, `0x16c14`/`0x1bc38` candidate insertion,
-   `0x14c64` consumption, and page-visible `d4ac`/`d8fc` metric consumers; the
-   remaining boundary is a fully integrated host stream that installs this
-   bit-30 offset-table candidate and then supplies the downloaded-character
-   glyph pointer/bitmap data without fixture-side mutation.
+   `0x14c64` consumption, integrated `ESC )s3W` downloaded-pointer glyph
+   install, and page-visible `d4ac`/`d8fc` metric consumers. Fixture
+   `host-fetched resource header plus glyph payload renders offset-table
+   downloaded glyph` closes the basic type-0 `ESC )s80W` plus linear three-row
+   glyph boundary without fixture-side mutation; remaining work is broader
+   resource-header types, glyph row/span/continuation shapes, and publication
+   variants beyond that page-record checkpoint.
    Downloaded-character coverage now includes parser-produced normal, wide/control,
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both

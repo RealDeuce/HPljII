@@ -228,23 +228,26 @@ fixture-backed.
 
 Medium for treating the routine as a page/font scheduler handoff: caller
 locations and callee behavior support that role, and shared helper interiors
-are documented in sibling checkpoints. Physical optional-resource contents are
-not yet represented by live hardware/emulator evidence.
+are documented in sibling checkpoints. Physical optional-resource contents and
+the `$8000.14/15` board-level meaning are not yet represented by hardware or
+emulator memory-map evidence.
 
 ## Remaining Edges
 
 - `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`: one modeled changed
-  optional-window path is fixture-backed. Remaining work is a live CPU or
-  physical-resource execution of the same sequence.
+  optional-window path is fixture-backed. Remaining work is optional-resource
+  window data or board/emulator memory-map evidence that changes the scratch
+  slots, candidate pruning, current-record releases, canonical commit, or
+  later page/font state.
 - `0x1a616`: built-in window `0x080000..0x0ffffe` is composed in
   `Built-In Resource Scan And Candidate Windows`; optional windows
   `0x200000..0x3ffffe` and `0x400000..0x5ffffe` remain unverified physical
   inputs.
 - `0x1887a`, `0x1b4c0`, `0x1b04c`, and `0x179aa`: generic interiors are
   documented in downloaded-font, macro, and font-selection checkpoints.
-  Remaining work here is live optional-resource execution through those
-  callees.
+  Remaining work here is optional-resource data that reaches those callees
+  with different release/default-refresh/active-context state.
 - `0x1b9c0`: ROM-local classifier returns are documented in
   `Built-In Resource Scan And Candidate Windows`; the remaining edge is a
-  physical optional-resource image or live CPU session that reaches the
+  physical optional-resource image or emulator memory map that reaches the
   non-signature `-1` boundary.

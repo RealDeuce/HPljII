@@ -77,9 +77,10 @@ the board-facing boundary is tracked in
   `0x19f08` compare those scratch slots against canonical slots at
   `0x7828b6`, and the status branch can raise
   `0x9bee(0x780e2e, 0x00000200)` with byte `0x780e8d`. Remaining risk is the
-  board-level external-register identity, one live execution of
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, plus a live physical-resource version
-  of the changed optional-window scheduler sequence now modeled by fixture
+  board-level external-register identity, hardware/emulator evidence for
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, and physical optional-resource
+  contents for the changed optional-window scheduler sequence now modeled by
+  fixture
   `0x19dd2 optional-window change composes refresh helpers`. That fixture drives
   `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` and proves candidate-list,
   current-record, canonical-window, and active-context effects for synthetic
@@ -229,10 +230,10 @@ the board-facing boundary is tracked in
   `+0x04/+0x06`, row word `+0x02`, current root `0x78297a`, bucket/key caches
   `0x782a7c/0x782a7e`, stream chunk state `0x782a70/0x782a76/0x782a80`, and
   copy-stop flag `0x782996`. No remaining ROM semantic boundary is assigned to
-  that handoff: live CPU continuity through
-  `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` would be stronger
-  provenance for the addressed fixture, but it is not an unresolved
-  raster-object field, bridge field, render dispatch, or reproduction contract.
+  that handoff. Further ROM work should target streams that change the
+  `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` gate outcome,
+  raster-object fields, bridge state, render dispatch, or reproduction
+  contract.
 - Page publication:
   ROM evidence is `0xff1e..0x10080`.
   Reproduction evidence is

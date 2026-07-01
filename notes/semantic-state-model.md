@@ -11180,9 +11180,9 @@ before later page objects are generated. The branch, scratch-scan, comparison,
 immediate refresh-helper predicates, `0x19fb8`, `0x1a900` canonical-table
 commit, scheduler return contract, and font-resource scan caller resume
 contract are now known. Shared helper interiors are documented in sibling
-checkpoints; the open output edge is whether one live `0x19dd2`
-optional-window change sequence changes the page/font state that callers later
-hand to rendering.
+checkpoints; the open output edge is optional-resource window data that changes
+the scratch slots, candidate pruning, current-record releases, canonical
+commit, or later page/font state that callers hand to rendering.
 
 ### Confidence
 
@@ -11203,10 +11203,11 @@ through the long refresh chain, and fixture
 `0x19dd2 modeled unchanged and status branch exits` pins the unchanged and
 status-return contracts. Fixture `0x1a2e4 font scan ignores scheduler return`
 pins the font-resource scan caller after both scheduler `D7` polarities and the
-zero-candidate pre-scheduler error. No live CPU fixture or physical optional
-resource image proves the same state from hardware-visible inputs. Low for any
-user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
-`$8000.14/15`; this note deliberately leaves those names unresolved.
+zero-candidate pre-scheduler error. Physical optional-resource contents and
+the `$8000.14/15` board-level meaning are not yet represented by hardware or
+emulator memory-map evidence. Low for any user-visible name assigned to
+`0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note deliberately
+leaves those names unresolved.
 
 ### Fixtures
 
@@ -11236,9 +11237,9 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   `0x78219b`, `0x78219c`, and local output `A6-0x02`, and only resolver
   `D7 == 0` calls `0x6364`. Its zero-candidate case reports `0xe7/0x39` before
   still reaching `0x19dd2`.
-- No dedicated fixture currently executes `0x19dd2` from live 68000 state or
-  from physical optional resource-window contents. The scratch construction and
-  optional-window record in the fixture are modeled inputs.
+- No dedicated fixture currently executes `0x19dd2` from physical optional
+  resource-window contents. The scratch construction and optional-window record
+  in the fixture are modeled inputs.
 - No dedicated fixture currently executes `0x19eb6`, `0x1a042`, `0x19f08`,
   `0x19fb8`, or `0x1a0f2` against physical optional resource-window records.
 - Existing external-ready fixtures cover adjacent consumers in
@@ -11251,9 +11252,9 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   its `0x1bd2e`, `0x179aa`, and `0x1b04c` side effects in replacement/failure
   paths. Fixture `0x19dd2 optional-window change composes refresh helpers` now
   proves this scheduler checkpoint's `0x178fa(predicate)` caller sequence for
-  one changed optional-window path. The remaining release uncertainty is live
-  CPU/physical-resource execution of that same path, not the ROM-local caller
-  boundary.
+  one changed optional-window path. The remaining release uncertainty is
+  optional-resource data that reaches different current-record release state,
+  not the ROM-local caller boundary.
 
 ### Disassembly Evidence
 
@@ -11291,7 +11292,9 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   resulting `0x782324`, `0x782640`, `0x7828b6`, and active-context effects.
   The modeled status branch now pins the `0x780e8d` and
   `0x9bee(0x780e2e, 0x00000200)` side effects when `0x72a2` returns zero.
-  Remaining work is a live CPU/physical-resource version of those sequences.
+  Remaining work is optional-resource window data or board/emulator memory-map
+  evidence that changes scratch slots, candidate pruning, current-record
+  releases, canonical commit, or later page/font state.
 - `0x1a616` is composed for the built-in `0x080000..0x0ffffe` resource window in
   `Built-In Resource Scan And Candidate Windows`; optional windows
   `0x200000..0x3ffffe` and `0x400000..0x5ffffe` remain unverified physical
@@ -11299,11 +11302,12 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
 - `0x1887a`, `0x1b4c0`, `0x1b04c`, and `0x179aa` have documented interiors in
   `Downloaded Font Descriptor And Payload Chain`, `Macro Definition And
   Data-Chain Replay`, and font-selection checkpoints. Remaining work here is
-  live physical-resource execution through those callees, not their generic
-  helper behavior or the already-modeled font-scan caller return contract.
+  optional-resource data that reaches those callees with different
+  release/default-refresh/active-context state, not their generic helper
+  behavior or the already-modeled font-scan caller return contract.
 - `0x1b9c0`: ROM-local classifier returns are documented in
   `Built-In Resource Scan And Candidate Windows`; the remaining edge is a
-  physical optional-resource image or live CPU session that reaches the
+  physical optional-resource image or emulator memory map that reaches the
   non-signature `-1` boundary.
 
 ## ESC E Reset And Default Environment

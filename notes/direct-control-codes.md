@@ -77,6 +77,7 @@ Primary fixtures:
 - `margin command parser trace feeds page-record queue`
 - `right margin command parser trace feeds page-record queue`
 - `chained margin command parser trace feeds page-record queue`
+- `live CR span flush materializes 0x12714 page object`
 - `left-margin parser span flush materializes 0x12714 page object`
 - `vertical-cursor parser span flush materializes 0x12714 page object`
 - `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical cursor`
@@ -334,6 +335,67 @@ queue through the same compact text path.
 `vertical-cursor parser span flush materializes 0x12714 page object` prove
 those cursor-changing handlers can publish selector-`0x4000` span objects
 through `0x12714` before the following printable glyph is queued.
+
+### Span Flush Producers
+
+Several direct-control handlers are not just cursor writers. Before they
+overwrite cursor/span bounds, they call `0xf34a`, which can materialize the
+pending text span through `0x12714` and `0x126e2`. The shared object produced
+by the covered portrait cases is:
+
+```text
+00 00 00 00 40 00 00 01 32 00 03 00 00 10
+```
+
+That is a segment-list object in page-root bucket `0` with selector `0x4000`,
+one entry, packed key `0x3200`, y `3`, and extent `16`.
+
+Producer cases:
+
+- CR path: fixture `live CR span flush materializes 0x12714 page object`
+  drives `ESC &k1G!\r` through `0xedf8`, `0xd04a`, and `0xf02c`. The printable
+  first queues compact object `00 00 00 00 00 00 00 01 20 00 01`, then CR
+  materializes pending span state `x=2..18, y=3`, inserts the selector-`0x4000`
+  segment-list object ahead of the compact object in bucket `0`, re-arms
+  `0x783186` and `0x783188` to x `5`, and renders the span rows beside the
+  text glyph.
+- Left-margin path: fixture
+  `left-margin parser span flush materializes 0x12714 page object` drives
+  host-fetched `ESC &a6L!` through parser handlers `0xeb58` and `0xd04a`.
+  Handler `0xeb58` moves `0x782c8a` from packed `10` to packed `108`, flushes
+  the same pending span object, re-arms span bounds to x `108`, and the
+  following printable queues compact coord `0x0207`.
+- Vertical-cursor path: fixture
+  `vertical-cursor parser span flush materializes 0x12714 page object` drives
+  host-fetched `ESC &a1R!` through parser handlers `0xf560` and `0xd04a`.
+  Handler `0xf560` flushes the span before moving y to packed `95.1`, re-arms
+  span bounds to x `10`, and the following printable queues compact coord
+  `0xa001` in bucket `4`, leaving bucket `0` for the already materialized span
+  rows.
+- Underline/text-attribute path: fixture
+  `ESC &d underline selector materializes span output` drives
+  `ESC &d3D! ESC &d@` through `0x12622`, `0xd04a`, and `0x12622`. Selector
+  `3D` writes `0x783185 = 1`, printable output lets the flagged text source
+  update span high-y through alternate offset word `+0x1a`, and final `&d@`
+  flushes selector-`0x4000` span object
+  `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`.
+
+State classification for this cluster:
+
+- canonical: pending span fields `0x783184`, `0x783186`, `0x783188`, and
+  `0x78318a`; cursor fields `0x782c8a` / `0x782c8e`; segment-list object fields
+  class byte `0x40`, count `+0x06`, key `+0x08`, y `+0x0a`, and extent
+  `+0x0c`;
+- derived/cache: packed compact coordinates such as `0x0207` and `0xa001`,
+  plus the `0x12714` bucket/key result `0x3200`;
+- parser scratch: normal six-byte records for `ESC &k#G`, `ESC &a#L`,
+  `ESC &a#R`, and `ESC &d#D`; no delayed-payload state participates;
+- firmware bookkeeping: re-armed span bounds after `0x126e2`, publication
+  counters in the fixture harness, and page-root allocation state from
+  `0x10084`;
+- unknown: no ROM-local middle edge remains for these producers. Broader work
+  should add only cursor/font/span variants that change the object bytes,
+  bucket choice, bridge state, or rendered rows.
 
 `ESC &d3D! ESC &d@` proves underline/text-attribute state crosses into the
 same span machinery. Fixture `ESC &d underline selector materializes span

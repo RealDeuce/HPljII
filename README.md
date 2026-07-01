@@ -289,14 +289,19 @@ concrete pieces of:
 - host byte source priority and direct hardware input paths;
 - PCL numeric token records and delayed payload dispatch;
 - control-code side effects and `ESC E` reset publication behavior;
+- reset, FF, page-size, orientation, paper-source, copies, and VFC
+  publication streams through `0xff1e` into rendered records;
 - page geometry, orientation, margins, cursor positioning, and
   line-termination interactions;
 - raster command/data streams, row-object queueing, bridge behavior, and
   encoded span rendering;
 - rectangle/rule command streams and gray/pattern fill rendering;
-- built-in glyph resource resolution and compact glyph row-copy
-  behavior;
-- symbol-set selection and map patching;
+- built-in glyph resource resolution, compact glyph row-copy behavior,
+  font selection, symbol fallback, final-`@`, final-`X`, and page-root
+  context-slot behavior;
+- symbol-set selection, map patching, and active character-map effects;
+- downloaded descriptor validation, downloaded glyph installation,
+  type-1/type-2 resource publication, and downloaded-glyph FF publication;
 - macro command records, data-chain frame setup, and page-object
   composition fixtures.
 

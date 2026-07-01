@@ -336,9 +336,10 @@ Published page-record state:
   bucket `1` or `9` and derive band rows and destination base.
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
-- Unknown for this checkpoint: downloaded-glyph publication cross-products outside the
-  documented selector families. Fixture `downloaded glyph row-count matrix publishes and
-  renders additional short/segmented counts` closes parser-produced row words
+- Unknown for this checkpoint: downloaded-glyph publication cross-products
+  outside the documented selector families. Fixture
+  `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts` closes parser-produced row words
   `0x0001..0x00ff` for the short selector `0x0003` and segmented selector `0x2003`;
   fixtures `host-fetched rows-0x20 short downloaded glyph FF publication renders page
   record`, `host-fetched rows-0x40 short downloaded glyph FF publication renders page
@@ -349,16 +350,18 @@ Published page-record state:
   undifferentiated publication gap: fixture `downloaded segmented-wide row-byte
   boundary truncates page-record segments` proves the low-byte page-source boundary for
   span `0x11` row words through `0x0201`, and the high-row segmented-wide matrix
-  fixtures extend selected-segment rendering through sampled rows up to `0x0787`,
-  the last span-17 row below the parser payload-count cap. Remaining row-count risk
-  is now broader row/span cross-products below that cap and physical/pixel behavior
-  after the fully classified wrapped source-byte invalid-helper targets. Live CPU
-  continuity remains for full-success return siblings outside the pinned normal
-  even-span, no-install, status-`2`, bit-30-clear fixed-record current-record,
-  bit-30-clear fixed-record continuation, row-count-matrix, wide-remainder matrix,
-  segmented-wide matrix, high-row segmented-wide matrix, linear-segmented publication,
-  split-plane segmented publication, segmented-wide publication, and payload-control
-  publication return fixtures. Accepted descriptor-record mode
+  fixtures extend selected-segment rendering through sampled rows up to
+  `0x0787`, the last span-17 row below the parser payload-count cap.
+  Remaining row-count risk is now broader row/span cross-products below that
+  cap and physical/pixel behavior after the fully classified wrapped
+  source-byte invalid-helper targets. Full-success return siblings outside the
+  pinned normal even-span, no-install, status-`2`, bit-30-clear fixed-record
+  current-record, bit-30-clear fixed-record continuation, row-count-matrix,
+  wide-remainder matrix, segmented-wide matrix, high-row segmented-wide
+  matrix, linear-segmented publication, split-plane segmented publication,
+  segmented-wide publication, and payload-control publication return fixtures
+  remain useful only if they expose new installed records, source/page
+  objects, bridge state, or rendered rows. Accepted descriptor-record mode
   bytes are no longer a vague open edge for
   this helper table: fixture `0x16b1a descriptor width helper emits only mode 1/2`
   proves `0x16b1a` writes only mode `1`/`2`, while mode-byte-`0` is documented as an

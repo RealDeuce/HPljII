@@ -633,33 +633,31 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and second-chunk
-  rollover are fixture-backed, but not captured from live 68000 memory during
-  a dense parser-produced page.
+  rollover are fixture-backed. Remaining work here is dense byte streams that
+  expose a new page-root field, stream-allocation transition, or object shape.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
   [raster-graphics.md](raster-graphics.md). Parser dispatch, delayed record
   restore, gate outcomes, addressed `0x13250` storage, and render-entry rows
   are fixture-backed. The parser-to-handler record handoff is disassembly-pinned
   through `0x121cc`, `0x12218`, and `0x105d0` re-reading `0x78299e - 6`; the
-  remaining closure boundary is specifically live CPU/register memory across
-  `0x105d0 -> 0x10084 -> 0x13070`, where the modeled page-root allocation and
-  encoded-row production would need to be replaced by a live trace or memory
-  snapshot from a new emulator target, instrumented execution harness, or
-  physical/logic capture.
+  remaining closure boundary is byte streams that change the
+  `0x105d0 -> 0x10084 -> 0x13070` gate result, encoded-row fields, or
+  rendered output.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes, and local no-room returns are
   fixture-backed for both root `+0x24` and root `+0x28`. The remaining
-  closure boundary is not the local return; it is live CPU/register memory
-  through the full parser-produced allocation chain
+  closure boundary is parser-produced allocation-chain variants
   `0x10898 -> 0x13386 -> 0x133aa -> 0x1381c` and
-  `0x12714 -> 0x136d2 -> 0x1381c`.
+  `0x12714 -> 0x136d2 -> 0x1381c` that produce new list ordering, retry
+  behavior, bridge state, or rows.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, and the
   scheduler-produced multi-band render loop are modeled. Fixture
   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers render,
   capacity-wait, throttle, and cleanup branches around `0x1eba4..0x1ecd2`, and
   fixture `0x1eba4 scheduler band words render published downloaded glyph` feeds
   scheduler-produced band words `0..9` into `0x1ef6a`. The remaining scheduler
-  work is physical engine pacing and live CPU/MMIO correlation for the events
-  that wake or stall those modeled branches.
+  work is physical engine pacing and board-level MMIO correlation for the
+  events that wake or stall those modeled branches.
 
 `0x13070` converts the raster state block into bucket coordinates:
 
@@ -725,10 +723,10 @@ source and rows` extends the same retry contract to tall/segmented text
 objects. The unflagged rows-`0x81` case retries bucket words `9` and
 `1`; the flagged tall built-in space-glyph case retries all nine bucket
 indexes `0..64`. Selected published and retried buckets render matching
-rows through `0x1effe`. The remaining uncertainty is full live
-CPU-register capture through dense parser-produced allocator memory and
-broader selector-mode cross-products, not the paired no-room return
-semantics or row contract for these source families.
+rows through `0x1effe`. The remaining uncertainty is broader selector-mode
+cross-products that change source fields, allocator retry behavior, bucket
+shapes, or visible rows, not the paired no-room return semantics or row
+contract for these source families.
 
 `generated/analysis/ic30_ic13_printable_text_path.md` anchors the live
 normal parser path into that source-object builder. Routine `0x11774`
@@ -844,10 +842,11 @@ Fixture `addressed text/rule/multi-row raster publication preserves
 bucket chain` adds the two-raster-row sibling. A `0x1ef6a` page-band
 walker separately merges compact text, mode-0 raster, and a crossing
 patterned rule across bands `0` and `5`, carrying the mutated rule node
-into the second band. The remaining edge is therefore full live 68000
-register/memory capture through the same parser/page-record producers
-and final device-output validation, not parser-produced heterogeneous
-page objects or the modeled per-band merge itself.
+into the second band. The remaining edge is therefore parser/page-record
+producer variants that change object shapes, bridge fields, rendered rows,
+plus final device-output validation, not
+parser-produced heterogeneous page objects or the modeled per-band merge
+itself.
 
 Published-record coverage now also takes the reset, FF, page-size, and
 orientation `0xff1e` records from the host-fetched publication fixtures
@@ -1432,9 +1431,8 @@ Unresolved middle edges:
   portrait text spans; broader orientation/page-size cross-checks still need
   visible page comparisons.
 - `0x13070..0x1f88e`: raster mode producers and encoded renderers are
-  connected for modes `0..3`; the live CPU/register edge through dense mixed
-  pages remains modeled/address-aware rather than captured as one full 68000
-  execution trace.
+  connected for modes `0..3`; remaining work is dense mixed-page variants that
+  change encoded object fields, bridge state, or rendered rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the selector fixtures above; the remaining work is a broader
   selector/page-visible matrix and physical-device comparison.
@@ -2343,9 +2341,9 @@ publication renders through `0xff1e` / `0x1ed84` / `0x1ef6a`, and
 fixture `parser-driven downloaded glyph rule raster stream composes
 through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule, and
 mode-0 raster row in one parser-driven page stream. Remaining work should
-target byte streams or ROM paths that expose different output state; a live CPU
-trace of the same addressed fixture would improve provenance, but it is not an
-unresolved raster/imaging semantic edge. The reset,
+target byte streams or ROM paths that expose different output state; repeating
+the same addressed fixture with a different proof source is not an unresolved
+raster/imaging semantic edge. The reset,
 FF, page-size, orientation, paper-source, and copies publication fixtures
 now start without a current page root and mark the first printable queue
 step as the modeled page-record root allocation point. Those six
@@ -2451,10 +2449,9 @@ host-fetched `0x16c14` / `0x16498` font-command helper, and the fixture asserts
 that image matches the install event header. It pins glyph `0x29`, table entry
 `0x00ee` with pointer bytes `00 00 07 80`, record delta `0x0780`, bitmap offset
 `0x078c`, record bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, and the 18 copied
-bitmap bytes. The residual edge is replacing this modeled handoff with a full
-live 68000 register/memory capture across the `0x16c14` / `0x16498` return
-after byte `24` into parser loop `0x11774` for the following `0x10e68`
-rectangle handler.
+bitmap bytes. The residual edge is byte streams that change the byte-`24`
+handoff state, installed resource record, following `0x10e68` rectangle
+state, or rendered rows.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable
@@ -2604,8 +2601,10 @@ Other checked leads:
 
 ## Next Targets
 
-- Keep downloaded-font work focused on live continuity gaps, not selector-family
-  rediscovery. Fixtures `combined host-fetched font download stream prints
+- Keep downloaded-font work focused on byte streams that change installed
+  records, source/page objects, bridge state, or visible rows, not
+  selector-family rediscovery. Fixtures
+  `combined host-fetched font download stream prints
   installed glyph` and `combined font download FF publishes installed glyph
   page record` already run one `0xa904` fetched stream through font-control
   state, `ESC )s2193W` downloaded-character install, printable `%`, FF
@@ -2618,9 +2617,8 @@ Other checked leads:
   one 54-byte `0xa904` ring fetch, asserts the final-header table pointer
   `00 00 07 80`, installed record, and bitmap bytes, and disassembly plus fixture
   evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. The
-  remaining edge is a stronger full live 68000 register/memory capture across
-  the same byte-`24` boundary. Broader physical/full-page validation remains
-  separate.
+  byte-`24` boundary is no longer a ROM-semantic gap for the covered
+  rule/raster stream. Broader physical/full-page validation remains separate.
 - Treat the `ESC E` reset publication boundary as covered for
   parser-produced compact text page objects. Fixtures
   `mixed printable/reset page-record stream queues through 0x1387c before
@@ -2628,9 +2626,10 @@ Other checked leads:
   record`, and `addressed printable reset publishes rendered page record`
   now start from `! ESC E`, allocate/materialize the compact bucket through
   the page-record path, publish through `0xff1e`, clear the current page
-  root, and render through `0x1ed84`/`0x1ef6a`. Remaining reset work is live
-  CPU allocation/state capture, not the software-visible reset-to-render
-  contract for this compact-text case.
+  root, and render through `0x1ed84`/`0x1ef6a`. Remaining reset work is
+  additional reset byte streams that expose new publication fields or visible
+  output, not the software-visible reset-to-render contract for this
+  compact-text case.
 - Treat the direct-control command family as composed from host fetch to
   rendered rows for the currently named cursor/layout variants. The
   `Text Cursor And Direct Control State` checkpoint in
@@ -2643,10 +2642,10 @@ Other checked leads:
   text/control streams feed 0x1ed84 and 0x1ef6a` now start those streams
   at `0xa904`, replay the ROM parser handlers, queue compact page-record
   objects through `0x1387c`, bridge through `0x1edc6`, and render through
-  `0x1ed84` / `0x1ef6a`. Remaining work is a fuller live
-  CPU-register/memory trace across every `0xd04a` source-object write and
-  additional cursor-state cross-products, not the command-family
-  parser-to-render boundary.
+  `0x1ed84` / `0x1ef6a`. Remaining work is additional cursor-state
+  cross-products that produce new `0xd04a` source-object fields, `0x12f2e`
+  bucket shapes, or visible rows, not the command-family parser-to-render
+  boundary.
 - Treat selector-7 rectangle/rule composition as covered for mixed
   text/rule/raster page records, and the non-solid selector matrix as covered
   for text/rule page records:

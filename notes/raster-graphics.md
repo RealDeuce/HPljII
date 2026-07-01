@@ -464,8 +464,9 @@ Field classes for reproduction:
   `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
   `0x782a76 = 0x00d0c044`, one page-root allocation, one stream
   allocation, one publication, one root clear, and publication flag `1`;
-- unknown: the exact live 68000 register/heap-memory trace for this complete
-  mixed stream as it crosses `0x105d0..0x13250..0x1381c`.
+- unknown: byte-stream variants that change the `0x105d0..0x13250..0x1381c`
+  gate result, raster object fields, publication bridge state, or rendered
+  rows.
 
 Writers are the parser handlers and page producers listed above, plus `0xff1e`
 when fixture `host-fetched text rectangle raster FF publishes rendered page
@@ -568,14 +569,14 @@ A byte-stream reproduction must preserve these behaviors:
   stream-chunk state `0x782a70` / `0x782a76` / `0x782a80` before `0x138de` copies
   payload bytes. The composed semantic ledger is in
   [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
-- A 68000 trace or memory snapshot through `0x105d0`, `0x10084`, `0x13070`,
-  `0x13250`, and `0x132b6` would be provenance for the addressed fixture, not a
-  prerequisite for the ROM-derived reproduction contract. Canonical output
-  state is fixture-pinned as the page-root `+0x1c` raster chain and object
-  bytes written by `0x13070`/`0x13250`; derived/cache state is the bucket/key
-  and render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the
-  delayed `80 57 ...` command record, snapshot, payload offset, and drained
-  payload bytes; firmware bookkeeping is the modeled allocation result and
+- Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
+  `0x132b6` should target new byte streams that change the raster chain,
+  object bytes, bridge state, or rendered rows. Canonical output state is
+  fixture-pinned as the page-root `+0x1c` raster chain and object bytes written
+  by `0x13070`/`0x13250`; derived/cache state is the bucket/key and
+  render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed
+  `80 57 ...` command record, snapshot, payload offset, and drained payload
+  bytes; firmware bookkeeping is the modeled allocation result and
   stream-storage cursor.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
   text/rule/raster publication fixture. The allocator result is a modeled

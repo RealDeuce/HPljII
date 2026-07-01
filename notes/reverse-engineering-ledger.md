@@ -1372,7 +1372,7 @@ Expected resource ROM contents:
 ROM work needed:
 
 - Continue font-selection work only where a stream exposes a new state
-  boundary or needs live CPU continuity. The composed checkpoint
+  boundary that changes selected-font state or visible output. The composed checkpoint
   `Built-In Font Selection, Symbol-State, And Font-ID Selection` in
   [semantic-state-model.md](semantic-state-model.md) already covers primary
   `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`, primary
@@ -1391,10 +1391,9 @@ ROM work needed:
   selector-match, and dirty-2 selector-mismatch outcomes are grouped into
   canonical fields, derived branch state, writers, readers, output effect,
   confidence, fixtures, and unresolved edges. Remaining work is broader
-  font-selection fallback/error combinations that produce different state, and
-  live parser/register continuity inside `0x13eb8` / `0x156de` / `0x14c64`
-  refresh paths, not the listed visible-output streams or the documented
-  `0xc580` branch choices.
+  font-selection fallback/error combinations that produce different state in
+  `0x13eb8` / `0x156de` / `0x14c64`, not the listed visible-output streams or
+  the documented `0xc580` branch choices.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.
@@ -1436,9 +1435,10 @@ ROM work needed:
   helper as the page memory image at stream byte `24`. The fixture asserts that
   this final header matches the install event header, reports table pointer,
   record, bitmap bytes, next handler `0x10e68`, and the rendered-row digest.
-  A live 68000 register/memory capture across the same byte-24 handoff would
-  improve provenance, but the current documentation should treat new
-  byte-stream/state variants as the next ROM-semantic work.
+  The next ROM-semantic work is byte-stream/state variants that change the
+  byte-24 header, installed record, `0x783140` remainder, `0x12328` drain
+  status, following parser handler, page-object bytes, bucket assignment, or
+  rendered-row digest.
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
@@ -1534,8 +1534,8 @@ Known renderer boundary:
 
 ROM work needed:
 
-- Keep downloaded-font live-continuity work scoped to the exact remaining
-  handoff. Current boundary coverage already chains fetched
+- Keep downloaded-font work scoped to byte-stream/state variants that could
+  change output. Current boundary coverage already chains fetched
   `ESC *c4660d37e5F` state into fetched `ESC )s0W`, `ESC )s80W`, and
   `ESC )s2193W` streams, and the combined font-download fixtures now
   drive the installed downloaded glyph into segmented page-record
@@ -1545,8 +1545,9 @@ ROM work needed:
   composition case where the byte fetch, post-install drain, and modeled
   `font_command_final_header` memory handoff are already pinned through fixture
   `downloaded glyph byte-24 state handoff feeds following page handler`. The
-  remaining proof is stronger live CPU register/memory capture of that same
-  byte-24 state entering `0x10e68`.
+  next ROM-semantic work is any byte-stream/state variant that changes the
+  byte-24 header, installed resource record, following parser handler
+  `0x10e68`, page-object bytes, bucket assignment, or rendered-row digest.
 - Treat executable row-copy behavior with real page objects from the
   parser/imaging path as covered for the documented mixed text/rule/raster,
   downloaded-glyph, and publication streams. Remaining row-copy work is

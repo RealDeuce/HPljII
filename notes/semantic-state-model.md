@@ -2603,10 +2603,11 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0xd04a high-character flags and selected slot choose mask behavior`;
   fixture `SI/SO parser trace selects page-record text contexts`.
 - Unknown:
-  - live CPU register snapshots for every source class through the
-    entire `0xd04a -> 0x1393a -> 0xd140/d550 -> 0x12f2e` chain.
-  - complete semantic names for the span watermarks beyond their tested
-    x/y threshold behavior.
+  - source-class variants beyond the fixtures that change byte normalization,
+    source-object fields, positioning branch, compact selector, or rendered
+    rows through the `0xd04a -> 0x1393a -> 0xd140/d550 -> 0x12f2e` chain.
+  - complete semantic names for the span watermarks beyond their tested x/y
+    threshold behavior.
 
 ### Writers
 
@@ -2881,14 +2882,14 @@ object shapes or visible rows.
   over-`0xff` nonzero `0xd99a` exit, over-`0xff` fallback to `0x7f`,
   the primary high-bit mask wrapper, either high-character flag preserving
   a high byte, and selected secondary slot masking without the primary
-  wrapper. Remaining risk is broader high-byte values and live CPU-register
-  coverage around the modeled branch, not these specific normalization
-  outcomes.
+  wrapper. Remaining risk is broader high-byte values that change the
+  normalization result, source-object fields, selected map, or rendered rows,
+  not these specific normalization outcomes.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
   are fixture-backed for the paired result semantics of `0x782a6e`: ordinary
   continue, horizontal reject with queue suppression, horizontal wrap recovery
-  through `0xf054`, and vertical-extent reject. Remaining risk is the full
-  live parser/output edge for every metric source, not the meaning of the
+  through `0xf054`, and vertical-extent reject. Remaining risk is additional
+  metric sources that change parser/output state, not the meaning of the
   precheck result or the shared reject/retry gate.
 - `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
   `0xff1e` / `0x10084` is fixture-backed for both paired short-text source
@@ -2900,9 +2901,9 @@ object shapes or visible rows.
   the fixture proves the old published bucket prefix, fresh-root allocation,
   retried object pointer/bytes, `0x1effe` dispatch, and row digest match
   for flagged `0xd824` and unflagged `0xd3b2` short and segmented/tall
-  objects. Remaining risk is a full live CPU-register trace and broader
-  selector-mode cross-products, not the paired failure-return semantics for
-  these object families.
+  objects. Remaining risk is broader selector-mode cross-products that change
+  allocator topology, object bytes, dispatch, or rendered rows, not the paired
+  failure-return semantics for these object families.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers
@@ -2918,11 +2919,11 @@ object shapes or visible rows.
   shapes are fixture-backed through both modeled object bytes and addressed
   `0x1381c` allocator storage. The addressed selector-mode matrix proves
   all four selector values `0x0003`, `0x1003`, `0x2003`, and `0x3003`
-  share page-record storage, bridge/render dispatch through `0x1effe`,
-  and stable row digests. Remaining risk is a full live CPU/register trace
-  through dense parser-produced allocator memory and broader legal font
-  descriptor cross-products, not the selector-mode object production
-  contract.
+  share page-record storage, bridge/render dispatch through `0x1effe`, and
+  stable row digests. Remaining risk is dense parser-produced allocator
+  variants and broader legal font descriptor cross-products that change object
+  bytes, bridge state, dispatch, or rendered rows, not the selector-mode object
+  production contract.
 
 ## Built-In Resource Scan And Candidate Windows
 
@@ -6871,11 +6872,8 @@ Field groups:
   segmented-publication, combined segmented-wide publication,
   payload-control, bit-30-clear fixed-record, and even-span glyph/rule/raster
   publication fixtures are regression cross-products unless they introduce a
-  new drain status, nonzero remaining budget, or page-record selector. The
-  even-span page stream itself now drives the glyph, rule, and raster
-  producers together from a fixture-backed byte-24 `final_header` memory
-  handoff. The residual gap is stronger live 68000 register/memory capture
-  across the same font/page boundary, not an unmodeled ROM state field.
+  new drain status, nonzero remaining budget, page-record selector, object
+  payload, bucket assignment, render dispatch, or row digest.
 
 The modeled resource image is now a pinned byte-24 handoff, not an implicit
 fixture shortcut. Fixture `downloaded glyph byte-24 state handoff feeds
@@ -6968,9 +6966,8 @@ fixture `even-span downloaded glyph rule raster FF publication renders page
 record` asserts the `0xff1e` bucket array and rule list, render bucket word
 `5`, rule mutation through `0x1f596`, dispatch to `0x1f88e` and `0x1effe`,
 and row-digest equality with the active record. Confidence is high for the
-modeled final-header handoff between the font-install phase and the page-stream
-phase; confidence remains medium for replacing that modeled handoff with a full
-live 68000 register/memory capture.
+final-header handoff between the font-install phase and the page-stream phase
+for the cited fixtures.
 
 ### Nonzero Resource Payload Checkpoint
 
@@ -7719,8 +7716,9 @@ fields and broader selected-font state combinations have not been page-compared.
   `0x16c68 -> 0x12328` resource-side sibling. The modeled
   font-install-to-page memory handoff is now fixture-pinned as
   `font_command_final_header`, including table pointer, record, and bitmap
-  bytes; remaining risk is only the stronger proof of capturing the same state
-  from one live CPU memory run.
+  bytes. Remaining work is only byte-stream/state variants that change the
+  header, installed record, following parser handler, page-object bytes,
+  bucket assignment, dispatch, or rows.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
   buckets; the normal, non-boundary short, row-threshold `0x80`, rows-`0x20` short,
   rows-`0x40` short, linear-segmented, rows-`0x82` segmented, split-plane segmented,
@@ -11740,20 +11738,20 @@ the active-copy header words consumed before `0x1ef6a`.
 This checkpoint narrows the repeated "parser-produced page roots" gap. The
 root allocation, object stream allocator, root fields, publication fields,
 active-copy header words, bridge roots, and render dispatch roots are
-field-discovered and fixture-pinned. The remaining stronger proof is a live
-CPU/parser-state run that reaches the same `0x10084 -> producer -> 0xff1e or
-0x1ed84 -> 0x1edc6 -> 0x1ef6a` chain with real pool pointers for dense mixed
-pages; it is not an unknown object layout or bridge-field problem.
+field-discovered and fixture-pinned. Remaining work starts from byte streams
+that change the `0x10084 -> producer -> 0xff1e or 0x1ed84 -> 0x1edc6 ->
+0x1ef6a` chain: different pool-pointer topology, allocator failure, object
+layout, bridge-field value, dispatch root, or rendered rows.
 
 ### Confidence
 
 High for page-root creation side effects, stream allocator accounting,
-bucket reuse/new-head behavior, rule/fixed insertion order, root
-publication, and render-record field copies. High for the shared heap
-allocator contract by reference to `Macro Definition And Data-Chain Replay`,
-where `0x170c`, `0x1710`, and `0x18b4` are fixture-backed. Medium for
-scheduler handoff because fixtures model page-record allocation results rather
-than executing the full page scheduler in one dense live CPU trace.
+bucket reuse/new-head behavior, rule/fixed insertion order, root publication,
+and render-record field copies. High for the shared heap allocator contract by
+reference to `Macro Definition And Data-Chain Replay`, where `0x170c`,
+`0x1710`, and `0x18b4` are fixture-backed. Medium for scheduler breadth only
+where additional page-stream variants could change allocator topology, bridge
+state, scheduler band words, or rendered rows.
 
 ### Fixtures
 
@@ -11826,8 +11824,9 @@ than executing the full page scheduler in one dense live CPU trace.
   render, capacity-wait, throttle, and cleanup branches around
   `0x1eba4..0x1ecd2`; fixture `0x1eba4 scheduler band words render published
   downloaded glyph` feeds scheduler-produced band words `0..9` into `0x1ef6a`.
-  Remaining scheduler work is physical engine pacing and live CPU/MMIO
-  correlation for the events that wake or stall those modeled branches.
+  Remaining scheduler work is the physical engine/MMIO source for events that
+  wake or stall those modeled branches, plus any byte-stream variant that
+  changes scheduler band words or rendered rows.
 
 ## Published Record To Active Render Scheduler
 

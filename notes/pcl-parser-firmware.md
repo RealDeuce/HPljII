@@ -281,9 +281,10 @@ from synthetic roots into page-record and addressed allocation fixtures:
 reset`, `mixed printable/reset page-record finalization publishes bridged
 record`, and `addressed printable reset publishes rendered page record` cover
 `! ESC E` from printable parse, compact bucket materialization, `0xff1e`
-publication/current-root clearing, and `0x1ed84`/`0x1ef6a` rendered rows. The
-remaining parser-firmware work is live CPU allocation/state capture for broader
-heterogeneous streams, not this compact-text reset boundary.
+publication/current-root clearing, and `0x1ed84`/`0x1ef6a` rendered rows.
+Remaining parser-firmware work is broader heterogeneous streams that expose
+different allocator fields, publication fields, bridge roots, or rendered
+rows, not this compact-text reset boundary.
 
 For symbol-set selection, the harness now drives `ESC (2U` and `ESC )0E`
 through `0x120be`/`0x1be22`/`0xc580`, records active words `0x0055` and
@@ -469,9 +470,10 @@ fixtures queue short and segmented compact buckets under page-record storage
 rules, and the `0x1edc6` bridge fixture proves the render-record copy contract
 for that compact bucket. The addressed publication fixtures close the
 software-visible compact-text reset/FF/geometry/copies path through
-materialized page-record storage; the remaining parser-firmware gap is a live
-CPU memory/register capture that proves the same allocation and publication
-state without the modeled handoff layer.
+materialized page-record storage. Remaining parser-firmware work should start
+from byte streams that change the allocation result, publication header,
+bridge state, or rendered rows; repeating the same allocation and publication
+state with a different provenance source is not an open ROM-semantic edge.
 
 ## Parsed-Command Dispatch
 

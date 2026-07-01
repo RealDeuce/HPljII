@@ -930,10 +930,11 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    payload, and printable boundaries, restored record
    `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
    and `1`, and compact render dispatch target `0x1effe`. The even-span
-   `ESC )s18W` rule/raster composition also has its modeled
-   `font_command_final_header` handoff pinned; the remaining proof is a live
-   CPU memory image across that same font/page boundary, not a missing
-   parser-produced page-object payload for the documented variants.
+   `ESC )s18W` rule/raster composition also has its `font_command_final_header`
+   handoff pinned. Remaining work is new downloaded-font streams that change
+   the installed header, page-object payload, bucket assignment, render
+   dispatch, or row digest; the documented variants no longer have a missing
+   parser-produced page-object payload.
 5. Correlate the remaining built-in metadata names against physical sample
    placement. Record `+0x24` is pinned as the `0xc428` / `0x10550` HMI
    source, first-glyph placement offsets are pinned through the `0xd824`
@@ -1341,9 +1342,10 @@ Unresolved middle edges:
 - `0x1a616` optional cartridge windows `0x200000..0x5ffffe` remain
   software-bounded but physically unverified because no cartridge/resource
   image is present.
-- `0x13eb8` lower-level CPU-register flow is still modeled at fixture
-  boundaries; parser-to-visible primary and secondary output is covered, but
-  a single live CPU capture across all filter calls remains useful.
+- `0x13eb8` lower-level refresh flow is modeled at fixture boundaries;
+  parser-to-visible primary and secondary output is covered. Remaining useful
+  ROM work is new selection/filter cases that change selected context, map
+  rebuild, page-object bytes, or rendered rows.
 - physical sample-page comparison is still needed to assign manual-facing
   baseline/cell names and validate paper placement outside the ROM-internal
   rendered-surface digest.

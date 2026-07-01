@@ -933,34 +933,31 @@ The next work should follow dataflow, not isolated handlers:
    through compact-wide `0x1f0d2`. The remaining invalid-helper question is
    physical/device behavior after those bad targets are selected, not another
    ROM parser or page-record tracing target.
-   Downloaded-font live-continuity work is a
-   separate proof target:
-   fixtures `combined host-fetched font download stream prints installed glyph` and
-   `combined font download FF publishes installed glyph page record` already drive one
-   2,215-byte `0xa904` stream through font-control state, `ESC )s2193W` install,
-   printable `%`, FF, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. The remaining
-   ROM-side continuity edge is now narrowed to live-state capture for the even-span `ESC
-   )s18W` rule/raster composition case. Fixture `parser-driven downloaded glyph rule
-   raster stream composes through 0x1ef6a` proves one 54-byte `0xa904` ring fetch and
-   the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. Fixture
-   `downloaded glyph byte-24 state handoff feeds following page handler` now pins the
-   modeled memory-image handoff at stream byte `24`: the page phase consumes
-   `font_command_final_header` from the same font-command helper, asserts it matches the
-   install event header, reports pointer bytes `00 00 07 80`, record bytes, bitmap
-   bytes, next handler `0x10e68`, and the composed-row digest. Fixture `even-span
-   downloaded glyph rule raster FF publication renders page record` carries the same
-   bucket `5` raster+glyph chain and selector-7 rule through `0xff1e`, then renders the
-   published pool record with digest
+   Downloaded-font install-to-page continuity is already a documented ROM
+   contract for the covered streams: fixtures `combined host-fetched font
+   download stream prints installed glyph` and `combined font download FF
+   publishes installed glyph page record` drive one 2,215-byte `0xa904` stream
+   through font-control state, `ESC )s2193W` install, printable `%`, FF, bucket
+   entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. Fixture `parser-driven
+   downloaded glyph rule raster stream composes through 0x1ef6a` proves one
+   54-byte `0xa904` ring fetch and the shared
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. Fixture
+   `downloaded glyph byte-24 state handoff feeds following page handler` pins
+   the byte-24 handoff: the page phase consumes `font_command_final_header`
+   from the same font-command helper, asserts it matches the install event
+   header, reports pointer bytes `00 00 07 80`, record bytes, bitmap bytes,
+   next handler `0x10e68`, and the composed-row digest. Remaining
+   downloaded-font work should add cases only when they change the byte-24
+   header, installed record, `0x783140` remainder, `0x12328` drain status, next
+   handler, bucket assignment, render dispatch, or rows. Fixture `even-span
+   downloaded glyph rule raster FF publication renders page record` carries
+   the same bucket `5` raster+glyph chain and selector-7 rule through
+   `0xff1e`, then renders the published pool record with digest
    `84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`. Fixture
    `parser-driven downloaded glyph rule raster FF publishes page record` adds the
-   parser-produced sibling: the 55-byte fetched stream keeps font bytes `0..24`, page
-   bytes `24..54`, FF byte `54..55`, bucket `5` raster+glyph chain, raw selector-7 rule
-   publication, and matching published rows. What remains is
-   stronger live-68000 register/memory capture of the same already-fixture-backed state.
-   The local MAME binary is useful for disassembly but does not list a LaserJet
-   II/LJII driver, so this proof needs a new emulator target, instrumented
-   68000 execution harness, or physical capture rather than another existing
-   `tools/render_fixture_harness.py` case.
+   parser-produced sibling: the 55-byte fetched stream keeps font bytes
+   `0..24`, page bytes `24..54`, FF byte `54..55`, bucket `5` raster+glyph
+   chain, raw selector-7 rule publication, and matching published rows.
    The primary built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object prefix
    `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context slot `0xc008004c`,

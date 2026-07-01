@@ -1119,11 +1119,11 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   next handler `0x10e68`, page object bytes, raster payload offset `28`, and
   the composed-row digest before page handlers `0x10e68`, `0x10e22`,
   `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and delayed `0x105d0` render
-  through `0x1ef6a`. A live CPU/register/memory capture across the
-  `0x16c14` / `0x16498` return after byte `24` into parser loop `0x11774`
-  would improve provenance, but the current ROM-semantic work should focus on
-  new byte-stream variants rather than byte-source identity, modeled resource
-  bytes, rule/raster producers, or render-entry rows already documented here.
+  through `0x1ef6a`. Remaining ROM-semantic work should focus on byte streams
+  that change the `0x16c14` / `0x16498` return state, the byte-24 header,
+  following parser dispatch at `0x11774`, page-object bytes, or rendered rows,
+  rather than rediscovering byte-source identity, modeled resource bytes,
+  rule/raster producers, or render-entry rows already documented here.
 - Broaden visible-output compatibility only when a new selected-font state
   boundary is exposed. `Built-In Font Selection To Visible Text` already
   covers primary and secondary built-in selection, primary/secondary

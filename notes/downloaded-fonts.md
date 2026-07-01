@@ -156,6 +156,7 @@ Primary fixtures:
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `downloaded glyph byte-24 state handoff feeds following page handler`
 - `even-span downloaded glyph rule raster FF publication renders page record`
+- `parser-driven downloaded glyph rule raster FF publishes page record`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `host-fetched split-plane segmented downloaded character renders through
@@ -2153,6 +2154,16 @@ that pending handler state is clear while restored record
 then carries the same active bucket-5 rule/raster/glyph record through
 `0xff1e` publication and back through `0x1ed84` / `0x1ef6a`, proving the
 published pool record renders the same rows as the active composition.
+Fixture `parser-driven downloaded glyph rule raster FF publishes page record`
+adds the publication sibling for the parser-produced stream. The 55-byte
+fetched stream keeps font bytes `0..24`, page bytes `24..54`, and FF
+publication byte `54..55`; the post-install drain still leaves `0x783140 = 0`
+and resumes at `0x10e68`. Publication preserves bucket `5` with the raster
+object followed by the downloaded glyph object, publishes the raw selector-7
+rule object `00 00 00 00 05 07 08 01 00 0c 00 03 00 00`, and leaves fixed
+lists empty and context slots `(0, 0, 0, 0)`. Rendering that published record
+then mutates the rule to `00 00 00 00 05 07 08 01 00 0c 00 03 ff b3` and
+matches the active parser-produced rows.
 
 The FF publication variant proves the same installed-glyph page object across
 `0xff1e`. The fetched stream length is `2216` bytes, with control bytes

@@ -914,7 +914,11 @@ The next work should follow dataflow, not isolated handlers:
    downloaded glyph rule raster FF publication renders page record` carries the same
    bucket `5` raster+glyph chain and selector-7 rule through `0xff1e`, then renders the
    published pool record with digest
-   `84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`. What remains is
+   `84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`. Fixture
+   `parser-driven downloaded glyph rule raster FF publishes page record` adds the
+   parser-produced sibling: the 55-byte fetched stream keeps font bytes `0..24`, page
+   bytes `24..54`, FF byte `54..55`, bucket `5` raster+glyph chain, raw selector-7 rule
+   publication, and matching published rows. What remains is
    stronger live-68000 register/memory capture of the same already-fixture-backed state.
    The primary built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object prefix

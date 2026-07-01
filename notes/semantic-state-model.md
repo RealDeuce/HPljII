@@ -6694,6 +6694,13 @@ Fixture `even-span downloaded glyph rule raster FF publication renders page
 record` then carries the same active bucket `5` page record through `0xff1e`
 publication and back through `0x1ed84`/`0x1ef6a`, proving the published pool
 record renders the same rows as the active composition.
+Fixture `parser-driven downloaded glyph rule raster FF publishes page record`
+adds the parser-produced publication sibling: it appends FF to the same
+font/page stream, preserves font bytes `0..24`, page bytes `24..54`, and
+publication byte `54..55`, publishes bucket `5` with raster object followed by
+the downloaded glyph object, keeps the selector-7 rule list in raw publication
+form, and proves `0x1ed84`/`0x1ef6a` mutates and renders that published record
+to the same rows as the active parser-produced composition.
 
 Field groups:
 
@@ -7253,6 +7260,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `downloaded glyph byte-24 state handoff feeds following page handler`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `even-span downloaded glyph rule raster FF publication renders page record`
+- `parser-driven downloaded glyph rule raster FF publishes page record`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `split-plane segmented downloaded glyph composes with raster through 0x1ef6a`
 - `segmented downloaded glyph raster FF publications render page records`

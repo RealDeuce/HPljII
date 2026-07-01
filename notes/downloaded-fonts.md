@@ -138,6 +138,9 @@ Primary fixtures:
 - `downloaded segmented-wide high-row 0x04xx matrix renders selected segment`
 - `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
   renderer`
+- `downloaded segmented-wide high-row 0x05xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x05xx oversized payload counts stop before
+  renderer`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -1758,6 +1761,20 @@ count stops inside the bitmap data before the next command byte is reached.
 The fixture records `command_prefix_length`, `parser_stop_offset`, and
 `full_payload_end_offset` for each case.
 
+Fixtures `downloaded segmented-wide high-row 0x05xx matrix renders selected
+segment` and `downloaded segmented-wide high-row 0x05xx oversized payload
+counts stop before renderer` continue the same row/span boundary into the next
+high-byte row range. Row words `0x0581` and `0x0582` at spans `17`, `18`, and
+`23`, plus row word `0x05ff` at spans `17`, `18`, and `21`, remain below the
+`ESC )s#W` `0x7fff` numeric cap. They install canonical row words, expose only
+low source row bytes `0x81`, `0x82`, and `0xff` to `0x12f2e`, publish selector
+`0x3003` buckets `0` and `8`, dispatch selected segment `1` through `0x1f264`,
+and render the same `32` current rows plus `96` fallback rows from the
+installed bitmap. The adjacent oversized cases are parser boundaries:
+`0x0581*24`, `0x0581*32`, `0x0582*24`, `0x0582*32`, `0x05ff*22`, and
+`0x05ff*32` exceed the cap and stop before renderer entry with recorded
+`command_prefix_length`, `parser_stop_offset`, and `full_payload_end_offset`.
+
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
 It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
@@ -1930,10 +1947,12 @@ Output effect:
 - Segmented-wide high-row selected-segment pixels are fixture-backed at rows
   `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
   `0x0382`, and `0x03ff` for spans `17`, `18`, and `32`, and at rows
-  `0x0481`, `0x0482`, and `0x04ff` for spans `17`, `18`, and `24`. The
-  adjacent span-31 cases through `0x03ff` stop at the exact A2 source boundary
-  `+0xb50`; the `0x04xx` span-31/span-32 cases stop earlier at the parser
-  payload-count cap before renderer entry.
+  `0x0481`, `0x0482`, and `0x04ff` for spans `17`, `18`, and `24`; and at
+  rows `0x0581` and `0x0582` for spans `17`, `18`, and `23` plus row
+  `0x05ff` for spans `17`, `18`, and `21`. The adjacent span-31 cases through
+  `0x03ff` stop at the exact A2 source boundary `+0xb50`; the `0x04xx`
+  span-31/span-32 cases and the `0x05xx` span-24-or-above cases stop earlier
+  at the parser payload-count cap before renderer entry.
 
 Confidence:
 
@@ -1944,10 +1963,11 @@ Confidence:
   boundary, because the `0x0101..0x0103` fixtures preserve installed rows while
   proving the low-byte page source and the `0x1fe76` overflow boundary.
 - High for the sampled segmented-wide high-row selected segment, because the
-  row-`0x0281`, `0x02xx`, `0x03xx`, and below-cap `0x04xx` fixtures extend
-  the same `0x1f264` success model beyond the earlier `0x01xx` samples, and
-  because the `0x04xx` oversized fixture classifies the parser-count boundary
-  separately from renderer behavior.
+  row-`0x0281`, `0x02xx`, `0x03xx`, below-cap `0x04xx`, and below-cap
+  `0x05xx` fixtures extend the same `0x1f264` success model beyond the
+  earlier `0x01xx` samples, and because the `0x04xx` and `0x05xx` oversized
+  fixtures classify the parser-count boundary separately from renderer
+  behavior.
 
 Unresolved middle edges:
 
@@ -1956,7 +1976,9 @@ Unresolved middle edges:
 - `0x1fe76` fallback table indices above `128` remain the exact unresolved
   visible-output boundary for the short compact rows `0x0101..0x0103`.
 - Broader high-row segmented-wide row/span combinations outside the sampled
-  rows and spans remain bounded cross-products, not unknown field state.
+  rows and spans remain bounded cross-products, with the nearest unsampled
+  high-byte ranges constrained either by the same `0x1f264` selected-segment
+  model or by the `0x7fff` parser payload cap.
 
 Fixture `host-fetched split-plane segmented downloaded character renders
 through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`

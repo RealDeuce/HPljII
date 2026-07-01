@@ -1182,13 +1182,20 @@ The next work should follow dataflow, not isolated handlers:
    same selected-segment `32/96` split, while spans `31` and `32` exceed the `ESC )s#W`
    parser numeric cap `0x7fff` and stop inside bitmap payload before `0x16498` renderer
    entry. The fixture records exact command-prefix length, parser stop offset, and full
-   payload end offset for each oversized case.
+   payload end offset for each oversized case. Fixtures
+   `downloaded segmented-wide high-row 0x05xx matrix renders selected segment` and
+   `downloaded segmented-wide high-row 0x05xx oversized payload counts stop before
+   renderer` continue that cap split: rows `0x0581` and `0x0582` render spans `17`,
+   `18`, and `23`; row `0x05ff` renders spans `17`, `18`, and `21`; adjacent
+   `0x0581`/`0x0582` span-24/span-32 and `0x05ff` span-22/span-32 payloads exceed
+   `0x7fff` before renderer entry.
    Remaining downloaded-character publication work is therefore limited to
    physical/pixel behavior after the fully documented wrapped source-byte mode-0
    invalid-helper boundaries, broader higher-row segmented-wide fallback combinations
    outside the sampled rows `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
-   `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and `0x04ff` below the
-   payload-count cap, broader publication combinations, and full-success
+   `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`,
+   `0x0581`, `0x0582`, and `0x05ff` below the payload-count cap, broader
+   publication combinations, and full-success
    return-boundary siblings outside the named row-count, wide-remainder,
    segmented-wide matrix, high-row segmented-wide matrix, normal, row-`0x80`,
    linear-segmented, split-plane segmented, segmented-wide publication, no-install,

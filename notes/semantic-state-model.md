@@ -7302,6 +7302,9 @@ fields and broader selected-font state combinations have not been page-compared.
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 - `downloaded segmented-wide row-span cross-products render selected segment`
+- `downloaded segmented-wide high-row 0x05xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x05xx oversized payload counts stop
+  before renderer`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `split-plane segmented downloaded glyph FF publication renders page record`
 - `published downloaded glyph segmented buckets render across bands`
@@ -7478,6 +7481,12 @@ fields and broader selected-font state combinations have not been page-compared.
   `18`, and `24`; fixture `downloaded segmented-wide high-row 0x04xx oversized payload
   counts stop before renderer` classifies the corresponding span-31/span-32 cases as
   parser byte-count-cap boundaries rather than unresolved renderer behavior. Fixture
+  `downloaded segmented-wide high-row 0x05xx matrix renders selected segment` extends
+  the same selected-segment path to rows `0x0581` and `0x0582` at spans `17`, `18`,
+  and `23`, and row `0x05ff` at spans `17`, `18`, and `21`; fixture
+  `downloaded segmented-wide high-row 0x05xx oversized payload counts stop before
+  renderer` classifies the adjacent `0x0581`/`0x0582` span-24/span-32 and `0x05ff`
+  span-22/span-32 cases as parser byte-count-cap boundaries. Fixture
   `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through
@@ -7499,8 +7508,9 @@ fields and broader selected-font state combinations have not been page-compared.
   fully classified compact mode-0 invalid helper-table targets; visible behavior for
   segmented-wide row words and spans outside sampled rows `0x0082`, `0x0083`,
   `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
-  `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and `0x04ff` below the parser
-  payload-count cap; broader publication combinations beyond the documented normal,
+  `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`, `0x0581`, `0x0582`,
+  and `0x05ff` below the parser payload-count cap; broader publication
+  combinations beyond the documented normal,
   non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
   row-count-matrix short/segmented, rows-`0x0102` low-byte-truncated table-limit
   boundary, linear-segmented, rows-`0x82` segmented, split-plane segmented,

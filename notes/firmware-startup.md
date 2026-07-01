@@ -402,22 +402,79 @@ resource pair: a simple resource-pair mirror would expose a second `HEAD` at
 offset `0x40000`, while code-pair and zero-fill continuations present markers
 `0x00800000` and `0x00000000` and therefore skip that probe.
 
-## Configuration Inputs Seen Early
+## Early MMIO Cross-Reference
 
-Early startup tests bits from low memory-mapped addresses:
+This ledger names the ROM-visible role of every direct MMIO access in the
+reset path through `0x03ff`, plus the startup helpers that the same path calls
+before scheduler entry. Physical device names remain unresolved unless a later
+note cites board/manual evidence.
 
-- `btst #5, 0x8000`
-- `btst #6, 0x8000`
-- `btst #7, 0x8000`
-- byte read from `0x8c01`
+- `$a200`: reset writes byte `0` at `0x0132`, and verifier helper `0x077a`
+  repeats that clear while startup tests run. Later timer/external-service
+  paths rotate or assert it: `0x0d52..0x0f7a` is documented as rotating
+  `$a200`/`$a400`, and `0xba9e` writes `$a200 = 0xff00` in the external-ready
+  service loop.
+- `$a400`: reset table `0x048e` drives eight word writes at
+  `0x0164`/`0x016c`, each original word followed by bit-4 set. Retained-record
+  helpers reuse the same output through shadow `0x7828f6`: `0x09a4a` masks
+  low three bits, writes one phase to `$a400`, masks again, then writes a
+  second phase. Startup seeds the shadow to `0xf348` at `0x0276`.
+- `$a601`: reset writes byte `0` at `0x014e`. Later interface helpers write
+  `$a601 = 0xf7` in `0xa4e8`, `$a601 = 0xfd` in scan/status interrupt
+  `0x0f8e`, and `$a601 = 0x9f`/`0xbf`/`0xdf` in `0xa812..0xa834`.
+- `$a801`: reset writes byte `0x7e` at `0x0154` and startup mirrors that
+  default into shadow `0x7828f9` at `0x026e`. Later helpers mutate the shadow
+  and rewrite `$a801`: `0xa42c`/`0xa444` bit 0, `0xa5c2`/`0xa5da` bit 2,
+  `0xa620`/`0xa638` bit 1, `0xa650`/`0xa668` bit 6, `0xa69c` bit 7, and
+  `0xbc88` low-three-bit status mirroring from `$fffee00b`.
+- `$aa01`: reset writes byte `0xf1` at `0x0148` and startup mirrors that
+  default into shadow `0x7828fa` at `0x0266`. Host-input helper
+  `0xa6cc..0xa7ce` later combines shadow `0x7828fa` with status byte
+  `0x780e49`, writes `$aa01`, and updates `0x7828fa`.
+- `$8000.w`: reset/config code reads it directly for option/strap gates.
+  `0x02b6` tests bit 5 before writing `0x780e59`; `0x03b2` and `0x03cc` test
+  bits 6 and 7 before seeding debounce bytes `0x783edc`/`0x783edd`; `0x03e8`
+  reads the byte and uses bits 6/7 to gate optional `PROG` probes at
+  `0x200000` and `0x400000`. Helper `0xa3ca` later debounces the low byte for
+  panel/default-environment entry, and `0x19dd2` uses bits 14/15 for optional
+  resource-window scans.
+- `$8c01`: reset reads it at `0x02d8`, shifts right three, and uses the
+  low-two-bit result to adjust `0x780e5a` unless `0x780e4c.3` suppresses the
+  optional probe. Helper `0x05ba` also samples `$8c01 >> 3` twelve times
+  through encoded `$800000 + 2*n` probes; retained-record helper `0x994e`
+  reads `$8c01` while building serial/default words.
+- `$ff8000`: startup helper `0x071c` reads the word, inverts it, extracts
+  bits `0x0f00`, shifts them down, and writes canonical config word
+  `0x780e4c`. The reset path calls this helper at `0x0286`.
+- `$fffe0001` / `$fffe0003`: reset writes `$fffe0001 = 3` at `0x0140`.
+  Later host I/O helpers treat `$fffe0001` as a status register and
+  `$fffe0003` as data: `0xa1b0` writes a byte to `$fffe0003` when
+  `$fffe0001.1` is set, and `0xa6cc` reads `$fffe0003` into host input,
+  first testing `$fffe0001.0` on the ring-producer path.
+- `$ffff1020` / `$ffff2000`: reset helper `0x0336` writes `0xffff` to both
+  addresses, optionally writes a computed `$ffff1020 + (0x780e3f >> 3 & 0x0e)`
+  address, and writes `$ffff2000` again. The timer/status trampoline also
+  acknowledges through `$ffff2000`.
+- `$ffff3800`: reset writes word `0` at `0x0138`. No later focused listing in
+  the current note assigns a software-visible shadow to it, so its physical
+  role remains board/MMIO evidence rather than parser state.
+- `$fffee005`, `$fffee003`, `$fffee001`, and related `$fffee00*` registers:
+  not written before `0x0400`, but later host/output and external-service
+  paths use them as the alternate MMIO bank when `0x780e40` selects that mode.
+  Evidence is in `ic30_ic13_interface_output_mmio_00a1b0.lst`,
+  `ic30_ic13_a801_a601_io_00a4e8.lst`, and
+  `ic30_ic13_external_ready_service_loop_00ba48.lst`.
 
-These likely represent formatter configuration, installed options,
-panel/interface state, or board strapping. Their effect should be traced
-before treating any startup defaults as fixed.
+Unresolved physical names: `$8000`, `$8c01`, `$8e01`, `$8801`, `$a200`,
+`$a400`, `$a601`, `$a801`, `$aa01`, `$ff8000`, `$fffe0001`, `$fffe0003`,
+`$ffff1020`, `$ffff2000`, `$ffff3800`, and the `$fffee00*` bank still need
+board/manual correlation. The ROM-side state ownership and consumers above are
+documented; the remaining gap is physical identity and timing.
 
 ## Next RE Targets
 
-- Name each MMIO address touched before `0x00000400`.
+- Correlate the ROM-visible early-MMIO ledger above with physical
+  board/manual names.
 - Correlate the now-classified copied trampoline entries with the physical
   IRQ/MMIO sources that select each RAM stub.
 - Keep startup cross-linked to the default-environment checkpoint for

@@ -25,9 +25,10 @@ but they do not by themselves define renderer-facing state fields.
 Status: anchored as a ROM startup checkpoint. This cluster covers reset
 RAM tests, startup-derived memory/resource bounds, scratch/video RAM
 probes, heap allocator inputs, timer divider seed state, and the
-initial wait-object scheduler ring. It does not name the physical
-meaning of `$8000`, `$8c01`, `$a200`, `$a801`, or the computed
-address-control writes.
+initial wait-object scheduler ring. The ROM-visible early-MMIO write/read
+ledger is now cross-referenced in [firmware-startup.md](firmware-startup.md);
+this checkpoint still does not name the physical meaning of `$8000`, `$8c01`,
+`$a200`, `$a801`, or the computed address-control writes.
 
 Concept: reset first proves the small SRAM/scratch region at
 `0x00ffe000`, clears it, and installs RAM trampolines. Startup then uses
@@ -77,6 +78,12 @@ reproduction; they are not PCL parser scratch.
   - `0x7828fa = 0xf1`, `0x7828f9 = 0x7e`, and `0x7828f6 = 0xf348`
     are seeded by `0x0266..0x027e` as MMIO shadow defaults before the
     trampoline and scheduler paths use `$aa01`, `$a801`, and `$a400`.
+    Reset also writes `$aa01 = 0xf1`, `$a801 = 0x7e`, `$a400` phase
+    pairs from table `0x048e`, `$a601 = 0`, `$a200 = 0`,
+    `$fffe0001 = 3`, `$ffff3800 = 0`, and startup helper `0x0336`
+    acknowledges `$ffff1020`/`$ffff2000`. The canonical software
+    state is the shadow fields and status bits above; the direct MMIO
+    addresses remain physical interface state.
   - `0x78017f = 4`, `0x780180 = 2`, and `0x780181 = 5` are the timer
     divider seed values for the later `0x0d52` periodic handler.
   - `0x782900` and `0x7828fe` are cleared by `0x038e..0x03ac` as the
@@ -132,6 +139,10 @@ reproduction; they are not PCL parser scratch.
   - board/config identity for `$8000.5/.6/.7` and `$8c01 >> 3`.
   - physical role of the computed `0x00ffxxxx` memory-control write from
     `0x0978`.
+  - physical names and timing for `$8000`, `$8c01`, `$8e01`, `$8801`,
+    `$a200`, `$a400`, `$a601`, `$a801`, `$aa01`, `$ff8000`,
+    `$fffe0001`, `$fffe0003`, `$ffff1020`, `$ffff2000`, `$ffff3800`,
+    and the `$fffee00*` alternate bank.
   - physical distinction between normal and `0x783eee.7` expanded-memory
     startup test mode.
 
@@ -175,6 +186,12 @@ reproduction; they are not PCL parser scratch.
   consume the wait-object records built by `0x0c24`.
 - `0x02b2` consumes `0x780e4c`, the direct `$8c01 >> 3` sample, and the
   optional `0x05ba` result to choose the final `0x780e5a` increment.
+- `0x9a4a` consumes and rewrites `0x7828f6` while pulsing `$a400`;
+  `0xa42c`/`0xa444`, `0xa5c2`/`0xa5da`, `0xa620`/`0xa638`,
+  `0xa650`/`0xa668`, `0xa69c`, and `0xbc88` consume and rewrite
+  `0x7828f9` before writing `$a801`; `0xa6cc..0xa7ce` consumes
+  `0x7828fa` and `$fffe0001`/`$fffe0003` while feeding the host byte
+  ring.
 - `0x05ba` consumes the `0x19a78` reconstruction of
   `0x780ef4`/`0x780ef6`/`0x780ef8`, writes probe words to four
   `$800000 + 2 * value` addresses, samples `$8c01 >> 3` twelve times, and
@@ -243,6 +260,16 @@ but the physical signal names are not.
   `0x31d6..0x31f6` interface-output FIFO initialization.
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
   `0x164a..0x170a` allocator consumer for `0x780efa`/`0x780efe`.
+- `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`:
+  `0x09a4a` `$a400` shadow phases through `0x7828f6`.
+- `generated/disasm/ic30_ic13_8a01_a801_status_bits_00a42c.lst` and
+  `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`: `$a801`,
+  `$a601`, `$8a01`, `$aa01`, `$fffe0001`, and `$fffe0003` consumers
+  around shadows `0x7828f9` and `0x7828fa`.
+- `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`:
+  debounced `$8000.w` low-byte source.
+- `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
+  direct and alternate output-register readiness/data writes.
 
 ### Unresolved Middle Edges
 
@@ -251,7 +278,9 @@ but the physical signal names are not.
   checkpoint. Its software edge is not open here; the remaining boundary
   is the external `$8000.w` service-byte source and retained-storage
   device naming.
-- Physical names for the startup MMIO/config inputs remain unresolved.
+- Physical names for the startup MMIO/config inputs remain unresolved, but the
+  ROM-side ownership and shadow consumers are documented in this checkpoint and
+  in the early-MMIO cross-reference in [firmware-startup.md](firmware-startup.md).
 
 ## Host Byte Fetch And Data-Chain Input
 

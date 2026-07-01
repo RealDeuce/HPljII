@@ -195,6 +195,12 @@ the fallback rows diverge with digests
 `75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
 `dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
 `6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
+Tracked tool `tools/probe_resource_window.py` recomputes the byte-side
+evidence from `data/rom_manifest.json` and the ignored local ROM images. Its
+checked output verifies the `IC32,IC15` resource hash, the `IC30,IC13`
+firmware hash, suffix length `478`, continuation length `802`, the three
+continuation hashes above, and the second-probe longwords `HEAD`,
+`0x00800000`, and `0x00000000`.
 
 This is now a ROM/address-map boundary rather than a resource-record boundary.
 `data/rom_manifest.json` accounts for the installed ROM set as four 128K x 8
@@ -246,6 +252,10 @@ both non-`HEAD` variants: total `0x78278e = 24`, class-one low
 `0x782792 = 12`, class-zero low `0x78279a = 12`, final
 `0x7827a4`/`0x7827a8`/`0x7827ac = 0x782354`, and final
 `0x7827b0`/`0x7827b4 = 0x782384`.
+`tools/probe_resource_window.py --quiet` checks those same consequences from
+the local ROM files: mirror has heads `[0, 0x40000]`, `48` accepted candidates,
+and low class-one/class-zero counts `24/24`; code-pair and zero-fill each keep
+one head, `24` accepted candidates, and low counts `12/12`.
 
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve

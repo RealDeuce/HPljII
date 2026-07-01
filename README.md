@@ -111,6 +111,9 @@ confirming it.
   parser/resource reports, command maps, and cross-reference summaries.
 - `tools/render_fixture_harness.py`: Executable fixture harness for
   parser, resource, page-object, and bitmap-renderer behavior.
+- `tools/probe_resource_window.py`: Verifies the local ROM evidence for
+  the transparent segment-57 `0x0c0000` resource-window boundary without
+  committing ROM bytes.
 - `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`:
   HP LaserJet Series II Technical Reference Manual; primary PCL4 source.
 - `hplaserjetclassicsiiiii.pdf`: LaserJet II/III combined service
@@ -172,6 +175,13 @@ Then regenerate the analysis indexes with:
 
 ```sh
 tools/analyze_roms.py
+```
+
+To recheck the local segment-57 resource-window evidence without
+regenerating all reports:
+
+```sh
+tools/probe_resource_window.py
 ```
 
 The tools expect MAME `unidasm` at `../mame/unidasm` when disassembly

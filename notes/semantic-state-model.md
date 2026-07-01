@@ -2409,7 +2409,11 @@ for manual names for the filter bytes.
   bytes` proves mirror, code-pair continuation, and zero-fill all produce the
   same current-band digest but different fallback row digests, so the remaining
   requirement is board or emulator memory-map evidence for
-  `0x0c0000..0x0c0321`. The simple mirror candidate is constrained by fixture
+  `0x0c0000..0x0c0321`. Tool `tools/probe_resource_window.py --quiet` makes the
+  local byte-side evidence reproducible outside `generated/`: it verifies the
+  ignored ROM hashes, the `478`-byte suffix, the `802`-byte mirror/code-pair/
+  zero-fill continuation hashes, and their `0x41a` / `0x1a616` scan
+  consequences. The simple mirror candidate is constrained by fixture
   `0x41a HEAD scanner would duplicate records under simple resource mirror`,
   because a full mirror would duplicate scanner records unless hardware/gating
   hides it from startup scanner reads. Fixture `0x41a HEAD scanner rejects

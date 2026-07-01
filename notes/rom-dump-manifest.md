@@ -58,6 +58,18 @@ tools/analyze_roms.py
 Generated files are written under `generated/`, which is also ignored by
 Git.
 
+Recheck the transparent segment-57 resource-window boundary directly from
+the ignored local ROM inputs with:
+
+```sh
+tools/probe_resource_window.py
+```
+
+That probe verifies the raw hashes, reconstructs the firmware/resource
+interleaves, hashes the verified `0x0bfe22..0x0bffff` suffix, hashes the
+mirror/code-pair/zero-fill `0x0c0000..0x0c0321` continuation candidates,
+and checks the `0x41a` / `0x1a616` scanner consequences.
+
 - firmware
   - Byte order: IC30, IC13
   - Local output: `generated/roms/ic30_ic13.bin`

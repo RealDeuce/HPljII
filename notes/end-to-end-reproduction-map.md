@@ -1070,6 +1070,11 @@ The next work should follow dataflow, not isolated handlers:
    `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
    `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the remaining
    requirement is board/emulator memory-map evidence for `0x0c0000..0x0c0321`. That
+   byte-side evidence is now reproducible with tracked tool
+   `tools/probe_resource_window.py --quiet`, which verifies the local ROM
+   hashes, the `478`-byte verified suffix, the `802`-byte continuation
+   candidates, and the mirror/code-pair/zero-fill `0x41a` / `0x1a616` scanner
+   consequences from ignored local ROM inputs. The contested
    range is outside the verified `IC32,IC15` resource-pair image described by
    `data/rom_manifest.json`, and startup byte-sum evidence only covers
    `0x080000..0x0bffff`. Disassembly of `0x1a2e4` / `0x1a616` shows the built-in

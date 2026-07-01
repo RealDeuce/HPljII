@@ -17,6 +17,7 @@ Primary disassembly:
 - `generated/disasm/ic30_ic13_object_compare_013a48.lst`
 - `generated/disasm/ic30_ic13_active_object_scan_014398.lst`
 - `generated/disasm/ic30_ic13_font_candidate_object_alloc_01bc38.lst`
+- `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`
 
 Primary generated reports:
 
@@ -133,8 +134,29 @@ Firmware bookkeeping:
 - `0x41a` and `0x1a616` both walk resource records, but for different
   purposes. `0x41a` validates startup-visible chains and executable
   handoffs. `0x1a616` builds font candidate windows.
-- `0x1a616` recognizes and skips `HEAD`, `FONT`, `TABL`, `tabl`, and
-  `DUMY` record types before passing accepted font records to `0x1a9be`.
+- `0x1b9c0` is the resource-record signature classifier used by `0x1a616`
+  and optional-window scanner `0x1a0f2`. It returns `1` when the current
+  cursor longword is `HEAD`; returns `0` when the current longword is
+  `FONT`, `font`, `DUMY`, `TABL`, or `tabl`, or when one of
+  `FONT`, `font`, `DUMY`, `TABL`, or `tabl` appears at cursor `+8`; and
+  returns `-1` when neither the current cursor nor cursor `+8` matches those
+  signatures.
+- In the built-in scan caller `0x1a616`, classifier return `1` calls
+  `0x1a6a4`, which walks record chains and passes accepted type
+  `0x14/0x15` records through validator `0x1a3f8` and candidate classifier
+  `0x1a9be(1)`. Return `0` calls `0x1a856`, which skips `TABL`, `tabl`,
+  `DUMY`, `font`, and `FONT` containers before either stopping or handing a
+  non-container boundary to helper `0x1a766`. Return `-1` bypasses both
+  helpers and advances to the next scan segment.
+- In the optional-window table scanner `0x1a0f2`, classifier return `1`
+  calls `0x1a220` to copy record byte `+0x0c` into `0x782898`, advance by
+  record longword `+0x04`, and append record word `+0x0e`. Return `0` calls
+  `0x1a254` to skip `TABL`, `tabl`, `DUMY`, `FONT`, and `font` containers,
+  copy byte `+0x05` into `0x782898`, advance eight bytes, and append word
+  `+0x06`. Return `-1` appends a zero word and advances to the next
+  `0x20000` grid point in the selected optional-resource window.
+- `0x1a616` recognizes and skips resource container signatures before
+  passing accepted font records to `0x1a9be`.
 - `0x1a616 candidate scan continuation policy changes built-in counts`
   constrains the unresolved continuation range. A visible mirror at the
   next resource segment doubles `0x78278e` to `48` and low class counts
@@ -151,6 +173,9 @@ Unknown:
 - Manual-facing names for record fields `+0x28..+0x31`. The ROM roles
   are pinned as decoded-height inputs and chooser tie-breakers, but the
   service-manual terminology remains unresolved.
+- Manual-facing names for non-signature optional-resource boundary records
+  reached after `0x1b9c0` returns `-1`. The ROM branch behavior is
+  documented, but no physical cartridge image has supplied those records.
 
 ## Writers
 

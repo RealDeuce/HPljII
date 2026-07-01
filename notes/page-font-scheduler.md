@@ -99,8 +99,10 @@ Unknown:
 - Board-level meaning of `$8000.14` and `$8000.15`.
 - Physical optional-resource contents for windows `0x200000..0x3ffffe` and
   `0x400000..0x5ffffe`.
-- Full semantic names for resource records classified by `0x1b9c0` and by
-  direct signature skips in `0x1a254`.
+- Manual-facing names for non-signature optional-resource boundary records
+  reached after `0x1b9c0` returns `-1`. The ROM-local classifier and
+  direct signature-skip behavior are documented in
+  [built-in-resource-scan.md](built-in-resource-scan.md).
 - User-facing name for `0x780e8d` and status mask `0x00000200`.
 
 ## Writers
@@ -111,13 +113,18 @@ Unknown:
 - `0x1a0f2..0x1a21e` seeds `0x78288c`, `0x782884`, and `0x782890`, chooses
   scratch slot `0` or `1`, appends record words, and copies terminal byte
   `0x782898`.
+- `0x1b9c0` classifies the current resource cursor for `0x1a0f2`: `HEAD`
+  returns `1`; `FONT`, `font`, `DUMY`, `TABL`, or `tabl` at the current
+  cursor, or the same signatures at cursor `+8`, return `0`; and neither
+  match returns `-1`.
 - `0x1a220..0x1a252` handles a classifier return of `1`: copy record byte
   `+0x0c` to `0x782898`, advance `0x782884` by record longword `+0x04`, and
   return record word `+0x0e`.
 - `0x1a254..0x1a2e2` handles a classifier return of `0`: skip signatures
   `TABL`, `tabl`, `DUMY`, `FONT`, and `font`; for the first other record,
   copy byte `+0x05` to `0x782898`, advance by eight bytes, and return word
-  `+0x06`.
+  `+0x06`. A classifier return of `-1` appends a zero word and advances to
+  the next optional-resource grid point without calling either helper.
 - `0x19de6..0x19df6` stores returns from `0x1a042` and `0x19f08` into
   local predicate bytes.
 - `0x19e32..0x19e46` writes `0x780e8d = first_predicate` and calls
@@ -237,6 +244,7 @@ not yet represented by live hardware/emulator evidence.
   documented in downloaded-font, macro, and font-selection checkpoints.
   Remaining work here is live optional-resource execution through those
   callees.
-- `0x1b9c0`: resource-record classifier return names are inferred only from
-  `0x1a0f2` branches here; deeper classification belongs with the resource
-  scanner notes.
+- `0x1b9c0`: ROM-local classifier returns are documented in
+  `Built-In Resource Scan And Candidate Windows`; the remaining edge is a
+  physical optional-resource image or live CPU session that reaches the
+  non-signature `-1` boundary.

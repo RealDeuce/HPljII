@@ -11038,8 +11038,10 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
 - Unknown:
   - Board-level meaning of `$8000.14` and `$8000.15`; ROM evidence shows only
     that clear bits enable optional resource-window scans.
-  - Full semantic names for the resource records classified by `0x1b9c0` and
-    by the direct signature skips in `0x1a254`.
+  - Manual-facing names for non-signature optional-resource boundary records
+    reached after `0x1b9c0` returns `-1`. The ROM-local classifier and direct
+    signature-skip behavior are documented in
+    `Built-In Resource Scan And Candidate Windows`.
   - Scheduler-specific external evidence for optional-window resource contents
     and `$8000.14/15` physical meaning. The shared helper interiors are not
     anonymous unknowns here: `0x1bd2e` and `0x1a616` are documented in
@@ -11057,13 +11059,19 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
   selected window, chooses scratch slot `0` or slot `1`, appends record words,
   and copies terminal byte `0x782898` into slot word `+0x10` when the scan
   reaches the window limit.
+- `0x1b9c0` classifies the current resource cursor for `0x1a0f2` and
+  `0x1a616`: `HEAD` at the current cursor returns `1`; `FONT`, `font`,
+  `DUMY`, `TABL`, or `tabl` at the current cursor, or the same signatures at
+  cursor `+8`, return `0`; and neither match returns `-1`.
 - `0x1a220..0x1a252` handles a `0x1b9c0` return of `1`: it copies record byte
   `+0x0c` to `0x782898`, advances `0x782884` by record longword `+0x04`, and
   returns record word `+0x0e`.
 - `0x1a254..0x1a2e2` handles a `0x1b9c0` return of `0`: it skips records with
   signatures `TABL`, `tabl`, `DUMY`, `FONT`, and `font`; for the first other
   record, it copies byte `+0x05` to `0x782898`, advances the scan by eight
-  bytes, and returns record word `+0x06`.
+  bytes, and returns record word `+0x06`. A `0x1b9c0` return of `-1` appends
+  a zero word and advances to the next optional-resource grid point without
+  calling either helper.
 - `0x19de6..0x19df6` stores helper returns from `0x1a042` and `0x19f08` into
   local predicate bytes `A6-0x29` and `A6-0x2a`.
 - `0x19e32..0x19e46` writes `0x780e8d = first_predicate` and calls
@@ -11292,9 +11300,10 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   Data-Chain Replay`, and font-selection checkpoints. Remaining work here is
   live physical-resource execution through those callees, not their generic
   helper behavior or the already-modeled font-scan caller return contract.
-- `0x1b9c0`: resource-record classifier return names are inferred only by the
-  `0x1a0f2` branches here. Deeper classification belongs with the existing
-  resource scanner notes.
+- `0x1b9c0`: ROM-local classifier returns are documented in
+  `Built-In Resource Scan And Candidate Windows`; the remaining edge is a
+  physical optional-resource image or live CPU session that reaches the
+  non-signature `-1` boundary.
 
 ## ESC E Reset And Default Environment
 

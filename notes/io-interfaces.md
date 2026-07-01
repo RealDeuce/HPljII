@@ -48,10 +48,18 @@ Canonical input state:
 
 Canonical direct input backends:
 
-- `0x780e40 == 1`: status `0x8e01`, data `0x8801`, acknowledge wait
-  `0x8c01`, and control writes through `0xa601` / `0xaa01`.
+- `0x780e40 == 1`: status-ready bit `0x8e01.4`, data register
+  `0x8801`, acknowledge-wait bit `0x8c01.0`, and control writes
+  through `0xa601` / `0xaa01`. Handler `0xa904` writes `$a601` phase
+  values `0xdf` and `0xfb`, writes two `$aa01` variants derived from
+  `0x7828fa`, clears `0x7828ec`, and clears `0x7821c4` after a byte is
+  accepted.
 - `0x780e40 != 0 && != 1`: status `0xfffee005`, data `0xfffee001`, and
-  control write `0xfffee009`.
+  control write `0xfffee009`. Handler `0xa904` treats
+  `0xfffee005.0` as data-ready, ORs `0xfffee005.6/.7` into
+  `0x780e2e` as `0x40`/`0x80`, reads accepted data from `0xfffee001`,
+  then sets control-shadow bit `0xfffee009.6` and mirrors it in
+  `0x7828fb`.
 
 Canonical host/status output:
 
@@ -82,9 +90,10 @@ Derived/cache and firmware bookkeeping:
 
 Unknown:
 
-- exact physical names for `0x8e01`, `0x8801`, `0x8c01`,
-  `0xa601`, `0xaa01`, `0xfffee005`, `0xfffee001`, `0xfffee009`,
-  `0xfffe0001`, and `0xfffe0003`;
+- exact physical names, connector mapping, and timing for the two
+  direct-input banks and the output registers: `0x8e01`, `0x8801`,
+  `0x8c01`, `0xa601`, `0xaa01`, `0xfffee005`, `0xfffee001`,
+  `0xfffee009`, `0xfffe0001`, and `0xfffe0003`;
 - whether the observed short and long MMIO backends correspond one-to-one with
   Centronics, serial, RS-422, or optional I/O without additional glue logic;
 - any data-chain frame byte `+0x09` values beyond the observed execute `2`,

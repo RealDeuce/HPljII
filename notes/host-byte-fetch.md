@@ -267,6 +267,13 @@ clears `0x7821c4`, but skips the `0xaa01` shadow toggles and the final
 The physical identity of `0x8e01`, `0x8801`, `0x8c01`, `0xa601`, and
 `0xaa01` is not assigned here. The firmware behavior is status poll,
 data read, acknowledge wait, and control toggle.
+The ROM-visible software roles are narrower and concrete: `0x8e01.4`
+is the ready bit for the data byte at `0x8801`; `0x8c01.0` is the
+post-read acknowledge-wait bit; `$a601` receives phase values `0xdf` and
+`0xfb`; and `$aa01` receives two control-shadow variants that clear
+`0x7828fa.0` and then clear `0x7828fa.5`. The helper also clears
+`0x7828ec` and `0x7821c4`, so later software can treat the direct-byte
+transaction as complete.
 
 ## Direct Mode 2
 
@@ -294,6 +301,14 @@ direct mode 1.
 The success handshake sets bit 6 in shadow byte `0x7828fb`, writes it to
 `0xfffee009`, mirrors it in RAM, sets `0x7828ec = 1`, clears `0x7821c4`,
 restores the interrupt mask, and returns `D7`.
+
+The ROM-visible software roles are also concrete for this bank:
+`0xfffee005.0` is the data-ready bit for byte register `0xfffee001`;
+`0xfffee005.6` and `.7` are status/error bits accumulated into
+`0x780e2e` as `0x40` and `0x80`; and `0xfffee009.6` is the control-shadow
+bit set after a successful byte read. The physical interface name and
+signal polarity are still open, but the byte-fetch contract is ready,
+data, error accumulation, control-shadow update, then retry or return.
 
 ## Cleanup Helper At 0xab8e
 
@@ -613,10 +628,15 @@ Disassembly evidence:
 
 Unresolved middle edges:
 
-- `0xa9e2..0xaa86`: physical interface name and exact electrical
-  handshake for the `0x8e01`/`0x8801`/`0x8c01` bank.
-- `0xaaa6..0xab8a`: physical interface name and exact electrical
-  handshake for the `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
+- `0xa9e2..0xaa86`: physical interface name, connector mapping, and timing
+  for the `0x8e01`/`0x8801`/`0x8c01` bank. The ROM-visible roles are
+  documented above: ready bit `0x8e01.4`, data byte `0x8801`,
+  acknowledge-wait bit `0x8c01.0`, and `$a601`/`$aa01` control phases.
+- `0xaaa6..0xab8a`: physical interface name, connector mapping, and timing
+  for the `0xfffee005`/`0xfffee001`/`0xfffee009` bank. The ROM-visible
+  roles are documented above: data-ready bit `0xfffee005.0`, error/status
+  bits `.6/.7`, data byte `0xfffee001`, and control-shadow bit
+  `0xfffee009.6`.
 - `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
   physical names and timing for `0xfffe0001`, `0xfffe0003`, and `$aa01`
   remain unassigned.

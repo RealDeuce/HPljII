@@ -330,10 +330,18 @@ data.
   `0xe4f4/0xe22c produce and end data-chain frames`, and
   `0xe22c restores macro frames and consumes call context`.
 - Canonical direct hardware sources:
-  - mode `0x780e40 == 1`: status byte `0x8e01`, data byte `0x8801`,
-    wait/ack byte `0x8c01`, handshake outputs `0xa601` and `0xaa01`.
+  - mode `0x780e40 == 1`: ready bit `0x8e01.4`, data byte
+    `0x8801`, post-read acknowledge-wait bit `0x8c01.0`, and
+    handshake outputs `0xa601` and `0xaa01`. Handler `0xa904` polls
+    ready, reads data, waits for acknowledge clear, writes `$a601`
+    phase values `0xdf` and `0xfb`, writes two `$aa01` variants from
+    `0x7828fa`, then clears `0x7828ec` and `0x7821c4`.
   - alternate nonzero mode: status byte `0xfffee005`, data byte
-    `0xfffee001`, handshake/control byte `0xfffee009`.
+    `0xfffee001`, handshake/control byte `0xfffee009`. Handler
+    `0xa904` treats `0xfffee005.0` as data-ready, accumulates
+    `0xfffee005.6/.7` into `0x780e2e` as `0x40`/`0x80`, reads
+    accepted data from `0xfffee001`, then sets mirrored control bit
+    `0xfffee009.6` / `0x7828fb.6`.
   Evidence: disassembly `0xa9e2..0xaa86` and `0xaaa6..0xab8a`;
   fixtures
   `0xa904 direct mode 1 preserves 0x1a and clears handshake state` and
@@ -400,7 +408,8 @@ data.
     direct `JSR 0xa904` site and is part of this checkpoint's evidence, not a
     separate parser model.
 - Unknown:
-  - physical names for the `0x8e01`/`0x8801`/`0x8c01` bank and the
+  - physical names, connector mapping, and timing for the
+    `0x8e01`/`0x8801`/`0x8c01` bank and the
     `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
   - data-chain frame byte `+0x09` values outside the observed execute `2`,
     call `3`, and non-replay page-finalization `4` producers, if any.
@@ -562,10 +571,15 @@ reset `0x3178`, clear `0x780e32`/`0x780e2e`, and mask status bits in
 
 ### Unresolved Middle Edges
 
-- `0xa9e2..0xaa86`: physical interface name and exact electrical
-  handshake for the `0x8e01`/`0x8801`/`0x8c01` direct bank.
-- `0xaaa6..0xab8a`: physical interface name and exact electrical
-  handshake for the `0xfffee005`/`0xfffee001`/`0xfffee009` direct bank.
+- `0xa9e2..0xaa86`: physical interface name, connector mapping, and timing
+  for the `0x8e01`/`0x8801`/`0x8c01` direct bank. The software roles are
+  no longer open: `0x8e01.4` is ready, `0x8801` is data, `0x8c01.0` is
+  post-read acknowledge wait, and `$a601`/`$aa01` carry control phases.
+- `0xaaa6..0xab8a`: physical interface name, connector mapping, and timing
+  for the `0xfffee005`/`0xfffee001`/`0xfffee009` direct bank. The software
+  roles are no longer open: `0xfffee005.0` is data-ready, `.6/.7` are
+  accumulated status/error bits, `0xfffee001` is data, and
+  `0xfffee009.6` is the post-read control-shadow bit.
 - `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
   the physical names and timing for `0xfffe0001`, `0xfffe0003`, and
   `$aa01` are not identified.

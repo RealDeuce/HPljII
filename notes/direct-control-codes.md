@@ -399,5 +399,5 @@ renderer contract for the byte-stream cases listed above.
   CR/LF/FF/HT/BS plus `ESC &k#G` control family.
 - Remaining work is broader full-page physical/reference-output validation
   plus byte-stream cases that create new `0xd04a` source-object fields or
-  `0x12f2e` bucket shapes, not live CPU-state proof for already documented
-  direct-control fields.
+  `0x12f2e` bucket shapes, not re-proving already documented direct-control
+  fields from another execution source.

@@ -2343,7 +2343,10 @@ through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule, and
 mode-0 raster row in one parser-driven page stream. Remaining work should
 target byte streams or ROM paths that expose different output state; repeating
 the same addressed fixture with a different proof source is not an unresolved
-raster/imaging semantic edge. The reset,
+raster/imaging semantic edge. External evidence is only needed for final
+physical/reference comparison, or for the separate resource-window decode gap
+at `0x0c0000..0x0c0321`; it is not a blocker for the ROM-local
+host-fetch-to-page-image path covered here. The reset,
 FF, page-size, orientation, paper-source, and copies publication fixtures
 now start without a current page root and mark the first printable queue
 step as the modeled page-record root allocation point. Those six

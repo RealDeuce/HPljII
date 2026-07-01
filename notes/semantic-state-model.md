@@ -1905,7 +1905,8 @@ they are covered by generated disassembly reports plus executable
 fixtures that start at `0xa904` and reach rendered rows. Medium for the
 exact names of pending-text latches and every internal write between
 `0xd04a` and `0x12f2e`, because several page-object fixtures still use
-modeled source/object structures rather than a full live CPU-memory run.
+modeled source/object structures rather than parser-produced page/control
+pool records for every source variant.
 High for the ROM-visible `ESC 9`, `ESC =`, and `ESC &d` field writes,
 helper boundaries, and representative downstream visible-output effects
 because those are direct disassembly reads plus dedicated host-fetched

@@ -5422,8 +5422,9 @@ def raster_graphics_flow_report(data: bytes) -> str:
     )
     add_wrapped(
         lines,
-        "Remaining work is a fuller CPU/parser-state fixture that replaces modeled state with "
-        "real page/control pool records while preserving the same byte-stream-to-pixel boundary.",
+        "Remaining work is a parser-produced page/control pool fixture that replaces modeled "
+        "page state with real pool records while preserving the same byte-stream-to-pixel "
+        "boundary.",
         "- ",
         "  ",
     )

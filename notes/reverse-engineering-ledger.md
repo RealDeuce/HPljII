@@ -1589,9 +1589,9 @@ ROM work needed:
   macros, continue from the composed
   `Macro Definition And Data-Chain Replay` semantic checkpoint by
   moving back to parser-produced page-object rendering; no macro
-  replay/font-context middle edge remains in that checkpoint. The full
-  CPU-state bridge from pinned `0xe65c` branch effects into `0x13eb8`,
-  `0x144d2`, `0x14c64`, and `0xc428` is now composed, and
+  replay/font-context middle edge remains in that checkpoint. The ROM
+  dataflow from pinned `0xe65c` macro-context branch effects into
+  `0x13eb8`, `0x144d2`, `0x14c64`, and `0xc428` is now composed, and
   `0xe860..0xe898` now names inline/downloaded class byte `+0x16` versus
   offset-table/built-in class byte `+0x20`. Heap initialization
   `0x164a..0x170a` is now composed with startup helper `0x0b18`,

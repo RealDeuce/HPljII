@@ -262,7 +262,11 @@ Expected ROM-only unknowns:
   rendered-surface digest already documented in
   [resource-rom.md](resource-rom.md).
 - Physical identity and pin mapping for retained-storage, panel/service,
-  host-interface, optional-resource, and formatter/DC MMIO registers.
+  optional-resource, and formatter/DC MMIO registers. Host-interface
+  software roles are documented in [host-byte-fetch.md](host-byte-fetch.md)
+  and [io-interfaces.md](io-interfaces.md): the two direct-input banks now
+  have ROM-visible ready, data, acknowledge/status, and control-shadow roles.
+  Their remaining unknown is physical connector/interface mapping and timing.
 - Live CPU/register continuity for a few already-modeled handoffs, especially
   dense raster producer state `0x105d0 -> 0x10084 -> 0x13070` and the
   downloaded-font install-to-page boundary after `ESC )s18W`.

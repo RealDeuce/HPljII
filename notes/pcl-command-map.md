@@ -1106,10 +1106,12 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   trace or memory snapshot for a parser-produced dense page that confirms the
   disassembly-derived register/memory handoff across
   `0x105d0..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, and
-  `0x132b6..0x13382`. Existing fixtures already cover parser dispatch,
-  delayed record restore, capped/drained rows, lower-resolution modes,
-  consecutive rows, same-family lowercase `*b` chaining, bridge fields, and
-  final rows.
+  `0x132b6..0x13382`. The local MAME binary does not provide a LaserJet II/LJII
+  execution target, so this proof needs a new emulator target, instrumented
+  68000 harness, or physical/logic capture. Existing fixtures already cover
+  parser dispatch, delayed record restore, capped/drained rows,
+  lower-resolution modes, consecutive rows, same-family lowercase `*b`
+  chaining, bridge fields, and final rows.
 - Close the downloaded-font install-to-page hardware-capture residual.
   `Downloaded Glyph
   Rule/Raster Composition` in [semantic-state-model.md](semantic-state-model.md)

@@ -580,6 +580,10 @@ A byte-stream reproduction must preserve these behaviors:
   copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed `80 57 ...`
   command record, snapshot, payload offset, and drained payload bytes; firmware
   bookkeeping is the modeled allocation result and stream-storage cursor.
+  The local MAME binary is useful for `unidasm` and adjacent printer-driver
+  experiments, but it does not expose a LaserJet II/LJII driver; closing this
+  edge therefore requires a new emulator target, an instrumented 68000
+  execution harness, or physical/logic capture.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
   text/rule/raster publication fixture, but the heap allocator result is still
   a modeled fixture result rather than a memory snapshot from one live parser

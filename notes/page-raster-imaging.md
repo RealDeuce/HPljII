@@ -643,7 +643,8 @@ Unresolved middle edges:
   remaining closure boundary is specifically live CPU/register memory across
   `0x105d0 -> 0x10084 -> 0x13070`, where the modeled page-root allocation and
   encoded-row production would need to be replaced by a live trace or memory
-  snapshot.
+  snapshot from a new emulator target, instrumented execution harness, or
+  physical/logic capture.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes, and local no-room returns are
   fixture-backed for both root `+0x24` and root `+0x28`. The remaining
@@ -2413,6 +2414,10 @@ live 68000 memory image after the already pinned `0x121cc` / `0x12218` delayed
 record restore. The dense text/rule/raster stream already has addressed
 `0x1381c` page/control storage for the raster object and published record
 fields.
+Because the local MAME binary provides disassembly support but no LaserJet II/LJII
+driver, this proof still needs a new emulator target, an instrumented 68000
+execution harness, or physical/logic capture rather than another modeled
+fixture.
 The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the selected inline/downloaded
 page-record object now crosses `0x1edc6` with context slot `3` intact

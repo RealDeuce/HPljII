@@ -689,9 +689,16 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    records` now adds the legal type-1/type-2 publication sibling: `ESC )s3W`
    plus printable `!` and FF publishes bucket `1`, preserves candidate contexts
    `0x40000000` and `0x44000000`, dispatches the span through `0x1f812` and the
-   glyph through `0x1effe`, and renders the same rows. Remaining work is broader
-   glyph row/span/continuation shapes and publication variants outside that
-   span+glyph page-record shape.
+   glyph through `0x1effe`, and renders the same rows. Fixture
+   `type-1 and type-2 resource wide glyph FF publications render page records`
+   adds the legal wide sibling: `ESC )s18W` plus printable `!` and FF publishes
+   bucket `1`, preserves the same candidate contexts, dispatches the span
+   through `0x1f812`, dispatches compact-wide object byte `0x10` through
+   `0x1effe` to `0x1f0d2`, and renders digest
+   `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`.
+   Remaining work for this cluster is now broader glyph row/span/continuation
+   shapes beyond the covered short and wide glyphs and publication variants
+   outside those legal type-1/type-2 span+glyph page-record shapes.
    Downloaded-character coverage now includes parser-produced normal, wide/control,
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both

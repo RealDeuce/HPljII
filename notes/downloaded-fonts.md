@@ -89,6 +89,7 @@ Primary fixtures:
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `type-1 and type-2 resource headers accept downloaded glyph payload stream`
 - `type-1 and type-2 resource glyph FF publications render page records`
+- `type-1 and type-2 resource wide glyph FF publications render page records`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
@@ -1173,6 +1174,18 @@ Rendering the published record with bucket word `1` dispatches the span object
 through segment-list target `0x1f812` and the glyph object through compact
 target `0x1effe`, reproducing the same span/glyph rows as the active
 pre-publication record.
+
+Fixture `type-1 and type-2 resource wide glyph FF publications render page
+records` adds the legal type-1/type-2 wide-glyph sibling. For each header, the
+fetched glyph stream is `ESC )s18W` plus 18 bitmap bytes, then printable `!`
+and FF. The glyph phase restores record `80 57 00 12 00 00`, writes table
+entry `0x00ce`, record delta `0x0340`, bitmap offset `0x034c`, record
+`00 00 00 00 0c 01 00 01 00 90 00 00`, and leaves `0x783140 = 0`. The
+published bucket keeps the same `d8fc` span object, followed by compact-wide
+glyph object `00 00 00 00 10 00 00 01 21 5a 00...`; `0x1ed84` / `0x1ef6a`
+dispatches that second object through compact target `0x1effe` and wide
+renderer `0x1f0d2`. The six rendered rows have digest
+`3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`.
 
 ## Downloaded Character Payload And Rendering
 

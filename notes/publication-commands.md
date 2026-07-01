@@ -246,16 +246,17 @@ High for parser handler order, host-byte draining, page-record storage,
 published pool headers, command side effects, render bridge fields, render
 entry call order, and final rows because each is fixture-pinned.
 
-Medium for live CPU/register continuity through one dense physical page and
-for physical printer comparison. The ROM-internal page-record publication and
-rendered-row contract is documented; physical engine timing is outside this
-note.
+Medium only for byte-stream variants that create a new publication-side field,
+bucket shape, bridge state, or rendered row outside the six command streams
+listed above. Physical printer comparison and engine timing remain outside
+this ROM-internal publication contract.
 
 ## Remaining Edges
 
 - `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
   commands, but physical-device comparison remains outside the ROM-internal
   reproduction contract.
-- Dense live CPU traces would strengthen confidence in allocator/register
-  continuity, but they are not needed to identify the command-family fields,
-  handlers, or software-visible output rows documented here.
+- No parser-to-publication or publication-to-render ROM middle edge remains for
+  the covered reset, FF, page-size, orientation, paper-source, and copies
+  streams. Additional ROM work should target streams that change page-record
+  fields, command-specific pool-header words, bridge state, or rendered rows.

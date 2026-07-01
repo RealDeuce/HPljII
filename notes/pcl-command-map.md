@@ -667,6 +667,12 @@ and `0x120be`, selects context `0x00000100` through `0x17708`, rebuilds
 secondary map `0x783032`, crosses SO handler `0xc6b8`, queues compact object
 prefix `00 00 00 00 00 01 00 01 01 66 01 00 00 00`, and renders row digest
 `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
+Fixture `font-ID primary inline/downloaded selection feeds visible page-record
+rows` covers the slot-0 sibling: host-fetched `ESC (4660X!` reaches parser
+handlers `0x11eb6`, `0x1201e`, and `0x120be`, selects the same
+bit-30-clear context `0x00000100` through `0x17708`, rebuilds primary map
+`0x782f32`, queues compact object prefix
+`00 00 00 00 00 00 00 01 01 66 01 00 00 00`, and renders the same row digest.
 Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
 the direct helper exits that stop before a new map is dispatched: scan miss
 after `0x172c0` status `1`, candidate-slot miss for payload `0x089fb0` with
@@ -680,6 +686,12 @@ following output: host-fetched `ESC (7X!!` uses the same parser record and
 then renders `!!` from prior context `0xc008004c`, compact object prefix
 `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and row digest
 `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+Fixture `font-ID secondary non-selected exits keep prior SO visible rows`
+pins the slot-1 sibling: host-fetched `ESC )8X SO !!` takes the same
+`0x17708` terminal states with no `0x14c64` dispatch, crosses SO handler
+`0xc6b8`, and renders from prior secondary context `0xc40ad87a` with compact
+object prefix `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01` and row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
 The harness now pins the concrete common-refresh branch classes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current

@@ -43,6 +43,15 @@ Evidence:
   - `live primary current-font RAM install feeds SI page-record rows`
   - `live secondary current-font RAM install feeds SO page-record rows`
   - `secondary symbol miss falls back before visible SO page-record rows`
+  - `font-ID built-in selection feeds visible page-record rows`
+  - `font-ID secondary built-in selection feeds visible SO page-record rows`
+  - `font-ID primary inline/downloaded selection feeds visible page-record rows`
+  - `font-ID inline/downloaded selection feeds visible page-record rows`
+  - `0x17708 font-ID non-selected exits preserve prior selection`
+  - `font-ID non-selected exits keep prior visible rows`
+  - `font-ID secondary non-selected exits keep prior SO visible rows`
+  - `0x13eb8 transient and cache-hit exits avoid dispatch`
+  - `0x13eb8 no-dispatch exits keep prior visible rows`
   - `0xe65c refresh composes with font context bridge`
   - `flagged printable d8fc low-watermark flush renders span`
   - `unflagged printable d4ac low-watermark flush renders span`
@@ -1392,28 +1401,40 @@ A byte-stream reproduction must preserve these behaviors:
 
 ## Remaining Edges
 
-- `0x13eb8` selection, map rebuild, page-root install, printable source capture, and
-  low-water span effects are fixture-backed for the primary and secondary cases above.
-  The primary built-in selection request `ESC (s0p10h12v0s0b3T!!` is now driven from
-  parser bytes to visible rows in one mixed-stream state by fixture `inline primary font
-  selection stream renders visible rows`. Not every PCL font request combination has
-  been driven from parser bytes to visible rows, but the primary symbol-miss fallback
-  boundary `ESC (1234U ESC (s0p10h12v0s0b3T!!` is now fixture-backed from requested word
-  `0x9a55` to fallback word `0x0115` and matching primary rows. The secondary built-in
-  selection request `ESC )s0p16h8v0s0b0T SO !!` is also driven in one mixed-stream state
-  by fixture `inline secondary font selection stream renders SO visible rows`, including
-  SO handler `0xc6b8`, context `0xc00ae122`, and HMI `18`. The secondary current-font
-  RAM handoff from seeded `0x782ef6` through `0xc428` / `0xc4fc` into existing page-root
-  slot `1` is now fixture-backed by `live secondary current-font RAM install feeds SO
-  page-record rows`. The primary current-font RAM handoff from seeded `0x782ee6` through
-  `0xc428` / `0xc4fc` into existing page-root slot `0` is now fixture-backed by `live
-  primary current-font RAM install feeds SI page-record rows`. The composed fixtures
-  `parsed primary selection current-font RAM feeds SI visible rows` and `parsed
-  secondary selection current-font RAM feeds SO visible rows` tie host-fetched
-  font-selection bytes to those RAM handoff fixtures and matching visible rows for
-  existing page roots. Remaining handoff risk is lower-level CPU-register fidelity
-  inside the modeled `0x13eb8` refresh and broader selection/fallback variants, not this
-  primary or secondary parser-to-printable state edge.
+- `0x13eb8` selection, map rebuild, page-root install, printable source
+  capture, and low-water span effects are fixture-backed for the primary and
+  secondary cases above. The primary built-in selection request
+  `ESC (s0p10h12v0s0b3T!!` is driven from parser bytes to visible rows in one
+  mixed-stream state by fixture
+  `inline primary font selection stream renders visible rows`. The secondary
+  built-in selection request `ESC )s0p16h8v0s0b0T SO !!` is also driven in one
+  mixed-stream state by fixture
+  `inline secondary font selection stream renders SO visible rows`, including
+  SO handler `0xc6b8`, context `0xc00ae122`, and HMI `18`.
+  Symbol-miss fallback is fixture-backed for primary
+  `ESC (1234U ESC (s0p10h12v0s0b3T!!` from requested word `0x9a55` to fallback
+  word `0x0115`, and for secondary
+  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through both remembered word
+  `0x000e` and fallback-table word `0x000e`.
+  Final-`X` now has the same visible-output treatment for primary built-in
+  `ESC (7X!!`, secondary built-in `ESC )8X SO !!`, primary bit-30-clear
+  `ESC (4660X!`, and secondary bit-30-clear `ESC )4660X SO !`; the direct
+  `0x17708` non-selected exits are also carried into preserved primary and
+  secondary visible tails.
+  The primary current-font RAM handoff from seeded `0x782ee6` through
+  `0xc428` / `0xc4fc` into existing page-root slot `0` is fixture-backed by
+  `live primary current-font RAM install feeds SI page-record rows`. The
+  secondary handoff from seeded `0x782ef6` into existing page-root slot `1` is
+  fixture-backed by
+  `live secondary current-font RAM install feeds SO page-record rows`.
+  The composed fixtures `parsed primary selection current-font RAM feeds SI
+  visible rows` and
+  `parsed secondary selection current-font RAM feeds SO visible rows` tie
+  host-fetched font-selection bytes to those RAM handoff fixtures and matching
+  visible rows for existing page roots.
+  Remaining handoff risk is lower-level CPU-register fidelity inside the
+  modeled `0x13eb8` refresh and broader command combinations that expose new
+  state boundaries, not the listed parser-to-printable edges.
 - Broader metric producer combinations remain incomplete at the
   parser-produced page boundary. Existing
   host-stream downloaded-font fixtures prove install, visible glyph rendering,

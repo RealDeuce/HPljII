@@ -1314,9 +1314,10 @@ ROM work needed:
   `0x780e39.3` through `0x9bee(0x780e36, 0x00000008)` after `0x96c4` commit
   retries are exhausted. The fixture harness now covers the `0xc0ae`
   `$fffee005` status-bit publication boundary and the `0xc1c6` consumer
-  branches for `68 SERVICE` and pending external-ready message replay; the
-  full live `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` scenario remains
-  unexecuted. The external-ready teardown's normal-render handoff through
+  branches for `68 SERVICE` and pending external-ready message replay. The
+  unexecuted residual is the physical retained-storage failure path into
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, not the documented software
+  consumer branches. The external-ready teardown's normal-render handoff through
   `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded by the
   `Page/Font Scheduler Handoff` semantic checkpoint: `0x19dd2` publishes
   `0x782894`, `0x19eb6` scans optional windows `0x200000..0x3ffffe` and
@@ -1418,8 +1419,8 @@ ROM work needed:
   The widened `0x1b50e` resolver now pins first/second scan windows for
   modes `0..3`, fast-probe fallback through `0x1b8ea`, and Roman-8
   duplicate/substitution state through `0x7828ac` and `0x7821a0`.
-- Keep downloaded-font work focused on live continuity gaps, not
-  selector-family rediscovery. Current boundary coverage already chains
+- Keep downloaded-font work focused on byte-stream/state variants that change
+  output, not selector-family rediscovery. Current boundary coverage already chains
   fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W`,
   `ESC )s80W`, and `ESC )s2193W` streams. Fixtures `combined
   host-fetched font download stream prints installed glyph` and
@@ -1542,14 +1543,14 @@ ROM work needed:
   `ESC )s2193W` streams, and the combined font-download fixtures now
   drive the installed downloaded glyph into segmented page-record
   buckets and through `0xff1e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`.
-  The unresolved ROM-side continuity edge is not the segmented printable
-  or FF publication stream; it is the even-span `ESC )s18W` rule/raster
-  composition case where the byte fetch, post-install drain, and modeled
-  `font_command_final_header` memory handoff are already pinned through fixture
-  `downloaded glyph byte-24 state handoff feeds following page handler`. The
-  next ROM-semantic work is any byte-stream/state variant that changes the
+  The segmented printable and FF publication streams are covered, and the
+  even-span `ESC )s18W` rule/raster composition case has its byte fetch,
+  post-install drain, and `font_command_final_header` handoff pinned through
+  fixture `downloaded glyph byte-24 state handoff feeds following page handler`.
+  The next ROM-semantic work is any byte-stream/state variant that changes the
   byte-24 header, installed resource record, following parser handler
-  `0x10e68`, page-object bytes, bucket assignment, or rendered-row digest.
+  `0x10e68`, page-object bytes, bucket assignment, dispatch, or rendered-row
+  digest.
 - Treat executable row-copy behavior with real page objects from the
   parser/imaging path as covered for the documented mixed text/rule/raster,
   downloaded-glyph, and publication streams. Remaining row-copy work is

@@ -266,5 +266,10 @@ Expected ROM-only unknowns:
 - Live CPU/register continuity for a few already-modeled handoffs, especially
   dense raster producer state `0x105d0 -> 0x10084 -> 0x13070` and the
   downloaded-font install-to-page boundary after `ESC )s18W`.
+  The current local MAME binary is useful for disassembly tooling, but
+  `../mame/mame -listfull` does not expose a LaserJet II/LJII driver; closing
+  these live-capture gaps therefore needs either a new emulator target,
+  instrumented 68000 execution harness, or physical/logic capture rather than
+  another existing `tools/render_fixture_harness.py` fixture.
 - Broader command cross-products only where they expose a new state boundary;
   already-covered command families should be treated as regression expansion.

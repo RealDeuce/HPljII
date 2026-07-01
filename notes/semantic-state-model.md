@@ -5770,6 +5770,18 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     record exposes only low bytes `0x81`, `0x82`, and `0xff`, selected segment
     `1` renders the same `32/96` current/fallback row split for spans `17`,
     `18`, and `32`, and span `31` stops at fallback A2 offset `+0xb50`.
+    Fixtures `downloaded segmented-wide high-row 0x04xx matrix renders selected
+    segment` and `downloaded segmented-wide high-row 0x04xx oversized payload
+    counts stop before renderer` split the next range. For spans `17`, `18`,
+    and `24`, canonical row words `0x0481`, `0x0482`, and `0x04ff` survive
+    `0x16498`; derived page state is still low source bytes `0x81`, `0x82`,
+    and `0xff`, selector `0x3003`, segments `1` and `0`, bucket `8`, and
+    target `0x1f264`; selected segment `1` renders the same `32/96` split from
+    the installed bitmap. For spans `31` and `32`, parser scratch is the
+    restored `ESC )s#W` count clamped to `0x7fff`; fixture fields
+    `parser_stop_offset` and `full_payload_end_offset` prove the stream stops
+    inside bitmap payload before renderer entry, so those cases are not
+    `0x1f264` source-boundary evidence.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -6123,6 +6135,12 @@ and `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source bounda
 repeat it for row words `0x0381`, `0x0382`, and `0x03ff`, proving the same low-byte
 source-row truncation, selected segment `1`, and span-31 source boundary in the next
 high-byte range.
+Fixtures `downloaded segmented-wide high-row 0x04xx matrix renders selected segment`
+and `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
+renderer` split row words `0x0481`, `0x0482`, and `0x04ff`: spans `17`, `18`, and
+`24` prove the same low-byte source-row truncation, selected segment `1`, and
+`32/96` rendered row split, while spans `31` and `32` exceed the parser's `0x7fff`
+payload-count cap and stop before `0x16498`.
 Fixture `downloaded glyph
 row-count matrix publishes and renders additional short/segmented counts` adds two
 hundred fifty row-count siblings through the same fetched install, printable,
@@ -7211,6 +7229,12 @@ words. High for the row-`0x0381`/`0x0382`/`0x03ff` matrix because fixtures
 `downloaded segmented-wide high-row 0x03xx matrix renders selected segment` and
 `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary` assert
 the same success/source-boundary split for the next high-byte range. High for
+the row-`0x0481`/`0x0482`/`0x04ff` matrix below the payload-count cap because fixture
+`downloaded segmented-wide high-row 0x04xx matrix renders selected segment` asserts
+selected-segment rendering at spans `17`, `18`, and `24`; high for the oversized
+parser-count boundary because fixture `downloaded segmented-wide high-row 0x04xx
+oversized payload counts stop before renderer` records `parser_stop_offset` and
+`full_payload_end_offset` for spans `31` and `32` before renderer entry. High for
 publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
 clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
@@ -7444,6 +7468,11 @@ fields and broader selected-font state combinations have not been page-compared.
   that split for row `0x0182`. Fixtures `downloaded segmented-wide row-0x01ff
   fallbacks render selected segment` and `downloaded segmented-wide row-0x01ff span-31
   fallback hits source boundary` repeat that split for row `0x01ff`. Fixture
+  `downloaded segmented-wide high-row 0x04xx matrix renders selected segment` extends
+  selected-segment evidence to rows `0x0481`, `0x0482`, and `0x04ff` at spans `17`,
+  `18`, and `24`; fixture `downloaded segmented-wide high-row 0x04xx oversized payload
+  counts stop before renderer` classifies the corresponding span-31/span-32 cases as
+  parser byte-count-cap boundaries rather than unresolved renderer behavior. Fixture
   `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through
@@ -7465,7 +7494,8 @@ fields and broader selected-font state combinations have not been page-compared.
   fully classified compact mode-0 invalid helper-table targets, visible behavior for
   segmented-wide row words and spans
   outside the sampled row `0x0082`, `0x0083`, `0x0181`, `0x0182`, `0x01ff`,
-  `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, and `0x03ff` matrix,
+  `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`,
+  `0x0482`, and `0x04ff` matrix below the parser payload-count cap,
   broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`

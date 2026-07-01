@@ -897,7 +897,8 @@ The next work should follow dataflow, not isolated handlers:
    physical/device behavior after wrapped source-width bytes choose invalid
    compact mode-0 helpers, broader segmented-wide high-row fallback
    row/span cross-products beyond rows `0x0181`, `0x0182`, `0x01ff`, `0x0281`,
-   `0x0282`, `0x02ff`, `0x0381`, `0x0382`, and `0x03ff`, and
+   `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and
+   `0x04ff` below the parser payload-count cap, and
    publication/return-boundary siblings outside the named row-count,
    wide-remainder, segmented-wide, high-row segmented-wide, no-install,
    status-`2`, payload-control, and bit-30-clear fixed-record cases.
@@ -1171,13 +1172,21 @@ The next work should follow dataflow, not isolated handlers:
    and `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary`
    extend that split to row words `0x0381`, `0x0382`, and `0x03ff`: spans `17`,
    `18`, and `32` render the same `32/96` selected segment, while span `31` stops at
-   fallback A2 offset `+0xb50`.
+   fallback A2 offset `+0xb50`. Fixtures `downloaded segmented-wide high-row 0x04xx
+   matrix renders selected segment` and `downloaded segmented-wide high-row 0x04xx
+   oversized payload counts stop before renderer` split the next high-byte range:
+   row words `0x0481`, `0x0482`, and `0x04ff` at spans `17`, `18`, and `24` render the
+   same selected-segment `32/96` split, while spans `31` and `32` exceed the `ESC )s#W`
+   parser numeric cap `0x7fff` and stop inside bitmap payload before `0x16498` renderer
+   entry. The fixture records exact command-prefix length, parser stop offset, and full
+   payload end offset for each oversized case.
    Remaining downloaded-character publication work is therefore limited to
    physical/pixel behavior after the fully documented wrapped source-byte mode-0
    invalid-helper boundaries, broader
    higher-row segmented-wide fallback combinations beyond sampled rows `0x0181`,
    `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, and
-   `0x03ff`, broader publication combinations, and
+   `0x03ff`, plus `0x0481`, `0x0482`, and `0x04ff` below the payload-count cap, broader
+   publication combinations, and
    full-success return-boundary siblings outside the named row-count, wide-remainder,
    segmented-wide, normal, row-`0x80`, linear-segmented, split-plane segmented,
    segmented-wide, no-install, status-`2`, and payload-control cases. It is not the

@@ -1858,6 +1858,17 @@ Output effect:
   sampled low-byte-above-`0x80` row. Spans `17`, `18`, and `32` render bucket
   `8` segment `1` with the same `32/96` split; span `31` stops at fallback A2
   source offset `+0xb50`.
+- Fixtures `downloaded segmented-wide row-0x0281 fallbacks render selected
+  segment`, `downloaded segmented-wide high-row 0x02xx matrix renders selected
+  segment`, `downloaded segmented-wide high-row 0x03xx matrix renders selected
+  segment`, and `downloaded segmented-wide high-row 0x04xx matrix renders
+  selected segment` extend the selected-segment render evidence through row
+  words `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`,
+  `0x0481`, `0x0482`, and `0x04ff`. The corresponding `0x0281`, `0x02xx`,
+  and `0x03xx` span-31 fixtures stop at fallback A2 offset `+0xb50`; fixture
+  `downloaded segmented-wide high-row 0x04xx oversized payload counts stop
+  before renderer` classifies the `0x04xx` span-31/span-32 cases as parser
+  payload-count boundaries before renderer entry.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -1937,6 +1948,15 @@ Fixture evidence:
 - `downloaded segmented-wide row-0x0182 fallbacks render selected segment`
 - `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary`
 - `downloaded segmented-wide row-0x01ff fallbacks render selected segment`
+- `downloaded segmented-wide row-0x0281 span-31 fallback hits source boundary`
+- `downloaded segmented-wide row-0x0281 fallbacks render selected segment`
+- `downloaded segmented-wide high-row 0x02xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
+- `downloaded segmented-wide high-row 0x03xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary`
+- `downloaded segmented-wide high-row 0x04xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
+  renderer`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
@@ -1992,9 +2012,13 @@ Unresolved middle edges:
   `0`; the first render splits for those sampled rows are also documented. The
   high-row fallback fixtures now extend that selected-segment render evidence
   across installed row words `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
-  and `0x02ff`: spans `17`, `18`, and `32` render bucket-8 segment `1` as
-  `32` current rows and `96` fallback rows matching the installed bitmap,
-  while the span-31 siblings are explicit A2 source boundaries at `+0xb50`.
+  `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and `0x04ff`:
+  spans `17`, `18`, and `32` through `0x03ff`, plus spans `17`, `18`, and
+  `24` for `0x04xx`, render bucket-8 segment `1` as `32` current rows and
+  `96` fallback rows matching the installed bitmap. The span-31 siblings
+  through `0x03ff` are explicit A2 source boundaries at `+0xb50`; the `0x04xx`
+  oversized siblings stop at the parser payload-count cap before renderer
+  entry.
   Remaining gaps are broader physical/full-row comparison for boundary cases
   and selected-font state combinations not represented in current visible
   fixtures.

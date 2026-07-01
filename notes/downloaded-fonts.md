@@ -135,6 +135,9 @@ Primary fixtures:
 - `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
 - `downloaded segmented-wide high-row 0x03xx matrix renders selected segment`
 - `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary`
+- `downloaded segmented-wide high-row 0x04xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
+  renderer`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -1726,6 +1729,22 @@ selector `0x3003` buckets `0` and `8`, dispatch selected segment `1` through
 the installed bitmap. Span `31` reaches the same selected-segment path for all
 three row words and stops at fallback A2 source boundary `+0xb50`.
 
+Fixtures `downloaded segmented-wide high-row 0x04xx matrix renders selected
+segment` and `downloaded segmented-wide high-row 0x04xx oversized payload
+counts stop before renderer` split the next range at the parser byte-count
+boundary. Row words `0x0481`, `0x0482`, and `0x04ff` at spans `17`, `18`, and
+`24` remain below the `ESC )s#W` numeric cap, install canonical row words,
+expose only low source row bytes `0x81`, `0x82`, and `0xff` to `0x12f2e`,
+publish selector `0x3003` buckets `0` and `8`, dispatch selected segment `1`
+through `0x1f264`, and render the same `32` current rows plus `96` fallback
+rows from the installed bitmap. The adjacent spans `31` and `32` are not
+renderer/source-boundary cases in this stream shape: payload counts
+`0x0481*31`, `0x0481*32`, `0x0482*31`, `0x0482*32`, `0x04ff*31`, and
+`0x04ff*32` exceed the parser's `0x7fff` count cap, so the restored payload
+count stops inside the bitmap data before the next command byte is reached.
+The fixture records `command_prefix_length`, `parser_stop_offset`, and
+`full_payload_end_offset` for each case.
+
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
 It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
@@ -1897,8 +1916,11 @@ Output effect:
   fallback target `0x329ad3c0` at index `200`.
 - Segmented-wide high-row selected-segment pixels are fixture-backed at rows
   `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
-  `0x0382`, and `0x03ff` for spans `17`, `18`, and `32`; the adjacent span-31
-  cases stop at the exact A2 source boundary `+0xb50`.
+  `0x0382`, and `0x03ff` for spans `17`, `18`, and `32`, and at rows
+  `0x0481`, `0x0482`, and `0x04ff` for spans `17`, `18`, and `24`. The
+  adjacent span-31 cases through `0x03ff` stop at the exact A2 source boundary
+  `+0xb50`; the `0x04xx` span-31/span-32 cases stop earlier at the parser
+  payload-count cap before renderer entry.
 
 Confidence:
 
@@ -1909,8 +1931,10 @@ Confidence:
   boundary, because the `0x0101..0x0103` fixtures preserve installed rows while
   proving the low-byte page source and the `0x1fe76` overflow boundary.
 - High for the sampled segmented-wide high-row selected segment, because the
-  row-`0x0281` and `0x02xx` fixtures extend the same `0x1f264` success /
-  span-31 boundary split beyond the earlier `0x01xx` samples.
+  row-`0x0281`, `0x02xx`, `0x03xx`, and below-cap `0x04xx` fixtures extend
+  the same `0x1f264` success model beyond the earlier `0x01xx` samples, and
+  because the `0x04xx` oversized fixture classifies the parser-count boundary
+  separately from renderer behavior.
 
 Unresolved middle edges:
 
@@ -2578,7 +2602,12 @@ A byte-stream renderer must preserve:
   split for rows `0x0282` and `0x02ff`. Fixtures `downloaded segmented-wide high-row
   0x03xx matrix renders selected segment` and `downloaded segmented-wide high-row
   0x03xx span-31 matrix hits source boundary` prove the same split for rows `0x0381`,
-  `0x0382`, and `0x03ff`. Remaining parser-produced comparisons are
+  `0x0382`, and `0x03ff`. Fixture `downloaded segmented-wide high-row 0x04xx matrix
+  renders selected segment` proves the same selected-segment render state for rows
+  `0x0481`, `0x0482`, and `0x04ff` at spans `17`, `18`, and `24`; fixture
+  `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
+  renderer` classifies spans `31` and `32` for those rows as parser-count-cap
+  boundaries before `0x16498` renderer entry. Remaining parser-produced comparisons are
   bounded cross-products: physical/pixel behavior after the fully documented wrapped
   source-byte mode-0 invalid-helper boundaries, broader publication combinations beyond
   the documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
@@ -2622,8 +2651,17 @@ A byte-stream renderer must preserve:
   boundary` pin the same return/boundary split for row `0x0182`; fixtures `downloaded
   segmented-wide row-0x01ff fallbacks render selected segment` and `downloaded
   segmented-wide row-0x01ff span-31 fallback hits source boundary` pin the same
-  return/boundary split for row `0x01ff`; fixture `downloaded normal row-0x80 and
-  segmented glyph FF publications render page records` pins normal, row-`0x80`, and
+  return/boundary split for row `0x01ff`; fixtures `downloaded segmented-wide
+  high-row 0x02xx matrix renders selected segment`, `downloaded segmented-wide
+  high-row 0x03xx matrix renders selected segment`, and `downloaded segmented-wide
+  high-row 0x04xx matrix renders selected segment` extend the selected-segment
+  zero-drain return boundary through rows `0x0282`, `0x02ff`, `0x0381`,
+  `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and `0x04ff`, with `0x04xx` limited
+  to spans below the parser payload-count cap; fixture `downloaded segmented-wide
+  high-row 0x04xx oversized payload counts stop before renderer` records the
+  oversized span-31/span-32 parser stop offsets before renderer entry; fixture
+  `downloaded normal row-0x80 and segmented glyph FF publications render page
+  records` pins normal, row-`0x80`, and
   linear-segmented zero-drain returns before handler `0xd04a`; fixture `split-plane
   segmented downloaded glyph FF publication renders page record` pins the split-plane
   segmented zero-drain return before handler `0xd04a`; fixtures `host-fetched 0x15d0a

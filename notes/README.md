@@ -92,8 +92,8 @@ compatibility boundary.
   published-record selection, render-work alternation, wait-object state, and
   band-render scheduler contracts.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
-  top-level host-byte-to-rendered-pixel coverage map and remaining
-  reproduction blockers.
+  top-level host-byte-to-rendered-pixel coverage map and open reproduction
+  boundaries.
 - [semantic-state-model.md](semantic-state-model.md) - composed
   renderer-facing state blocks with field groups, evidence, and
   unresolved middle edges.

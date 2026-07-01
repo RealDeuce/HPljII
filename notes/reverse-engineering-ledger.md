@@ -1637,15 +1637,16 @@ ROM work needed:
   wrapper predicate selection, `0x1144..0x11f8` trap-handler wait-state
   transitions, and `0x1eba4..0x1ecd2` render-loop predicate selection
   are now fixture-covered.
-- Continue live-parser confirmation only where a page-object family still
-  lacks one full parser/register run: wide/segmented text cross-products,
-  the dense raster producer handoff already narrowed to
-  `0x105d0 -> 0x10084 -> 0x13070`, and final physical-device comparison.
-  The covered ROM-side bitmap behavior is no longer an open generic
-  clipping question: rectangle fill clipping, compact current-band/fallback
-  row splitting, synthetic wide/segmented fallback splitting, raster mode
-  `1..3` expansion, and the `0x1ef6a` compact/raster/crossing-rule band
-  merge are all fixture-backed for the documented cases.
+- Continue parser-to-render documentation only where a page-object family
+  exposes new ROM state: wide/segmented text cross-products, dense raster byte
+  streams that change the already bounded producer handoff
+  `0x105d0 -> 0x10084 -> 0x13070`, and final physical-device comparison as a
+  validation step rather than a ROM tracing prerequisite. The covered ROM-side
+  bitmap behavior is no longer an open generic clipping question: rectangle
+  fill clipping, compact current-band/fallback row splitting, synthetic
+  wide/segmented fallback splitting, raster mode `1..3` expansion, and the
+  `0x1ef6a` compact/raster/crossing-rule band merge are all fixture-backed for
+  the documented cases.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.
 

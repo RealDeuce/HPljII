@@ -784,15 +784,17 @@ than open middle edges.
    1`, drained byte `0x26`, and post-return handler `0xf0f0`.
 6. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
-   board-confirmed. This does not block a byte-stream renderer, but it blocks
-   claims about hardware-level emulation. Evidence:
+   board-confirmed. This does not block the documented byte-stream renderer;
+   it only blocks hardware-level emulation claims. Evidence:
    `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 7. Final device-output validation is not yet a real printer comparison. The
    harness proves ROM-derived rows internally, but pixel-perfect confidence
    ultimately needs rendered page images compared against known LaserJet II
-   output for representative byte streams. The initial mixed page-image
-   stream above is a ROM-derived internal reproduction contract, not a
-   physical-device comparison. The font-sample printout now has its own
+   output for representative byte streams. That is a validation boundary, not
+   a reason to defer ROM-local host, parser, page-record, or imaging
+   documentation. The initial mixed page-image stream above is a ROM-derived
+   internal reproduction contract, not a physical-device comparison. The
+   font-sample printout now has its own
    internal rendered-surface checkpoint: fixture `font sample full printout
    segments render through 0x1ed84 and 0x1ef6a` renders all eight source/class
    page-record segments with aggregate digest

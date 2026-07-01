@@ -914,15 +914,19 @@ The next work should follow dataflow, not isolated handlers:
    publication stream, parser-driven downloaded-glyph/rule/raster page stream,
    primary plus secondary built-in font-selection visible-output streams,
    inline primary and secondary parser-to-printable streams, the primary and
-   secondary symbol fallbacks, primary/secondary current-font-RAM handoff, and
-   composed selection-to-RAM handoff visible-output streams. The highest-value
-   ROM-only expansion target is now the bounded downloaded-character matrix:
+   secondary symbol fallbacks, non-Roman symbol streams, real final-`@`
+   default-table streams, final-`X` built-in, final-`X` inline/downloaded,
+   final-`X` preserved-output exits, primary/secondary current-font-RAM
+   handoff, and composed selection-to-RAM handoff visible-output streams.
+   The highest-value ROM-only expansion target is now the bounded
+   downloaded-character matrix:
    physical/device behavior after wrapped source-width bytes choose invalid
    compact mode-0 helpers, plus any publication/return-boundary sibling that
    exposes a new `0x783140` remainder, `0x12328` drain status, next handler,
    or page-record selector beyond the named row-count, wide-remainder,
    segmented-wide, high-row segmented-wide, no-install, status-`2`,
-   payload-control, and bit-30-clear fixed-record cases.
+   payload-control, type-1/type-2 short/wide/segmented publication, and
+   bit-30-clear fixed-record cases.
    Downloaded-font live-continuity work is a
    separate proof target:
    fixtures `combined host-fetched font download stream prints installed glyph` and
@@ -947,6 +951,10 @@ The next work should follow dataflow, not isolated handlers:
    bytes `24..54`, FF byte `54..55`, bucket `5` raster+glyph chain, raw selector-7 rule
    publication, and matching published rows. What remains is
    stronger live-68000 register/memory capture of the same already-fixture-backed state.
+   The local MAME binary is useful for disassembly but does not list a LaserJet
+   II/LJII driver, so this proof needs a new emulator target, instrumented
+   68000 execution harness, or physical capture rather than another existing
+   `tools/render_fixture_harness.py` case.
    The primary built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object prefix
    `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context slot `0xc008004c`,

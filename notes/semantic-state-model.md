@@ -6871,6 +6871,7 @@ low-level ledger remains in [downloaded-fonts.md](downloaded-fonts.md) under
 `0x16c14-installed 0x1719c payload dispatches as bit-30 resource form`,
 `host-fetched resource header plus glyph payload renders offset-table downloaded
 glyph`,
+`type-1 and type-2 resource headers accept downloaded glyph payload stream`,
 `0x1719c-backed inline payload dispatches through 0x14c64`,
 `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed
 record`, `host-fetched 0x1719c payload metrics feed d4ac span rows`, and
@@ -6890,6 +6891,12 @@ glyph` adds canonical downloaded-pointer glyph state inside that same installed
 payload: table entry `0x00ce`, record delta `0x0180`, record
 `00 00 00 00 0c 01 00 03 00 04 00 00`, bitmap offset `0x018c`, bitmap bytes
 `f0 f0 f0`, span `1`, width `4`, and row count `3`. Fixture
+`type-1 and type-2 resource headers accept downloaded glyph payload stream`
+adds the legal setup-type variants for the same downloaded-pointer form:
+type-1 and type-2 headers both allocate payload units `0x100`, allocation size
+`18`, write table entry `0x00ce`, record delta `0x0300`, bitmap offset
+`0x030c`, span `1`, width `4`, and row count `3`. Type-1 installs candidate
+`0x40000000`; type-2 installs candidate `0x44000000`. Fixture
 `0x172c0-modeled font resource record scan statuses` pins the current-record
 scan outcomes that feed this install path: existing id status `0`, missing id
 with a free record status `1`, and missing id with no free record status `2`.
@@ -6908,6 +6915,9 @@ The downloaded-pointer glyph fixture then restores a second fetched record
 `80 57 00 03 00 00` for `ESC )s3W`, starts its payload at offset `5`, consumes
 three bytes through the same `0x16c14 -> 0x16498` handler route, and returns
 with copy status `1`, stream position `3`, and zero remaining byte budget.
+The type-1/type-2 sibling uses the same restored glyph record and handler
+sequence after the host-fetched legal headers, so parser scratch for the glyph
+payload is shared across setup types `0`, `1`, and `2`.
 
 Derived/cache state is the selected font map and printable source path. For the
 real `0x16c14` installed candidate, `0x14c64` takes the bit-30 offset-table
@@ -6925,6 +6935,12 @@ glyph` proves the integrated bit-30 resource form after `0x16498`: printable
 `!` maps to glyph `0x21`, resolves through context `0x40000000` to record
 `0x0180`, queues compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders
 the installed `f0 f0 f0` rows beside the `d8fc` span object. Fixture
+`type-1 and type-2 resource headers accept downloaded glyph payload stream`
+proves the same derived lookup for legal setup types `1` and `2`: printable
+`!` resolves through contexts `0x40000000` and `0x44000000` to record
+`0x0300`, and both render the same span/glyph rows as the type-0 integrated
+case.
+Fixture
 `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
 renderer records` is the type-2 sibling of that isolation control: it proves
 setup type `2` allocates payload units `0x100`, copies symbol bytes at
@@ -6964,14 +6980,20 @@ downloaded-pointer glyph path because fixture
 `host-fetched resource header plus glyph payload renders offset-table downloaded
 glyph` asserts both fetched streams, the installed table entry, record and
 bitmap bytes, context `0x40000000`, queued compact/span objects, and rendered
+rows. Confidence is high for the legal type-1/type-2 header siblings because
+fixture
+`type-1 and type-2 resource headers accept downloaded glyph payload stream`
+asserts setup bytes `1` and `2`, payload units `0x100`, allocation size `18`,
+candidate flags `0x40000000` and `0x44000000`, the same fetched glyph record,
+the installed table entry, resolved downloaded-pointer state, and rendered
 rows.
 
 Unresolved middle edges after this checkpoint are no longer the parser restore,
 allocation, candidate insertion, selected-map dispatch, basic integrated
-bit-30 downloaded-pointer glyph install, or page-visible metric consumers. The
-remaining boundaries are variant breadth: resource-header types beyond the
-covered type-0 header, downloaded-pointer glyph row/span/continuation shapes
-beyond the covered three-row linear glyph, and publication variants beyond this
+bit-30 downloaded-pointer glyph install for legal type-0/type-1/type-2
+headers, or page-visible metric consumers. The remaining boundaries are
+variant breadth: downloaded-pointer glyph row/span/continuation shapes beyond
+the covered three-row linear glyph, and publication variants beyond this
 page-record render checkpoint. The bit-30-clear fixed-record render remains
 deliberately classified as an isolation control for the `0x1719c` payload
 layout, not as the real `0x16c14` installed resource form.
@@ -7229,6 +7251,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
 - `host-fetched resource header plus glyph payload renders offset-table
   downloaded glyph`
+- `type-1 and type-2 resource headers accept downloaded glyph payload stream`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`
 - `0x16606 no-install exits clear stale continuation without payload writes`

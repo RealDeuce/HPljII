@@ -675,9 +675,11 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    install, and page-visible `d4ac`/`d8fc` metric consumers. Fixture
    `host-fetched resource header plus glyph payload renders offset-table
    downloaded glyph` closes the basic type-0 `ESC )s80W` plus linear three-row
-   glyph boundary without fixture-side mutation; remaining work is broader
-   resource-header types, glyph row/span/continuation shapes, and publication
-   variants beyond that page-record checkpoint.
+   glyph boundary without fixture-side mutation. Fixture
+   `type-1 and type-2 resource headers accept downloaded glyph payload stream`
+   closes the same fetched-glyph boundary for legal type-1 and type-2 headers;
+   remaining work is broader glyph row/span/continuation shapes and
+   publication variants beyond that page-record checkpoint.
    Downloaded-character coverage now includes parser-produced normal, wide/control,
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both

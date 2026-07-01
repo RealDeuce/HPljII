@@ -87,6 +87,7 @@ Primary fixtures:
 - `constructed inline/downloaded segmented-wide glyph maps through 0x1f264`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `type-1 and type-2 resource headers accept downloaded glyph payload stream`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
@@ -767,9 +768,9 @@ handler record and `0x16fae` staging as parser scratch, `0x14c64` maps and
 source objects as derived/cache state, and the `0x16498` downloaded-pointer
 glyph table entry as canonical installed glyph state. The former open edge for
 the basic integrated bit-30 font-header plus downloaded-character glyph stream
-is now closed for the covered type-0 header and linear three-row glyph; broader
-resource-header types, row/span shapes, continuation states, and publication
-variants remain separate variant work.
+is now closed for legal type-0, type-1, and type-2 headers with the covered
+linear three-row glyph; broader row/span shapes, continuation states, and
+publication variants remain separate variant work.
 
 The invalid-resource-type sibling uses a full host-fetched `ESC )s80W` stream
 whose descriptor bytes begin `00 01 02 03`. Parser dispatch walks `0x11eb6`,
@@ -826,6 +827,19 @@ uses the same fixed-record and pointer-table glyph shapes as the type-2 metric
 fixture, but proves the type-1 header still feeds `0xd4ac` from bytes
 `+0x2b`, `+0x2c`, and `+0x2d`, and `0xd8fc` from words `+0x16`, `+0x18`, and
 `+0x1a`, with visible span rows.
+
+Fixture
+`type-1 and type-2 resource headers accept downloaded glyph payload stream`
+closes the integrated glyph-payload sibling for those legal setup types. After
+the host-fetched type-1 and type-2 `ESC )s80W` headers install candidates
+`0x40000000` and `0x44000000`, the fixture feeds a separate fetched
+`ESC )s3W f0 f0 f0` stream through `0x16498`. Both headers restore record
+`80 57 00 03 00 00`, write table entry `0x00ce`, install record delta
+`0x0300`, copy the bitmap at `0x030c`, resolve printable `!` through the
+downloaded-pointer form, and render the same `d8fc` span plus three glyph rows
+as the type-0 integrated fixture. The type-2 case is important because its
+candidate longword keeps class bits `0x44`, proving those bits do not change
+the downloaded-pointer lookup for this linear glyph.
 
 ## Descriptor Validation And Payload Header
 

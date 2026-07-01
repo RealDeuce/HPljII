@@ -164,16 +164,27 @@ The strongest current byte-stream fixtures include:
   `host-fetched text rectangle multi-row raster FF publishes rendered page
   record`;
 - primary and secondary built-in font-selection visible-output streams,
-  including symbol fallback, final-`@`, and final-`X` variants:
+  including symbol fallback, final-`@`, final-`X` built-in, final-`X`
+  inline/downloaded, and final-`X` preserved-output variants:
   `inline primary font selection stream renders visible rows`,
   `inline secondary font selection stream renders SO visible rows`,
   `real final-@ default-table streams select visible built-ins`, and
-  `font-ID built-in selection feeds visible page-record rows`;
+  `font-ID built-in selection feeds visible page-record rows`,
+  `font-ID secondary built-in selection feeds visible SO page-record rows`,
+  `font-ID primary inline/downloaded selection feeds visible page-record rows`,
+  `font-ID inline/downloaded selection feeds visible page-record rows`,
+  `font-ID non-selected exits keep prior visible rows`, and
+  `font-ID secondary non-selected exits keep prior SO visible rows`;
 - downloaded-glyph FF publication, downloaded-glyph/rule/raster composition,
-  and segmented downloaded-glyph band rendering:
+  type-1/type-2 resource publication, and segmented downloaded-glyph band
+  rendering:
   `combined font download FF publishes installed glyph page record`,
   `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a`, and
+  0x1ef6a`,
+  `type-1 and type-2 resource glyph FF publications render page records`,
+  `type-1 and type-2 resource wide glyph FF publications render page records`,
+  `type-1 and type-2 resource segmented glyph FF publications render page
+  records`, and
   `0x1eba4 scheduler band words render published downloaded glyph`.
 
 ## ROM Analysis Milestones

@@ -1,6 +1,7 @@
 # Resource ROM Notes
 
 Sources: `generated/roms/ic32_ic15.bin`;
+`generated/analysis/ic32_ic15_header.txt`;
 `generated/analysis/ic32_ic15_strings.txt`;
 `generated/analysis/ic32_ic15_resource_markers.txt`;
 `generated/analysis/ic32_ic15_font_records.md`;
@@ -29,7 +30,10 @@ is documented in [built-in-resource-scan.md](built-in-resource-scan.md).
 
 ## Header
 
-The first bytes reconstruct a readable resource header:
+The generated header probe
+`generated/analysis/ic32_ic15_header.txt` projects the first `0x180` bytes of
+`generated/roms/ic32_ic15.bin`; its first line reconstructs a readable resource
+header:
 
 ```text
 HEAD ... Copyright (C) Hewlett-Packard Company, 1986

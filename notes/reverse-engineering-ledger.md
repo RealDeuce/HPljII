@@ -680,47 +680,59 @@ bucket `1` only, then `0x1f414` splits rows `0x0102` into `58` current rows and 
 fallback rows. The fallback exceeds `0x1fe76`'s valid table maximum index `128` and
 reads target `0x329ad3c0`.
 
-Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
-collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,
-and `ESC *b#W` map to handlers `0x10808`, `0x1075a`, `0x107fa`, and
-delayed handler `0x105d0` via `0x121cc`; raster bytes are copied by
-`0x138de` into queued page objects built by `0x13070`; normal printable
-text bytes flow through `0xa904` -> `0xda9a` -> `0x11774` -> `0xd04a`,
-where `0x1393a` builds source object `0x782d7e`, as documented in
-`generated/analysis/ic30_ic13_printable_text_path.md`; paired
-post-source text paths are documented in
-`generated/analysis/ic30_ic13_text_cursor_span_flow.md`, with cursor
-`0x782c8a` named as horizontal and `0x782c8e` named as vertical by
-text/control handlers plus the raster-origin fixture; unflagged text
-uses `0xd140` / `0xd3b2` / `0xd4ac`, flagged text uses `0xd550` /
-`0xd824` / `0xd8fc`, and the queue handoffs reach compact bucket
-producer `0x12f2e`; compact bucket allocator `0x1387c` is decoded in
-`generated/analysis/ic30_ic13_compact_bucket_allocator.md`; text spans
-enter the same storage through `0x12714` / `0x12f2e`; rectangle/rule
-handlers share page-root queues through `0x13386` and related helpers;
-`0x1edc6` copies queued record pointers into render work records, with
-its queue/list/context-slot contract decoded in
-`generated/analysis/ic30_ic13_page_record_bridge.md`; `0x1efc2`
-classifies bucket objects; raster maps to `0x1f88e`, compact text/glyph
-buckets map through `0x1effe`, and rule lists map through `0x1f446` /
-`0x1f756`; compact glyph objects select render-record context slots
-copied from page-root `+0x2c`, and the selected font context, span
-metrics, and compact glyph byte bridge are documented in
-[font-context-metrics.md](font-context-metrics.md); compact text payload
-glyph bytes are mapped through `0x782f32` / `0x783032`;
-active symbol-set flow from `ESC (` / `ESC )` to `0x783144` / `0x783146`
-is documented in
-`generated/analysis/ic30_ic13_active_symbol_set_flow.md`; symbol-set
-patch tables and Technical Reference names are decoded in
-`generated/analysis/ic30_ic13_symbol_set_patch_tables.md`; compact and
-encoded-span payload modes are named in
-`generated/analysis/ic30_ic13_render_subrenderers.md`; deterministic
-encoded raster expansion fixtures are generated in
-`generated/analysis/ic30_ic13_render_expansion_fixtures.md`;
-destination/clipping fixtures are generated in
-`generated/analysis/ic30_ic13_render_destination_fixtures.md`; compact
-glyph row-copy fixtures are generated in
-`generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
+Evidence is now split between checked-in semantic notes and supporting
+generated reports. [raster-graphics.md](raster-graphics.md) and `Raster
+Graphics Command Family` in [semantic-state-model.md](semantic-state-model.md)
+collect the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`, and
+`ESC *b#W` map to handlers `0x10808`, `0x1075a`, `0x107fa`, and delayed
+handler `0x105d0` via `0x121cc`; raster bytes are copied by `0x138de` into
+queued page objects built by `0x13070`. Supporting report
+`generated/analysis/ic30_ic13_raster_graphics_flow.md` preserves the low-level
+ledger for that path.
+
+Printable text, cursor/span production, and compact bucket storage are checked
+in under [direct-control-codes.md](direct-control-codes.md),
+[page-record-storage.md](page-record-storage.md), and semantic-state entries
+`Text Cursor And Direct Controls`, `Text Source Objects And Compact Buckets`,
+and `Text Span Flush And Fixed-Width Spans`. Normal printable text bytes flow
+through `0xa904` -> `0xda9a` -> `0x11774` -> `0xd04a`; `0x1393a` builds source
+object `0x782d7e`; cursor `0x782c8a` is horizontal and `0x782c8e` is vertical;
+unflagged text uses `0xd140` / `0xd3b2` / `0xd4ac`; flagged text uses
+`0xd550` / `0xd824` / `0xd8fc`; and queue handoffs reach compact bucket
+producer `0x12f2e`. Supporting reports
+`generated/analysis/ic30_ic13_printable_text_path.md`,
+`generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and
+`generated/analysis/ic30_ic13_compact_bucket_allocator.md` preserve the
+instruction-level scans.
+
+Rectangle/rule handlers share page-root queues through `0x13386` and related
+helpers; this producer side is checked in under
+[rectangle-graphics.md](rectangle-graphics.md). Publication and render bridge
+state are checked in under [publication-commands.md](publication-commands.md),
+[page-raster-imaging.md](page-raster-imaging.md), and `Bitmap Render Dispatch
+Contract` in [semantic-state-model.md](semantic-state-model.md): `0x1edc6`
+copies queued record pointers into render work records, `0x1efc2` classifies
+bucket objects, raster maps to `0x1f88e`, compact text/glyph buckets map
+through `0x1effe`, and rule lists map through `0x1f446` / `0x1f756`.
+Supporting report `generated/analysis/ic30_ic13_page_record_bridge.md`
+preserves the queue/list/context-slot bridge ledger.
+
+Font/resource state used by compact glyph rendering is checked in under
+[font-context-metrics.md](font-context-metrics.md) and
+[resource-rom.md](resource-rom.md): compact glyph objects select render-record
+context slots copied from page-root `+0x2c`, selected font context and span
+metrics feed compact glyph byte mapping, and compact text payload glyph bytes
+are mapped through `0x782f32` / `0x783032`. Active symbol-set flow from
+`ESC (` / `ESC )` to `0x783144` / `0x783146`, symbol-set patch tables,
+compact/encoded-span payload modes, encoded raster expansion fixtures,
+destination/clipping fixtures, and compact glyph row-copy fixtures remain
+available as supporting generated reports:
+`generated/analysis/ic30_ic13_active_symbol_set_flow.md`,
+`generated/analysis/ic30_ic13_symbol_set_patch_tables.md`,
+`generated/analysis/ic30_ic13_render_subrenderers.md`,
+`generated/analysis/ic30_ic13_render_expansion_fixtures.md`,
+`generated/analysis/ic30_ic13_render_destination_fixtures.md`, and
+`generated/analysis/ic30_ic13_render_row_copy_fixtures.md`.
 `tools/render_fixture_harness.py` executes those primitive models plus
 `0xa904` host byte fetch source-priority fixtures, ring-fed
 reset/FF/page-size/orientation/paper-source/copies publication streams

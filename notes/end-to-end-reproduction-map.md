@@ -119,13 +119,14 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `D7 == 0` reaches `0x6364`.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
-  Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`
-  plus tokenizer and delayed-payload fixtures. The composed state contract is
+  The checked-in contracts are [pcl-parser-core.md](pcl-parser-core.md) and
   `Parser Record And Delayed Payload State` in
-  `notes/semantic-state-model.md`: command finals and payload bytes are
-  separate events, six-byte records are saved through `0x121cc`, restored
-  through `0x12218`, and then consumed by raster, transparent text,
-  downloaded-font, generic payload, macro, and alternate/data handlers.
+  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
+  `generated/analysis/ic30_ic13_parser_xrefs.md` plus tokenizer and
+  delayed-payload fixtures. Command finals and payload bytes are separate
+  events, six-byte records are saved through `0x121cc`, restored through
+  `0x12218`, and then consumed by raster, transparent text, downloaded-font,
+  generic payload, macro, and alternate/data handlers.
 - Transparent print data:
   ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
   plus disassembly
@@ -182,8 +183,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   this command-family loop.
 - Parser dispatch tables:
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
-  Reproduction evidence is `generated/analysis/ic30_ic13_pcl_command_map.md`
-  and ROM dispatch trace fixtures.
+  Checked-in documentation is [pcl-command-map.md](pcl-command-map.md),
+  [pcl-parser-core.md](pcl-parser-core.md), and the command-family checkpoints
+  in [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
+  `generated/analysis/ic30_ic13_pcl_command_map.md` and ROM dispatch trace
+  fixtures.
 - Direct controls and cursor state:
   ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, and cursor handlers.
   Reproduction evidence is `Text Cursor And Direct Controls` in
@@ -211,13 +215,15 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Raster producers:
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
-  Reproduction evidence is `generated/analysis/ic30_ic13_raster_graphics_flow.md`
-  and host-fetched raster stream fixtures. The tracked command-family
-  checkpoint in [raster-graphics.md](raster-graphics.md) covers
-  lower-resolution modes `1..3`, consecutive uppercase `ESC *b#W` transfers,
-  lowercase `ESC *b#w` same-family chaining, `ESC *rB` active-byte clear,
-  active-resolution ignore, `0x105d0` cap/drain gates, page-record object
-  bytes, bridge dispatch, and rendered rows.
+  The checked-in command-family checkpoint is
+  [raster-graphics.md](raster-graphics.md), with the unified semantic entry
+  `Raster Graphics Command Family` in
+  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
+  `generated/analysis/ic30_ic13_raster_graphics_flow.md` and host-fetched
+  raster stream fixtures. The checkpoint covers lower-resolution modes `1..3`,
+  consecutive uppercase `ESC *b#W` transfers, lowercase `ESC *b#w` same-family
+  chaining, `ESC *rB` active-byte clear, active-resolution ignore, `0x105d0`
+  cap/drain gates, page-record object bytes, bridge dispatch, and rendered rows.
 
   The mixed page-image cluster is now composed in `Mixed Text/Rule/Raster Page
   Record`: fixture
@@ -251,13 +257,19 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   contract.
 - Page publication:
   ROM evidence is `0xff1e..0x10080`.
-  Reproduction evidence is
-  `generated/analysis/ic30_ic13_page_root_finalization.md` plus reset,
-  FF, geometry, and retry publication fixtures.
+  Checked-in documentation is
+  [publication-commands.md](publication-commands.md) and
+  `Publication Commands To Rendered Page Records` in
+  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
+  `generated/analysis/ic30_ic13_page_root_finalization.md` plus reset, FF,
+  geometry, and retry publication fixtures.
 - Render bridge:
   ROM evidence is `0x1ed84`, `0x1edc6`, and `0x1ef86`.
-  Reproduction evidence is `generated/analysis/ic30_ic13_page_record_bridge.md`
-  and published-record render-entry fixtures.
+  Checked-in documentation is [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and the publication/render
+  entries in [semantic-state-model.md](semantic-state-model.md). Supporting
+  evidence is `generated/analysis/ic30_ic13_page_record_bridge.md` and
+  published-record render-entry fixtures.
 - Active render scheduler:
   ROM evidence is `0x1eb2a`, `0x1ecd6`, `0x1ed84`, and `0x1eba4`.
   Reproduction evidence is
@@ -266,9 +278,12 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Render dispatch:
   ROM evidence is `0x1ef6a`, `0x1efc2`, `0x1f446`, `0x1f756`,
   `0x1f812`, and `0x1f88e`.
-  Reproduction evidence is
-  `generated/analysis/ic30_ic13_render_dispatch_tables.md` plus
-  text/rule/raster composition fixtures.
+  Checked-in documentation is the `Bitmap Object Dispatch Semantic Checkpoint`
+  in [page-raster-imaging.md](page-raster-imaging.md) and
+  `Bitmap Render Dispatch Contract` in
+  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
+  `generated/analysis/ic30_ic13_render_dispatch_tables.md` plus text/rule/
+  raster composition fixtures.
 - Mixed page-image stream:
   ROM evidence crosses parser handlers `0xd04a`, `0x10e68`,
   `0x10e22`, `0x10898`, `0x10808`, `0x1075a`, `0x11f82`, and
@@ -286,15 +301,20 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   chain`.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
-  Reproduction evidence is
-  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`,
+  Checked-in documentation is [resource-rom.md](resource-rom.md),
   [built-in-resource-scan.md](built-in-resource-scan.md),
-  [font-sample-page.md](font-sample-page.md), and compact glyph fixtures.
+  [font-context-metrics.md](font-context-metrics.md), and
+  [font-sample-page.md](font-sample-page.md). Supporting evidence includes
+  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and compact glyph
+  fixtures.
 - Downloaded font payloads:
   ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
   `0x1719c`.
-  Reproduction evidence is the font descriptor, resource, and character
-  fixtures in `tools/render_fixture_harness.py`.
+  Checked-in documentation is [downloaded-fonts.md](downloaded-fonts.md) and
+  the downloaded-font checkpoints in
+  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is the
+  font descriptor, resource, and character fixtures in
+  `tools/render_fixture_harness.py`.
 
 ## Reproducible Byte-Stream Families
 
@@ -346,9 +366,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:
-  `generated/analysis/ic30_ic13_raster_graphics_flow.md`, `notes/raster-graphics.md`,
-  `Raster Transfer Gate And Encoded Rows` in `notes/semantic-state-model.md`,
-  and host-fetched raster fixtures.
+  [raster-graphics.md](raster-graphics.md),
+  `Raster Transfer Gate And Encoded Rows` in
+  [semantic-state-model.md](semantic-state-model.md), host-fetched raster
+  fixtures, and supporting report
+  `generated/analysis/ic30_ic13_raster_graphics_flow.md`.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule
@@ -364,9 +386,12 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   paths. Evidence is tracked in `notes/vertical-forms-control.md` with
   branch boundaries `0x128ae..0x128f4`, `0x12966..0x129c4`,
   `0x129c6..0x12af8`, `0x12a22..0x12a78`, and `0x129ee..0x12b5a`.
-  Evidence: `generated/analysis/ic30_ic13_esc_e_reset_flow.md`,
-  `generated/analysis/ic30_ic13_page_root_finalization.md`, and publication
-  fixtures in the harness.
+  Related publication evidence is checked in under
+  [publication-commands.md](publication-commands.md) and
+  `Publication Commands To Rendered Page Records` in
+  [semantic-state-model.md](semantic-state-model.md), with supporting reports
+  `generated/analysis/ic30_ic13_esc_e_reset_flow.md` and
+  `generated/analysis/ic30_ic13_page_root_finalization.md`.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.
@@ -427,9 +452,12 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and
   host-fetched font-control state. Evidence:
-  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`,
-  `generated/analysis/ic30_ic13_font_control_flow.md`,
-  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`, and font fixtures.
+  [font-context-metrics.md](font-context-metrics.md),
+  [resource-rom.md](resource-rom.md),
+  [downloaded-fonts.md](downloaded-fonts.md), font fixtures, and supporting
+  reports `generated/analysis/ic30_ic13_text_glyph_index_flow.md`,
+  `generated/analysis/ic30_ic13_font_control_flow.md`, and
+  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`.
 
 ## Canonical State Groups
 
@@ -437,13 +465,14 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x783e54`, `0x783e56`, `0x783e76`, `0x783e78`, `0x783e8c`,
   `0x783e8e`, and `0x782d76` frame fields `+0x00`, `+0x04`, `+0x08`,
   `+0x09`, and `+0x0a`. Evidence:
-  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md` and
+  [host-byte-fetch.md](host-byte-fetch.md),
   `Host Byte Fetch And Data-Chain Input` in
-  `notes/semantic-state-model.md`.
+  [semantic-state-model.md](semantic-state-model.md), and supporting report
+  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Parser scratch: six-byte command records at `0x78299e..0x7829a7`,
   delayed handler snapshots, payload counters, and alternate/data mode state.
   Evidence: `Parser Record And Delayed Payload State` in
-  `notes/semantic-state-model.md`, tokenizer fixtures, and
+  [semantic-state-model.md](semantic-state-model.md), tokenizer fixtures, and
   `generated/analysis/ic30_ic13_parser_xrefs.md`. The parser-record checkpoint
   classifies canonical state (`0x782999`, `0x78299e`, `0x782c18`), tokenizer
   scratch (`0x782a26`, `0x782a2a..`, `0x782a3e`, `0x782a42..`,
@@ -470,7 +499,10 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x783184..0x78318a`, raster mode/scale caches, delayed raster row
   coordinates, and mode-selected encoded raster object bytes. Evidence:
   `Text Span Flush And Fixed-Width Spans`,
-  `generated/analysis/ic30_ic13_page_record_bridge.md`, and raster fixtures.
+  [page-raster-imaging.md](page-raster-imaging.md),
+  `Bitmap Render Dispatch Contract` in
+  [semantic-state-model.md](semantic-state-model.md), raster fixtures, and
+  supporting report `generated/analysis/ic30_ic13_page_record_bridge.md`.
 - Firmware bookkeeping: publication flag `0x782996`, page/root transient
   bytes `0x78297e`, `0x782c72`, `0x782c73`, retry flag bit in page-root
   `+0x14`, macro/data-chain frames, and heap/resource allocation metadata.
@@ -801,6 +833,7 @@ than open middle edges.
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block the documented byte-stream renderer;
    it only blocks hardware-level emulation claims. Evidence:
+   [host-byte-fetch.md](host-byte-fetch.md) and supporting report
    `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 7. Final device-output validation is not yet a real printer comparison. The
    harness proves ROM-derived rows internally, but pixel-perfect confidence

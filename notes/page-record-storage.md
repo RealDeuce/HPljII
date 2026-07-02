@@ -275,12 +275,11 @@ A byte-stream renderer must preserve:
 High for page-root creation, initializer fields, stream allocator accounting,
 bucket reuse/new-head behavior, rule/fixed insertion order, no-room returns,
 publication root/header fields, and render-record bridge copies because each is
-backed by disassembly and named fixtures.
-
-Medium for allocator provenance because current fixtures model the allocator
-result and bridge state for dense pages. This is not a remaining
-software-visible page-record edge. The shared `0x170c` / `0x1710` / `0x18b4`
-heap contract itself is covered by the macro/parser firmware checkpoint.
+backed by disassembly and named fixtures. High for allocator provenance at the
+page-record boundary because the addressed page-record fixtures prove the
+`0x1381c` results and bridge state, while the shared `0x170c` / `0x1710` /
+`0x18b4` heap contract is covered by the macro/parser firmware checkpoint.
+This is not a remaining software-visible page-record edge.
 
 ## Remaining Edges
 

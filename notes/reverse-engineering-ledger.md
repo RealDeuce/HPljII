@@ -1553,9 +1553,12 @@ ROM work needed:
   digest.
 - Treat executable row-copy behavior with real page objects from the
   parser/imaging path as covered for the documented mixed text/rule/raster,
-  downloaded-glyph, and publication streams. Remaining row-copy work is
-  broader cross-feature/full-page variants, not the basic parser-produced
-  page-object integration.
+  downloaded-glyph, and publication streams. The row-count publication family
+  now renders parser-produced rows `0x0001..0x00ff`, and the exact ROM-local
+  row-copy boundary is short compact fallback indices above the `0x1fe76`
+  valid table maximum `128`. Remaining row-copy work is new byte streams that
+  change helper dispatch or rows, plus broader cross-feature/full-page
+  variants; it is not the basic parser-produced page-object integration.
 - Broaden the documented printable and inline/downloaded `0x1393a` /
   `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` source-object and compact
   bucket fixtures only with streams that expose new font metrics, glyph

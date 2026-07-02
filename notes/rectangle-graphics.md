@@ -151,8 +151,11 @@ Parser scratch:
 
 Unknown:
 
-- Parser-to-allocator no-room variants that change retry publication fields,
-  heap/free-list effects, bridge state, or rendered rows.
+- New rectangle byte streams are unknown only when they change a
+  pixel-affecting boundary not already covered by the fixtures below: clipped
+  source record, `0x1381c` allocation/rollover state, rule object bytes,
+  bridge-normalized rule list, no-room retry publication state, render
+  dispatch, or rendered rows.
 
 ## Size Commands
 
@@ -618,6 +621,35 @@ this mixed composition across render bands. It carries a mutated patterned
 rule node from band `0` to band `5`, while compact text and mode-0 raster
 bucket entries continue to dispatch through `0x1efc2`.
 
+## Covered Boundary
+
+The rectangle/rule checkpoint is covered from parser dispatch through visible
+rows for these concrete clusters:
+
+- `ESC *c12a5b0P`: parser modes `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0`, handlers
+  `0x11eb6`, `0x11ec8`, `0x11eda`, `0x10e68`, `0x10e22`, and `0x10898`, and
+  the selector-7 rule object under page-root `+0x24`.
+- `! ESC *c12a5b0P`: host-fetched compact text plus selector-7 rule, bridged
+  through `0x1ed84` / `0x1edc6` and rendered through `0x1ef6a`.
+- `! ESC *c12a5b#g2P` and `! ESC *c12a5b#g3P`: gray selectors `0..6`,
+  pattern selectors `8..13`, and landscape pattern remaps `1 -> 9`,
+  `2 -> 8`, `3 -> 11`, and `4 -> 10`.
+- `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c`: compact text,
+  selector-7 rule, one mode-0 raster object, addressed storage, FF
+  publication, and published render rows.
+- The two-transfer sibling ending in `ESC *b2W f0 0f ESC *b2W 0f f0 FF`:
+  newest-first raster bucket chain, the same selector-7 rule list, addressed
+  storage, publication, and render dispatch.
+- The no-room retry path at `0x10d22`: an existing compact text bucket is
+  published through `0xff1e`, a fresh root is allocated through `0x10084`, and
+  the preserved selector-7 source record is retried through `0x13386`.
+
+These streams cover multiple handlers in the same command family, the shared
+`0x10b80 -> 0x13386 -> 0x133aa` producer path, the shared no-room exit, and
+end-to-end parser-to-render output. New rectangle work should start only from
+a stream that changes one of those fields or rows, not from another proof of
+the same selector/object/bridge path.
+
 Writers are the parser handlers and producers listed above, plus `0xff1e`
 when fixtures `host-fetched text rectangle raster FF publishes rendered page
 record` and `addressed text rectangle raster FF publishes rendered page
@@ -656,10 +688,13 @@ A byte-stream reproduction must preserve these behaviors:
 
 ## Remaining Edges
 
-- `0x10898..0x133aa` is documented and fixture-backed, including host-fetched
-  streams and no-room retry. Remaining work is parser, `0x10b80`, and
-  `0x1381c` variants that change clipping output, allocator retry state, rule
-  object bytes, bridge state, or rendered rows.
+- `0x10898..0x133aa`: no unresolved software-visible middle edge remains for
+  the covered selector-7, gray-selector, pattern-selector, landscape-remap,
+  clipping, no-room retry, addressed-storage, publication, and mixed
+  text/rule/raster streams listed in `Covered Boundary`. Remaining ROM-local
+  work is limited to byte streams that change clipping output, `0x1381c`
+  rollover/allocation state, retry publication fields, rule object bytes,
+  bridge state, render dispatch, or rendered rows.
 - Pattern rendering is fixture-pinned for selectors, masks, shifted rows, and
   band crossing. The initial mixed text/rule/raster/FF byte stream now provides
   a complete parser-produced page comparison with selector-7 rule output,

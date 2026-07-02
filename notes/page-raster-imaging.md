@@ -718,6 +718,21 @@ bucket through `0xff1e`, ensures a fresh root through `0x10084`, retries
 the preserved source pointer `0x00d06004`, and renders rows matching the
 published bucket through `0x1effe`.
 
+The short-object retry contract is exact for both source families:
+
+- flagged `0xd824` source tuple
+  `(mapped=0x20, flag=1, x=16, y=0, slot=0)` first tries to allocate
+  object size `0x26`, receives pointer `0`, publishes old bucket prefix
+  `00 00 00 00 00 00 00 01 20 00 01`, retries at object pointer
+  `0x00d06004`, and renders the same 22 rows with digest
+  `235986bdd28abaaef315961960ac87d846cbb5228ca5c07ef560df56501a30e3`.
+- unflagged `0xd3b2` source tuple
+  `(mapped=0x01, flag=0, x=22, y=22, slot=3)` uses the same retry sequence,
+  publishes/retries bucket prefix `00 00 00 00 00 03 00 01 01 66 01`,
+  dispatches bucket word `1` through `0x1effe`, and renders the same 22 rows
+  with digest
+  `d696456ad5c91a1a568d1b1c45fcf7e322fe15c12a3805783145ccc7074806e6`.
+
 Fixture `0xd3b2 and 0xd824 segmented text queue no-room retry preserves
 source and rows` extends the same retry contract to tall/segmented text
 objects. The unflagged rows-`0x81` case retries bucket words `9` and
@@ -727,6 +742,26 @@ rows through `0x1effe`. The remaining uncertainty is broader selector-mode
 cross-products that change source fields, allocator retry behavior, bucket
 shapes, or visible rows, not the paired no-room return semantics or row
 contract for these source families.
+
+The segmented retry contract is also exact:
+
+- unflagged `0xd3b2` segmented source
+  `(mapped=0x01, flag=0, x=22, y=22, slot=3)` fails first at bucket `9`,
+  segment `1`, selector `0x2003`, object size `0x28`; retry emits bucket
+  `9` object `00 00 00 00 20 03 00 01 01 01 66 01` and bucket `1`
+  object `00 00 00 00 20 03 00 01 01 00 66 01`. Published and retried
+  rows match for bucket words `9` and `1` with digests
+  `ab4ebb802552dc6ad497da75344f369876cc9f0fabbffdfc7801213b9a7ff372` and
+  `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
+- flagged `0xd824` tall built-in source
+  `(mapped=0x1f, flag=1, x=0, y=0, slot=0)` fails first at bucket `64`,
+  segment `8`, selector `0x2000`; retry emits bucket indexes
+  `[0, 8, 16, 24, 32, 40, 48, 56, 64]`, with first prefix
+  `00 00 00 00 20 00 00 01 1f 08 00 00` and last prefix
+  `00 00 00 00 20 00 00 01 1f 00 00 00`. Published and retried rows match
+  for bucket words `64` and `0` with digests
+  `c2c1504836f113d5a2c89168702ccb008dcc93126cfcf55a57964ba889170318` and
+  `15b6d4e1c1691ca7d6204259f3dfff5c96575588c0c71c8ff011898581be4f35`.
 
 `generated/analysis/ic30_ic13_printable_text_path.md` anchors the live
 normal parser path into that source-object builder. Routine `0x11774`

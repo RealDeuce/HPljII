@@ -476,13 +476,17 @@ Line Printer glyph entry `0x015330`: glyph-entry x offset `6` and y
 offset `21` transform cursor `(10,21)` into source `(16,0)`, then
 `0x12f2e` emits compact coord `0x0001`.
 
-The unresolved middle edge is now narrower than "built-in metrics":
+No ROM-internal middle edge remains for these built-in metric consumers:
 `0xc428`/`0x10550` covers record `+0x24`, `0xd824` covers glyph-entry
 `+0/+2`, `0x1519a` consumes record `+0x28/+0x2a` as decoded-height
 inputs before `0x13bca`, and `0x1428c` consumes `+0x2f..+0x31` as
-same-class chooser tie-breakers after `0x14398` / `0x13c06`. The open
-boundary is physical/manual naming of those height/baseline/cell fields
-against a known printed font/self-test sample.
+same-class chooser tie-breakers after `0x14398` / `0x13c06`.
+Parser-produced downloaded metric payloads are tracked separately in
+[font-context-metrics.md](font-context-metrics.md), where the tested
+`0x1719c -> d4ac/d8fc` copied-field paths are closed by legal matrix and
+byte-boundary fixtures. The remaining boundary here is physical/manual
+naming of the built-in height/baseline/cell fields against a known printed
+font/self-test sample.
 
 The `0x1c334..0x1c5e4` candidate traversal is now decoded through both
 internal-font source-group class passes. Fixture
@@ -918,23 +922,28 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
 4. Add new downloaded-font streams only when they change installed records,
    source objects, page-record memory, or rendered rows. The current boundary
    coverage already chains fetched `ESC *c4660d37e5F` state into fetched
-   `ESC )s0W`,
-   `ESC )s80W`, and `ESC )s2193W` streams, with fetched `ESC )s2193W`
-   now crossing `0x1ed84`/`0x1ef6a`; the fetched
+   `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` streams, with fetched
+   `ESC )s2193W` now crossing `0x1ed84`/`0x1ef6a`; the fetched
    `ESC )s18W` payload-control path now crosses `0x1edc6` and
    `0x1ed84`/`0x1ef6a` before wide glyph rendering, and a combined
    fetched font-control / downloaded-character / printable stream now
    drives the installed downloaded glyph into segmented page-record
    buckets before `0x1ed84`/`0x1ef6a` rendering. That combined stream is
-   now pinned as a 2,215-byte single `0xa904` ring source with control,
+   pinned as a 2,215-byte single `0xa904` ring source with control,
    payload, and printable boundaries, restored record
    `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
    and `1`, and compact render dispatch target `0x1effe`. The even-span
-   `ESC )s18W` rule/raster composition also has its `font_command_final_header`
-   handoff pinned. Remaining work is new downloaded-font streams that change
-   the installed header, page-object payload, bucket assignment, render
-   dispatch, or row digest; the documented variants no longer have a missing
-   parser-produced page-object payload.
+   `ESC )s18W` rule/raster composition also has its
+   `font_command_final_header` handoff pinned. The downloaded-font and
+   metric checkpoints now cover descriptor validation, legal metric
+   matrices, width/row/span/high-row matrices, no-install and status-2
+   recovery, bit-30-clear fixed-record cases, payload-control returns,
+   combined installed-glyph output, parser-driven rule/raster output, and
+   FF publication variants. Remaining downloaded-font work should start
+   only when a stream changes the installed header, current-record or
+   candidate state, byte-24 handoff, `0x783140` remainder, `0x12328` drain
+   status, next handler, page-record selector or bucket, render dispatch, or
+   row digest.
 5. Correlate the remaining built-in metadata names against physical sample
    placement. Record `+0x24` is pinned as the `0xc428` / `0x10550` HMI
    source, first-glyph placement offsets are pinned through the `0xd824`

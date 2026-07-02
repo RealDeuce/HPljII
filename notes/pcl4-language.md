@@ -122,6 +122,30 @@ ESC &l1o2A
 Parser implication: the same final letter in different case can mean
 "parameter continues" versus "command terminates".
 
+ROM implementation details:
+
+- The parser loop at `0x11774` uses six-byte table records:
+  byte-to-match, next parser mode, and handler longword.
+- Lowercase finals keep the parser in the same command family by selecting a
+  nonzero next mode; uppercase finals usually return the parser to mode zero
+  after the terminal handler runs.
+- The current command-record cursor `0x78299e` is rewound by six when a
+  helper needs the just-parsed record again. This matters for chained
+  families such as raster `ESC *b2w2W`, macro/font tokenizer helpers, and
+  delayed payload readers.
+- Counted payload commands are not just syntax tokens. Helpers store the
+  pending handler and a copy of the six-byte record at
+  `0x782a1a..0x782a25`; `0x12218` later restores that record before calling
+  the payload handler.
+
+Evidence:
+[pcl-parser-core.md](pcl-parser-core.md) documents the parser table,
+stateful helper, and delayed-payload contracts. Command-family effects are
+composed in [raster-graphics.md](raster-graphics.md),
+[downloaded-fonts.md](downloaded-fonts.md),
+[macro-data-chain.md](macro-data-chain.md), and
+[vertical-forms-control.md](vertical-forms-control.md).
+
 ## Coordinate System
 
 External PCL coordinate units:

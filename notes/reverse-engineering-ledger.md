@@ -1512,8 +1512,11 @@ ROM work needed:
   row `I01COURIER101210U` after pre-row y advance
   `0x00520000 -> 0x00900000`, and pins bucket digest
   `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
-  The next boundaries are broader row-overrun cross-products and physical
-  baseline/cell comparison against a known printed/self-test sample.
+  Additional row-overrun streams are regression cross-products unless they
+  expose a page-record object form outside the covered heading-preflight,
+  class-zero `I01`, class-one `I16`, and alternate-row `I01` forms. The next
+  non-regression boundary is physical baseline/cell comparison against a known
+  printed/self-test sample.
 - Fixture `live parser symbol-set streams select non-Roman built-ins` now
   broadens the named `0N` / `10U` / `11U` samples from static map evidence
   into primary parser/font-selection evidence. Streams `ESC (0N`,

@@ -1184,11 +1184,13 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   `I01COURIER101210U` after pre-row y advance
   `0x00520000 -> 0x00900000`, and pins bucket digest
   `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
-  Broader row-overrun cross-products and physical baseline/cell/page placement
-  against a known self-test or font sample remain open. The record fields
-  consumed by `0x1519a` and `0x1428c` are documented as decoded-height inputs
-  and same-class chooser tie-breakers; only their external/manual names remain
-  unknown.
+  Additional row-overrun byte streams are regression cross-products unless
+  they expose a page-record object form outside the covered heading-preflight,
+  class-zero `I01`, class-one `I16`, and alternate-row `I01` forms. Physical
+  baseline/cell/page placement against a known self-test or font sample remains
+  separate validation. The record fields consumed by `0x1519a` and `0x1428c`
+  are documented as decoded-height inputs and same-class chooser tie-breakers;
+  only their external/manual names remain unknown.
 - Keep resource-window work focused on the exact physical decode gap.
   [resource-rom.md](resource-rom.md) now composes the
   `0x1a2e4 -> 0x1a616 -> 0x1a9be` candidate windows and selection state. The

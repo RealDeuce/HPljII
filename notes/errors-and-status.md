@@ -21,10 +21,12 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch.
 
 ## ROM Status Composition
 
-The ROM has two fixture-backed status paths that matter to byte-stream
-reproduction even though they do not draw pixels themselves:
+The ROM has three documented status/backchannel paths that matter to
+byte-stream reproduction even though they do not draw pixels themselves:
 
 - host/interface backchannel status through `0xae2c` / `0xaece`;
+- host/interface model-ID response bytes through `0x12034` /
+  `0x122be..0x12326`;
 - page-environment service status through `0x2888`, `0x7612`, `0x8a48`, and
   `0x8656`.
 
@@ -68,6 +70,19 @@ Derived/cache status:
   `0xaece` and selects `0x8a48` instead of `0x8656` in the page-pool cursor
   service path.
 - `0x780e98`: cached status code used by `0x8a48` media-feed formatting.
+
+Canonical backchannel response:
+
+- `0x12280..0x12288`: zero-terminated literal `33440A\r\n`.
+- Active six-byte parser record word `+2`: the model-ID response handler emits
+  the literal only when this word is `1` or `-1` and the fetched query byte is
+  `0x11`.
+- `0x12034`: command-table wrapper reached from `ESC *r#K` and `ESC *s#^`. It
+  calls setup helper `0x11efe`, which appends a synthetic secondary/setup
+  six-byte record with word `+2 = 1`, then enters `0x122be`.
+- `0x122be..0x12326`: producer that rewinds `0x78299e` to the synthetic record,
+  fetches the following byte through `0xda9a`, and either enqueues the literal
+  through `0xb090` or reports the byte through `0x9ec0`.
 
 Firmware bookkeeping:
 
@@ -114,6 +129,9 @@ Unknown:
 - `0xaece` clears `0x783e61` after service byte `0x13`, decrements
   `0x780e22` after a status byte is accepted, and records accepted byte
   `0x780e62`.
+- `0x122be..0x12326` writes response bytes by walking the literal at
+  `0x12280` and calling `0xb090` for each byte when the parser/query gate
+  passes.
 - `0x36e4` derives aggregate fields `0x780e12`, `0x780e0e`, `0x780e0a`,
   and `0x780e68`.
 - `0x2888` clears or sets `0x780e90`, writes `0x780e98`, and ORs
@@ -141,6 +159,11 @@ Unknown:
 - `0xae2c` is the output worker. It sleeps only when FIFO count
   `0x783ed2`, pending status count `0x780e22`, and bridge-service byte
   `0x783e61` are all zero.
+- `0x12034` is the observed parser-table entry that reaches the model-ID
+  response producer from `ESC *r#K` and `ESC *s#^`.
+- `0x122be..0x12326` consumes a parser byte through `0xda9a` and the active
+  record word `+2`. The accepted `0x11` query with word `1` or `-1` emits
+  `33440A\r\n`; other bytes are pushed back/reported through `0x9ec0`.
 - `0xaece` builds outbound status bytes from base `0x30`: `0x780e12` or
   `0x780e90` sets bit `0`, `0x780e2a` sets bit `1`, `0x780e0a` sets bit
   `2`, and `0x783e60` is ORed into the byte.
@@ -167,9 +190,12 @@ These paths do not create page-record objects and do not feed `0x1ed84` or
   `0xb090`;
 - a bidirectional host may react to service/status bytes, changing the future
   byte stream that reaches `0xa904`.
+- a bidirectional host may also react to the literal `33440A\r\n` model-ID
+  response; a closed byte-stream renderer can ignore that response unless its
+  host script depends on backchannel bytes.
 
-For a closed byte-stream renderer that ignores backchannel responses, the
-fixture-backed status paths are protocol and service-scheduling state, not
+For a closed byte-stream renderer that ignores backchannel responses, these
+status/backchannel paths are protocol and service-scheduling state, not
 bitmap-composition state.
 
 ### Confidence And Evidence
@@ -177,7 +203,10 @@ bitmap-composition state.
 Confidence is high for FIFO capacity/order, output mode selection, outbound
 status-byte composition, `0x780e90` production, media-feed message selection,
 and normal service-message routing because these are direct disassembly reads
-and executable fixtures.
+and executable fixtures. Confidence is high for model-ID literal emission from
+the disassembly path `0x12034 -> 0x122be..0x12326` and string-table hit at
+`0x12280`; this specific producer is not currently covered by a dedicated
+fixture.
 
 Fixture evidence:
 
@@ -196,6 +225,8 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`
 - `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`
 - `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
+- `generated/analysis/ic30_ic13_strings.txt`
 - `generated/disasm/ic30_ic13_page_environment_status_002888.lst`
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`
 - `generated/disasm/ic30_ic13_page_service_messages_008656.lst`
@@ -207,10 +238,13 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - No unresolved ROM object/rendering edge remains in these status paths.
-- Remaining work is the external protocol name for the `0x11` query that
-  emits `33440A\r\n` from `0x12280`, user-facing names for folded status
-  categories and selected record bytes, physical panel behavior after
-  `0x9406`, and physical naming/timing for the output MMIO banks.
+- `0x12034 -> 0x122be..0x12326`: producer entry, parser/query gate, literal
+  bytes, and output FIFO writes are pinned. The remaining work is only the
+  external protocol name for the `0x11` query that emits `33440A\r\n` from
+  `0x12280`.
+- Other remaining work is user-facing names for folded status categories and
+  selected record bytes, physical panel behavior after `0x9406`, and physical
+  naming/timing for the output MMIO banks.
 
 ## Attendance / User Action
 

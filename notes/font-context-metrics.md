@@ -1125,21 +1125,20 @@ work can close the right gap instead of re-tracing already-covered consumers.
   Status: parser printable to page-record/render fixture with synthetic
   metric values for both source forms.
 
-The remaining unresolved middle edge is therefore not the tested `0x1719c`
-type-0, type-1, or type-2 metric paths into either `0xd4ac` or `0xd8fc`: all
-three payload forms now have host-fetched evidence through visible span rows,
-and the consumer-side disabled, lower-bound, page-extent, and high-x branches
-are fixture-backed for both selected source forms. The legal metric matrix and
-boundary fixture now prove copied descriptor values can flip the `d4ac`
-page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`,
-preserve zero rounded/offset fields through visible `d4ac` and `d8fc` span
-objects, preserve negative and max-positive flagged offset bytes as copied
-words `0xfffe` and `0x007f`, accept `d8fc` lower-bound equality and exact
-page-extent equality, move `d8fc` visible rows, update `d8fc` without
-publishing a span object, suppress both span consumers through descriptor-owned
-lower-bound fields, and suppress only `d8fc` through descriptor-owned
-upper-bound fields while preserving `d4ac` span output and compact glyph
-output. Fixture
+There is no unresolved middle edge in the tested `0x1719c` type-0, type-1, or
+type-2 metric paths into either `0xd4ac` or `0xd8fc`: all three payload forms
+now have host-fetched evidence through visible span rows, and the consumer-side
+disabled, lower-bound, page-extent, and high-x branches are fixture-backed for
+both selected source forms. The legal metric matrix and boundary fixture now
+prove copied descriptor values can flip the `d4ac` page-extent gate, exercise
+rounded-metric clamping into `+0x2c/+0x2d`, preserve zero rounded/offset fields
+through visible `d4ac` and `d8fc` span objects, preserve negative and
+max-positive flagged offset bytes as copied words `0xfffe` and `0x007f`,
+accept `d8fc` lower-bound equality and exact page-extent equality, move
+`d8fc` visible rows, update `d8fc` without publishing a span object, suppress
+both span consumers through descriptor-owned lower-bound fields, and suppress
+only `d8fc` through descriptor-owned upper-bound fields while preserving
+`d4ac` span output and compact glyph output. Fixture
 `descriptor metric fields match across inline and resource contexts` now pins
 the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
@@ -1287,6 +1286,13 @@ Output effect:
   consumers` proves inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010` and keep
   both consumers on the documented visible output paths.
+- Fixture `legal descriptor metric byte-boundary rounding drives d4ac and
+  d8fc consumers` proves rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and
+  `0x0102` copy to `+0x2c = 0x00fc/0x0100/0x0100/0x0104`; a range/count
+  `0x0040` sibling caps `0x0102` back to `0x0100`. The copied `0x00fc` case
+  leaves `d4ac` on compact-only output, while crossing to `0x0100` restores
+  the standard `d4ac` span digest. The same submatrix keeps `d8fc` at
+  `beyond-page-extent` because the derived `+0x18` exceeds the page extent.
 
 Confidence:
 
@@ -1344,7 +1350,8 @@ Unresolved middle edges:
   consumed-but-not-staged fields.
 - `0x17430..0x1763c`: the covered legal matrix proves the main range/count,
   first-code-zero and range-minus-one endpoints, rounded/clamped,
-  signed-offset, equality, and low-byte-discard behavior.
+  signed-offset, equality, low-nibble, byte-boundary, and low-byte-discard
+  behavior.
   Additional legal metric values remain cross-products rather than new
   semantic edges.
 - `0xd4ac..0xd992`: disabled, lower-bound, page-extent, high-x, exact extent,

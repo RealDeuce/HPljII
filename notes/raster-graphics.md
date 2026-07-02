@@ -304,6 +304,47 @@ Instruction-level transfer outline:
 - `0x106f8..0x10752`: update portrait or landscape cursor state unless the
   transfer failed with `D5 = -1`.
 
+Register and memory handoff across the producer boundary:
+
+- `0x105d8..0x105f2`: `A4` is raster state block `0x783170`; `A5` is the
+  restored parser record at `0x78299e - 6`; `D5` is the absolute byte count
+  from record word `+2`; and `0x78299e` is rewound to that restored record.
+- `0x10606..0x10658`: `D4` is the long row coordinate. Portrait reads
+  vertical cursor `0x782c8e`; landscape derives the row from horizontal
+  cursor `0x782c8a`, page width `0x782db2 << 16`, and helper `0x10510`.
+  Helper `0x10518` applies raster scale `+0x0e` before the page-extent
+  comparison.
+- `0x10670..0x106a0`: accepted count `+0x04` and overflow count `+0x06` are
+  committed before any page-root mutation.
+- `0x106a4..0x106cc`: `0x10084` is called only after the beyond-extent gate.
+  The row word stored at state `+0x02` is `D4 >> 16`; negative rows drain
+  payload through `0xdace` and skip `0x13070`; nonnegative rows pass `A4` as
+  the sole `0x13070` argument.
+- `0x10084..0x1010e`: an existing `0x78297a` root returns unchanged. A missing
+  root optionally publishes/services through `0x9ac2`, allocates through
+  `0x9a9a`, marks root byte `+0x04 = 1`, clears `0x782a70`, seeds
+  `0x782a72 = root + 0x20`, stores `0x78297a`, calls `0x10110`, clears
+  `0x782990`, and zeroes 256 bucket heads through the pointer at root
+  `+0x1c`.
+- `0x10110..0x10218`: root initialization clears publication/retry fields,
+  caches geometry words, clears 16 context slots and their byte flags, and
+  copies the selected-font context from `0x782ee6 + 16 * byte(0x782f06)` into
+  root slot `+0x2c`.
+- `0x13070..0x1313c`: `0x13070` consumes the same state pointer. State `+0x02`
+  selects bucket `0x782a7c = row >> 4`; state `+0x00` plus page x-offset
+  `0x782dc0` and row low bits form packed key `0x782a7e`; state `+0x04` is
+  rounded up if odd, then size `accepted + 0x0a` and mode state `+0x08` are
+  passed to `0x13250`.
+- `0x13250..0x132ae`: `0x13250` calls allocator helper `0x132b6`, links the
+  returned object into page-root bucket array `root+0x1c[0x782a7c]`, writes
+  class byte `+0x04 = 0x80`, copies the mode byte to `+0x05`, and returns the
+  object pointer in `D7`.
+- `0x13146..0x13220`: after allocation, `0x13070` writes object `+0x06` from
+  `0x782a80`, writes object `+0x08` from `0x782a7e`, calls `0x138de`, then
+  loops for remaining bytes unless `0x782996 == 1` or `0x138de` returns `-1`.
+- `0x1317e..0x1324e`: zero-length, no-room, or copy-stop exits drain the
+  remaining transfer through `0x12328` using state words `+0x04 + +0x06`.
+
 After a non-`-1` transfer result, `0x105d0` advances cursor state:
 
 - portrait path restores horizontal cursor from raster origin `+0x0a` and adds
@@ -602,15 +643,16 @@ A byte-stream reproduction must preserve these behaviors:
   `0x11f82` scheduling, `0x121cc` snapshot layout, `0x12218` restore and
   direct dispatch, and `0x105d0` re-reading the restored six-byte record from
   `0x78299e - 6`.
-- The disassembly-derived handoff is documented: `0x105d0` carries state pointer `A4 =
-  0x783170`, restored parser record `A5 = 0x78299e - 6`, absolute byte count `D5`,
-  orientation-derived row longword `D4`, accepted count `+0x04`, overflow `+0x06`, and
-  stored row `+0x02`; `0x10084` either returns an existing `0x78297a` root or allocates,
-  initializes, and bucket-clears a new root; `0x13070` consumes the same state pointer,
-  derives `0x782a7c` / `0x782a7e`, passes size and mode to `0x13250`, and uses `0x132b6`
-  stream-chunk state `0x782a70` / `0x782a76` / `0x782a80` before `0x138de` copies
-  payload bytes. The dense-row split rule through `0x132b6` is documented above. The
-  composed semantic ledger is in
+- The disassembly-derived handoff is documented above with exact boundaries:
+  `0x105d8..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, and
+  `0x132b6..0x13382`. That handoff pins the state pointer `A4 = 0x783170`,
+  restored parser record `A5 = 0x78299e - 6`, absolute byte count `D5`,
+  orientation-derived row longword `D4`, accepted count `+0x04`, overflow
+  `+0x06`, stored row `+0x02`, root pointer `0x78297a`, bucket/key fields
+  `0x782a7c` / `0x782a7e`, stream allocator fields `0x782a70` /
+  `0x782a76` / `0x782a80`, and payload copy through `0x138de`.
+- The dense-row split rule through `0x132b6` is documented in `Allocation Capacity And
+  Dense Rows`. The composed semantic ledger is in
   [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
 - Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
   `0x132b6` should target new byte streams that change the raster chain,

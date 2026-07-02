@@ -4852,8 +4852,13 @@ metadata, HMI, compact object bytes, render context slot, and final rows
 because they are all fixture-pinned against ROM-derived helpers. High for the
 primary and secondary parser-to-printable state edge because the inline
 fixtures preserve one mixed-stream state from selection handlers through
-following printable source capture and row comparison. Medium for broader
-`0x13eb8` refresh variants not yet carried to visible output.
+following printable source capture and row comparison. High for the direct
+no-dispatch refresh variants because
+`0x13eb8 no-dispatch exits keep prior visible rows` carries both the
+transient-context and cache-hit exits through printable/SO tails, prior
+contexts, bridged context slots, object prefixes, and row digests. Remaining
+refresh work is broader `0x13eb8` / `0x156de` / `0x14c64` state combinations
+that expose new selected-context, map, or page-root slot behavior.
 High for primary and secondary visible-output handling of `0N`, `10U`, and
 `11U` because fixture `non-Roman symbol streams select visible built-ins`
 preserves symbol-set parsing, font-selection refresh, SO for secondary,

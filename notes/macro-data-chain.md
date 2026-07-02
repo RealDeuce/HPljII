@@ -117,6 +117,16 @@ Canonical overlay state:
   `4`.
 - Page-root flag bit `+0x14.0`: retry gate that suppresses overlay replay
   while preserving base page publication.
+- Covered overlay payloads reuse canonical print-state fields rather than
+  inventing an overlay-specific renderer. `0xf39e` writes horizontal cursor
+  `0x782c8a`; `0xf60a` writes vertical cursor `0x782c8e`; `0xeb58` and
+  `0xec0c` write left/right margins `0x782dd6` / `0x782dda`; and raster
+  payload handlers queue the same mode-0 raster records documented in
+  `notes/raster-graphics.md`.
+- Span-flush overlay payloads reuse canonical pending-span fields
+  `0x783186..0x78318a`: `0xf34a` / `0x12714` publish a selector-`0x4000`
+  segment-list object, and `0x126e2` re-arms the pending span for following
+  text.
 
 Canonical macro context and font refresh:
 
@@ -148,6 +158,11 @@ Derived/cache state:
   not have a separate renderer.
 - Non-replay overlay setup snapshots and restores flat environment state
   before replaying the stored payload against the page being published.
+- Covered overlay fixture coords and rule decoder suffixes are derived/cache
+  evidence: compact text coords such as `0x0a02`, `0x9001`, `0x3a02`, and
+  `0x0207`, and rule mutations such as tail words `ff ca`, `ff cc`, and
+  `ff d0`, are products of page-record bridge/render consumers rather than
+  host-visible parser state.
 
 Parser scratch:
 
@@ -158,6 +173,10 @@ Parser scratch:
   than dispatched.
 - `0x782c18` and `0x782c19` gate definition mode and macro append errors.
 - `0x78299e` is rewound by `0xdd08` before selector dispatch.
+- Non-replay overlay fixtures restore the stored payload bytes as parser
+  scratch under `0xa904` / `0x11774`; examples include `ESC &a72V!`,
+  `ESC &a2c+1R!`, delayed transparent record `80 58 00 02 00 00`, and the
+  delayed raster `ESC *b#W` payload bytes.
 
 Firmware bookkeeping:
 
@@ -166,6 +185,9 @@ Firmware bookkeeping:
 - `0xe8f0` allocation failure reports status through `0x9b5e(0x780e2e, 4)`
   and backs out frame setup.
 - `0xe22c` calls `0x1240a` after execute/call and non-replay frame endings.
+- The non-replay overlay frame byte count and frame mode bytes are firmware
+  bookkeeping. Covered overlay frames use source byte `+8 = 4` and frame kind
+  `+9 = 4`, then `0xe22c` restores parser/page state after replay.
 
 Unknown:
 
@@ -362,9 +384,87 @@ The overlay payload matrix now crosses multiple command families:
 - `ESC &a6L!` materializes a selector-`0x4000` span object through `0x12714`
   before queuing the following printable glyph.
 
+The fixture-backed render contract for that matrix is:
+
+- Repeated overlay publication replays `!\r` on two page boundaries. The first
+  page composes with selector-7 rule object
+  `00 00 00 00 01 07 88 01 00 0c 00 03 00 00`.
+  Digest:
+  `0629159c6a0f5c4a23508d5bfab14b725e13f0bfa32b82efca091aec425fa4c0`.
+  The second page composes with selector-7 rule object
+  `00 00 00 00 01 07 e4 00 00 08 00 04 00 00`.
+  Digest:
+  `2d52675c52b22b80e87a379e32894c7a9638596770093d2fd80b64e25559977e`.
+- The skip-gate fixture publishes base printable `?` plus selector-7 rule
+  `00 00 00 00 01 07 a2 00 00 06 00 02 00 00`. Disabled overlay mode,
+  missing selected record, and page-root retry flag preserve the same digest:
+  `425e0a2abf918906a45f655b589c615108f72ca6b89dc1b280b99121e4405e43`.
+- Mixed-control overlay payload `ESC &k1G!\r!` writes line-termination mode
+  `0x80`, queues compact text payload `00 02 20 00 01 20 3b 00`, and
+  composes with selector-7 rule
+  `00 00 00 00 01 07 cc 01 00 08 00 02 00 00`, mutated by `0x1f596` to
+  `00 00 00 00 01 07 cc 01 00 08 00 02 ff ce`. Digest:
+  `04d32edf47d03c587abc0abaf750c6a2d634ceea80df9787681b618867136f52`.
+- Cursor-position overlay payload `ESC &a2C!` routes through `0xf39e`, moves
+  packed horizontal cursor `10 -> 36`, queues compact text payload
+  `00 01 20 0a 02`, and composes with selector-7 rule
+  `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, mutated to
+  `00 00 00 00 01 07 82 02 00 07 00 02 ff ca`. Digest:
+  `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`.
+- Vertical-decipoint overlay payload `ESC &a72V!` routes through `0xf60a`,
+  moves packed vertical cursor `20 -> 30`, queues compact text payload
+  `00 01 20 90 01` at coord `0x9001`, and composes with selector-7 rule
+  `00 00 00 00 01 07 88 01 00 07 00 02 00 00`, mutated to
+  `00 00 00 00 01 07 88 01 00 07 00 02 ff ca`. Digest:
+  `7ef1cc5d5557fa5a30c57e8ad6918b09747c210daed2639e9d75ccfed727e964`.
+- Chained cursor-position overlay payload `ESC &a2c+1R!` routes through
+  `0xf39e`, parser mode `12`, `0xf560`, and `0xd04a`; moves packed cursor
+  `(10, 21) -> (36, 24)`; queues compact text payload `00 01 20 3a 02`; and
+  composes with selector-7 rule
+  `00 00 00 00 01 07 a6 02 00 06 00 02 00 00`, mutated to
+  `00 00 00 00 01 07 a6 02 00 06 00 02 ff cc`. Digest:
+  `0275857ffbcc11aa5234644930ebcd31571c2178eaf52b79590989d31b39f653`.
+- Chained margin overlay payload `ESC &a6l9M!` routes through `0xeb58`,
+  parser mode `12`, `0xec0c`, and `0xd04a`; writes packed left/right margins
+  `108` / `180`; queues compact text payload `00 01 20 02 07`; and composes
+  with selector-7 rule `00 00 00 00 01 07 6c 02 00 05 00 02 00 00`, mutated
+  to `00 00 00 00 01 07 6c 02 00 05 00 02 ff c8`. Digest:
+  `ecae0043ee656ceba42d4d6e052e3d56a365eeb4a847b3b430f80eed72b5a199`.
+- Transparent overlay payload `ESC &p2X!!` reaches `0x11f5a`, saves delayed
+  record `80 58 00 02 00 00`, restores it through `0x12452`, routes raw
+  bytes `21 21` through `0xd04a`, and queues compact text object prefix
+  `00 00 00 00 00 00 00 02 20 00 01 20 02 02`. The selector-7 rule
+  `00 00 00 00 01 07 e0 02 00 09 00 02 00 00` mutates to
+  `00 00 00 00 01 07 e0 02 00 09 00 02 ff d0`. Digest:
+  `1ee999b850b4a35aa2b01b72ae01da961ee4084f0369f4ded5c8e8152464dac8`.
+- Raster overlay payload `! ESC *t300R ESC *r0A ESC *b2W c3 3c` builds a
+  20-byte non-replay frame, queues compact text plus mode-0 raster object
+  `00 00 00 00 80 00 00 02 00 00 c3 3c`, and mutates selector-7 rule
+  `00 00 00 00 01 07 44 01 00 0a 00 02 00 00` to
+  `00 00 00 00 01 07 44 01 00 0a 00 02 ff c6`. Digest:
+  `bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3`.
+- Multi-row raster overlay payload
+  `! ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0` builds a 27-byte
+  non-replay frame, queues raster objects
+  `00 00 00 00 80 00 00 02 00 00 f0 0f` and
+  `00 00 00 00 80 00 00 02 10 00 0f f0`, advances raster `row_y` to `2`,
+  and bridges the bucket chain as second raster row, first raster row, compact
+  text. Digest:
+  `58c2293bbc6b187db0e964571e5812ab2192d32d8e648a38d61e407a58538638`.
+- Span-flush overlay payload `ESC &a6L!` routes through `0xeb58`, `0xf34a`,
+  `0x12714`, `0x126e2`, and `0xd04a`. It writes packed left margin `108`,
+  publishes selector-`0x4000` segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10`, re-arms
+  `0x783186..0x78318a` to `108/108/0`, queues compact object prefix
+  `00 00 00 00 00 00 00 01 20 02 07`, and mutates selector-7 rule
+  `00 00 00 00 01 07 a4 02 00 07 00 02 00 00` to
+  `00 00 00 00 01 07 a4 02 00 07 00 02 ff cc`. Digest:
+  `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`.
+
 All covered overlay payloads publish through `0xff1e`, bridge through
-`0x1edc6`, and render through `0x1ed84` / `0x1ef6a` with fixture-pinned row
-digests in `notes/semantic-state-model.md`.
+`0x1edc6`, and render through `0x1ed84` / `0x1ef6a`. The unresolved middle
+edges are no longer inside the listed payload paths; they are broader overlay
+payload variants outside this matrix and final device-output comparison.
 
 ## Reproduction Contract
 

@@ -211,6 +211,29 @@ render branch with a published page record: ten successive render calls use
 band words `0..9`, and the visible output remains tied to the buckets selected
 by `0x1ef6a`, not to any external timing source.
 
+The fixture-backed active-loop contract is:
+
+- Render path: active selector `0x7820bc = 1` selects work record
+  `0x00782128`, while paired selector `0x7820c0 = 0` selects paired record
+  `0x007820c4`. With active `+6 = 20`, active remaining `+10 - +16 = 3`,
+  and paired remaining `+10 - +16 = 3`, capacity is `14`; the loop calls
+  `0x1ef6a`, increments active word `+10` from `3` to `4`, and increments
+  throttle word `+0e` from `7` to `8`.
+- Published downloaded-glyph band walk: the `0xff1e` / `0x1ed84` seed leaves
+  source `+0x18` and render words `+0x10/+0x16` at zero. Ten scheduler render
+  calls enter `0x1ef6a` with `word_10_before = 0..9`, leave the work record at
+  `+0x10 = 10`, and dispatch only published buckets `1` and `9`; bucket `9`
+  produces visible page row `86`.
+- Capacity-wait path: active `+6 = 10`, active remaining `4`, and paired
+  remaining `1` produce capacity `5`. The loop clears active word `+0e` from
+  `6` to `0`, signals wait object `0x780182` through `0x10c8`, and waits
+  through `0x10d0(2)` without calling `0x1ef6a`.
+- Cleanup/throttle path: with loop flag `0x780ea5 = 1`, active `+0c = 1`,
+  active `+10 = 2`, and active `+0e = 0x29`, the loop records
+  loop-flag cleanup through `0x1ef38`, clears `0x780ea4`, signals
+  `0x10c8` / `0x10c4`, records the row-bound cleanup, repeats that signal
+  pair, clears active `+0e`, and yields through `0x10d8(2)`.
+
 ## Reproduction Contract
 
 A pixel-accurate ROM-derived renderer must preserve:

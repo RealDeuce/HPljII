@@ -87,6 +87,10 @@ Canonical command state:
   copies it into published pool-header word `+0x0c`.
 - `0x782da6`: paper-source/environment byte. `0xef62` writes selector `2` as
   `0x80`, and the addressed fixture also mirrors it to `0x780e8f`.
+- `0x782998`: pending paper-source/layout refresh byte. The addressed
+  paper-source fixture pins it to `1` after selector `2`.
+- `0x780e8f` / `0x780e26`: paper-source output/control bytes. The addressed
+  paper-source fixture pins them to `0x80` and `1` after publication.
 - `0x782da3`: orientation byte, written by `0x10220`.
 - Page geometry fields updated by `0xfc74` and `0x10220`, including active
   page size, top offset, and page-change flag.
@@ -136,6 +140,9 @@ Firmware bookkeeping:
 - Publication pool-header state byte `+4` becomes `2`; environment/status
   header fields remain default for the covered reset/FF/geometry streams unless
   the copies command changes word `+0x0c`.
+- Synthetic nonzero `0xff1e` header state copies pending status bits to
+  `+8/+0x0a`, environment state to `+7/+0x0c`, and root word `+0x16` to
+  `+0x1a`, while preserving the bucket root at `+0x1c`.
 
 Unknown:
 
@@ -218,6 +225,26 @@ installing new geometry. Paper source publishes the queued page before setting
 paper-source output/control bytes. Copies stores count `2` before FF
 publication copies that value to pool-header word `+0x0c`.
 
+The command-specific side effects are pinned at the same boundary:
+
+- `! ESC &l1A` publishes the compact text object through the page-size
+  handler's `0xf34a` / `0xff1e` edge before storing page code `6` and
+  recomputing portrait geometry. The addressed variant uses stream chunk
+  `0x00d0a000`.
+- `! ESC &l1O` publishes the compact text object through the orientation
+  handler's `0xf34a` / `0xff1e` edge before storing orientation `1` and
+  switching to landscape geometry. The addressed variant uses stream chunk
+  `0x00d0b000`.
+- `! ESC &l2H` publishes before `0xef62` leaves selected value `0x80`,
+  `0x782da6 = 0x80`, `0x782998 = 1`, `0x780e8f = 0x80`, and
+  `0x780e26 = 1`. The addressed variant uses stream chunk `0x00d0c000`.
+- `! ESC &l2X FF` stores `0x782da4 = 2` at `0xeef0`; the following FF
+  publication through `0xf0f0` / `0xff1e` writes pool-header word
+  `+0x0c = 2`. The addressed variant uses stream chunk `0x00d0d000`.
+- The synthetic nonzero `0xff1e` header fixture proves non-default
+  status/environment/root header fields can change without changing the
+  compact bucket root used by these row fixtures.
+
 The missing-root reset fixture proves the opposite output boundary:
 `host-fetched ESC E clears missing page root without publication` reaches
 handler `0xcc52`, clears the missing current-root state, and does not create a
@@ -233,6 +260,10 @@ A byte-stream renderer must preserve:
   reset when `ESC &k2G` is active;
 - copies state written by `0xeef0` before a later FF publication copies it
   into pool-header word `+0x0c`;
+- paper-source selector `2` side effects after publication, including
+  `0x782da6`, `0x782998`, `0x780e8f`, and `0x780e26`;
+- non-default `0xff1e` status/environment/root header copies independently
+  from the bucket root and rendered compact rows;
 - missing-root reset with no publication;
 - `0xff1e` pool-header defaults, publication flag, and current-root clearing;
 - `0x1ed84` / `0x1edc6` bridge preservation of compact bucket and context

@@ -526,13 +526,25 @@ rendering. Selector `4` overlay publication is also fixture-backed:
 with `0xe4f4`, re-enters `0x11774`, queues the stored `!\r` payload into
 the current page record, and publishes/render-composes it with an existing
 selector-7 rectangle rule. Evidence: fixture `macro overlay finalization
-replays before page publication`. Overlay replay now also covers the
-mixed-control payload `ESC &k1G!\r!` and the delayed-raster payload
-`! ESC *t300R ESC *r0A ESC *b2W c3 3c`; the raster payload queues compact text
-plus a mode-0 raster object before publishing with the existing selector-7
-rule. Evidence: fixtures `macro overlay mixed-control payload publishes with
-page rule` and `macro overlay raster payload publishes with page rule`. The
-composed semantic checkpoint is in
+replays before page publication`. Overlay replay now also covers a payload
+matrix across text/control, transparent-data, raster, and span-flush families:
+`ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`, `ESC &a2c+1R!`,
+`ESC &a6l9M!`, `ESC &p2X!!`, `! ESC *t300R ESC *r0A ESC *b2W c3 3c`,
+the multi-row raster sibling, and `ESC &a6L!`. Those fixtures prove
+non-replay frames re-enter `0x11774`, route through the normal command
+handlers, queue compact text, transparent printable bytes, raster objects, or
+span-list objects as appropriate, preserve the existing selector-7 rule, and
+publish/render through `0x1ed84` / `0x1ef6a`. Evidence: fixtures
+`macro overlay mixed-control payload publishes with page rule`,
+`macro overlay cursor-position payload publishes with page rule`,
+`macro overlay vertical-decipoint payload publishes with page rule`,
+`macro overlay chained cursor-position payload publishes with page rule`,
+`macro overlay chained margin payload publishes with page rule`,
+`macro overlay transparent payload publishes with page rule`,
+`macro overlay raster payload publishes with page rule`,
+`macro overlay multi-row raster payload publishes with page rule`, and
+`macro overlay span-flush payload publishes with page rule`. The composed
+semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; no macro replay/font-context
 middle edge remains in that checkpoint. Fixture

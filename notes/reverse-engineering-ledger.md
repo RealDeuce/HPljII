@@ -206,8 +206,13 @@ and fresh-root retry,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes
-`0x78219d`/`0x78219e`/`0x7821a2`; full firmware parser/reset fixtures
-incomplete
+`0x78219d`/`0x78219e`/`0x7821a2`, and with reset/default fixtures now
+joining parser dispatch, valid-root publication, missing-root clearing,
+default-record producer outputs, VMI conversion, and compact-text render
+publication under `ESC E Reset And Default Environment`. Remaining
+reset/default work is external provenance: retained-storage identity,
+panel/service byte source, manual NVRAM-failure wording, and physical
+page-output comparison.
 
 Evidence: parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`,
 `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`; `ESC &k#G` stores

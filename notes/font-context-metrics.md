@@ -1443,9 +1443,9 @@ A byte-stream reproduction must preserve these behaviors:
   `0x13eb8` refresh state, selected context, page-root slot install, map
   rebuild, compact object bytes, or rendered rows, not the listed
   parser-to-printable edges.
-- Broader metric producer combinations remain incomplete at the
-  parser-produced page boundary. Existing
-  host-stream downloaded-font fixtures prove install, visible glyph rendering,
+- Broader metric producer work is now selected-font state expansion, not an
+  unresolved parser-produced page boundary. Existing host-stream
+  downloaded-font fixtures prove install, visible glyph rendering,
   and `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
   `0xd8fc` span rows; the shared span-consumer branch family is also
   fixture-backed. The legal descriptor metric matrix plus boundary fixture now

@@ -418,16 +418,52 @@ Fixture coverage now pins the software-visible FIFO boundary:
 `0xa904` is called by parser wrappers and by binary/text payload readers.
 Those callers do not all interpret special cases the same way.
 
-- Parser wrapper `0xda9a` uses `0xa904` as the normal next-byte source.
-  If the byte is not `ESC`, it returns it to the main parser loop.
-- The `0xdace` control probe fetches through `0xa904` and treats the exact
-  sequence `0x1a 0x58` as a call to `0xd99a`, returning zero.
-- Text repeat readers stop on negative `D7`. Their local `0x1a 0x58`
-  probes call `0xd99a` and substitute `0x7f`.
-- Raster payload and downloaded-font payload readers also have local
-  `0x1a 0x58` probes, but they store zero for that sequence.
-- Macro replay data-chain frames become visible through `0xa904`, so replayed
-  macro bytes re-enter the same parser paths as host bytes.
+The generated caller scan
+`generated/analysis/ic30_ic13_host_byte_fetch_flow.md` classifies all 19
+direct absolute `JSR 0xa904` sites in the verified firmware image:
+
+- Parser wrapper callers:
+  - `0xda9a`: normal ESC-aware parser byte fetch. Non-ESC bytes return
+    directly to the main parser loop.
+  - `0xdaa6`: second fetch after ESC, used by the display-functions probe.
+  - `0xdab2`: third fetch after `ESC ?`; loops on byte `0x11`, otherwise
+    reports the byte through `0x9ec0` and returns ESC to the wrapper.
+  - These callers do not locally stop on `D7 = -1`; the parser loop or
+    higher wrapper state decides what the negative return means.
+- Shared `0x1a 0x58` probe:
+  - `0xdace` fetches one byte and, if it is `0x1a`, `0xdada` fetches the
+    second probe byte.
+  - Only exact `0x1a 0x58` calls `0xd99a` and normalizes the result to
+    `D7 = 0`. Other bytes stay on the normal fetched-byte path.
+- Display-functions and text-repeat readers:
+  - `0x12142` / `0x12152`: alternate/data `ESC Y` append loop. It appends
+    bytes through `0xe002`, stops on `D7 = -1`, and maps local
+    `0x1a 0x58` to appended byte `0x7f`.
+  - `0x124bc` / `0x124cc`: bounded text repeat reader. It stops on
+    `D7 = -1`, routes printable bytes through `0xd04a`, filters control
+    ranges through `0xd0f0`, and maps local `0x1a 0x58` to `0x7f`.
+  - `0x12582` / `0x12592`: ESC-terminated text repeat reader. It stops on
+    `D7 = -1` or the local `ESC ... Z` terminator, routes text through the
+    same `0xd04a` / `0xd0f0` consumers, calls `0xf054` after CR, and maps
+    local `0x1a 0x58` to `0x7f`.
+- Raster payload readers:
+  - `0x138fa` copies fetched bytes into delayed-raster object storage for
+    handler `0x105d0`.
+  - `0x13904` is the second byte of that reader's local `0x1a 0x58` probe.
+  - Exact `0x1a 0x58` calls `0xd99a` and stores normalized zero. Negative
+    `D7` exits through the raster reader status/end path.
+- Downloaded-font payload readers:
+  - `0x168dc` / `0x168fe`: linear downloaded-font payload copy to `A4`.
+  - `0x16960` / `0x169ca`: split-plane prefix reader for odd-width rows.
+  - `0x1697a` / `0x169e0`: split-plane trailing-byte reader.
+  - These readers call `0xd99a` and store zero for exact `0x1a 0x58`;
+    negative `D7` returns the reader's failure/status path and can preserve
+    continuation state for later payload bytes.
+- Macro replay has no separate direct `JSR 0xa904` call site. Execute/call
+  frames written by `0xe418` and non-replay page-finalization frames written
+  by `0xe4f4` become active data-chain sources under `0x782d76`, so replayed
+  bytes are consumed by the same `0xa904` source-priority logic before they
+  re-enter parser handlers.
 
 For reproduction, do not normalize `0x1a 0x58` globally at the byte source.
 The byte source returns bytes; each consumer family applies its own local

@@ -248,21 +248,23 @@ Expected remaining PDF lookups:
 - Looking up rarely used PCL commands not copied into the quick
   reference.
 
-Expected ROM-only unknowns:
+Expected remaining boundaries:
 
-- Exact board address decode after the verified resource pair at
+- External resource-window evidence: exact board address decode after the
+  verified resource pair at
   firmware `0x0c0000..0x0c0321`, which affects the secondary transparent
   segment-57 fallback rows documented in
   [transparent-print-data.md](transparent-print-data.md) and
   [resource-rom.md](resource-rom.md). The startup resource-pair byte-sum covers
   `0x080000..0x0bffff`, so checksum success does not resolve those continuation
   bytes.
-- Manual-facing baseline/cell terminology and physical paper comparison for
-  the full internal-font printout, after the ROM-side sample page and
-  rendered-surface digest already documented in
+- Physical/manual correlation: manual-facing baseline/cell terminology and
+  physical paper comparison for the full internal-font printout, after the
+  ROM-side sample page and rendered-surface digest already documented in
   [resource-rom.md](resource-rom.md).
-- Physical identity and pin mapping for retained-storage, panel/service,
-  optional-resource, and formatter/DC MMIO registers. Host-interface
+- Physical interface correlation: identity and pin mapping for
+  retained-storage, panel/service, optional-resource, and formatter/DC MMIO
+  registers. Host-interface
   software roles are documented in [host-byte-fetch.md](host-byte-fetch.md)
   and [io-interfaces.md](io-interfaces.md): the two direct-input banks now
   have ROM-visible ready, data, acknowledge/status, and control-shadow roles.
@@ -272,5 +274,6 @@ Expected ROM-only unknowns:
   install-to-page boundary after `ESC )s18W`. These are not current
   ROM-semantic blockers when the checked-in notes already document field
   ownership, consumers, fixtures, and output rows.
-- Broader command cross-products only where they expose a new state boundary;
-  already-covered command families should be treated as regression expansion.
+- ROM-local work: broader command cross-products only where they expose a new
+  state boundary; already-covered command families should be treated as
+  regression expansion.

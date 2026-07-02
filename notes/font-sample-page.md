@@ -234,6 +234,40 @@ rendered bucket-row totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`, and
 surface digest
 `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
 
+Full-printout rendered segment contract:
+
+- Source `0`, class `0`, row count `0`: `1` render bucket, `33` rendered
+  bucket rows, maximum width `656`, digest
+  `105c04604475622eb5b4511ca69b95634bd2d9c5ddefcb0cb07e12ef45b234d1`.
+- Source `1`, class `0`, row count `1`: `6` render buckets, `210` rendered
+  bucket rows, maximum width `2219`, digest
+  `1e99e81ad52be89b8551089ff87d6852ec69bb3f5d61fa0fbb1d01b94f88541f`.
+- Source `2`, class `0`, row count `1`: `6` render buckets, `210` rendered
+  bucket rows, maximum width `2219`, digest
+  `940ec458086cb0917da3c2de65b52d2bfec0e57f1d334e8f5ba83946c9739419`.
+- Source `3`, class `0`, row count `14`: `65` render buckets, `2012`
+  rendered bucket rows, maximum width `2219`, digest
+  `dd7e19b1aa077ccb794e73051e68c54e11e335ffcd110e92dc01b39132c638af`.
+- Source `0`, class `1`, row count `0`: `1` render bucket, `33` rendered
+  bucket rows, maximum width `4083`, digest
+  `9a71cdb0b6f8b1365d439119b2b8e1d3d4b3b6a720f729ac94065edef5ba4d2f`.
+- Source `1`, class `1`, row count `1`: `5` render buckets, `146` rendered
+  bucket rows, maximum width `4097`, digest
+  `018cdd48ede556dc439d5c5434f775aa7a10dd38321b4645e697542a9c7b825e`.
+- Source `2`, class `1`, row count `1`: `5` render buckets, `146` rendered
+  bucket rows, maximum width `4097`, digest
+  `76b22e4a81d534146a094b0f432909cbb5623d333d29cd373a63e7adb600f786`.
+- Source `3`, class `1`, row count `14`: `50` render buckets, `1257`
+  rendered bucket rows, maximum width `4097`, digest
+  `3bffa7214d9a478ec5fb5fd47ccb3458e9079daea12d77443437dd9ff11b4224`.
+
+These eight segment records are the current ROM-derived pixel contract for the
+sample printout. They are produced from page-record segments, not from a direct
+resource-ROM dump: each segment has already crossed `0x1ed84` / `0x1edc6`,
+`0x1ef6a`, and the compact text row-copy helpers. Physical paper comparison
+can validate placement, but it is not needed to reproduce these ROM-visible
+surfaces from the same firmware state.
+
 Fixture `font sample page-limit branches trigger continuation calls` pins
 the shared page-limit state block before the forced page-object cases. At
 heading entry, `0x1ca2c` compares cursor y word `32` plus row height `13`

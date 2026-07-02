@@ -9310,12 +9310,14 @@ selector-7 object, bridges it through `0x1edc6`, and renders the retried rule.
 
 High for parser handler order, dimension/fill selector mapping, clipping and
 ignore gates, rule object bytes, ordered insertion, bridge normalization,
-solid and pattern dispatch, continuation mutation across bands, and no-room
-retry output because each is fixture-pinned. Medium for broader
-parser-to-allocator no-room retry variants that could expose new retry
-publication fields, heap/free-list effects, bridge state, or rendered rows. The
-shared heap/free-list contract is documented in
-`Macro Definition And Data-Chain Replay`.
+solid and pattern dispatch, continuation mutation across bands, no-room retry
+output, and the covered mixed text/rule/raster publication streams because
+each is fixture-pinned. Medium only for new byte-stream variants that change a
+pixel-affecting boundary outside those covered clusters: clipped source
+record, `0x1381c` allocation/rollover state, retry publication fields, rule
+object bytes, bridge state, render dispatch, or rendered rows. The shared
+heap/free-list contract is documented in `Macro Definition And Data-Chain
+Replay`.
 
 ### Fixtures
 
@@ -9355,11 +9357,14 @@ shared heap/free-list contract is documented in
 
 ### Unresolved Middle Edges
 
-- `0x10898..0x133aa`: command routing, clipping, selector mapping, rule object
-  bytes, bridge normalization, render rows, and no-room retry are
-  fixture-backed. Remaining work is parser, `0x10b80`, and `0x1381c` variants
-  that change clipping output, allocator retry state, rule object bytes, bridge
-  state, or rendered rows.
+- `0x10898..0x133aa`: no unresolved software-visible middle edge remains for
+  the covered selector-7, gray-selector, pattern-selector, landscape-remap,
+  clipping, no-room retry, addressed-storage, publication, and mixed
+  text/rule/raster streams. The covered boundary is listed in
+  [rectangle-graphics.md](rectangle-graphics.md). Remaining ROM-local work is
+  limited to byte streams that change clipping output, `0x1381c`
+  rollover/allocation state, retry publication fields, rule object bytes,
+  bridge state, render dispatch, or rendered rows.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
   `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
   comparisons through compact text, bridge normalization, `0x1f446`, and
@@ -9571,10 +9576,12 @@ transitions, object fields, bridge state, or visible rows.
   Compact Buckets`. Remaining work is dense-page variants that change source
   fields, bucket shapes, retry behavior, or visible rows.
 - `0x10898..0x133aa`: selector mapping, clipping, addressed rule insertion,
-  bridge normalization, solid/pattern rendering, and no-room retry are
-  composed in `Rectangle Rule Producer And Renderer`. Remaining work is mixed
-  stream variants that change clipping output, allocator retry state, rule
-  object bytes, bridge state, or rendered rows.
+  bridge normalization, solid/pattern rendering, no-room retry, and the
+  covered mixed text/rule/raster publication streams are composed in
+  `Rectangle Rule Producer And Renderer`. Remaining work is limited to
+  byte-stream variants that change clipping output, `0x1381c`
+  rollover/allocation state, retry publication fields, rule object bytes,
+  bridge state, render dispatch, or rendered rows.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
   `Raster Transfer Gate And Encoded Rows`. The parser-to-handler record handoff

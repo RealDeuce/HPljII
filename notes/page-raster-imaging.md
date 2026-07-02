@@ -645,11 +645,15 @@ Unresolved middle edges:
   rendered output.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes, and local no-room returns are
-  fixture-backed for both root `+0x24` and root `+0x28`. The remaining
-  closure boundary is parser-produced allocation-chain variants
-  `0x10898 -> 0x13386 -> 0x133aa -> 0x1381c` and
-  `0x12714 -> 0x136d2 -> 0x1381c` that produce new list ordering, retry
-  behavior, bridge state, or rows.
+  fixture-backed for both root `+0x24` and root `+0x28`. The parser-produced
+  selector path is no longer a generic allocation-chain gap: `0x10898` through
+  `0x13386` / `0x133aa` is composed in
+  [rectangle-graphics.md](rectangle-graphics.md) for selector-7, gray,
+  pattern, landscape-remap, clipping, no-room retry, addressed storage,
+  publication, and mixed text/rule/raster streams. Remaining ROM-local work
+  starts only from byte streams that change list ordering, `0x1381c`
+  rollover/allocation state, retry publication fields, bridge state, render
+  dispatch, or rows.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, and the
   scheduler-produced multi-band render loop are modeled. Fixture
   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers render,

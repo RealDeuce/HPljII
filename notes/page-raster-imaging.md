@@ -1460,11 +1460,14 @@ Disassembly evidence:
 
 Unresolved middle edges:
 
-- `0x12f2e..0x1f264`: compact built-in and downloaded glyph objects have
-  broad fixture coverage. Remaining compact-glyph work is broader
-  selected-font state combinations, wrapped-width boundary behavior, and
-  physical/reference page comparisons, not the copied descriptor metric
-  formulas.
+- `0x12f2e..0x1f264`: compact built-in and downloaded glyph objects are
+  composed for the documented selector classes: short `0x0003`, wide
+  `0x1003`, segmented `0x2003`, and segmented-wide `0x3003`, including
+  current-band/fallback splitting and the downloaded width/row matrices.
+  Remaining compact-glyph work starts only from selected-font combinations or
+  wrapped-width streams that change source object bytes, selector class,
+  helper dispatch, fallback split, or rendered rows; physical/reference page
+  comparison remains separate.
 - `0x12714..0x1f812`: segment-list producer and consumer are connected for
   portrait text spans; broader orientation/page-size cross-checks still need
   visible page comparisons.

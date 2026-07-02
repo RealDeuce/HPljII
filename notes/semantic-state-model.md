@@ -3255,8 +3255,10 @@ replace the older direct `LASERJETII` smoke sample for built-in
 baseline/cell correlation. The normal source/class printout is modeled as
 rendered page-record segments. Forced continuation page-object variants are
 fixture-backed for heading-preflight, class-zero/class-one row-overrun, and
-alternate-row caller forms; remaining gaps are broader row-overrun
-cross-products and physical comparison against a known font/self-test page.
+alternate-row caller forms. Additional row-overrun streams are regression
+cross-products unless they expose a page-record object form outside the covered
+forms; physical comparison against a known font/self-test page remains
+separate.
 
 Concept: the sample printout is firmware-generated text, not host input.
 Routine `0x1c204` checks whether font records exist, runs class-zero and
@@ -3408,10 +3410,11 @@ for how resource records become ordinary page-record text.
     source/class page-record segments; forced continuation-page object bytes
     are fixture-backed for the internal and cartridge heading-preflight forms,
     internal class-zero `I01` and class-one `I16` row-overrun forms, and the
-    alternate-row caller form. The remaining ROM-side gap is broader
-    row-overrun cross-products outside those covered forms; the remaining
-    output gap is physical baseline/cell comparison against a known printed
-    sample. The internal-font class-zero source group is fixture-backed from
+    alternate-row caller form. Additional row-overrun streams are regression
+    cross-products unless they expose a page-record object form outside those
+    covered forms; the remaining output gap is physical baseline/cell
+    comparison against a known printed sample. The internal-font class-zero
+    source group is fixture-backed from
     request indexes `0..14`: `0x1b8ea`
     fast-probes class-zero row `I00`, `0x1b50e` scans later rows, `0x1c746`
     maps low-24 addresses back to candidate longwords, `0x1c710` finds

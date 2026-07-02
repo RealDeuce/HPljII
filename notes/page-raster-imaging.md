@@ -2077,8 +2077,16 @@ Unresolved middle edges:
   `0x3003`, `0x2f27c`, remainders `1..15`, and their no-remainder two-chunk
   siblings. High-span probes now cover additional full-chunk counts through
   `0x2f27c`, A2/A3 source-walk rows, and matched row output above span `32`.
-  Remaining helper risk is row-count/segment variants and broader physical
-  page comparisons, not the main helper aliases or sampled matched wide paths.
+  The downloaded-glyph row-count checkpoint now narrows helper risk further:
+  rows `0x0001..0x00ff` are published and rendered for the documented
+  short/segmented family, and segmented-wide high-row below-cap cases are
+  semantic cross-products of preserved 16-bit row words, low-byte selector
+  truncation, span-selected helper choice, and parser payload-count cap. The
+  exact ROM-local visible-output boundary is short compact fallback indices
+  above the `0x1fe76` valid table maximum `128`, as shown by the
+  row-`0x0101..0x0103` fixtures. Remaining comparison work is broader
+  physical/full-page validation and new streams that change helper dispatch or
+  rows, not the main helper aliases or sampled matched wide paths.
 - `0x1f414..0x7810b4`: current-band/fallback splitting is fixture-backed,
   including the row-`0x0102` invalid fallback boundary; device-level behavior
   after such invalid table targets is intentionally not claimed.

@@ -1250,8 +1250,16 @@ The next work should follow dataflow, not isolated handlers:
    matrix, normal, row-`0x80`, linear-segmented, split-plane segmented,
    segmented-wide publication, no-install, status-`2`, bit-30-clear
    fixed-record, and payload-control cases. It is not the
-   documented mode-byte-`0` visible recovery boundary. The publication-command
-   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
-   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
-   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
-   also have addressed allocation variants.
+   documented mode-byte-`0` visible recovery boundary. The
+   publication-command checkpoint in `notes/publication-commands.md` now
+   covers host-fetched reset, FF, page-size, orientation, paper-source, and
+   copies streams through parser dispatch, `0xff1e`,
+   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,
+   page-size, orientation, paper-source, and copies also have addressed
+   allocation variants. The exact command-side state at that boundary is:
+   page-size `! ESC &l1A` publishes before page code `6` / portrait geometry,
+   orientation `! ESC &l1O` publishes before orientation `1` / landscape
+   geometry, paper-source `! ESC &l2H` publishes before `0x782da6 = 0x80`,
+   `0x782998 = 1`, `0x780e8f = 0x80`, and `0x780e26 = 1`, and copies
+   `! ESC &l2X FF` stores `0x782da4 = 2` before FF publication writes
+   pool-header word `+0x0c = 2`.

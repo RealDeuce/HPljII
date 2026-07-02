@@ -235,18 +235,21 @@ emulator memory-map evidence.
 ## Remaining Edges
 
 - `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`: one modeled changed
-  optional-window path is fixture-backed. Remaining work is optional-resource
-  window data or board/emulator memory-map evidence that changes the scratch
-  slots, candidate pruning, current-record releases, canonical commit, or
-  later page/font state.
+  optional-window path is fixture-backed. Remaining work starts only from
+  external optional-resource window data or board/emulator memory-map evidence
+  that changes the scratch slots, candidate pruning, current-record releases,
+  canonical commit, or later page/font state; the ROM-local scheduler/helper
+  call chain is documented for the modeled changed, unchanged, and status
+  exits.
 - `0x1a616`: built-in window `0x080000..0x0ffffe` is composed in
   `Built-In Resource Scan And Candidate Windows`; optional windows
   `0x200000..0x3ffffe` and `0x400000..0x5ffffe` remain unverified physical
   inputs.
 - `0x1887a`, `0x1b4c0`, `0x1b04c`, and `0x179aa`: generic interiors are
   documented in downloaded-font, macro, and font-selection checkpoints.
-  Remaining work here is optional-resource data that reaches those callees
-  with different release/default-refresh/active-context state.
+  Remaining work here is external optional-resource data that reaches those
+  callees with different release/default-refresh/active-context state, not the
+  callee contracts themselves.
 - `0x1b9c0`: ROM-local classifier returns are documented in
   `Built-In Resource Scan And Candidate Windows`; the remaining edge is a
   physical optional-resource image or emulator memory map that reaches the

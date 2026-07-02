@@ -462,9 +462,9 @@ The fixture-backed render contract for that matrix is:
   `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`.
 
 All covered overlay payloads publish through `0xff1e`, bridge through
-`0x1edc6`, and render through `0x1ed84` / `0x1ef6a`. The unresolved middle
-edges are no longer inside the listed payload paths; they are broader overlay
-payload variants outside this matrix and final device-output comparison.
+`0x1edc6`, and render through `0x1ed84` / `0x1ef6a`. Remaining edges are no
+longer inside the listed payload paths; they are broader overlay payload
+variants outside this matrix and final device-output comparison.
 
 ## Reproduction Contract
 

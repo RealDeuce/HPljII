@@ -20,8 +20,11 @@ host bytes
   -> compact text, segment-list, rule, fixed-width, and raster renderers
 ```
 
-Every reproduction claim below requires both a ROM address boundary and an
-executable fixture or generated analysis note.
+Every reproduction claim below requires a checked-in note that names the ROM
+address boundary and cites either executable fixture evidence, focused
+disassembly, or a generated analysis report used as supporting material. The
+checked-in note is the deliverable; ignored generated reports are supporting
+evidence, not the only documentation.
 
 Coverage means a checked-in note names the ROM address range, field
 writers, field readers/consumers, visible or state output, fixtures, and
@@ -50,20 +53,23 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 
 ## Current End-To-End Coverage
 
-- Host byte source priority:
+- Host byte source priority and callers:
   ROM evidence is `0xa904..0xabf0` in
-  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`.
-  Reproduction evidence is
-  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md` and fixtures
-  for no-byte, service retry, LIFO, data-chain, ring, and direct modes.
-  The observed data-chain frame layout is now composed with the byte-source
-  checkpoint: `0x782d76` points at frame `+0x00` payload/chunk pointer,
-  `+0x04` byte count or `-1` end marker, byte `+0x08 = 4`, byte `+0x09`
-  as execute `2`, call `3`, or non-replay page-finalization `4`, and
-  longword `+0x0a` as snapshot pointer or zero. Remaining host-input risk is
-  physical MMIO naming/timing and any producer for other frame `+0x09`
-  values, not the normal byte-source priority or observed macro/data-chain
-  replay path.
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`; the checked-in
+  semantic checkpoint is [host-byte-fetch.md](host-byte-fetch.md).
+  Reproduction evidence includes fixtures for no-byte, service retry, LIFO,
+  data-chain, ring, and direct modes, plus the all-caller classification
+  promoted from `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
+  All `19` direct `JSR 0xa904` sites are grouped there by parser wrapper,
+  `0x1a 0x58` probe, display/text readers, raster payload, downloaded-font
+  payload, and macro replay data-chain behavior. The observed data-chain frame
+  layout is composed with the byte-source checkpoint: `0x782d76` points at
+  frame `+0x00` payload/chunk pointer, `+0x04` byte count or `-1` end marker,
+  byte `+0x08 = 4`, byte `+0x09` as execute `2`, call `3`, or non-replay
+  page-finalization `4`, and longword `+0x0a` as snapshot pointer or zero.
+  Remaining host-input risk is physical MMIO naming/timing and any producer
+  for other frame `+0x09` values, not byte-source priority, direct caller
+  classification, or observed macro/data-chain replay.
 - External service/status preemption:
   ROM evidence is `0xba48..0xc36e` in
   `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst` and

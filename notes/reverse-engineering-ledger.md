@@ -1194,12 +1194,16 @@ Known from manuals:
 
 ROM work needed:
 
-- Expand the remaining named roles for byte-fetch routine `0x0000a904`
-  callers and correlate the host I/O register banks
-  `0x8e01/0x8801/0x8c01` and `0xfffee005/0xfffee001/0xfffee009` with the
-  physical board interfaces. The local no-byte gate is now narrowed to
-  quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`; their exact
-  user-facing trigger names remain provisional.
+- Continue host byte-fetch work only from the physical correlation boundary.
+  [host-byte-fetch.md](host-byte-fetch.md) now classifies all `19` direct
+  `JSR 0xa904` callers by parser wrapper, `0x1a 0x58` probe behavior,
+  display/text readers, raster payload, downloaded-font payload, and macro
+  replay data-chain use. The remaining host-input work is correlating the host
+  I/O register banks `0x8e01/0x8801/0x8c01` and
+  `0xfffee005/0xfffee001/0xfffee009` with physical board interfaces and
+  timing. The local no-byte gate is narrowed to quiesce/reset branches
+  `0x4218..0x44d2` and `0x61e4..0x6362`; their exact user-facing trigger names
+  remain provisional.
 - Correlate the now-traced periodic handler `0x00000d52` with board-level
   signal names. Its software-visible latches, output strobes, counters, and
   wait-object effects are documented; remaining work is physical meaning and

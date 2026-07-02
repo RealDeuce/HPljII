@@ -19,6 +19,41 @@ changed by another command or reset.
 
 Unsupported PCL commands should be ignored.
 
+## ROM-Backed Level IV Boundary
+
+The firmware command tables and semantic notes support the manual claim that
+this is a PCL Level IV/page-formatting device rather than only a PCL Level III
+word-processing target.
+
+ROM-backed Level IV command families include:
+
+- page environment and publication: `ESC E`, FF, page size `ESC &l#A`,
+  orientation `ESC &l#O`, paper source `ESC &l#H`, copies `ESC &l#X`, and
+  page-root publication through `0xff1e`;
+- cursor and text layout: HMI/VMI, margins, line termination, cursor
+  positioning, cursor stack, VFC table definition `ESC &l#W`, and VFC channel
+  jumps `ESC &l#V`;
+- raster graphics: `ESC *t#R`, `ESC *r#A/B`, delayed raster transfer
+  `ESC *b#W`, encoded page objects, and render target `0x1f88e`;
+- rectangle/rule graphics: rectangle dimensions, fill selector
+  `ESC *c#P`, rule-list storage, and solid/pattern render helpers;
+- font selection and downloaded fonts: primary/secondary font selectors,
+  symbol-set handling, downloaded-font descriptors, downloaded-character
+  payloads, and compact glyph renderers;
+- macros and alternate/data parsing: macro id/control commands, data-chain
+  replay, overlay publication, and display-functions append behavior.
+
+Concrete evidence is in [pcl-command-map.md](pcl-command-map.md),
+[pcl-parser-core.md](pcl-parser-core.md),
+[semantic-state-model.md](semantic-state-model.md), and the command-family
+notes cited from those files.
+
+The current ROM notes do not treat LaserJet III / PCL5-only features as part
+of the LaserJet II reproduction target. Scalable typefaces, RET, HP-GL/2,
+PCL5 font selection behavior, and LaserJet III-specific page-protection
+behavior should remain outside the model unless a ROM handler in these dumps
+is tied to a LaserJet II-visible byte-stream effect.
+
 ## Command Types
 
 PCL has three command types:

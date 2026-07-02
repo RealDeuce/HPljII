@@ -130,6 +130,20 @@ route through `0xd0f0` only when selected context byte `D3` is zero. Values
 `0x80..0x9f` route through `0xd0f0` only when the high-control filter word is
 zero. All other values route through `0xd04a`.
 
+Normal-route matrix:
+
+- C0 values `0x00..0x1f`, selected context byte `0`: route through
+  `0xd0f0`, so they can advance spacing without queueing a compact text entry.
+- C0 values `0x00..0x1f`, selected context byte nonzero: route through
+  `0xd04a`, so they are printable display-function bytes.
+- High-control values `0x80..0x9f`, high-control filter word `0`: route
+  through `0xd0f0`.
+- High-control values `0x80..0x9f`, high-control filter word nonzero: route
+  through `0xd04a`.
+- Values outside those two ranges route through `0xd04a`.
+- A terminating `ESC Z` pair is still consumed as routed values before the
+  local `ESC`/`Z` state ends the loop.
+
 Fixture `ESC Y display-functions stream reaches page-record output` proves
 the default-filter normal path for `ESC Y!\x05! ESC Z`: handler `0x12536`
 consumes values `21 05 21 1b 5a`, routes them
@@ -141,7 +155,9 @@ Fixture `ESC Y display-functions filter-on routes controls as printable`
 proves the complementary normal branch. With selected-context byte `1` and
 high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
 `0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through `0xd04a`,
-queues six compact entries, and renders row digest
+queues six compact entries with object prefix
+`00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05 59 06
+06`, and renders row digest
 `1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`.
 
 `ESC z` has no direct page-record output in this checkpoint. Its ROM effect is

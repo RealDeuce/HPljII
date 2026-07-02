@@ -1404,9 +1404,14 @@ Confidence:
   for the cited fixtures.
 - High for parser-produced raster and rule objects because their command-family
   checkpoints trace handlers to page-record objects and then to rendered rows.
-- Medium for all compact downloaded-glyph producer cross-products because
-  many selectors are fixture-pinned, but broader selected-font state
-  combinations and physical/reference page comparisons remain open.
+- High for the documented compact downloaded-glyph producer families because
+  the downloaded-font matrices now carry normal, wide, segmented,
+  segmented-wide, row-count, width-byte, row-byte, high-row, no-install,
+  status-2, and FF-publication streams through parser install, page-record
+  publication, `0x1ed84` / `0x1ef6a` dispatch, and matched row output where
+  the helper target is valid. Remaining selected-font combinations and
+  physical/reference page comparisons are broader validation work, not a
+  reduced-confidence statement about the documented producer contracts.
 - Medium for physical device output timing because the bitmap bands are
   fixture-rendered before the engine-facing copy path.
 
@@ -1470,9 +1475,14 @@ Unresolved middle edges:
   pinned for the selector fixtures above; the remaining work is a broader
   selector/page-visible matrix and physical-device comparison.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
-  compact glyph row-copy checkpoint below. Remaining work is broader
-  page-visible comparison for row-count, segment, wrapped-width, and physical
-  page variants outside the sampled helper matrix.
+  compact glyph row-copy checkpoint below. The downloaded row-count family now
+  renders parser-produced rows `0x0001..0x00ff`; segmented-wide high-row
+  below-cap cases are documented as cross-products of preserved installed row
+  words, low-byte selector truncation, span-selected helper choice, and the
+  parser payload-count cap. The exact ROM-local visible-output boundary is
+  short compact fallback indices above the `0x1fe76` valid table maximum
+  `128`. Remaining row-copy work is new streams that change helper dispatch
+  or rows, plus physical/full-page comparison.
 
 ### Subrenderer Payloads
 

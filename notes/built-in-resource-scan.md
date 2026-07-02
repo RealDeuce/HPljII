@@ -228,6 +228,35 @@ printing built-in resource listings. That path is documented in
 `font sample class-one row continuation emits fresh source heading page
 record`.
 
+## Continuation Boundary
+
+The verified local resource image covers firmware addresses
+`0x080000..0x0bffff`. The built-in scan range seeded by `0x1a2e4` extends to
+`0x0ffffe`, so the ROM-local scanner model can describe consequences for bytes
+after the dumped `IC32,IC15` pair, but it cannot choose the physical decode
+source for those bytes.
+
+That boundary is pixel-affecting for the transparent secondary segment-57
+case documented in [transparent-print-data.md](transparent-print-data.md).
+The compact renderer resolves bucket `456` to firmware read
+`0x0bfe22..0x0c0321`: the first `478` bytes are verified from `IC32,IC15`, and
+the remaining `802` bytes start at `0x0c0000`. Fixture
+`transparent secondary segment-57 continuation policies diverge after verified
+bytes` proves mirror, code-pair continuation, and zero-fill all preserve the
+same current-band rows but produce different fallback-row digests.
+
+The scanner consequences of those continuation policies are also pinned.
+Fixture `0x41a HEAD scanner would duplicate records under simple resource
+mirror` proves a full `IC32,IC15` mirror at the next segment would expose a
+second `HEAD` chain. Fixture
+`0x1a616 candidate scan continuation policy changes built-in counts` proves
+that same mirror would double total candidates to `48` and low class-one /
+class-zero counts to `24` / `24`; code-pair and zero-fill continuations keep
+the verified `24` / `12` / `12` state. Tracked tool
+`tools/probe_resource_window.py --quiet` verifies those suffix hashes,
+continuation hashes, and scanner-count consequences from
+`data/rom_manifest.json` plus the ignored local ROM images.
+
 ## Reproduction Contract
 
 A renderer that wants byte-for-byte agreement with these ROM paths must:
@@ -246,15 +275,20 @@ A renderer that wants byte-for-byte agreement with these ROM paths must:
 ## Confidence
 
 Confidence is high for the verified built-in scan, counters/windows,
-activation, filters, chooser, and primary/secondary visible output
-streams. Confidence is medium for external cartridge/resource windows
-because the decoded handlers are known, but no matching cartridge image
-or board decode evidence has been captured for those ranges.
+activation, filters, chooser, primary/secondary visible output streams, and
+the modeled scanner consequences of the three tested `0x0c0000` continuation
+policies. Confidence is medium for the actual physical decode source at
+`0x0c0000..0x0c0321` and for external cartridge/resource windows because the
+decoded handlers are known, but no matching board decode, cartridge image, or
+physical output evidence has been captured for those ranges.
 
 ## Remaining Edges
 
-- `0x1a616..0x1a9be`: built-in `IC32,IC15` low resource-window behavior
-  is fixture-backed; cartridge/external windows remain unavailable.
+- `0x1a616..0x1a9be`: verified `IC32,IC15` scan behavior is fixture-backed
+  through `0x0bffff`. The exact remaining built-in continuation boundary is
+  firmware address `0x0c0000..0x0c0321`, where board/emulator decode or
+  physical-output evidence must choose among the recorded mirror, code-pair,
+  and zero-fill fallback-row candidates.
 - `0x14398..0x156de`: many visible output streams are covered, but
   broader fallback/error combinations should only be added when they
   produce a different selected context, map, object prefix, or rendered

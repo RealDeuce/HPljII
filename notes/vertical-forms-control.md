@@ -225,6 +225,43 @@ Letter page bottom. Empty-table selector 2 writes recovered y `1104`; wrapped
 selector 2 at line `70` writes recovered y `1604`; selector zero writes
 top-of-form y `126`.
 
+The `0x1280a` branch matrix for the fixture-backed paths is:
+
+- `0x128ae..0x128f4`: before-top normalization. It rewrites the computed
+  start line before the ordinary forward scan. It does not publish the current
+  page by itself.
+- `0x1292a..0x1295c` then `0x12aa6..0x12af8`: forward in-text hit. It resets
+  x through `0xf06e`, flushes pending text through `0xf34a`, writes the target
+  y, and leaves the next printable on the current page.
+- `0x12966..0x1299a`: selector-zero target-equal exit. It computes the
+  top-of-form target and leaves x/y unchanged when the cursor is already
+  there.
+- `0x1299c..0x129c4`: selector-zero page eject. It runs
+  `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publishes the old page, and leaves
+  the next printable on a fresh page.
+- `0x129c6..0x12af8`: wrap hit. It scans after wrapping to line `0`; when the
+  wrapped hit is before the original start line, it publishes through
+  `0xf124` before committing the target y.
+- `0x129ee..0x12b5a`: publishing target-after-text recovery. It finds a channel
+  after `0x782ee0`, publishes the old page, then recovers y through
+  `0x12afc..0x12b5a`.
+- `0x129fc..0x12afc`: non-publishing target-after-text recovery. It is the
+  before-top sibling where start line `0` skips the `0xf124` edge and only
+  recovers x/y.
+- `0x12a02..0x12afc`: start-after-text no-wrap recovery. With no matching
+  channel bit, it skips publication and writes the recovered y.
+- `0x12a22..0x12a78`: wrap-no-hit page eject. With no matching bit through the
+  forward and wrapped scans, it publishes the old page and returns to
+  top-of-form y.
+- `0x12a7a..0x12af8`: start-after-text wrapped in-text hit. It wraps from a
+  start line past text bottom to an in-text channel and commits without
+  publication.
+- `0x12a7a..0x12afc`: start-after-text wrapped bottom recovery. It wraps to a
+  line after `0x782ee0`, skips publication, and writes the recovered y.
+- `0x1299c..0x12b92`: selector-zero start-after-text recovery. It skips the
+  page-eject edge when the computed start line is already past text bottom and
+  writes the top-of-form target.
+
 ## Writers
 
 - `0x11f6e` schedules delayed payload handler `0x12cfe`.

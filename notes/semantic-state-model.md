@@ -8992,9 +8992,9 @@ asserted by named harness fixtures and by disassembly addresses
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
 selection, consecutive transfers, and lowercase same-family `*b` chaining
 because each has parser-dispatch, restored-record, object, and render-entry
-fixtures. Medium for broader dense parser-produced page variants inside
-`0x105d0..0x13250` only if they expose new gate outcomes, encoded object
-fields, bridge fields, or rendered rows.
+fixtures. Broader dense parser-produced page variants inside
+`0x105d0..0x13250` remain future work only when they expose new gate outcomes,
+encoded object fields, bridge fields, or rendered rows.
 
 ### Fixtures
 
@@ -9530,9 +9530,9 @@ rows in the second band with no leftover rule or fixed-list state.
 
 High for parser handler order, delayed raster scratch, addressed stream
 object addresses, published page-record fields, render-entry call order,
-and visible rows because they are executable fixture assertions. Medium for
-broader page-root/display-list variants that could expose new allocator
-transitions, object fields, bridge state, or visible rows.
+and visible rows because they are executable fixture assertions. Broader
+page-root/display-list variants remain future work only when they expose new
+allocator transitions, object fields, bridge state, or visible rows.
 
 ### Fixtures
 

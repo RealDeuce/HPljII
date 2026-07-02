@@ -44,6 +44,21 @@ The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
 uppercase `T` has no terminal handler, while lowercase `t` only reaches the
 generic `0x11f4c` rewind used by lowercase chaining rows.
 
+Two normal-table rows with blank handlers are parser artifacts rather than
+undocumented imaging commands:
+
+- `ESC ?` is handled inside the ESC-aware byte-fetch wrapper. After `0xda9a`
+  sees `ESC`, wrapper fetch `0xdaa6` checks the next byte; when it is `?`,
+  `0xdab2` fetches a third byte. Third byte `0x11` is swallowed and the wrapper
+  loops; any other third byte is reported through `0x9ec0` and the wrapper
+  returns `ESC` to the parser. The detailed caller classification is in
+  [host-byte-fetch.md](host-byte-fetch.md).
+- `ESC Z` is the local terminator for the `ESC Y ... ESC Z`
+  display-functions readers, not a normal parser-table terminal. Normal handler
+  `0x12536` and alternate/data handler `0x12120` both consume the terminating
+  `ESC Z` bytes inside their direct `0xa904` reader loops before returning. The
+  checked-in semantic contract is [display-functions.md](display-functions.md).
+
 ## High-Value Normal-Mode Handlers
 
 These command-to-handler anchors are current priorities for

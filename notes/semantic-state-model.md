@@ -10205,9 +10205,14 @@ state combinations and physical/reference page comparisons.
   pinned for the cited selectors. Remaining work is broader selector/page
   combinations and physical-device comparison.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
-  compact glyph row-copy checkpoint. Remaining work is broader page-visible
-  comparison for row-count, segment, wrapped-width, and physical variants
-  outside the sampled helper matrix.
+  compact glyph row-copy checkpoint. Rows `0x0001..0x00ff` in the
+  parser-produced downloaded row-count family are now page-visible, and
+  segmented-wide high-row below-cap cases are documented as cross-products of
+  preserved row words, low-byte selector truncation, span-selected helper
+  choice, and parser payload-count limits. The exact ROM-local visible-output
+  boundary is short compact fallback indices above the `0x1fe76` valid table
+  maximum `128`; remaining work is new byte streams that change helper
+  dispatch or rows, plus broader physical/full-page comparison.
 
 ## Default Environment Record Producers
 

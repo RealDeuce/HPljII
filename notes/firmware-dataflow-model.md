@@ -45,6 +45,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Transparent Print Data`,
   `Worked Path: Display Functions Direct Reader`.
 - Font selection, downloaded glyphs, macro replay, and resource boundaries:
+  `Worked Path: Page Font Scheduler Resource Handoff`,
   `Worked Path: Font Selection To Visible Glyphs`,
   `Worked Path: Downloaded Glyph`,
   `Worked Path: Macro Execute Replay`,
@@ -785,6 +786,161 @@ Evidence and unresolved boundaries:
   fixture for `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`; startup
   retained-load failure to `67 SERVICE`; and a full `0xba48` loop fixture that
   drives `$fffee00b.7` through the live-condition transition.
+
+## Worked Path: Page Font Scheduler Resource Handoff
+
+This path covers the ROM-visible scheduler handoff at `0x19dd2..0x1a2e2`.
+It is not entered by a PCL command row. It can run after host/external quiesce,
+including the external-ready teardown path `0xc06e -> 0xc108 -> 0x19dd2`, and
+before normal parsing or rendering resumes.
+
+The role of the path is to reconcile optional resource-window state with the
+canonical font/resource tables that later font selection and glyph rendering
+consume:
+
+```text
+caller quiesce point
+  -> scratch scan of optional windows
+  -> canonical/scratch comparison predicates
+  -> unchanged, status-return, or long-refresh branch
+  -> candidate pruning, payload release, dirty marking, and canonical commit
+  -> caller-specific continuation through D7
+```
+
+Entry and scan behavior:
+
+- `0x19dd6..0x19dda` publishes the local scratch block pointer `A6-0x28` to
+  `0x782894`.
+- `0x19eb6..0x19f00` clears two 20-byte scratch slots, checks board-visible
+  gates `$8000.14` and `$8000.15`, and calls `0x1a0f2(1)` or `0x1a0f2(2)` for
+  enabled optional resource windows.
+- `0x1a0f2..0x1a21e` selects the active optional window, writes scan fields
+  `0x78288c`, `0x782884`, and `0x782890`, appends resource words into the
+  selected scratch slot, and copies a terminal byte to `0x782898`.
+- `0x1b9c0` classifies the current resource cursor. `HEAD` returns `1`;
+  `FONT`, `font`, `DUMY`, `TABL`, or `tabl` at the cursor or at cursor `+8`
+  return `0`; and neither match returns `-1`.
+- `0x1a220..0x1a252` handles classifier return `1` by copying record byte
+  `+0x0c`, advancing by record longword `+0x04`, and returning record word
+  `+0x0e`.
+- `0x1a254..0x1a2e2` handles classifier return `0` by skipping known
+  signatures and then copying the first non-signature record byte `+0x05`,
+  advancing eight bytes, and returning word `+0x06`. Classifier return `-1`
+  appends a zero word and advances to the next optional-resource grid point.
+
+Comparison and branch behavior:
+
+- `0x1a042..0x1a0f0` compares canonical slots at `0x7828b6 + slot * 0x14`
+  against the matching scratch slots.
+- `0x19f08..0x19fb6` compares fresh scratch slots back against the matching
+  canonical slots.
+- `0x19de6..0x19df6` stores the two predicate bytes in `A6-0x29` and
+  `A6-0x2a`.
+- `0x19dfa..0x19e04` consumes both predicate bytes to choose unchanged versus
+  changed paths.
+- If `0x72a2 == 0` and the first predicate is nonzero,
+  `0x19e32..0x19e46` writes `0x780e8d`, raises status mask `0x00000200`
+  through `0x9bee(0x780e2e, 0x00000200)`, and returns `D7 = 0`.
+- The unchanged and long-refresh paths return `D7 = 1`.
+
+Refresh side effects:
+
+- `0x1ba92..0x1bb9c` prunes candidate-list entries inside the affected
+  optional-resource range and adjusts candidate-list counts and pointer
+  windows.
+- `0x178fa..0x179a8` walks the 32 current downloaded-font records at
+  `0x782640..0x782776` and releases matching nonzero payload pointers through
+  `0x1887a`.
+- `0x19d9c..0x19dca` marks candidate entries dirty.
+- `0x1a4fa..0x1a612` selects the fresh-side optional-resource scan range,
+  writes `0x78288c`, `0x782890`, and `0x782888 = 0x40000`, then calls
+  `0x1a616`.
+- `0x1a900..0x1a9b6` calls `0x1b04c`, validates active contexts `0x782ee6`
+  and `0x782ef6` through `0x1b4c0`, calls `0x179aa(0/1)` when a context is
+  missing or not bit-27 marked, and copies ten longwords from scratch
+  `0x782894` into canonical table `0x7828b6`.
+
+Caller contracts:
+
+- Known callers are `0x00447a`, `0x004760`, `0x007164`, `0x00bb16`, and
+  `0x01a3c2`.
+- Host-input quiesce caller `0x447a` ignores scheduler `D7` and continues
+  through the quiesce tail.
+- Host/menu caller `0x4760` consumes scheduler `D7`: `D7 = 0` returns
+  immediately, while `D7 != 0` enters menu/default setup and polling.
+- External-ready teardown `0xba48 -> 0xbb16` records scheduler side effects
+  but ignores scheduler `D7` before status aggregation through `0x36e4`.
+- Font-resource scan caller `0x1a2e4 -> 0x1a3c2` ignores scheduler `D7`, then
+  passes `0x78219b`, `0x78219c`, and stack local `A6-0x02` to `0x1b50e`.
+
+State classification:
+
+- Canonical state: resource-window table `0x7828b6..0x7828dd`, status root
+  `0x780e2e`, and status predicate byte `0x780e8d`.
+- Derived/cache state: scratch pointer `0x782894`, scan pointer `0x782884`,
+  active optional-window base `0x78288c`, active optional-window limit
+  `0x782890`, terminal byte `0x782898`, and candidate-list pointers/counts
+  `0x7827a8`, `0x7827ac`, `0x7827b0`, `0x7827b4`, `0x782790`,
+  `0x782794`, `0x782798`, and `0x78279c`.
+- Parser scratch: stack predicate bytes `A6-0x29` and `A6-0x2a`, scratch slot
+  `A6-0x28..A6-0x15` for window `0x200000..0x3ffffe`, scratch slot
+  `A6-0x14..A6-0x01` for window `0x400000..0x5ffffe`, and caller local
+  `A6-0x02` used after `0x1a3c2`.
+- Firmware bookkeeping: candidate-count snapshot `0x782780`, current
+  downloaded-font records `0x782640..0x782776`, candidate pointer-list
+  entries at `0x782324..`, active-font dirty bytes `0x782f2c` and
+  `0x782f2d`, caller bookkeeping behind `0x447a` and `0x4760`, and return
+  register `D7`.
+- Hardware/external state: gate bits `$8000.14` and `$8000.15`, and the
+  physical contents of optional windows `0x200000..0x3ffffe` and
+  `0x400000..0x5ffffe`.
+- Unknown: the board-level names for `$8000.14/.15`, the manual-facing name
+  for status mask `0x00000200`, and physical optional-resource records that
+  drive the classifier's non-signature `-1` boundary.
+
+Output effect:
+
+- This path has no direct page-record, render-record, or bitmap output.
+- Its pixel risk is indirect. Optional-window changes can remove font/resource
+  candidates, release downloaded-font payloads, mark candidate entries dirty,
+  refresh active font slots, commit a new canonical resource-window table, or
+  change a caller's continuation through `D7`.
+- A byte-stream renderer with no optional cartridges can start from the
+  verified built-in resource state and treat the optional windows as absent. A
+  renderer that supports cartridge or external resources must preserve this
+  handoff because later font selection and glyph resolution consume the
+  refreshed candidate and context state.
+
+Evidence and unresolved boundary:
+
+- Detail note: [page-font-scheduler.md](page-font-scheduler.md).
+- Related resource and font notes:
+  [resource-rom.md](resource-rom.md),
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [external-ready-service.md](external-ready-service.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`,
+  `generated/disasm/ic30_ic13_font_resource_refresh_helpers_0178fa.lst`,
+  `generated/disasm/ic30_ic13_font_scheduler_commit_01a4fa.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`,
+  `generated/disasm/ic30_ic13_font_default_update_01ba40.lst`,
+  `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`,
+  `generated/disasm/ic30_ic13_host_scheduler_caller_004700.lst`,
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`,
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`, and
+  `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`.
+- Fixture evidence includes
+  `0x19dd2 optional-window change composes refresh helpers`,
+  `0x19dd2 modeled unchanged and status branch exits`,
+  `0x447a/0x4760 consume scheduler return differently`,
+  `0xbb0a external-ready teardown ignores scheduler return`, and
+  `0x1a2e4 font scan ignores scheduler return`.
+- The unresolved middle edge is external resource data, not the ROM-local
+  scheduler chain: windows `0x200000..0x3ffffe` and `0x400000..0x5ffffe`
+  need cartridge or board memory-map evidence to name physical contents and to
+  exercise every classifier boundary beyond the modeled changed, unchanged,
+  and status-return exits.
 
 ## Worked Path: Printable Glyph
 

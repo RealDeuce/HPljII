@@ -1278,6 +1278,152 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
+## Worked Path: Page Environment Publication
+
+This path covers publication commands whose visible pixels come from already
+queued page objects, while the command itself changes page or environment
+state around the publication boundary. It extends the FF-only publication path
+to reset, page size, orientation, paper source, and copy-count streams.
+
+Representative streams:
+
+```text
+! ESC E
+! ESC &l1A
+! ESC &l1O
+! ESC &l2H
+! ESC &l2X FF
+```
+
+Parser dispatch:
+
+- All streams enter through host fetch `0xa904`, parser wrapper `0xda9a`,
+  and parser loop `0x11774`.
+- The initial printable byte `0x21` reaches `0xd04a` and queues a compact
+  `LINE_PRINTER` glyph object before the publication command.
+- `ESC E` dispatches to software-reset handler `0xcc52`.
+- `ESC &l1A` dispatches to page-size handler `0xfc74`.
+- `ESC &l1O` dispatches to orientation handler `0x10220`.
+- `ESC &l2H` dispatches to paper-source handler `0xef62`.
+- `ESC &l2X` dispatches to copies handler `0xeef0`; the following FF byte
+  dispatches to `0xf0f0`, which performs the publication using the stored copy
+  count.
+
+Command behavior before publication:
+
+- The printable byte allocates or reuses the current page root at `0x78297a`
+  and stores the compact text object under page-root bucket array `+0x1c`.
+- Reset `0xcc52` publishes through reset helper `0xcc70` before rebuilding the
+  environment and parser/data-chain state.
+- Page-size handler `0xfc74` publishes queued text before storing the new
+  page code and recomputing page geometry.
+- Orientation handler `0x10220` publishes queued text before changing
+  orientation byte `0x782da3` and installing orientation-specific extents.
+- Paper-source handler `0xef62` flushes pending text, publishes the queued
+  page, refreshes cursor state, and then writes paper-source/output state.
+- Copies handler `0xeef0` does not publish immediately. It stores copy count
+  `0x782da4`, and the later FF handler `0xf0f0` publishes that count into the
+  pool header.
+
+Published page-record shape:
+
+- All covered streams publish the pre-command compact `!` object:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+- Page-root context slot `+0x2c` is preserved as `0x440946b4` in the covered
+  host-fetched and addressed publication streams.
+- `0xff1e` writes published pool state byte `+4 = 2`, copies the current root
+  longword to `0x780ea6`, sets publication flag `0x782996`, and clears
+  current root pointer `0x78297a`.
+- For reset, FF, page-size, orientation, and paper-source streams, the
+  published pool header keeps default environment/status fields.
+- For `! ESC &l2X FF`, `0xeef0` stores `0x782da4 = 2`; the following
+  `0xff1e` publication copies that value into published pool-header word
+  `+0x0c`.
+
+Command-specific state effects:
+
+- `! ESC E` publishes the page if a current root exists, then resets page and
+  parser state. The missing-root fixture proves `ESC E` can also clear reset
+  state without creating a published record.
+- `! ESC &l1A` publishes first, then leaves page code `6`, portrait
+  orientation, active size `3030 x 2025`, top offset `90`, and page-change
+  flag `1`.
+- `! ESC &l1O` publishes first, then writes orientation `1`, active size
+  `2025 x 3030`, vertical offset source `50`, top offset `100`, and the
+  landscape geometry threshold sequence.
+- `! ESC &l2H` publishes first, then selector `2` leaves selected value
+  `0x80`, writes `0x782da6 = 0x80`, sets `0x782998 = 1`, mirrors
+  `0x780e8f = 0x80`, and ORs bit 0 into `0x780e26` when the output path is
+  available.
+- `! ESC &l2X FF` stores copy count `2` at `0x782da4`; direct fixture
+  `0xeef0 ESC &l#X stores absolute clamped copy count` also pins selector
+  rules where `0` leaves the old count unchanged, `-3` stores `3`, and `150`
+  clamps to `99`.
+
+Render path:
+
+- The scheduler later selects the published record into active source
+  `0x780eae`.
+- `0x1ed84` copies the active published-record header into a render work
+  record.
+- `0x1edc6` copies bucket root `+0x1c`, rule/fixed-list roots, and context
+  slots into the render record.
+- `0x1ef6a` consumes the render record in call order
+  `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`.
+- The covered streams dispatch the compact text object to `0x1effe` with
+  context slot `0` and render the same rows as the pre-command printable
+  glyph.
+
+State classification for this path:
+
+- Canonical state:
+  current page root `0x78297a`, compact bucket object, page-root context slot,
+  published pool record, published pool pointer `0x780ea6`, copy count
+  `0x782da4`, paper-source byte `0x782da6`, pending paper-source/status byte
+  `0x782998`, paper-source output/control bytes `0x780e8f` and `0x780e26`,
+  page-size code `0x782da2`, orientation byte `0x782da3`, and active
+  page-geometry fields.
+- Derived/cache state:
+  page extents, top offsets, orientation threshold values, compact bucket/key
+  fields, and render-band fields created after `0x1ed84`.
+- Parser scratch:
+  parser modes and six-byte command records for `ESC E`, `ESC &l1A`,
+  `ESC &l1O`, `ESC &l2H`, and `ESC &l2X`, plus host-ring drain state from
+  `0xa904`.
+- Firmware bookkeeping:
+  stream allocator fields such as `0x782a70`, `0x782a72`, and `0x782a76`,
+  publication flag `0x782996`, page-root clear state, reset/data-chain
+  rebuild state from `0xcc70` / `0xcda2` / `0xe146`, and scheduler progress
+  words.
+- Hardware/external state:
+  `0x780e8f` and `0x780e26` are software-visible paper-source output/control
+  bytes. The exact formatter-to-engine physical timing remains outside the
+  ROM-local proof.
+- Unknown:
+  no unresolved ROM-local parser-to-publication or publication-to-render
+  middle edge remains for these streams. Remaining uncertainty is physical
+  device comparison and page-environment variants that produce different pool
+  header fields, geometry, bucket roots, bridge state, or rendered rows.
+
+Evidence for this path is in
+[publication-commands.md](publication-commands.md),
+[reset-default-environment.md](reset-default-environment.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md),
+[active-render-scheduler.md](active-render-scheduler.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting listings
+are `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+`generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+`generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+`generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+`generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: Vertical Forms Control
 
 This path covers the VFC command family: `ESC &l#W` loads a channel table, and

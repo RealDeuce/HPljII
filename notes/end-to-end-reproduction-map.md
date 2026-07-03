@@ -2,9 +2,10 @@
 
 Goal: reproduce LaserJet II output pixels from the same host byte stream by
 using ROM-derived parser behavior, state fields, page-record formats, and
-render routines. This note is the current top-level map from host input to
-imaging; detailed ledgers remain in `notes/reverse-engineering-ledger.md` and
-`notes/semantic-state-model.md`.
+render routines. The primary explanatory spine is
+[firmware-dataflow-model.md](firmware-dataflow-model.md). This note is the
+current coverage/evidence map for that pipeline; detailed ledgers remain in
+`notes/reverse-engineering-ledger.md` and `notes/semantic-state-model.md`.
 
 ## Pipeline Contract
 

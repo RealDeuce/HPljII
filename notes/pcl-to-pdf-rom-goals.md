@@ -111,6 +111,12 @@ host bytes
 
 Concrete software contracts already exist for these renderer components:
 
+- Startup initial state:
+  reset vectors, RAM trampoline setup, heap/resource-window bounds, host-byte
+  buffers, host-output FIFO, render-work selectors, and wait-object ring setup
+  are composed by `Worked Path: Startup Initial State` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
+  [firmware-startup.md](firmware-startup.md).
 - Byte stream reader:
   `0xa904` byte-source priority, data-chain frame layout, pushback stacks,
   ring buffer, direct hardware modes, and host/status output FIFO are

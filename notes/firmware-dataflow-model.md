@@ -28,6 +28,8 @@ family or object producer.
 
 Use these worked paths as entry points for the byte-stream-to-pixel model:
 
+- Startup and initial firmware state:
+  `Worked Path: Startup Initial State`.
 - Host byte source and replay priority:
   `Worked Path: Host Byte Source Priority`.
 - Parser records, dispatch tables, delayed payloads, ignored rows, and
@@ -75,6 +77,112 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 
 Each worked path names the handlers, ROM fields, output effect, field
 classification, evidence files, and unresolved boundary for that slice.
+
+## Worked Path: Startup Initial State
+
+This path covers the ROM-defined initial state that exists before the first
+host byte reaches `0xa904`. It is not a PCL command path and does not draw
+pixels. It matters because byte-stream reproduction depends on the empty
+host-input buffers, output FIFO, heap allocator, render work records, wait
+objects, and resource-window bounds that later parser and imaging paths
+consume.
+
+Reset and early setup:
+
+- Reset vector PC is `0x00000110` and initial SSP is `0x00800000`.
+- Reset entry `0x0110` masks interrupts, issues 68000 `RESET`, delays, and
+  writes early MMIO defaults including `$a200 = 0`, `$fffe0001 = 3`,
+  `$aa01 = 0xf1`, `$a601 = 0`, and `$a801 = 0x7e`.
+- Startup helper `0x0298` copies 62 six-byte `JMP absolute long` stubs from
+  ROM table `0x04c0` into RAM trampoline range `0x780000..0x780173`.
+- The startup then runs RAM/config/resource tests and setup helpers before the
+  scheduler ring starts at `0x0c24`.
+
+Renderer-relevant initialized state:
+
+- `0x2c84` enters the default-environment producer cluster, bulk-reads retained
+  default records through `0x5a16` / `0x97e4`, loads the active default record
+  through `0x5f96`, and seeds environment bytes `0x780e44..0x780e58`.
+- `0x0b18` computes heap and resource-window bounds. With the observed reset
+  defaults it writes heap start `0x780efa = 0x783f4a`, heap byte count
+  `0x780efe = 0x000640b6`, resource/window base `0x7810b4 = 0x007e8000`,
+  and resource/window size-minus-two `0x7810b8 = 0x00017ffe`.
+- `0x164a` initializes the heap allocator: free-unit count `0x780e86`,
+  bitmap-base pointer `0x783972 = 0x784906`, payload-base pointer
+  `0x783988 = 0x784c40`, and low/high scan fields consumed by allocation
+  helpers `0x170c`, `0x1710`, and `0x18b4`.
+- `0x2feb6` initializes render work selector state by writing
+  `0x7820bc = 1` and `0x7820c0 = 1`, then clearing work header words
+  `0x7820c8` and `0x78212c`.
+- `0x3178` initializes host byte-source buffers: ring count `0x783e54`,
+  second LIFO count `0x783e76`, and first LIFO count `0x783e8c` are cleared;
+  ring pointers `0x783e56` / `0x783e5a` are set to `0x783a4c`; ring
+  low-water threshold `0x783e5e = 0x40`; sequence cursor
+  `0x783e62 = 0xa8a4`; write-pointer mirror `0x7821c4 = 0x783a4c`; LIFO
+  pointers `0x783e78 = 0x783e66` and `0x783e8e = 0x783e7c`.
+- `0x31d6` initializes the 64-byte host-output FIFO by clearing count
+  `0x783ed2` and setting read/write pointers `0x783ed4` and `0x783ed8` to
+  `0x783e92`.
+- Scheduler bootstrap `0x0c24` builds eight wait-object records
+  `0x780182..0x780262` from table `0x15d0`, installs priorities, private
+  stacks, restart PCs, and closes the scheduler ring before entering priority
+  switch `0x1266`.
+
+State classification:
+
+- Canonical startup state:
+  default-environment bytes `0x780e44..0x780e58`, heap fields `0x780efa`,
+  `0x780efe`, `0x780e86`, `0x783972`, and `0x783988`, host input fields
+  `0x783e54..0x783e8e` plus `0x7821c4`, output FIFO fields
+  `0x783ed2`, `0x783ed4`, and `0x783ed8`, and wait-object ring records
+  `0x780182..0x780262`.
+- Derived/cache state:
+  MMIO shadows `0x7828fa`, `0x7828f9`, and `0x7828f6`; timer divider seeds
+  `0x78017f`, `0x780180`, and `0x780181`; startup resource bounds
+  `0x7810b4` / `0x7810b8`; render work selector/header fields
+  `0x7820bc`, `0x7820c0`, `0x7820c8`, and `0x78212c`.
+- Parser scratch:
+  none in this startup block. Parser records and payload scratch are reset
+  later by parser/reset paths such as `0xe146`, `0x11774`, and `0x12218`.
+- Firmware bookkeeping:
+  RAM trampoline stubs `0x780000..0x780173`, startup-test gate `0x783eee`,
+  scheduler private-stack frames, wait-object priorities, and retained-record
+  dirty/readback buffers.
+- Hardware/external state:
+  early MMIO and strap inputs behind `$8000`, `$8c01`, `$ff8000`, `$a200`,
+  `$a400`, `$a601`, `$a801`, `$aa01`, `$fffe0001`, `$fffe0003`,
+  `$ffff1020`, `$ffff2000`, and `$ffff3800`.
+- Unknown:
+  physical names and electrical timing for those MMIO devices remain
+  board-level work. The software ownership of the initialized parser,
+  allocator, byte-source, FIFO, scheduler, and render-work state is not open
+  in this checkpoint.
+
+Output effect:
+
+- Startup does not allocate page roots, queue page objects, publish pages, or
+  render rows.
+- Its reproduction effect is initial state. `Worked Path: Host Byte Source
+  Priority` depends on `0x3178`, `Worked Path: Model-ID And Status
+  Backchannel` depends on `0x31d6`, `Worked Path: Shared Page-Record Storage
+  And Allocator` depends on `0x164a`, and `Worked Path: Published Record To
+  Active Bands` depends on `0x2feb6` and the `0x0c24` wait-object ring.
+
+Evidence:
+
+- Detail note: [firmware-startup.md](firmware-startup.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`,
+  `generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`,
+  `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`,
+  `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`,
+  `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`,
+  `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`,
+  `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`, and
+  `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`.
+- Generated table evidence:
+  `generated/analysis/ic30_ic13_vectors.txt` and
+  `generated/analysis/ic30_ic13_startup_tables.txt`.
 
 ## Host Bytes
 

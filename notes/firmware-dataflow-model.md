@@ -56,6 +56,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Reset And Default Environment`,
   `Worked Path: FF Publication`,
   `Worked Path: Page Environment Publication`,
+  `Worked Path: Shared Page-Record Storage And Allocator`,
   `Worked Path: Published Record To Active Bands`,
   `Worked Path: Mixed Text/Rule/Raster Page Record`,
   `Worked Path: Render Dispatch And Pixel Composition`.
@@ -357,6 +358,126 @@ handler `0x105d0`, `0x105d0` reads payload bytes through the byte fetcher and
 updates raster state, then `0x13070` / `0x13250` queues encoded-span page
 objects. Pixels appear later when the render dispatcher consumes those
 objects.
+
+## Worked Path: Shared Page-Record Storage And Allocator
+
+This path is the common page-object storage boundary beneath text, raster,
+rectangle/rule, span flush, publication, and render bridge paths. It documents
+one state block with multiple writers and consumers before any object renderer
+writes pixels. The detailed storage contract and fixture ledger are in
+[page-record-storage.md](page-record-storage.md); the unified semantic ledger is
+`Shared Page-Record Storage And Allocator` in
+[semantic-state-model.md](semantic-state-model.md).
+
+Producer entry points:
+
+- `0xd04a` resolves printable text and queues compact entries through
+  `0x12f2e` / `0x1387c`.
+- `0x12714` flushes pending spans. Portrait spans queue segment-list bucket
+  objects under root `+0x1c`; landscape spans queue fixed-list objects through
+  `0x136d2` under root `+0x28`.
+- `0x105d0` consumes delayed `ESC *b#W` raster payload bytes and queues
+  encoded-span bucket objects through `0x13070` / `0x13250`.
+- `0x10898` completes rectangle/rule commands and inserts ordered rule nodes
+  through `0x10b80`, `0x13386`, and `0x133aa`.
+
+All four families converge on the current page root:
+
+- `0x10084` ensures root pointer `0x78297a`. When a root is missing it
+  allocates one, marks byte `+4 = 1`, seeds `0x782a72 = root + 0x20`, calls
+  initializer `0x10110`, clears `0x782990`, and zeroes the bucket-head array
+  at root `+0x1c`.
+- `0x10110` initializes page code, status/flag fields, dimension and band
+  fields, list heads, and selected current-font context slot `+0x2c`.
+- `0x1381c` owns variable-size stream allocation. It updates stream
+  bookkeeping `0x782a70`, `0x782a72`, and `0x782a76`; when it needs a new
+  0x100-byte chunk, it links that chunk through the prior `0x782a72` target.
+- `0x1387c` links or reuses compact/raster bucket objects under root `+0x1c`.
+  `0x133aa` links ordered rule objects under root `+0x24`.
+  `0x136d2` links ordered fixed-list objects under root `+0x28`.
+
+The chunk-rollover fixture proves these producers are one shared allocator,
+not separate command-local stores. In
+`addressed page-record writers share 0x1381c across chunk rollover`,
+`0x10084` seeds `0x782a72 = root + 0x20`; seven compact writers through
+`0x12f2e` / `0x1387c` allocate objects at `0x00d05004`,
+`0x00d0502a`, `0x00d05050`, `0x00d05076`, `0x00d0509c`,
+`0x00d050c2`, and `0x00d05104`; then `0x133aa` and `0x136d2`
+allocate rule/fixed objects at `0x00d0512a` and `0x00d05138`. The stream
+links are `root + 0x20 -> 0x00d05000 -> 0x00d05100`, and final stream
+bookkeeping is `0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
+`0x782a76 = 0x00d05146`.
+
+Field classification:
+
+- Canonical page state:
+  current root `0x78297a`; root `+0x1c` bucket heads; root `+0x20` stream
+  chunk chain; root `+0x24` rule list; root `+0x28` fixed list; root
+  `+0x2c..+0x68` context slots; compact/raster, segment-list, rule, and
+  fixed-list object headers and payload bytes allocated through `0x1381c`.
+- Derived/cache state:
+  producer keys `0x782a7a..0x782a7e`; render-band outputs `0x783a20`,
+  `0x783a22`, and `0x783a28`; destination/cache fields written by the
+  bridge and later consumed by render dispatch.
+- Parser scratch:
+  six-byte command records, delayed-payload snapshots, and direct-reader
+  byte counts before the producer call. Once `0x12f2e`, `0x13070`,
+  `0x133aa`, or `0x136d2` has queued an object, the queued page object no
+  longer depends on the parser scratch that led to it.
+- Firmware bookkeeping:
+  stream cursors `0x782a70`, `0x782a72`, and `0x782a76`; pending first-root
+  latches `0x782c72` / `0x782c73`; transient byte `0x782990`; publication
+  flag `0x782996`; root state byte `+4`.
+- Hardware/external state:
+  none for the ROM-local allocator and bridge contract.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the listed root fields,
+  stream accounting, local no-room returns, publication fields, or
+  render-bridge root copies. Remaining work starts from new byte streams that
+  expose a different object shape, continuation state, or rendered row.
+
+Publication and render handoff:
+
+- `0xff1e` consumes the current root, publishes it into the page/control pool,
+  sets `0x782996`, writes published root state, and clears `0x78297a`.
+- `0x1ed84` selects the active source record from scheduler state and seeds
+  render-record header words.
+- `0x1edc6` copies root `+0x1c` to render `+0x18`, root `+0x24` to render
+  `+0x1c`, root `+0x28` to render `+0x20`, and context slots
+  `+0x2c..+0x68` to render `+0x24..+0x60`.
+
+Output effect:
+
+- The allocator itself draws no pixels. It determines the object collections,
+  object ordering, and page/context roots later consumed by the render
+  dispatcher.
+- Fixture `addressed text/rule/raster field groups reach publication and
+  render entry` proves compact text, a selector-7 rule, and a mode-0 raster
+  row share one addressed page record, publish through `0xff1e`, bridge
+  through `0x1ed84` / `0x1edc6`, and enter render dispatch through
+  `0x1ef6a`.
+- Fixtures `0x133aa no-room return preserves rule-list head` and
+  `0x136d2 no-room return preserves fixed-list head after search` prove
+  failed allocation leaves the prior visible rule/fixed lists intact for
+  later publication.
+
+Evidence:
+
+- Detail note: [page-record-storage.md](page-record-storage.md).
+- Semantic ledger: `Shared Page-Record Storage And Allocator` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Generated analysis:
+  `generated/analysis/ic30_ic13_page_root_allocation.md`,
+  `generated/analysis/ic30_ic13_page_root_references.md`,
+  `generated/analysis/ic30_ic13_compact_bucket_allocator.md`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+- Disassembly:
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
 ## Page Image Assembly
 

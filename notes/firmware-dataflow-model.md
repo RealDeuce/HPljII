@@ -49,6 +49,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Font Selection To Visible Glyphs`,
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
+  `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Worked Path: Macro Execute Replay`,
   `Boundary: Secondary Segment-57 Source`.
 - Page publication, page environment changes, and active render scheduling:
@@ -2527,6 +2528,104 @@ are `generated/disasm/ic30_ic13_assign_font_id_015a56.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
+### Boundary: Short Compact Downloaded-Glyph High Rows
+
+This is the exact ROM-local visible-output boundary for downloaded glyph row
+counts whose high byte is nonzero but whose printable page source still
+selects the short compact renderer. It is not a parser, install, publication,
+or bridge gap: those earlier edges are fixture-backed.
+
+Boundary stream family:
+
+- `ESC )s516W <payload> 3 FF` installs glyph `0x33` with row count `0x0102`.
+- Adjacent matrix fixtures cover rows `0x0101`, `0x0102`, and `0x0103`.
+- The parser-restored records carry byte budgets `0x0202`, `0x0204`, and
+  `0x0206`; the installed downloaded-character records preserve the matching
+  16-bit row words.
+
+Producer and consumer behavior:
+
+- `0x16498` installs the canonical downloaded glyph record and bitmap. For
+  row `0x0102`, the record bytes are
+  `00 00 00 00 0c 01 01 02 00 10 00 00`, and glyph table entry `0x0116`
+  points at the installed object.
+- The printable source record does not carry the full 16-bit row count to the
+  page-object producer. It exposes only the low row byte to `0x12f2e`.
+- For rows `0x0101..0x0103`, `0x12f2e` therefore sees low bytes
+  `0x01..0x03`, derives selector `0x0003`, and publishes only bucket `1`
+  through `0xff1e`.
+- The page/render bridge is normal: `0x1ed84` / `0x1ef6a` select render
+  bucket word `1`, `0x1ef86` derives current-band state, and compact dispatch
+  reaches the short row-copy helper path.
+- `0x1f414` splits the full installed row words at coordinate `0x6601`. For
+  row `0x0102`, the split is `58` current-band rows plus `200` fallback rows.
+  The adjacent rows split to fallback counts `199` and `201`.
+- Short compact helper `0x1fe76` has valid row-count table entries only
+  through index `128`. Row `0x0102` would read fallback index `200`, whose
+  table target is `0x329ad3c0`.
+
+State classification:
+
+- Canonical state:
+  downloaded glyph table entries, installed record row words `0x0101`,
+  `0x0102`, and `0x0103`, bitmap payload bytes, current page root, bucket `1`
+  publication, and render-record bucket root.
+- Derived/cache state:
+  printable source low row byte, selector `0x0003`, render bucket word `1`,
+  `0x783a20 = 0x0040`, `0x783a28 = 0x00100800`, and `0x1f414`
+  current/fallback row split.
+- Parser scratch:
+  restored `ESC )s#W` records such as `80 57 02 04 00 00`, payload byte
+  budget `0x783140`, copy status `1`, zero-byte drain through `0x12328`, and
+  next handler `0xd04a`.
+- Firmware bookkeeping:
+  downloaded-record allocation/release state around `0x16c14` / `0x16498`,
+  stream allocator state, publication flag `0x782996`, and render-work
+  progress.
+- Hardware/external state:
+  none for this boundary.
+- Unknown:
+  the unresolved item is only the short compact fallback helper target for
+  table indices above `128`, specifically indices `199..201` for the covered
+  high-row matrix. The parser, installed glyph state, low-byte selector
+  truncation, publication bucket, render bucket, and row-split counts are
+  documented.
+
+Output effect:
+
+- Rows `0x0001..0x00ff` have page-visible publication and renderer evidence in
+  the downloaded-glyph row-count matrix.
+- Rows `0x0101..0x0103` preserve installed row words and publish the low-byte
+  short compact object, but no pixel-output claim is made after the invalid
+  `0x1fe76` fallback index.
+- Segmented-wide high-row paths are a separate solved branch for the sampled
+  span/row combinations: they reach `0x1f264` or parser payload-count caps,
+  not this short compact helper boundary.
+
+Evidence:
+
+- Detail note: [downloaded-fonts.md](downloaded-fonts.md), especially
+  `Downloaded Glyph Row-Count Publication Checkpoint`.
+- Renderer detail: [page-raster-imaging.md](page-raster-imaging.md),
+  compact glyph row-copy sections around `0x1f414` and `0x1fe76`.
+- Semantic checkpoint: `Downloaded Glyph Row-Count Publication Checkpoint` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixture evidence:
+  `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`,
+  `downloaded glyph high-row truncation matrix preserves installed rows`,
+  `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts`, and
+  `downloaded segmented-wide row-byte boundary truncates page-record
+  segments`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+
 ## Worked Path: FF Publication
 
 This path shows how an already queued page object becomes a published page
@@ -3798,10 +3897,13 @@ Current top-level boundaries include:
   policies are fixture-bounded, but the physical decode after `0x0c0000`
   remains unproven.
 - ROM-local visible-output helper boundary:
-  short compact downloaded-glyph fallback indices above `128` in helper
-  `0x1fe76`. Parser-produced rows `0x0101..0x0103` preserve installed row
-  state and prove the low-byte source boundary, but table indices above the
-  documented valid range remain an exact renderer-helper edge.
+  `Boundary: Short Compact Downloaded-Glyph High Rows` documents the exact
+  short compact downloaded-glyph fallback edge in helper `0x1fe76`. Rows
+  `0x0101..0x0103` preserve installed row state and prove low-byte selector
+  truncation through `0x12f2e`, bucket `1` publication, render bucket word
+  `1`, and `0x1f414` fallback counts `199..201`; helper table indices above
+  the documented valid maximum `128` remain the unresolved renderer-helper
+  edge.
 - ROM-local variant boundaries rather than generic gaps:
   dense page/object streams that change `0x1381c` rollover, `0x13250` encoded
   raster gate outcomes, `0x133aa` / `0x136d2` list ordering, or bridge fields;

@@ -297,6 +297,12 @@ Expected remaining boundaries:
   install-to-page boundary after `ESC )s18W`. These are not current
   ROM-semantic blockers when the checked-in notes already document field
   ownership, consumers, fixtures, and output rows.
+- ROM-local visible-output helper boundary:
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
+  `Boundary: Short Compact Downloaded-Glyph High Rows` for `0x1fe76`
+  fallback indices above `128` after rows `0x0101..0x0103` publish low-byte
+  short compact objects. This is an exact unresolved renderer-helper edge, not
+  a parser/install/publication gap.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

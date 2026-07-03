@@ -36,6 +36,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Explicit No-Output Parser Rows`.
 - Host/status side channels with no direct page-object effect:
   `Worked Path: Model-ID And Status Backchannel`,
+  `Worked Path: Page Environment Status Bridge`,
   `Worked Path: External Ready Service Preemption`.
 - Text, controls, cursor placement, and transparent/display byte readers:
   `Worked Path: Printable Glyph`,
@@ -964,6 +965,128 @@ Evidence and unresolved boundary:
 - The unresolved edge is external naming and timing: the protocol name for
   query byte `0x11`, physical output-register mapping, and whether a
   particular host script consumes these backchannel bytes.
+
+## Worked Path: Page Environment Status Bridge
+
+This path covers the bridge from a selected page/control-pool record into
+host-visible status and panel/service messages. It does not create page
+objects or pixels, but it matters to byte-stream reproduction because the same
+state is visible through output worker `0xae2c` / `0xaece` and through the
+page-pool cursor service path at `0x7612..0x7834`.
+
+Producer and cleanup behavior:
+
+- Helper `0x2888` is the primary producer. It compares the selected scheduler
+  record at `0x780eaa` against active page-environment byte `0x780e8e`.
+- `0x2888` only evaluates selected records whose state byte `+4` is `2` or
+  `3`, and it exits early when active-pool attention/status flag `0x780e6d`
+  is set.
+- The selected record bytes observed here are `+6` as status candidate, `+7`
+  as page-environment candidate, and `+8` as service-needed byte.
+- On the mismatch/publication path, `0x2a14` copies selected byte `+7` to
+  `0x780e8f` and sets `0x780e29.0`.
+- On the active high-bit path, `0x2888` sets page-environment status flag
+  `0x780e90`, copies selected byte `+6` to cache byte `0x780e98`, and sets
+  warning/status accumulator bit `0x780e2a.4` through `0x9bee`.
+- Helper `0x29b2` is the status-cache fallback writer. It writes `0x780e98`
+  from its argument byte and then sets either `0x780e29.3` when `0x780e02`
+  and `0x780e91` allow that path, or `0x780e30.0` otherwise.
+- Helper `0x2a38` sets service-pending byte `0x7839d3`, calls `0xa5c2`, and
+  clears `0x780e90` when its predicates allow service.
+- Cleanup `0x2c08..0x2c3a` clears `0x7839d2`, may call `0x2c44`, clears
+  `0x7839d3`, calls `0xa5da`, and clears `0x780e90`.
+
+Host/status consumers:
+
+- Status-byte builder `0xaece` consumes `0x780e90` as bit `0` of the
+  outbound base `0x30` status byte. The same byte also includes bit `1` from
+  `0x780e2a`, bit `2` from `0x780e0a`, and ORed reason byte `0x783e60`.
+- Page-pool cursor service `0x7612..0x7834` consumes `0x780e90` as the
+  selector between media-feed formatter `0x8a48` and normal service-message
+  selector `0x8656`; its `0x77b0` path can also clear `0x780e90`.
+- Copied-stub handler `0x0d12..0x0d24` consumes and clears service-pending
+  byte `0x7839d3`.
+
+Panel/message consumers:
+
+- Media-feed formatter `0x8a48` consumes `0x780e8e` and `0x780e98`.
+  When `0x780e8e == 0x80`, high bit set in `0x780e98` selects `PE FEED`
+  (`0xb291`) through `0x9112`; clear selects `PF FEED` (`0xb280`) through
+  `0x9112`.
+- When `0x780e8e == 0x90`, high bit set in `0x780e98` again selects
+  `PE FEED`; clear selects `PE FEED ENVELOPE` (`0xb2a2`) through `0x8c90`.
+- Normal service-message selector `0x8656` maintains toner/service latch
+  `0x780e3e`, writes next poll deadline `0x7822e6 = 0x780e04 + 0x65`, and
+  dispatches service/self-test strings through selector byte `0x780e8a` and
+  related flags.
+- Display/message wrappers `0x8c7a` and `0x8c90` call `0x9182` with mode
+  arguments `0` and `1`. Formatted message helper `0x9112` feeds the same
+  display-message core.
+
+State classification:
+
+- Canonical page-environment state: active page-environment byte `0x780e8e`,
+  output page-environment byte `0x780e8f`, and selected record bytes `+6`,
+  `+7`, and `+8` from the record selected by `0x780eaa`.
+- Derived/cache status: page-environment status flag `0x780e90`, status-code
+  cache `0x780e98`, warning/status bit `0x780e2a.4`, service-pending byte
+  `0x7839d3`, toner/service latch `0x780e3e`, service selector `0x780e8a`,
+  and next service poll deadline `0x7822e6`.
+- Parser scratch: none. This path is not entered from the PCL parser tables.
+- Firmware bookkeeping: gates `0x780e6d`, `0x780e02`, and `0x780e91`; latch
+  bits `0x780e29.0`, `0x780e29.3`, and `0x780e30.0`; message buffers
+  `0x78292c..0x78293c` and `0x78293d..0x78294d`; message state bytes
+  `0x78296c`, `0x78296d`, `0x78296e`, `0x782970`, and `0x782971`; and the
+  display helpers `0x8c7a`, `0x8c90`, `0x9112`, and `0x9182`.
+- Hardware/external state: service-strobe shadow bit `0x7828f9.2`, hardware
+  byte `$a801`, and hardware/status byte `$8a01`.
+- Unknown: user-facing names for selected record bytes `+6`, `+7`, and `+8`
+  beyond the page-environment interpretation; physical signal names for
+  `$8a01.5`, `$8a01.3`, and `$a801.2`; exact physical panel output after
+  `0x9182..0x9406`; and the sensor names behind `0x6e32(0x1f)` and
+  `0x6f32(0x2a)`.
+
+Output effect:
+
+- This path does not allocate page roots, page records, render work records,
+  or bitmap rows.
+- It affects host-visible output through `0xaece` status bit `0`, so a
+  bidirectional host may react with different later bytes.
+- It affects panel/service output through `0x8a48`, `0x8656`, `0x8c7a`,
+  `0x8c90`, `0x9112`, and `0x9182`.
+- For pixel reproduction from a fixed host byte stream, the path is a
+  no-page-output side channel. For reproduction of a live bidirectional host
+  session, the status byte and panel/service state are part of the observable
+  firmware behavior.
+
+Evidence and unresolved boundary:
+
+- Semantic source: [semantic-state-model.md](semantic-state-model.md),
+  section `Page Environment Status Bridge`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_page_environment_status_002888.lst`,
+  `generated/disasm/ic30_ic13_page_status_cleanup_002c00.lst`,
+  `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`,
+  `generated/disasm/ic30_ic13_page_service_messages_008656.lst`,
+  `generated/disasm/ic30_ic13_page_environment_message_008a48.lst`,
+  `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`,
+  `generated/disasm/ic30_ic13_formatted_message_helper_009112.lst`,
+  `generated/disasm/ic30_ic13_display_message_core_009182.lst`,
+  `generated/disasm/ic30_ic13_8a01_a801_status_bits_00a42c.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`, and
+  `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`.
+- String evidence:
+  `generated/analysis/ic30_ic13_strings.txt`, including `PF FEED`,
+  `PE FEED`, `PE FEED ENVELOPE`, `16 TONER LOW`, `SERVICE MODE`, `UC`,
+  `LC`, and self-test/font-print strings.
+- Fixture evidence includes
+  `0x2888 sets page-environment status consumed by 0xaece`,
+  `0x2888 publishes environment mismatch or status-cache changes`,
+  `0x7612 selects page-environment or normal service helper`, and
+  `0x8a48 maps page environment bytes to media-feed messages`.
+- Exact unresolved middle edges are `0x9112..0x9182` for full message
+  formatter lifting, `0x9182..0x9406` for physical panel output, and
+  `0x6e32(0x1f)` / `0x6f32(0x2a)` for physical sensor naming.
 
 ## Worked Path: External Ready Service Preemption
 

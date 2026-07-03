@@ -53,6 +53,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Macro Execute Replay`,
   `Boundary: Secondary Segment-57 Source`.
 - Page publication, page environment changes, and active render scheduling:
+  `Worked Path: Reset And Default Environment`,
   `Worked Path: FF Publication`,
   `Worked Path: Page Environment Publication`,
   `Worked Path: Published Record To Active Bands`,
@@ -2625,6 +2626,124 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+
+## Worked Path: Reset And Default Environment
+
+This path covers `ESC E` software reset. It is both a page-boundary command
+and an environment rebuild: if a current page root is valid, reset publishes it
+before resetting parser, page, font, raster, and default-environment state.
+
+Primary streams:
+
+```text
+! ESC E
+ESC E
+```
+
+Parser dispatch:
+
+- Host bytes enter through `0xa904` and parser loop `0x11774`.
+- Printable `!` reaches `0xd04a`, ensures a current page root through
+  `0x10084`, and queues a compact text object through `0x12f2e` /
+  `0x1387c`.
+- `ESC E` reaches reset handler `0xcc52`.
+
+Reset command behavior:
+
+- `0xcc52` calls `0xcc70`, `0xcbd4`, and `0xe146`, then clears reset status
+  byte `0x782a93`.
+- `0xcc70` flushes pending text through `0xf34a`, calls `0xff1e` to publish or
+  clear the current root, waits through `0x9ac2`, clears orientation byte
+  `0x782da3`, calls environment rebuild helper `0xcda2`, and resets
+  raster/page-derived state.
+- `0xcda2` rebuilds the four page/control pool records at `0x780f02`, copies
+  canonical defaults, recomputes VMI/HMI, resets parser scratch pointers, and
+  writes reset bookkeeping fields.
+- `0xcbd4` refreshes HMI and active-symbol snapshots from current-font context
+  `0x782ee6`.
+- `0xe146` resets parser/data-chain records and text accumulation state,
+  freeing any 0x100-byte data-chain allocations through `0x18b4`.
+
+Default inputs consumed by reset:
+
+- `0x78219d`: default byte copied to reset environment word `0x782da4` by
+  `0xcda2`.
+- `0x78219e`: default line-spacing word converted into reset VMI `0x783160`.
+- `0x7821a2`: default environment/paper byte copied to `0x782da6` when reset
+  gate `0x7810b2` permits it; `0xcc70` also copies it to `0x780e8f` when
+  `0x780e3c == 1`.
+- `0x5e80`, menu/update handlers `0x5060`, `0x50be`, and `0x52ba`, retained
+  record helpers `0x96c4` / `0x97e4`, and maintenance helpers `0x56c2` /
+  `0x571e` / `0x5a62` produce or maintain those canonical defaults. Their
+  detailed producer contract lives in
+  [reset-default-environment.md](reset-default-environment.md).
+
+Publication and output effect:
+
+- With a valid current page root, `0xcc70 -> 0xff1e` publishes queued page
+  objects before the environment rebuild. The reset page then follows the
+  normal render path through `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+- With no current page root, `ESC E` clears missing-root state without
+  inventing a page object or publication.
+- Fixtures `mixed printable/reset page-record stream queues through 0x1387c
+  before reset`, `mixed printable/reset page-record finalization publishes
+  bridged record`, and `addressed printable reset publishes rendered page
+  record` prove the valid-root `! ESC E` path through compact bucket storage,
+  `0xff1e` publication, bridge, and rendered rows.
+- Fixtures `ESC E stream clears missing page root without publication` and
+  `host-fetched ESC E clears missing page root without publication` prove the
+  missing-root path from parser dispatch to reset with no page output.
+
+State classification:
+
+- Canonical state:
+  reset defaults `0x78219d`, `0x78219e`, `0x7821a2`, reset gate `0x7810b2`,
+  page/control pool records at `0x780f02`, current root `0x78297a`, published
+  pointer `0x780ea6`, current-font context `0x782ee6`, and parser/data-chain
+  base records.
+- Derived/cache state:
+  reset HMI `0x78315c`, VMI `0x783160`, top offset `0x782dce`, raster block
+  `0x783170`, active-symbol snapshots, and page-control bucket-array pointers
+  rebuilt as `0x7810bc + 0x400*n`.
+- Parser scratch:
+  parser/control records `0x782c1e..0x782c6d`, parser cursor `0x782c6e`,
+  scratch pointer `0x782a26`, cursor-stack pointer `0x782d36`, data-chain
+  pointer `0x782d76`, and text accumulation bytes `0x783196..0x783199`.
+- Firmware bookkeeping:
+  publication flag `0x782996`, reset latch bytes `0x782997` / `0x782998`,
+  cleared flags `0x782990`, `0x78297e`, `0x783184`, `0x783185`,
+  `0x782f2c`, `0x78318f`, `0x783190`, and status byte `0x782a93`.
+- Hardware/external state:
+  physical retained-storage device behind `$a400` / `$8c01`, external
+  `$8000.w` panel/service producer, and board-level pin names remain external.
+- Unknown:
+  no ROM-local middle edge remains for the software-visible `ESC E` valid-root
+  publication path, missing-root no-publication path, default consumption,
+  VMI/HMI rebuild, parser/data-chain clearing, or compact-text rendered reset
+  page. Remaining reset/default uncertainty is external physical/device
+  identity and manual-facing names for some latches.
+
+Evidence:
+
+- Detail note: [reset-default-environment.md](reset-default-environment.md).
+- Publication note: [publication-commands.md](publication-commands.md).
+- Semantic checkpoint: `Reset And Default Environment` and
+  `Publication Commands To Rendered Page Records` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixture evidence:
+  `ESC E stream publishes valid page root and resets environment/parser state`,
+  `ESC E stream clears missing page root without publication`,
+  `host-fetched ESC E clears missing page root without publication`,
+  `addressed printable reset publishes rendered page record`,
+  `0x5e80 -> 0xcda2 reset consumes default record outputs`, and
+  `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,
+  `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`,
+  `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_default_env_load_005e80.lst`.
 
 ## Worked Path: FF Publication
 

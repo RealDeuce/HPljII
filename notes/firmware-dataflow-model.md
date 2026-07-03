@@ -53,7 +53,8 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Page publication, page environment changes, and active render scheduling:
   `Worked Path: FF Publication`,
   `Worked Path: Page Environment Publication`,
-  `Worked Path: Published Record To Active Bands`.
+  `Worked Path: Published Record To Active Bands`,
+  `Worked Path: Render Dispatch And Pixel Composition`.
 - Non-text page objects and render dispatch:
   `Worked Path: Vertical Forms Control`,
   `Worked Path: Rectangle Rule`,
@@ -2624,6 +2625,145 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`,
 `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`, and
 `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`.
+
+## Worked Path: Render Dispatch And Pixel Composition
+
+This path covers the shared bitmap dispatch after the active-band scheduler
+has called `0x1ef6a`. It starts with an active render record already selected
+in `0x783a18`; parser commands and page-object producers have already
+materialized page-root objects and `0x1edc6` has copied their roots into the
+render record.
+
+Dispatch order:
+
+- `0x1ef6a` consumes active render pointer `0x783a18`.
+- `0x1ef86` computes current-band caches before any object class renders.
+- `0x1efc2` walks bucket-chain objects from render-record `+0x18`.
+- `0x1f446` walks rule-list objects from render-record `+0x1c`.
+- `0x1f756` walks fixed-list objects from render-record `+0x20`.
+
+Bucket object classes:
+
+- Object byte `+0x04` in range `0x00..0x3f` enters compact dispatch
+  `0x1effe`. Byte bits `0x10` and `0x20` select compact helpers
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264` through table `0x1f024`.
+  These objects are produced by printable text, downloaded glyphs, and compact
+  glyph queue path `0x12f2e -> 0x1387c`.
+- Object byte `+0x04` in range `0x40..0x7f` enters segment-list renderer
+  `0x1f812`. These objects are produced by pending text-span flush paths
+  `0x12714 -> 0x13520/0x135f0`.
+- Object byte `+0x04` in range `0x80..0xff` enters encoded raster renderer
+  `0x1f88e`. These objects are produced by raster row queue path
+  `0x13070 -> 0x13250`.
+
+Pixel-writing behavior:
+
+- `0x1f626` computes destination pointer `A1` from packed object
+  coordinates, band state `0x783a20`, destination base `0x783a28`, offset
+  table `0x7839f8..`, stride `0x783a1c`, and fallback base `0x7810b4`.
+- Compact glyph helpers resolve a context slot copied at render
+  `+0x24..+0x60`; object byte `+0x05` low nibble selects the slot, and
+  `0x1f008` writes active context cache `0x783a2c` before `0x1f354` resolves
+  glyph bitmap pointers, span width, and row count.
+- Compact row-copy helper tables `0x1f08e` and `0x1f1ac` select unrolled
+  writers for byte widths `1..16`; wide compact modes use `0x2f27c` for full
+  16-byte chunks and the remainder table for trailing bytes.
+- Segment-list renderer `0x1f812 -> 0x1f862` consumes six-byte entries whose
+  coordinate, row-count nibble, skipped byte, and width/mask word produce full
+  `0xffff` words plus a trailing mask from table `0x308f2`.
+- Encoded raster renderer `0x1f88e` selects mode helpers from table
+  `0x1f8ca` using object byte `+0x05 & 0x03`: mode `0` copies literal words,
+  mode `1` expands each byte into two rows through table `0x30914`, mode `2`
+  expands through table `0x30b14` into up to three rows, and mode `3` expands
+  through `0x30914` into four row destinations.
+- Rule-list renderer `0x1f446` dispatches bridged fill selector
+  `object[5] & 0x0f`. Selector `7` reaches solid helper `0x1f596`;
+  selectors `0..6` and `8..13` reach patterned helper `0x1f4e0` through table
+  `0x1f4a0`.
+- Fixed-list renderer `0x1f756` runs only on five-band boundaries, consumes
+  render-record `+0x20`, selects a pattern longword from table `0x308de`, and
+  writes rows through `0x1f7b0` / `0x1f626`.
+
+Composition effect:
+
+- The ROM composes object classes in `0x1ef6a` call order: bucket-chain
+  objects first, rule-list objects second, and fixed-list objects last.
+- Bucket-chain order is the linked order under the active bucket selected from
+  render word `+0x10`; producer paths such as `0x1387c` and `0x13250` insert
+  objects into those chains before publication.
+- Rule and fixed-list helpers mutate continuation fields, such as rule
+  `+0x0c` and fixed-list `+0x0a`, so later render bands resume the same
+  object rather than reparsing the page stream.
+- Current-band overflow for compact glyphs and encoded raster rows writes
+  continuation rows through the fallback buffer rooted at `0x7810b4 + D2`;
+  the scheduler then calls `0x1ef6a` again with later band words.
+
+State classification:
+
+- Canonical state:
+  render roots `+0x18`, `+0x1c`, `+0x20`, context slots `+0x24..+0x60`,
+  bucket object fields `+0x04`, `+0x05`, `+0x06`, `+0x08`, and payload
+  `+0x0a..`, rule-list fields `+0x05`, `+0x06`, `+0x08`, `+0x0a`, and
+  `+0x0c`, and fixed-list fields `+0x04..+0x0d`.
+- Derived/cache state:
+  active render pointer `0x783a18`, band split count `0x783a20`, band
+  remainder `0x783a22`, destination base `0x783a28`, stride `0x783a1c`,
+  offset table `0x7839f8..`, compact context cache `0x783a2c`, wide-mode
+  caches `0x783a40..0x783a48`, and fallback base `0x7810b4 + D2`.
+- Parser scratch:
+  none. Parser records, delayed payload state, and payload source positions
+  have already been reduced to page-record objects by earlier producers.
+- Firmware bookkeeping:
+  render continuation fields, object-chain next pointers, compact row-copy
+  phase `0x783a46`, and active-band progress words maintained by the
+  scheduler.
+- Hardware/external state:
+  physical consumption of the already-rendered band buffer by the formatter/DC
+  engine remains outside this ROM-local pixel composition contract.
+- Unknown:
+  no unresolved shared render-dispatch edge remains for the documented object
+  classes. Remaining work is new byte-stream variants that create different
+  object fields, selected-font contexts, helper targets, continuation state,
+  or rendered rows, plus physical full-page comparison.
+
+Evidence:
+
+- Detail note: [page-raster-imaging.md](page-raster-imaging.md), especially
+  `Bitmap Object Dispatch Semantic Checkpoint` and
+  `Compact Glyph Row-Copy Semantic Checkpoint`.
+- Producer notes:
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [rectangle-graphics.md](rectangle-graphics.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`,
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+- Fixture evidence includes
+  `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+  order`,
+  `0x1ef6a page-band walk merges text raster and crossing rule`,
+  `bridged text, rule, and raster layers compose into one page band`,
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a`,
+  `0x1f812 segment-list object renders counted mask spans`,
+  `0x1f756 fixed-width list renders bridged +0x20 object`,
+  `0x1f446/0x1f596 renders solid black rectangle rule pixels`,
+  `0x1f4e0 renders gray and HP pattern selector matrix`,
+  `0x1f88e mode-0 raster object renders queued literal row`,
+  `0x1f88e mode-1 raster object expands queued bytes into two rows`,
+  `0x1f88e mode-2 raster object expands queued byte pair into three rows`,
+  `0x1f88e mode-3 raster object expands queued bytes into four rows`,
+  `0x1f034 compact text splits current band and fallback rows`,
+  `0x1f0d2 renders wide inline compact payload row`,
+  `0x1f1f0 renders segmented inline compact payload row`, and
+  `0x1f264 renders segmented wide inline compact payload row`.
 
 ## Worked Path: Vertical Forms Control
 

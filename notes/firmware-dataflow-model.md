@@ -399,6 +399,144 @@ Reproduction contract:
   board interface. For byte-stream rendering, the ring and data-chain sources
   are sufficient software-visible producers.
 
+## Worked Path: Command Record And Payload Dispatch
+
+This path covers the shared parser handoff from source bytes to six-byte
+command records and delayed binary payload consumption. The primary stream is
+the raster transfer prefix:
+
+```text
+ESC *b4W 00 ff 00 ff
+```
+
+In bytes:
+
+```text
+1b 2a 62 34 57 00 ff 00 ff
+```
+
+Parser source and command records:
+
+- `0xda9a` supplies ESC-aware parser bytes from `0xa904`.
+- Parser loop `0x11774` scans six-byte dispatch-table rows from the normal
+  pointer table at `0x112a4` while parser mode byte `0x782999` is zero.
+- `ESC` selects setup handler `0x11eb6`, which writes callback pointer
+  `0x11ba6` to `0x78299a` and advances parser mode for the following bytes.
+- The `*b` family reaches the stateful helper path that tokenizes through
+  `0xdaf0` and `0xdb74`.
+- `0xdb74` fills one six-byte command record at cursor `0x78299e`:
+
+```text
++0 flags
++1 final byte
++2 signed integer parameter
++4 signed fractional parameter
+```
+
+- For `ESC *b4W`, the restored transfer record is
+  `80 57 00 04 00 00`: numeric-present flag `0x80`, final byte `W`,
+  integer count `4`, and fractional value `0`.
+
+Delayed payload scheduling:
+
+- The `W` final dispatches to handler `0x11f82`, which schedules raster
+  transfer handler `0x105d0` through shared scheduler `0x121cc`.
+- `0x121cc` rewinds command-record cursor `0x78299e` by six, sets pending
+  flag `0x782a1a = 1`, stores handler pointer `0x105d0` at `0x782a1c`, and
+  snapshots the six-byte record at `0x782a20..0x782a25`.
+- Payload bytes are not consumed by the table row that sees `W`. The parser
+  must return to a terminal mode-zero boundary.
+- `0x12218` is called by the terminal parser reset path. It clears pending
+  flag `0x782a1a`, copies saved bytes `0x782a20..0x782a25` back to the active
+  `0x78299e` cursor, advances the cursor by six, calls saved handler
+  `0x105d0`, and clears handler pointer `0x782a1c`.
+- Handler `0x105d0` then consumes the following four bytes as payload. The
+  same scheduler fields are used by transparent text, vertical forms control,
+  downloaded-font payloads, and generic counted payload wrapper `0x1228a`.
+
+Alternate/data-mode contrast:
+
+- Alternate/data mode is selected by byte `0x782c18`.
+- The alternate pointer table at `0x116f6` keeps enough syntax to collect
+  command records and stop macro definitions, but many normal side effects
+  are suppressed.
+- `0x12218` still restores delayed state in alternate/data mode. When the
+  saved handler reaches alternate payload wrapper `0x12358`, positive counts
+  are consumed through `0xdace` and appended through `0xe002` instead of
+  producing immediate page objects.
+- The direct counted wrapper `0x1228a` drains absolute byte counts through
+  `0x12328` / `0xdace` without echoing bytes through alternate append.
+
+State classification:
+
+- Canonical parser state: parser mode byte `0x782999`, command-record cursor
+  `0x78299e`, six-byte command records, and alternate/data flag `0x782c18`.
+- Parser scratch: command-byte cursor `0x782a26`, command scratch bytes
+  `0x782a2a..`, numeric cursor `0x782a3e`, numeric scratch bytes
+  `0x782a42..`, and local matched-byte buffer `0x783196..0x783199`.
+- Firmware bookkeeping: active helper pointer `0x78299a`, delayed pending
+  flag `0x782a1a`, delayed handler pointer `0x782a1c`, saved command record
+  `0x782a20..0x782a25`, and alternate echo latch `0x782a56`.
+- Derived/cache records: synthetic font-designation records written by
+  `0x11efe` and `0x11f26`, and cursor rewind decisions made by `0xdaf0`,
+  `0x11f4c`, and delayed scheduler `0x121cc`.
+- Unknown: none for record layout, delayed snapshot, or restore dispatch.
+  Remaining unknowns after this edge belong to command-family handlers or
+  payload-specific object formats.
+
+Writers and readers:
+
+- `0xdb74` writes record flags, final byte, signed integer word, signed
+  fractional word, and tokenizer scratch.
+- `0xdaf0` combines records within one ESC command family and rewinds
+  `0x78299e` when lookahead still belongs to the family.
+- `0x11774` writes parser mode transitions and calls `0x12218` at terminal
+  mode-zero reset boundaries.
+- `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` are the stateful helpers
+  that tokenize multi-record command families and arm delayed payload calls.
+- `0x121cc` writes delayed-payload bookkeeping; `0x12218` restores it and
+  dispatches the saved handler.
+- Raster transfer `0x105d0`, transparent text `0x12452`, VFC table loader
+  `0x12cfe`, font descriptor/download handlers `0x15d0a` and `0x16c14`, and
+  generic wrapper `0x1228a` consume this restored-record contract.
+
+Output effect:
+
+- The parser-record boundary does not draw pixels. Its output effect is that
+  later command-family handlers receive the same active six-byte record the
+  ROM parsed before any payload bytes were read.
+- In the raster example, restored record `80 57 00 04 00 00` tells
+  `0x105d0` to consume four payload bytes and queue raster row objects through
+  the raster path documented below.
+- In transparent text, the same delayed mechanism restores the byte count
+  before `0x12452` routes payload bytes into text and fixed-space output.
+- In downloaded fonts, the restored record selects descriptor or character
+  payload handling before later printable bytes can resolve to downloaded
+  glyph objects.
+
+Evidence and reproduction contract:
+
+- Detail note: [pcl-parser-core.md](pcl-parser-core.md), especially
+  `Parser Record Semantic Checkpoint`.
+- Command index: [pcl-command-map.md](pcl-command-map.md), including
+  `ESC *b#W`, `ESC &p#X`, `ESC &l#W`, and `ESC (s#W` / `ESC )s#W`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`,
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  and `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+- Fixture evidence includes
+  `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte records`,
+  `0xdb74 parses sign, capped fraction digits, and final byte`,
+  `0x121cc snapshots delayed payload handler and parsed record`,
+  `0x12218 restores delayed parsed record and dispatches saved handler`,
+  `0x1228a consumes absolute delayed payload count without echo`, and
+  `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
+  payload boundary`.
+- Preserve the cursor rewind and delayed snapshot. Do not collapse command
+  final bytes and following payload bytes into one parser event.
+
 ## Worked Path: Printable Glyph
 
 This is the normal-byte counterpart to the raster example below. The primary

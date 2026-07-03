@@ -158,6 +158,7 @@ Concrete software contracts already exist for these renderer components:
   `Worked Path: Pitch Mode To Font Refresh`,
   `Worked Path: Firmware Font Sample Page`,
   `Worked Path: Downloaded Glyph`,
+  `Worked Path: Nonzero Resource Payload`,
   `Worked Path: Fixed-Record Resource Object`, and
   `Worked Path: Selected Font Metrics To Span Output` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in

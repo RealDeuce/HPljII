@@ -54,6 +54,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Firmware Font Sample Page`,
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
+  `Worked Path: Nonzero Resource Payload`,
   `Worked Path: Fixed-Record Resource Object`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
@@ -3267,6 +3268,135 @@ are `generated/disasm/ic30_ic13_assign_font_id_015a56.lst`,
 `generated/disasm/ic30_ic13_font_resource_find_017026.lst`,
 `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
 `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: Nonzero Resource Payload
+
+This path covers the nonzero `ESC )s#W` resource-header route where delayed
+handler `0x16c14` installs a `0x1719c` payload as a selected downloaded-font
+resource. It is distinct from the direct downloaded-character payload above:
+the first `W` stream builds resource/candidate state, and later glyph payloads
+or metric consumers make that resource visible.
+
+Parser dispatch and resource install:
+
+- Host bytes enter through `0xa904` and parser loop `0x11774`.
+- `ESC )s80W` reaches `0x11f96` through handlers `0x11eb6`, `0x12008`,
+  and `0x11ff6`.
+- Because the parsed count is nonzero, `0x11f96` schedules delayed handler
+  `0x16c14`; `0x121cc` snapshots record `80 57 00 50 00 00`, and
+  `0x12218` restores it before calling the handler.
+- `0x16c14` rewinds command-record cursor `0x78299e`, writes remaining byte
+  budget `0x783140`, validates the resource header through `0x16fae`, and
+  allocates or replaces the current-record payload through the `0x17026` /
+  `0x1719c` resource path.
+- Fixture `resource payload stream ties ROM parser dispatch to 0x16c14 install`
+  pins parser modes `1 -> 4 -> 13 -> 0`, delayed handler `0x16c14`, payload
+  offset `6`, and payload prefix
+  `00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34`.
+
+Canonical installed-resource state:
+
+- Current downloaded-font records `0x782640..0x782776`, selected current id
+  `0x782f2e`, record payload pointer `+6`, and candidate-list root
+  `0x7827a0` are canonical state for this path.
+- Candidate counters and cursors `0x78278e`, `0x782790`, `0x782796`,
+  `0x782798`, and `0x78279e` are canonical because later selection scans
+  consume them.
+- Fixture `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
+  proves payload length `80`, validation status `1`, allocation size `10`,
+  current id `0x1234`, replacement release of old payload `0x456789`, and
+  installed candidate longword `0x40000000`.
+- Fixture `0x16c14 routes installed font resource through 0x1bc38 slot`
+  pins the successful class-one insertion sibling with candidate longword
+  `0x44220000`, shifted candidate list, and updated counters/cursors.
+- Fixture `0x172c0-modeled font resource record scan statuses` pins the
+  current-record scan statuses that feed the install path: existing id
+  status `0`, missing id with a free record status `1`, and missing id with
+  no free record status `2`.
+
+Downloaded-pointer glyph consumer:
+
+- After the resource header is installed, a later `ESC )s3W f0 f0 f0` glyph
+  payload uses the same nonzero delayed-handler mechanism, then the
+  downloaded-character branch returns through
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`.
+- Fixture `host-fetched resource header plus glyph payload renders offset-table
+  downloaded glyph` writes table entry `0x00ce`, record delta `0x0180`, bitmap offset
+  `0x018c`, bitmap bytes `f0 f0 f0`, span `1`, width `4`, and row count `3`.
+- The installed record is
+  `00 00 00 00 0c 01 00 03 00 04 00 00`; printable `!` maps through context
+  `0x40000000`, queues compact object
+  `00 00 00 00 00 00 00 01 21 5a 00`, and renders the installed bitmap rows
+  beside the `d8fc` span object.
+- Fixture `type-1 and type-2 resource headers accept downloaded glyph payload stream`
+  proves legal setup types `1` and `2` for the same downloaded-pointer form.
+  Both allocate payload units `0x100`, write table entry `0x00ce`, record
+  delta `0x0300`, bitmap offset `0x030c`, span `1`, width `4`, and row count
+  `3`; type `1` installs candidate `0x40000000`, and type `2` installs
+  candidate `0x44000000`.
+
+Selection, publication, and visible output:
+
+- `0x14c64` consumes the bit-30 offset-table resource form, writes selected
+  symbol `0x1234`, range `0x0000..0x007f`, map address `0x782f32`, and the
+  `0x15890` snapshot from payload word `+0x22`.
+- Metric consumers use the same installed resource. The `d4ac` fixture reads
+  payload bytes `+0x2b = 0`, `+0x2c = 0`, and `+0x2d = 0x20`; the `d8fc`
+  fixture reads payload words `+0x16 = 4`, `+0x18 = 4`, and `+0x1a = 5`.
+- Fixture `type-1 and type-2 resource glyph FF publications render page records`
+  carries legal setup types `1` and `2` through printable `!` and FF. Bucket
+  `1` preserves the segment-list span object followed by the compact glyph
+  object, and `0x1ed84` / `0x1ef6a` render the published rows through
+  segment-list target `0x1f812` and compact target `0x1effe`.
+- The wide sibling installs record
+  `00 00 00 00 0c 01 00 01 00 90 00 00`, publishes compact-wide object byte
+  `0x10`, and reaches renderer `0x1f0d2`.
+- The segmented sibling installs record
+  `00 00 00 00 0c 01 00 81 00 10 00 00`, publishes selector `0x2000`
+  segment objects in buckets `1` and `9`, and reaches segmented renderer
+  `0x1f1f0`.
+
+State classification for this path:
+
+- Canonical state:
+  current-record pool `0x782640..0x782776`, selected current id `0x782f2e`,
+  payload pointer `+6`, `0x1719c` payload header, candidate-list root
+  `0x7827a0`, candidate counters/cursors, downloaded-pointer table entries,
+  glyph records, bitmap bytes, page objects, and published page records.
+- Derived/cache state:
+  selected resource map from `0x14c64`, selected symbol/range fields,
+  `0x15890` snapshot, printable source object, compact selector class,
+  segment-list span objects, render-record bucket roots, and band-local render
+  fields.
+- Parser scratch:
+  delayed record snapshots such as `80 57 00 50 00 00` and
+  `80 57 00 03 00 00`, payload budget `0x783140`, staged descriptor state
+  from `0x16fae`, and zero-drain or residual-drain state passed to `0x12328`.
+- Firmware bookkeeping:
+  validation status, allocation status, old-payload release, candidate
+  insertion through `0x1bc38`, candidate flag normalization, installed-count
+  updates, class-one counter shifts, and final selection refresh through
+  `0x1b04c`.
+- Unknown:
+  no unresolved middle edge remains for parser restore, allocation, candidate
+  insertion, selected-map dispatch, legal type-0/type-1/type-2 short glyphs,
+  legal type-1/type-2 FF publication, or the cited metric consumers.
+  Remaining boundaries are variant breadth: downloaded-pointer row, span, and
+  continuation shapes beyond the covered short, wide, and segmented glyphs,
+  plus publication variants outside the documented legal type-1/type-2
+  span+glyph records.
+
+Evidence for this path is in
+[downloaded-fonts.md](downloaded-fonts.md) and
+[semantic-state-model.md](semantic-state-model.md), especially
+`Nonzero Resource Payload Checkpoint`. Key supporting listings are
+`generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+`generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
+`generated/disasm/ic30_ic13_font_resource_find_017026.lst`,
+`generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 

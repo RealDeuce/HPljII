@@ -51,6 +51,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Downloaded Glyph`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Worked Path: Macro Execute Replay`,
+  `Worked Path: Macro Overlay Replay Publication`,
   `Boundary: Secondary Segment-57 Source`.
 - Page publication, page environment changes, and active render scheduling:
   `Worked Path: Reset And Default Environment`,
@@ -3792,6 +3793,148 @@ are `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
 `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
 `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: Macro Overlay Replay Publication
+
+This path covers macro selector `4` overlay state as a page-publication input.
+Unlike normal execute/call replay, overlay replay is not triggered by a live
+`ESC &f2X` or `ESC &f3X` byte. It is consumed by page finalization before the
+base page is published, and its stored bytes re-enter the normal parser so they
+can add text, controls, spans, rules, or raster objects to the page root.
+
+Overlay setup and publication entry:
+
+- `ESC &f#Y` selects macro id `0x783164` through handler `0xe112`.
+- `ESC &f4X` reaches macro control handler `0xdd08`, resolves the current
+  record through `0xe0a4`, and enables overlay/page-parser state byte
+  `0x782a92`. It copies the selected macro id into `0x782a94`.
+- `ESC &f5X` disables the same overlay state through `0xdef4`.
+- Page finalization reaches the overlay branch at `0xff1e` / `0xff8e`.
+  When overlay state is enabled and page-root flag bit `+0x14.0` is clear,
+  `0xe0a4(0x782a94)` reselects the saved macro record and `0xe4f4` builds a
+  non-replay data-chain frame.
+- If overlay is disabled, the selected record is missing, or the page-root
+  retry flag is set, fixture `macro overlay skip gates preserve base page
+  publication` proves the base page still publishes without replaying overlay
+  bytes.
+
+Non-replay frame and byte-source handoff:
+
+- `0xe4f4` snapshots the active page/parser environment, pushes selected
+  context fields, refreshes layout through `0xe5e2`, and writes a frame at
+  `0x782d4c`.
+- The frame copies macro record `+0x00/+0x04` to frame `+0x00/+0x04`, writes
+  byte `+8 = 4`, writes frame kind `+9 = 4`, and writes snapshot pointer
+  `+0x0a = 0`.
+- If the frame byte count is positive, `0xe4f4` sets host gate bit 1 in
+  `0x780e66`.
+- `0xa904` then treats this frame as the highest-priority data-chain source,
+  ahead of live host input. The stored overlay bytes are parsed by the same
+  `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774` paths as ordinary host bytes.
+- Frame cleanup through `0xe22c` restores the saved page/parser state after
+  overlay replay completes.
+
+Covered payload families:
+
+- Mixed controls:
+  stored `ESC &k1G!\r!` replays wrap-mode handler `0xedf8`, printable
+  `0xd04a`, CR `0xf02c`, and another printable `0xd04a`, then publishes two
+  compact text entries with the base selector-7 rule.
+- Cursor positioning:
+  stored `ESC &a2C!` replays `0xf39e` then `0xd04a`, queues compact text at
+  coord `0x0a02`, and preserves the base rule object.
+- Vertical decipoints:
+  stored `ESC &a72V!` replays `0xf60a` then `0xd04a`, moves packed vertical
+  cursor `20 -> 30`, queues compact text at coord `0x9001`, and preserves the
+  base rule object.
+- Chained cursor and margin commands:
+  stored `ESC &a2c+1R!` replays `0xf39e`, `0xf560`, and `0xd04a`;
+  stored `ESC &a6l9M!` replays `0xeb58`, `0xec0c`, and `0xd04a`.
+  The margin replay writes packed left/right margins `108` and `180` before
+  following text is queued.
+- Transparent data:
+  stored `ESC &p2X!!` replays handler `0x11f5a`, delayed restore `0x12218`,
+  and payload handler `0x12452`; payload bytes `21 21` route through
+  `0xd04a` and become compact text.
+- Raster data:
+  stored `! ESC *t300R ESC *r0A ESC *b2W c3 3c` queues compact text plus one
+  mode-0 encoded raster object. The multi-row sibling stores two delayed
+  raster transfers, queues two raster objects, and advances raster `row_y`
+  to `2`.
+- Span flush:
+  stored `ESC &a6L!` replays `0xeb58` and `0xd04a`, then materializes a
+  selector-`0x4000` segment-list span object through `0xf34a` / `0x12714`.
+
+State classification:
+
+- Canonical macro state:
+  macro record pool `0x782a98`, current record pointer `0x782d7a`, saved
+  overlay macro id `0x782a94`, overlay state byte `0x782a92`, macro record
+  payload chunks, and non-replay frame fields at `0x782d4c`.
+- Canonical page state:
+  current page root `0x78297a`, compact/raster bucket roots, rule list,
+  fixed/span list, publication record, and render-record roots copied through
+  `0x1ed84` / `0x1edc6`.
+- Derived/cache state:
+  replay-derived text coordinates such as `0x0a02`, `0x9001`, `0x3a02`,
+  and `0x0207`; rule decoder suffixes; render-band fields; raster `row_y`
+  after replayed transfers.
+- Parser scratch:
+  stored overlay payload bytes, replayed command records, delayed transparent
+  record `80 58 00 02 00 00`, delayed raster transfer records, and local
+  parser-mode state while the non-replay frame is active.
+- Firmware bookkeeping:
+  frame kind `+9 = 4`, frame stride byte `+8 = 4`, host gate bit 1 in
+  `0x780e66`, page-root retry flag `+0x14.0`, environment snapshots, and
+  frame cleanup through `0xe22c`.
+- Hardware/external state:
+  none for the ROM-local overlay replay and publication behavior.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented overlay
+  payload families. Remaining macro work is broader payload variants that
+  change parser dispatch, page-object fields, delayed payload state, or
+  rendered rows, plus physical output comparison.
+
+Output effect:
+
+- Overlay replay is a parser/page-object producer, not a renderer. The pixels
+  come from the same downstream compact text, span, rule, and raster renderers
+  used by live host bytes.
+- Fixtures `macro overlay finalization replays before page publication` and
+  `macro overlay replays across repeated page publications` prove the replay
+  happens before the current page is published and can recur on later page
+  publications.
+- The mixed-control, cursor, margin, transparent, raster, multi-row raster,
+  and span-flush overlay fixtures prove stored overlay bytes can mutate
+  parser/environment state, queue page objects, preserve base page rule
+  objects, publish through `0xff1e`, bridge through `0x1ed84` / `0x1edc6`,
+  and render through `0x1ef6a`.
+
+Evidence:
+
+- Detail note: [macro-data-chain.md](macro-data-chain.md).
+- Semantic checkpoint: `Macro Definition And Data-Chain Replay` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixtures:
+  `macro overlay finalization replays before page publication`,
+  `macro overlay replays across repeated page publications`,
+  `macro overlay skip gates preserve base page publication`,
+  `macro overlay mixed-control payload publishes with page rule`,
+  `macro overlay cursor-position payload publishes with page rule`,
+  `macro overlay vertical-decipoint payload publishes with page rule`,
+  `macro overlay chained cursor-position payload publishes with page rule`,
+  `macro overlay chained margin payload publishes with page rule`,
+  `macro overlay transparent payload publishes with page rule`,
+  `macro overlay raster payload publishes with page rule`,
+  `macro overlay multi-row raster payload publishes with page rule`, and
+  `macro overlay span-flush payload publishes with page rule`.
+- Disassembly:
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
 ## Worked Path: Rectangle Rule
 

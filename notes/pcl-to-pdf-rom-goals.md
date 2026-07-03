@@ -128,11 +128,14 @@ Concrete software contracts already exist for these renderer components:
   cursor/HMI/VMI/margins, direct controls, line termination, cursor stack,
   transparent data, display-functions mode, VFC, reset/default records, and
   macro data-chain replay are composed first by
-  `Worked Path: Reset And Default Environment` in
+  `Worked Path: Reset And Default Environment`,
+  `Worked Path: Macro Execute Replay`, and
+  `Worked Path: Macro Overlay Replay Publication` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [semantic-state-model.md](semantic-state-model.md),
   [transparent-print-data.md](transparent-print-data.md), and
-  [vertical-forms-control.md](vertical-forms-control.md).
+  [vertical-forms-control.md](vertical-forms-control.md), with macro details
+  in [macro-data-chain.md](macro-data-chain.md).
 - Font state:
   built-in resource scans, candidate windows, primary/secondary selected
   contexts, symbol fallbacks, final-`@`, final-`X`, page-root context-slot

@@ -395,6 +395,151 @@ are `generated/analysis/ic30_ic13_printable_text_path.md`,
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and focused listing
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 
+## Worked Path: Rectangle Rule
+
+This path covers a parameterized command family that does not use bucket-chain
+text/raster objects. The primary stream is:
+
+```text
+ESC *c12a5b0P
+```
+
+In bytes:
+
+```text
+1b 2a 63 31 32 61 35 62 30 50
+```
+
+Parser dispatch:
+
+- The bytes enter through `0xa904`, `0xda9a`, and parser loop `0x11774`.
+- The parser walks modes `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0`.
+- Prefix setup handlers `0x11eb6`, `0x11ec8`, and `0x11eda` keep the
+  `ESC *c` family active while parameters and lowercase finals accumulate.
+- `ESC *c12a` calls handler `0x10e68`.
+- `5b` stays in the same family and calls handler `0x10e22`.
+- `0P` terminates the family and calls handler `0x10898`.
+
+Command behavior:
+
+- `0x10e68` rewinds the six-byte command record and stores dot width `12` in
+  rectangle width field `0x78316a`.
+- `0x10e22` rewinds the next command record and stores dot height `5` in
+  rectangle height field `0x783166`.
+- `0x10898` rewinds the final record and maps fill parameter `0` to selector
+  `7`, meaning solid black.
+- `0x10898` then calls the rectangle clip/queue path when width and height are
+  nonzero.
+
+Rule source and page-object creation:
+
+- `0x10b80` reads current cursor fields `0x782c8a` and `0x782c8e`, page
+  extents `0x782db8` and `0x782db6`, orientation byte `0x782da3`, and the
+  pending width/height/fill fields.
+- It clips or rejects the rectangle against page extents, ensures a current
+  page root through `0x10084`, and writes source record `0x782a88`.
+- For the primary fixture, source record fields produce x `10`, y `20`,
+  width `12`, height `5`, and selector `7`.
+- `0x13386` computes derived rule bucket/key fields through `0x134d6`.
+- `0x133aa` allocates a 14-byte rule object through `0x1381c` and inserts it
+  into the page-root rule list at root `+0x24`.
+
+The primary rule object before bridge is:
+
+```text
+00 00 00 00 01 07 4a 00 00 0c 00 05 00 00
+```
+
+Object fields:
+
+- `+0x00`: next pointer `0`.
+- `+0x04`: bucket byte `1`.
+- `+0x05`: fill selector `7`.
+- `+0x06`: packed key `0x4a00`.
+- `+0x08`: width `12`.
+- `+0x0a`: height `5`.
+- `+0x0c`: render continuation height, still `0` before bridge.
+
+Publication and bridge:
+
+- The rule object remains under current page-root list `+0x24` until a
+  publication path finalizes the root.
+- `0xff1e` publishes the current root when the page is finalized.
+- `0x1ed84` seeds the active render record from selected source
+  `0x780eae`.
+- `0x1edc6` copies source root `+0x24` to render-record `+0x1c`.
+- During that copy, `0x1edc6` ORs object byte `+0x05` with `0x10` and copies
+  height `+0x0a` to continuation word `+0x0c`.
+
+The bridged rule object is:
+
+```text
+00 00 00 00 01 17 4a 00 00 0c 00 05 00 05
+```
+
+Render scheduling and pixels:
+
+- `0x1eba4` calls `0x1ef6a` for an active band when capacity allows rendering.
+- `0x1ef6a` calls `0x1ef86`, then bucket dispatch `0x1efc2`, then rule-list
+  dispatch `0x1f446`, then fixed-list dispatch `0x1f756`.
+- `0x1f446` walks render-record rule list `+0x1c`.
+- The bridged selector byte `0x17` has low nibble `7`, so `0x1f446`
+  dispatches to solid helper `0x1f596`.
+- `0x1f596` decodes key `0x4a00` as x `10`, y `20`, width `12`, rows `5`,
+  and partial mask `0xfff0`.
+
+The documented visible rows for the black rule are:
+
+```text
+......................
+..........############
+..........############
+..........############
+..........############
+..........############
+```
+
+Continuation behavior:
+
+- If a solid rule crosses a render band, `0x1f596` subtracts the rows drawn in
+  the current band from continuation word `+0x0c`.
+- The pinned crossing fixture starts at y `78` with height `5`, draws two rows
+  in the first band, carries `3` rows in `+0x0c`, and draws the remaining rows
+  at y `0` in the next band.
+
+State classification for this path:
+
+- Canonical state:
+  rectangle width `0x78316a`, rectangle height `0x783166`, area-fill field
+  `0x78316e`, source record `0x782a88`, current page root `0x78297a`, rule
+  list root `+0x24`, published source record, and render-record rule list
+  `+0x1c`.
+- Derived/cache state:
+  rule bucket/key fields `0x782a7c`, `0x782a7d`, `0x782a7e`, horizontal phase
+  `0x782dc0`, and render-band fields `0x783a20`, `0x783a22`, `0x783a28`.
+- Parser scratch:
+  parser mode byte, command-record cursor `0x78299e`, and the six-byte records
+  consumed by `0x10e68`, `0x10e22`, and `0x10898`.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70`, `0x782a72`, and `0x782a76`,
+  page-root retry bit `+0x15.0`, publication flag `0x782996`, scheduler
+  cursors, and render-work progress words.
+- Unknown:
+  no unresolved ROM-local selector-7 rule object or solid dispatch edge
+  remains for this path. Remaining rectangle work is byte streams that change
+  clipping, allocation rollover, retry publication, selector mapping, bridge
+  fields, or rendered rows.
+
+Evidence for this path is in
+[rectangle-graphics.md](rectangle-graphics.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). The key supporting report
+is `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`; the focused
+listings are `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: Raster Row
 
 This is the current concrete example of the full dataflow. The primary byte

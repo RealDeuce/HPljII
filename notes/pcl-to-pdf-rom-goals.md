@@ -149,6 +149,7 @@ Concrete software contracts already exist for these renderer components:
   installs, downloaded descriptors, downloaded glyph payloads, optional
   resource-window refresh through `0x19dd2`, and span metrics are composed in
   `Worked Path: Font Selection To Visible Glyphs`,
+  `Worked Path: Pitch Mode To Font Refresh`,
   `Worked Path: Downloaded Glyph`, and
   `Worked Path: Selected Font Metrics To Span Output` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in

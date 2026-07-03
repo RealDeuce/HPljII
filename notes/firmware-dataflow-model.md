@@ -48,6 +48,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Font selection, downloaded glyphs, macro replay, and resource boundaries:
   `Worked Path: Page Font Scheduler Resource Handoff`,
   `Worked Path: Font Selection To Visible Glyphs`,
+  `Worked Path: Pitch Mode To Font Refresh`,
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
@@ -1655,6 +1656,92 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
 `generated/disasm/ic30_ic13_font_id_select_017708.lst`, and
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+
+## Worked Path: Pitch Mode To Font Refresh
+
+This path covers `ESC &k#S/s`, a compatibility pitch-mode command. It is a
+host-byte command family, but it does not allocate page objects or draw by
+itself. Its only page-visible effect is that it rewrites the active font pitch
+request and rejoins the ordinary `0xc89c` / `0xc580` font-refresh path before
+later printable bytes select glyphs, HMI, compact coordinates, and rendered
+rows.
+
+Parser and command behavior:
+
+- `ESC &k#S` and lowercase chaining form `ESC &k#s` enter through byte fetch
+  `0xa904`, parser wrapper `0xda9a`, and parser loop `0x11774`.
+- The terminal handler is `0xc390`. It reads the absolute selector from the
+  parsed command record behind command cursor `0x78299e`.
+- Jump table `0xc370` accepts selectors `0`, `2`, and `4`; other selector
+  values return through default exit `0xc420` without calling `0xc89c` or
+  `0xc580`.
+- Selector `0` rewrites the active record as synthetic pitch `10.0000`, calls
+  `0xc89c` and `0xc580`, then writes word `1` into the next synthetic record,
+  advances `0x78299e` by `0x0c`, and calls `0xc89c` / `0xc580` again.
+- Selector `2` rewrites the active record as synthetic pitch `16.6600`
+  (`integer 16`, fraction word `0x19c8`) and calls `0xc89c` / `0xc580` once.
+- Selector `4` rewrites the active record as synthetic pitch `12.0000` and
+  calls `0xc89c` / `0xc580` once.
+
+Downstream font-refresh effect:
+
+- Pitch writer `0xc89c` consumes the synthetic record through cursor
+  `0x78299e`, folds signed values positive, clamps integer values at
+  `0x028f`, computes `(integer * 10000 + fraction) / 100`, and writes the
+  pitch word at `0x782ef0 + 0x10 * slot`.
+- `0xc89c` marks dirty flags `0x782f2c` and `0x782f2d`.
+- Common refresh `0xc580` is the same gate used by ordinary font-selection
+  commands. It can call `0x13eb8`, install or reuse a page-root font context
+  through `0xc428` / `0xc4fc`, rebuild maps through `0x14c64`, or exit without
+  a new context depending on dirty state, slot availability, and selector
+  match.
+- Later printable bytes consume the refreshed selected context through
+  `0xd04a`, `0x1393a`, `0x12f2e`, page-root context slots, `0xff1e`,
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+
+State classification:
+
+- Canonical font-request state:
+  pitch word `0x782ef0 + 0x10 * slot`, current font contexts `0x782ee6` and
+  `0x782ef6`, maps `0x782f32` and `0x783032`, selected text slot
+  `0x782f06`, page-root context slots, and rendered compact text objects
+  produced by later printable bytes.
+- Derived/cache state:
+  selected candidate pointer `0x7828a8`, selected target `0x7828de`,
+  transient context record `0x782992`, selected-font flags `0x783132` /
+  `0x783133`, HMI `0x78315c`, compact coordinates, glyph-entry pointers, and
+  render-band fields.
+- Parser scratch:
+  the six-byte `ESC &k#S/s` record, synthetic pitch records written by
+  `0xc390`, command cursor `0x78299e`, and the advanced second synthetic
+  record used only by selector `0`.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c` and `0x782f2d`, `0xc580` branch state, page-root
+  live-font flags, `0xc4fc` slot-scan state, publication flag `0x782996`, and
+  render scheduler progress.
+- Hardware/external state: none for this ROM-local command bridge.
+- Unknown:
+  no separate pitch-mode renderer exists. Remaining work is a host-byte stream
+  that pairs `ESC &k#S/s` with surrounding font-selection state and proves a
+  different selected context, HMI, compact object, bridge state, or rendered
+  rows. The producer boundary itself is not an unresolved renderer edge.
+
+Evidence:
+
+- Detail note: [font-context-metrics.md](font-context-metrics.md), section
+  `Pitch Mode Command`.
+- Semantic checkpoint: `Built-In Font Selection To Visible Text` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`,
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`, and
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+- Downstream visible-output fixtures are the selected-font fixtures named in
+  `Worked Path: Font Selection To Visible Glyphs`, because `ESC &k#S/s`
+  rejoins the same `0xc89c` / `0xc580` refresh contract before printable
+  bytes create page objects.
 
 ## Worked Path: Selected Font Metrics To Span Output
 

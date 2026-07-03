@@ -55,6 +55,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
+  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
   `Worked Path: Macro Execute Replay`,
   `Worked Path: Macro Overlay Replay Publication`,
   `Boundary: Secondary Segment-57 Source`.
@@ -3364,6 +3365,92 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+### Boundary: Downloaded-Glyph Wrapped Width Low Bytes
+
+This is the exact ROM-local visible-output boundary for downloaded glyph
+widths whose installed 16-bit span is preserved but whose printable page
+source exposes only the low width byte to the compact page-object producer.
+It is not a parser, install, publication, or bridge gap.
+
+Boundary stream family:
+
+- Fixture `downloaded glyph width-byte boundary truncates page-record span`
+  installs spans `0x00ff`, every span `0x0100..0x0111`, `0x017f`,
+  `0x0180`, `0x01fe`, and descriptor-rounded span `0x020d`.
+- `0x16498` preserves the canonical installed width words at glyph record
+  `+8`.
+- The unflagged printable source presented to `0x12f2e` exposes only byte
+  `+0`, so source width bytes `0x00..0x10` queue selector `0x0003`, while
+  source width bytes `0x11..0xff` queue selector `0x1003`.
+
+Producer and consumer behavior:
+
+- The valid high-source-byte side publishes bucket `0`, bridges normally
+  through `0x1ed84` / `0x1ef6a`, dispatches compact target `0x1effe`, enters
+  wide compact helper `0x1f0d2`, and renders rows matching the installed
+  bitmap for sampled spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and
+  `0x01fe`.
+- The wrapped low-source-byte side also publishes bucket `0` and bridges
+  normally, but selector `0x0003` enters compact mode-0. Its full-span helper
+  table entries are outside the decoded row-copy helper heads.
+- The exact invalid target classes are fixture-pinned:
+  `0x0100 -> 0x20700000`, `0x0101 -> 0x4e90202c`,
+  `0x0102 -> 0x0066cc` at opcode `0x4a39`, `0x0103 -> 0x4cdf1030`,
+  `0x0104 -> 0x4e750001`, `0x0105..0x010b -> 0xf4e00001`,
+  `0x010c -> 0xf5960001`, `0x010d..0x0110 -> 0xf4e00001`, and
+  `0x020d -> 0x4e904cdf`.
+
+State classification:
+
+- Canonical state:
+  downloaded glyph table entries, installed glyph width words, bitmap payload
+  bytes, current page root, bucket `0` publication, and render-record bucket
+  root.
+- Derived/cache state:
+  printable source low width byte, selector `0x0003` or `0x1003`, compact
+  object byte, render bucket word `0`, wide compact full-chunk/remainder
+  metadata, and invalid mode-0 helper target longwords.
+- Parser scratch:
+  restored `ESC )s#W` command records, payload byte budget `0x783140`, copy
+  status `1`, zero-byte drain through `0x12328`, and next handler `0xd04a`.
+- Firmware bookkeeping:
+  downloaded-record allocation/release state around `0x16c14` / `0x16498`,
+  stream allocator state, publication flag `0x782996`, and render-work
+  progress.
+- Hardware/external state:
+  none for this boundary.
+- Unknown:
+  physical/device behavior after the documented invalid compact mode-0 helper
+  targets. The ROM-local parser, installed glyph state, low-byte width source,
+  selector choice, publication bucket, render bridge, and valid compact-wide
+  pixel side are documented.
+
+Output effect:
+
+- Source width bytes `0x11..0xff` are pixel-defined for the sampled wrapped
+  spans: they render through `0x1f0d2` and match installed bitmap rows.
+- Source width bytes `0x00..0x10` are not pixel-modeled after the invalid
+  helper target is selected. They remain a precise invalid-helper boundary,
+  not an unknown page-record or parser state.
+
+Evidence:
+
+- Detail note: [downloaded-fonts.md](downloaded-fonts.md), section
+  `Downloaded Glyph Row-Count Publication Checkpoint`.
+- Semantic checkpoint: `Downloaded Glyph Row-Count Publication Checkpoint` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixture evidence:
+  `downloaded glyph width-byte boundary truncates page-record span`,
+  `downloaded glyph wide-remainder matrix publishes and renders compact
+  chunks`, and `0x16b1a descriptor width helper emits only mode 1/2`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+
 ## Worked Path: Compact Glyph Row-Copy Helpers
 
 This path covers the shared renderer helper family that turns compact text and
@@ -5645,6 +5732,15 @@ Current top-level boundaries include:
   `1`, and `0x1f414` fallback counts `199..201`; helper table indices above
   the documented valid maximum `128` remain the unresolved renderer-helper
   edge.
+- ROM-local visible-output helper boundary:
+  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes` documents the exact
+  width-byte sibling. Installed width words for spans `0x0100..0x0111`,
+  `0x017f`, `0x0180`, `0x01fe`, and `0x020d` are preserved, but the printable
+  source exposes only the low width byte to `0x12f2e`. Low source bytes
+  `0x00..0x10` choose compact mode-0 helper targets outside decoded row-copy
+  helper heads, including in-firmware target `0x0066cc` at opcode `0x4a39`
+  for span `0x0102`; high source bytes `0x11..0xff` render through
+  compact-wide helper `0x1f0d2`.
 - ROM-local variant boundaries rather than generic gaps:
   dense page/object streams that change `0x1381c` rollover, `0x13250` encoded
   raster gate outcomes, `0x133aa` / `0x136d2` list ordering, or bridge fields;

@@ -329,6 +329,13 @@ Expected remaining boundaries:
   fallback indices above `128` after rows `0x0101..0x0103` publish low-byte
   short compact objects. This is an exact unresolved renderer-helper edge, not
   a parser/install/publication gap.
+- ROM-local visible-output helper boundary:
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
+  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes` for wrapped downloaded
+  spans where the installed width word is preserved, but the printable source
+  exposes only low width bytes `0x00..0x10` to `0x12f2e`, selecting invalid
+  compact mode-0 helper targets. Low bytes `0x11..0xff` render through
+  compact-wide helper `0x1f0d2`.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

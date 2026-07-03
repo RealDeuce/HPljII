@@ -395,6 +395,100 @@ are `generated/analysis/ic30_ic13_printable_text_path.md`,
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and focused listing
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 
+## Worked Path: Explicit No-Output Parser Rows
+
+This path covers ignored/no-output parser behavior. The primary normal-mode
+stream is three C0 bytes:
+
+```text
+NUL BEL VT
+```
+
+In bytes:
+
+```text
+00 07 0b
+```
+
+Parser dispatch:
+
+- The bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- Normal mode-zero parser table entries for `0x00`, `0x07`, and `0x0b` have
+  next mode `0` and no handler longword.
+- Because these bytes match explicit table rows, they do not reach the
+  unmatched mode-zero fallback at `0x118d6..0x11900`.
+- They also do not reach normal control handlers. In the same table,
+  adjacent C0 rows have handlers such as BS `0xf2a8`, HT `0xf1cc`, LF
+  `0xf08c`, FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, and SI `0xc68a`; the
+  three covered rows deliberately have no handler.
+
+State effect:
+
+- The zero-handler row writes parser mode `0`.
+- Because the new mode is zero, the loop enters the terminal reset/finalize
+  path at `0x11912..0x119bc`.
+- That path calls `0x12218`, so any pending delayed payload is restored and
+  dispatched before parser scratch is reset.
+- It then resets command-record cursor `0x78299e`, nonnumeric scratch cursor
+  `0x782a26`, numeric scratch cursor `0x782a3e`, alternate echo latch
+  `0x782a56`, and the local matched-byte buffer.
+
+Output effect:
+
+- No printable text handler runs.
+- No direct control handler runs.
+- No page root is allocated, no page object is queued, no page is published,
+  and no render work is scheduled by these bytes.
+- The reproduction contract is still observable: a pending delayed payload
+  must be allowed to run at the terminal `0x12218` boundary before the parser
+  scratch reset.
+
+Alternate/data-mode counterpart:
+
+- Alternate/data parser mode uses pointer table `0x116f6` instead of the
+  normal table `0x112a4`.
+- In alternate/data mode, mode-zero blank C0 rows `0x00` and `0x07..0x0f`
+  are append-preserving terminal rows.
+- Path `0x11930..0x11ab8` stores the matched byte in parser scratch, flushes
+  command and numeric scratch through `0x123ae` and `0x123de`, appends the
+  matched byte through macro/data sink `0xe002`, then rejoins the same
+  terminal reset path.
+- Therefore alternate/data `0x08`, `0x09`, `0x0a`, `0x0c`, `0x0d`,
+  `0x0e`, and `0x0f` are preserved as stored bytes instead of running the
+  normal-mode BS, HT, LF, FF, CR, SO, or SI handlers.
+
+State classification for this path:
+
+- Canonical state:
+  parser mode byte `0x782999`, command-record cursor `0x78299e`, normal versus
+  alternate/data selector `0x782c18`, delayed-payload pending fields
+  `0x782a1a`, `0x782a1c`, and saved record bytes `0x782a20..0x782a25`.
+- Derived/cache state:
+  none for page imaging. In alternate/data mode, the appended bytes become
+  derived stored input for a later macro/data-chain replay path.
+- Parser scratch:
+  matched-byte buffer `0x783196..0x783199`, nonnumeric scratch cursor
+  `0x782a26`, numeric scratch cursor `0x782a3e`, scratch buffers
+  `0x782a2a..` and `0x782a42..`, and alternate echo latch `0x782a56`.
+- Firmware bookkeeping:
+  parser table pointers, active callback helper pointer `0x78299a`, and the
+  terminal `0x12218` delayed-restore/reset boundary.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the normal-mode
+  `0x00`/`0x07`/`0x0b` no-output rows or alternate/data append-preserving C0
+  rows. Output uncertainty is not physical; the documented effect is absence
+  of page-object production in normal mode.
+
+Evidence for this path is in [pcl-parser-core.md](pcl-parser-core.md),
+[pcl-command-map.md](pcl-command-map.md), and
+[semantic-state-model.md](semantic-state-model.md). The generated parser table
+extract `generated/analysis/ic30_ic13_parser_dispatch_tables.md` shows the
+normal-mode blank rows at mode-0 table `0x010eae..0x010ef6` and the
+alternate/data blank rows at mode-0 table `0x0112f4..0x01133c`. Key supporting
+listings are `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` and
+`generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
+
 ## Worked Path: Transparent Print Data
 
 This path covers a counted payload mode. Transparent print data is not an

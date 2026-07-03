@@ -57,7 +57,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Host byte source priority and callers:
   ROM evidence is `0xa904..0xabf0` in
   `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`; the checked-in
-  semantic checkpoint is [host-byte-fetch.md](host-byte-fetch.md).
+  semantic checkpoint is [host-byte-fetch.md](host-byte-fetch.md), with
+  primary entry point `Worked Path: Host Byte Source Priority` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Reproduction evidence includes fixtures for no-byte, service retry, LIFO,
   data-chain, ring, and direct modes, plus the all-caller classification
   promoted from `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
@@ -122,8 +124,10 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   The checked-in contracts are [pcl-parser-core.md](pcl-parser-core.md) and
   `Parser Record And Delayed Payload State` in
-  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
-  `generated/analysis/ic30_ic13_parser_xrefs.md` plus tokenizer and
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Command Record And Payload Dispatch` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is `generated/analysis/ic30_ic13_parser_xrefs.md` plus tokenizer and
   delayed-payload fixtures. Command finals and payload bytes are separate
   events, six-byte records are saved through `0x121cc`, restored through
   `0x12218`, and then consumed by raster, transparent text, downloaded-font,
@@ -196,21 +200,33 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Direct controls and cursor state:
   ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, and cursor handlers.
   Reproduction evidence is `Text Cursor And Direct Controls` in
-  `notes/semantic-state-model.md` and host-fetched direct-control fixtures.
+  `notes/semantic-state-model.md`, surfaced first as
+  `Worked Path: Mixed Direct Controls` and
+  `Worked Path: Cursor And Margin Placement` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus host-fetched
+  direct-control fixtures.
 - Text source object creation:
   ROM evidence is `0xd3b2`, `0xd824`, `0x12f2e`, and `0x1387c`.
-  Reproduction evidence is `Text Source Objects And Compact Buckets` and
-  compact text bucket render fixtures.
+  Reproduction evidence is `Text Source Objects And Compact Buckets` in
+  `notes/semantic-state-model.md`, surfaced first as
+  `Worked Path: Text Source Objects And Compact Buckets` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus compact text
+  bucket render fixtures.
 - Pending text span flushing:
   ROM evidence is `0xd4ac`, `0xd8fc`, `0x126e2`, `0x12714`, and
   `0x13520`.
-  Reproduction evidence is `Text Span Flush And Fixed-Width Spans` plus
-  CR, left-margin parser, vertical-cursor parser, low-water, split,
-  nonempty, and retry fixtures.
+  Reproduction evidence is `Text Span Flush And Fixed-Width Spans` in both
+  `notes/semantic-state-model.md` and `Worked Path: Text Span Flush And
+  Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus CR,
+  left-margin parser, vertical-cursor parser, low-water, split, nonempty, and
+  retry fixtures.
 - Page-root storage:
   ROM evidence is `0x10084`, `0x10110`, `0x1381c`, and `0x1387c`.
   Reproduction evidence is `Shared Page-Record Storage And Allocator`,
-  addressed storage fixtures, and chunk-rollover fixtures.
+  surfaced first as `Worked Path: Shared Page-Record Storage And Allocator` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), addressed storage
+  fixtures, and chunk-rollover fixtures.
 - Rule/rectangle producers:
   ROM evidence is `0x10898`, `0x10b80`, `0x13386`, and `0x133aa`.
   Reproduction evidence is `notes/rectangle-graphics.md` and
@@ -221,10 +237,13 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
   The checked-in command-family checkpoint is
-  [raster-graphics.md](raster-graphics.md), with the unified semantic entry
-  `Raster Graphics Command Family` in
-  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
-  `generated/analysis/ic30_ic13_raster_graphics_flow.md` and host-fetched
+  [raster-graphics.md](raster-graphics.md), with semantic checkpoint
+  `Raster Transfer Gate And Encoded Rows` in
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Raster Row` and
+  `Worked Path: Raster Transfer Gates And Modes` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is `generated/analysis/ic30_ic13_raster_graphics_flow.md` and host-fetched
   raster stream fixtures. The checkpoint covers lower-resolution modes `1..3`,
   consecutive uppercase `ESC *b#W` transfers, lowercase `ESC *b#w` same-family
   chaining, `ESC *rB` active-byte clear, active-resolution ignore, `0x105d0`
@@ -272,9 +291,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   ROM evidence is `0x1ed84`, `0x1edc6`, and `0x1ef86`.
   Checked-in documentation is [page-record-storage.md](page-record-storage.md),
   [page-raster-imaging.md](page-raster-imaging.md), and the publication/render
-  entries in [semantic-state-model.md](semantic-state-model.md). Supporting
-  evidence is `generated/analysis/ic30_ic13_page_record_bridge.md` and
-  published-record render-entry fixtures.
+  entries in [semantic-state-model.md](semantic-state-model.md), surfaced first
+  as `Worked Path: Published Record To Active Bands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is `generated/analysis/ic30_ic13_page_record_bridge.md` and published-record
+  render-entry fixtures.
 - Active render scheduler:
   ROM evidence is `0x1eb2a`, `0x1ecd6`, `0x1ed84`, and `0x1eba4`.
   Reproduction evidence is
@@ -286,8 +307,10 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   Checked-in documentation is the `Bitmap Object Dispatch Semantic Checkpoint`
   in [page-raster-imaging.md](page-raster-imaging.md) and
   `Bitmap Render Dispatch Contract` in
-  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
-  `generated/analysis/ic30_ic13_render_dispatch_tables.md` plus text/rule/
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Render Dispatch And Pixel Composition` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is `generated/analysis/ic30_ic13_render_dispatch_tables.md` plus text/rule/
   raster composition fixtures.
 - Mixed page-image stream:
   ROM evidence crosses parser handlers `0xd04a`, `0x10e68`,
@@ -317,8 +340,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x1719c`.
   Checked-in documentation is [downloaded-fonts.md](downloaded-fonts.md) and
   the downloaded-font checkpoints in
-  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is the
-  font descriptor, resource, and character fixtures in
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Downloaded Glyph`, `Worked Path: Nonzero Resource Payload`,
+  and `Worked Path: Fixed-Record Resource Object` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is the font descriptor, resource, and character fixtures in
   `tools/render_fixture_harness.py`.
 
 ## Reproducible Byte-Stream Families

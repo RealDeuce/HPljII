@@ -49,6 +49,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Page Font Scheduler Resource Handoff`,
   `Worked Path: Font Selection To Visible Glyphs`,
   `Worked Path: Pitch Mode To Font Refresh`,
+  `Worked Path: Firmware Font Sample Page`,
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
@@ -1789,6 +1790,121 @@ Evidence:
   `Worked Path: Font Selection To Visible Glyphs`, because `ESC &k#S/s`
   rejoins the same `0xc89c` / `0xc580` refresh contract before printable
   bytes create page objects.
+
+## Worked Path: Firmware Font Sample Page
+
+This path covers the built-in font-sample printout generator. It is not a
+host-byte stream: firmware selects resource records, formats row text, and
+calls the ordinary printable path directly. It belongs in the reproduction
+model because it exercises the same current-font context install, compact text
+objects, page-record bridge, and render dispatch used by host-driven text.
+
+Entry and setup:
+
+- Setup entry `0x1e0b2` checks that at least one font record is available,
+  clears copy/wrap/perforation state, rebuilds orientation and page-root state,
+  writes forced sample-page VMI/HMI defaults, chooses the starting vertical
+  cursor, and passes a derived remaining-row count to `0x1ea4e`.
+- Printout entry `0x1c204` starts the source/class passes. If no font records
+  exist, it reports status `0xe3/0x51` instead of emitting page text.
+- The class loop `0x1c28e..0x1c344` runs class-zero and class-one passes,
+  skipping empty classes and ejecting between passes through `0xf0f0`.
+- The source loop `0x1c2fe..0x1c332` iterates source groups `0..3`, and
+  `0x1c354..0x1c5e4` walks one source group.
+
+Candidate and row selection:
+
+- Resolver `0x1b50e` consumes source mode and row ordinal. It first tries fast
+  probe `0x1b8ea`, then scans mode-specific first and second candidate
+  windows.
+- Candidate classifiers `0x1b750` and `0x1b7b2` feed the resolver;
+  `0x1c746`, `0x1c766`, `0x1c7a8`, and `0x1c710` normalize records and test
+  class/orientation before visible row emission.
+- Selected resource install `0x1c5e8` writes current-font/page-root state,
+  rebuilds maps through `0x14c64`, and refreshes the page-root font slot
+  through `0xc428`.
+- Source/category heading helper `0x1ca2c` selects labels from table
+  `0x1c170`, emits source headings, and writes row-height state.
+- Row formatter `0x1cabe` emits row prefix, font name/style, pitch/height,
+  symbol-set text, and sample columns through `0xd04a`, `0xd0f0`, and
+  horizontal advance helper `0x1d152`.
+- Sample-run helper `0x1cf34` emits ROM run table `0x1c1cf`, optionally
+  advances to an alternate sample row, emits run table `0x1c1e9`, and writes
+  the caller page-break flag.
+
+Page and render path:
+
+- Printable row bytes enter the ordinary text producer through `0xd04a`,
+  `0x1393a`, `0xd824` / `0xd3b2`, and `0x12f2e`.
+- Compact text objects are queued under the current page root; later
+  publication and rendering use the normal `0xff1e`, `0x1ed84`, `0x1edc6`,
+  and `0x1ef6a` path.
+- The full printout is modeled as eight class/source page-record segments,
+  from class `0` source `0` through class `1` source `3`, with row counts
+  `[0, 1, 1, 14, 0, 1, 1, 14]`.
+- Fixture `font sample full printout segments render through 0x1ed84 and
+  0x1ef6a` pins render-bucket counts `[1, 6, 6, 65, 1, 5, 5, 50]`,
+  rendered bucket-row totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`,
+  and aggregate rendered-surface digest
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+
+Continuation and page-limit forms:
+
+- `0x1ca2c`, `0x1d050`, `0x1d868`, and `0x1dcf2` compare cursor and
+  page-limit state before emitting headings, current rows, alternate rows, or
+  continuation pages.
+- Fixture `font sample page-limit branches trigger continuation calls` pins
+  the shared page-limit predicates.
+- The covered forced-continuation object forms are heading preflight, cartridge
+  heading, internal class-zero row-overrun `I01`, internal class-one
+  row-overrun `I16`, and alternate-row `I01` after the
+  `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
+  0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe` caller
+  sequence.
+
+State classification:
+
+- Canonical sample state:
+  accepted resource count `0x78278e`, class counts `0x782798` / `0x782790`,
+  candidate pointer/count windows, current and alternate selected contexts,
+  source labels at `0x1c170`, sample run tables `0x1c1cf` and `0x1c1e9`,
+  current page root, page-root context slots, vertical cursor `0x782c8e`, and
+  page-limit word `0x782db6`.
+- Derived/cache state:
+  row-height cache `0x783f06`, recent-context count/list
+  `0x783f08` / `0x783f0a`, row-to-row y advance from `0x1d050`, alternate-row
+  fit result from `0x1d868`, multi-probe fit state from `0x1dcf2`, compact
+  bucket sets, and render-surface hashes.
+- Parser scratch:
+  synthesized orientation command record at `0x78299e` written by `0x1d76c`,
+  fast-probe scratch `0x7828a0`, caller-visible candidate word `0x7828a4`,
+  selector scratch `0x78289f`, and Roman-8 substitution scratch
+  `0x7828ac` / `0x7821a0`.
+- Firmware bookkeeping:
+  per-source status bytes `0x783f02..0x783f05`, local page-break word
+  `-6(A6)`, page-root publication state, and render scheduler progress.
+- Hardware/external state:
+  none for the ROM-local generated-page contract.
+- Unknown:
+  physical comparison against a known printed font/self-test page remains
+  external. Record fields `+0x28/+0x2a` are consumed as decoded-height inputs
+  by `0x1519a`; fields `+0x2f..+0x31` are consumed as same-class
+  chooser tie-breakers by `0x1428c`. Manual-facing names remain open.
+
+Evidence:
+
+- Detail note: [font-sample-page.md](font-sample-page.md).
+- Resource note: [resource-rom.md](resource-rom.md).
+- Semantic checkpoint: `Built-In Font Sample Printout Loop` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`,
+  `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`,
+  `generated/disasm/ic30_ic13_font_page_setup_01e0b2.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
 ## Worked Path: Selected Font Metrics To Span Output
 

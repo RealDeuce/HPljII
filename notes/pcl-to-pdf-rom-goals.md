@@ -119,7 +119,9 @@ Concrete software contracts already exist for these renderer components:
   [semantic-state-model.md](semantic-state-model.md).
 - Parser:
   six-byte parser records, dispatch tables, alternate/data mode, and
-  delayed-payload restore through `0x121cc` / `0x12218` are composed in
+  delayed-payload restore through `0x121cc` / `0x12218` are composed first by
+  `Command output-effect classes` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [pcl-parser-core.md](pcl-parser-core.md) and
   [pcl-command-map.md](pcl-command-map.md).
 - Print environment:
@@ -140,8 +142,10 @@ Concrete software contracts already exist for these renderer components:
   [downloaded-fonts.md](downloaded-fonts.md).
 - Page model:
   page-root allocation `0x10084`, stream allocator `0x1381c`, compact text
-  buckets `0x1387c`, rule/fixed lists `0x133aa` / `0x136d2`, publication
-  `0xff1e`, and render bridge `0x1ed84` / `0x1edc6` are composed in
+  buckets `0x1387c`, rule/fixed lists `0x133aa` / `0x136d2`, the
+  producer-to-renderer map, publication `0xff1e`, and render bridge
+  `0x1ed84` / `0x1edc6` are composed first in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [page-raster-imaging.md](page-raster-imaging.md) and
   [semantic-state-model.md](semantic-state-model.md).
 - Renderers:

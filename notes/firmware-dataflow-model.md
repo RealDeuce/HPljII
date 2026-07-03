@@ -537,6 +537,125 @@ Evidence and reproduction contract:
 - Preserve the cursor rewind and delayed snapshot. Do not collapse command
   final bytes and following payload bytes into one parser event.
 
+## Worked Path: Model-ID And Status Backchannel
+
+This path covers a parser-visible command that produces host/interface output
+instead of page objects. It belongs in the dataflow model because a
+bidirectional host can react to these bytes and change the later stream that
+reaches `0xa904`, even though the ROM does not draw pixels for the response.
+
+The primary response stream is:
+
+```text
+ESC *r1K 11
+```
+
+The same producer is also reached from `ESC *s#^` through parser-table handler
+`0x12034`.
+
+Parser and command behavior:
+
+- The command bytes enter through byte fetch `0xa904`, parser wrapper
+  `0xda9a`, and parser loop `0x11774`.
+- The command-table row reaches wrapper `0x12034`.
+- `0x12034` calls setup helper `0x11efe`, appending a synthetic six-byte
+  record with byte `0x80` and word `+2 = 1`.
+- The wrapper then enters `0x122be..0x12326`.
+- `0x122be..0x12326` rewinds command-record cursor `0x78299e` to the
+  synthetic record, fetches the following query byte through `0xda9a`, and
+  tests the active record word `+2`.
+- If the fetched byte is `0x11` and the active word is `1` or `-1`, the
+  producer walks ROM literal `33440A\r\n` at `0x12280` and enqueues each byte
+  through blocking FIFO helper `0xb090`.
+- Other fetched bytes are reported through `0x9ec0` instead of entering the
+  host-output FIFO.
+
+Host-output FIFO and worker:
+
+- Startup helper `0x31d6` initializes FIFO storage `0x783e92..0x783ed1`,
+  count `0x783ed2`, read pointer `0x783ed4`, and write pointer `0x783ed8`.
+- `0xb0c0` is the nonblocking enqueue primitive. It accepts one byte while
+  count `0x783ed2 < 0x40`, writes through `0x783ed8`, wraps at
+  `0x783ed1`, increments the count, and returns success.
+- `0xb090` retries `0xb0c0` and waits through `0x10c8(0x7801e2)` while the
+  FIFO is full.
+- Output worker `0xae2c` sleeps only when FIFO count `0x783ed2`, pending
+  status count `0x780e22`, and bridge-service byte `0x783e61` are all zero.
+- In output mode `0`, worker `0xae2c` drains FIFO bytes through `0xb022` and
+  writes them through retry helper `0xaf7c` to `0xfffe0003`.
+- In output mode `1`, it dequeues and discards FIFO bytes.
+- In other nonzero modes, it sends queued FIFO bytes through helper
+  `0xafcc` / `0xa1d6` to `0xfffee003`.
+
+Status-byte sibling:
+
+- The same worker also emits service/status bytes through `0xaece` when
+  pending status count `0x780e22` or bridge-service byte `0x783e61` is set.
+- `0xaece` can emit literal service byte `0x13` when `0x783e61` is set.
+- For normal status bytes, `0xaece` builds from base `0x30`: `0x780e12` or
+  `0x780e90` sets bit `0`, `0x780e2a` sets bit `1`, `0x780e0a` sets bit `2`,
+  and reason byte `0x783e60` is ORed into the output.
+- Page-environment helper `0x2888` is an observed producer for
+  `0x780e90`, cache byte `0x780e98`, and warning/status accumulator bit
+  `0x780e2a.4`.
+
+State classification:
+
+- Canonical host-output state: FIFO count `0x783ed2`, read pointer
+  `0x783ed4`, write pointer `0x783ed8`, storage `0x783e92..0x783ed1`, and
+  backend selector `0x780e40`.
+- Canonical response state: literal `33440A\r\n` at `0x12280..0x12288`,
+  active six-byte record word `+2`, parser record cursor `0x78299e`, and
+  query byte fetched through `0xda9a`.
+- Derived/cache status: pending status count `0x780e22`, bridge-service byte
+  `0x783e61`, service-reason byte `0x783e60`, accepted byte cache
+  `0x780e62`, aggregate words `0x780e12` and `0x780e0a`, warning/status
+  accumulator `0x780e2a`, page-environment status flag `0x780e90`, and cached
+  media/status code `0x780e98`.
+- Parser scratch: the synthetic setup record appended by `0x11efe` and the
+  normal command-record cursor state used by `0x122be`.
+- Firmware bookkeeping: wait object `0x7801e2`, output worker sleep state,
+  and service-message fields consumed by `0x7612`, `0x8656`, and `0x8a48`.
+- Hardware/external state: physical names and timing for `0xfffe0001`,
+  `0xfffe0003`, `0xfffee005`, `0xfffee003`, and the host protocol name for
+  query byte `0x11`.
+
+Output effect:
+
+- This path does not allocate page roots, page objects, published records, or
+  render work records.
+- It does not feed `0x1ed84`, `0x1edc6`, `0x1ef6a`, or any bitmap renderer.
+- It can affect exact byte-stream reproduction only indirectly: a full FIFO
+  can stall the parser-side producer in `0xb090`, and a bidirectional host can
+  react to `33440A\r\n` or status bytes by sending different future input.
+- A closed byte-stream renderer that ignores backchannel bytes can treat this
+  path as no page-output effect while still preserving the parser/FIFO state if
+  it models host protocol timing.
+
+Evidence and unresolved boundary:
+
+- Detail notes: [errors-and-status.md](errors-and-status.md),
+  [io-interfaces.md](io-interfaces.md), and
+  [host-byte-fetch.md](host-byte-fetch.md).
+- Command index: [pcl-command-map.md](pcl-command-map.md) rows for
+  `ESC *r#K`, `ESC *s#^`, and handler `0x12034`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`,
+  `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
+  `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`, and
+  `generated/analysis/ic30_ic13_strings.txt`.
+- Fixture evidence includes `0xb0c0/0xb022 output FIFO wraps and preserves
+  order`, `0xb090 waits on full FIFO then enqueues after drain`,
+  `0xaece emits service byte and combined status byte`, `0xae2c drains FIFO
+  by configured output mode`, and
+  `0x2888 sets page-environment status consumed by 0xaece`.
+- The unresolved edge is external naming and timing: the protocol name for
+  query byte `0x11`, physical output-register mapping, and whether a
+  particular host script consumes these backchannel bytes.
+
 ## Worked Path: Printable Glyph
 
 This is the normal-byte counterpart to the raster example below. The primary

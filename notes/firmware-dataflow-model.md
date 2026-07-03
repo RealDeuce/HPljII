@@ -2657,6 +2657,46 @@ Composed variants:
   rules and mode-0 raster objects before `0x1ef6a` renders all three object
   families.
 
+Validation, no-install, and partial-install exits:
+
+- Descriptor validation for downloaded-resource headers is table-driven at
+  `0x16fae` from table `0x16eae`. When a rejecting predicate fails,
+  `0x17026` returns allocation status `0`, and `0x16c14` leaves current
+  downloaded-font records, candidate cursors, and selected installed
+  candidate state unchanged.
+- Fixture `ESC )s#W validation failures preserve following printable output`
+  proves seven host-fetched `ESC )s80W` validation no-install streams plus
+  the short-budget `ESC )s8W` entry-5 failure. Invalid resource type, first
+  code overflow, zero line/count, high line/count, reversed range/count, high
+  range/count, invalid class, and short descriptor budget all resume the
+  parser at the following printable `!`, queue the default-font compact
+  object, and render the same rows as baseline `!`.
+- Character-object writer `0x16498` has its own no-install exits. Fixture
+  `0x16498 replacement allocation failure partial and rejected downloaded
+  character exits preserve state` covers old-pointer replacement release
+  through `0x17a24`, allocation failure through `0x170c` / `0x9b5e` /
+  `0x1887a`, descriptor mode-byte `0` rejection, and high-character/header
+  type rejection.
+- Fixture `0x16498 no-install exits preserve following printable output`
+  carries those character-object no-install exits through the next printable
+  byte and FF. The rejected payload bytes drain through
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`; the following `!` routes to
+  `0xd04a`, queues the unchanged default-font compact object, publishes
+  through `0xff1e`, and renders through `0x1ed84` / `0x1ef6a`.
+- Copy status `2` is the opposite visible contract. Fixture
+  `0x16498 status-2 partial installs remain printable` proves linear and
+  split-plane partial objects write table entries, object records, partial
+  bitmap bytes, and continuation fields, then the following printable resolves
+  the partial glyph and renders rows from copied bytes plus zero-filled
+  missing bytes. The same fixture carries both partial objects through FF
+  publication and published-record rendering.
+- Continuation helper `0x15b9a` resumes downloaded-character continuation
+  fields. On status `1`, it completes the bitmap copy and clears
+  continuation state. On status `2`, it resaves advanced destinations and
+  counters. On status `0`, it calls `0x17a24` to release the offset-table
+  entry, clears continuation fields, and leaves the partially rewritten object
+  unreachable from the glyph table.
+
 State classification for this path:
 
 - Canonical state:
@@ -2672,19 +2712,23 @@ State classification for this path:
 - Parser scratch:
   command-record cursor `0x78299e`, delayed-payload fields `0x782a1a`,
   `0x782a1c`, `0x782a20..0x782a25`, staged descriptor scratch
-  `0x7827de..0x7827e9`, and continuation fields `0x7827c6..0x7827da`.
+  `0x7827de..0x7827e9`, validation payload budget `0x783140`, restored
+  rejected records such as `80 57 00 50 00 00` and `80 57 00 08 00 00`, and
+  continuation fields `0x7827c6..0x7827da`.
 - Firmware bookkeeping:
   downloaded-record counters `0x782782` and `0x782786`, candidate counters and
   cursors updated by `0x16c14`, heap allocation and release helpers, stream
-  allocator fields, publication flag `0x782996`, scheduler cursors, and
-  render-work progress words.
+  allocator fields, validation status/allocation status, no-install cleanup
+  through `0x1887a` / `0x17a24`, publication flag `0x782996`, scheduler
+  cursors, and render-work progress words.
 - Unknown:
   no unresolved ROM-local middle edge remains for the covered segmented-wide
-  install-to-print-to-publication path or the listed normal/wide selector
-  siblings. Remaining downloaded-glyph work is broader row/span
-  cross-products, exact HP manual labels for some descriptor fields, and
-  physical/pixel behavior after documented wrapped source-byte invalid-helper
-  boundaries.
+  install-to-print-to-publication path, the listed normal/wide selector
+  siblings, descriptor validation no-install exits, character-object
+  no-install exits, or status-`2` partial-install visible-output exits.
+  Remaining downloaded-glyph work is broader row/span cross-products, exact
+  HP manual labels for some descriptor fields, and physical/pixel behavior
+  after documented wrapped source-byte invalid-helper boundaries.
 
 Evidence for this path is in
 [downloaded-fonts.md](downloaded-fonts.md),
@@ -2697,6 +2741,11 @@ are `generated/disasm/ic30_ic13_assign_font_id_015a56.lst`,
 `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
 `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
 `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+`generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
+`generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`,
+`generated/disasm/ic30_ic13_font_resource_find_017026.lst`,
+`generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+`generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 

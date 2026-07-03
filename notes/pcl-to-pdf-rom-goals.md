@@ -300,7 +300,7 @@ Expected remaining PDF lookups:
 - Looking up rarely used PCL commands not copied into the quick
   reference.
 
-Expected remaining boundaries:
+Expected remaining validation and boundary work:
 
 - External resource-window evidence: exact board address decode after the
   verified resource pair at
@@ -330,31 +330,38 @@ Expected remaining boundaries:
   install-to-page boundary after `ESC )s18W`. These are not current
   ROM-semantic blockers when the checked-in notes already document field
   ownership, consumers, fixtures, and output rows.
-- ROM-local visible-output helper boundary:
+- Documented ROM-local visible-output helper boundary:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
   `Boundary: Short Compact Downloaded-Glyph High Rows` for `0x1fe76`
   fallback indices above `128` after rows `0x0101..0x0103` publish low-byte
   short compact objects. This is an exact unresolved renderer-helper edge, not
-  a parser/install/publication gap.
-- ROM-local visible-output helper boundary:
+  a parser/install/publication gap. Continue only with streams that change the
+  selected helper, fallback index, or rows, or with physical behavior after the
+  invalid table target.
+- Documented ROM-local visible-output helper boundary:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes` for wrapped downloaded
   spans where the installed width word is preserved, but the printable source
   exposes only low width bytes `0x00..0x10` to `0x12f2e`, selecting invalid
   compact mode-0 helper targets. Low bytes `0x11..0xff` render through
-  compact-wide helper `0x1f0d2`.
-- ROM-local visible-output source boundary:
+  compact-wide helper `0x1f0d2`. Continue only with streams that change source
+  object bytes, selector class, helper dispatch, or rows.
+- Documented ROM-local visible-output source boundary:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
   `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` for sampled
   high-row segmented-wide span-31 cases. They reach selector `0x3003`, bucket
   `8` segment `1`, renderer `0x1f264`, and the `32/96` row split before
-  stopping at fallback A2 source offset `+0xb50`.
-- ROM-local parser/payload boundary:
+  stopping at fallback A2 source offset `+0xb50`. Neighboring below-cap spans
+  are already documented as pixel-defined; continue only if a stream changes
+  the selected segment, source offset, parser cap, or rows.
+- Documented ROM-local parser/payload boundary:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
   `Boundary: Downloaded-Glyph Payload Count Cap` for oversized segmented-wide
   high-row streams that exceed the restored `ESC )s#W` count cap `0x7fff`.
   Adjacent below-cap products render through `0x1f264`; oversized products
-  stop before installed glyph publication or render dispatch.
+  stop before installed glyph publication or render dispatch. Continue only
+  with payload shapes that change the restored count, drain status, next
+  parser handler, publication, or render entry.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

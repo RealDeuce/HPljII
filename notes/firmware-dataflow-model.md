@@ -395,6 +395,102 @@ are `generated/analysis/ic30_ic13_printable_text_path.md`,
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and focused listing
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 
+## Worked Path: FF Publication
+
+This path shows how an already queued page object becomes a published page
+record. The primary stream is:
+
+```text
+ESC &k2G ! FF
+```
+
+In bytes:
+
+```text
+1b 26 6b 32 47 21 0c
+```
+
+Parser dispatch and command behavior:
+
+- `ESC &k2G` routes through parser loop `0x11774` to handler `0xedf8`, which
+  writes line-termination mode `0x78318f`.
+- Printable byte `0x21` is then routed through `0xd04a` and queues the compact
+  `LINE_PRINTER` glyph object described in `Worked Path: Printable Glyph`.
+- FF byte `0x0c` is an explicit normal-table control row and calls handler
+  `0xf0f0`.
+- Because `ESC &k2G` set the line-termination mode, the FF path applies
+  CR-style horizontal reset behavior before page eject.
+
+Current page before publication:
+
+- The printable byte has allocated one current page root at `0x78297a`.
+- The compact text object is under page-root bucket array `+0x1c`.
+- The addressed FF fixture uses stream chunk `0x00d09000` and ends with
+  `0x782a70 = 0x00d6`, `0x782a72 = 0x00d09000`, and
+  `0x782a76 = 0x00d0902a`.
+- Page-root context slot `+0x2c` is preserved as `0x440946b4`.
+
+The compact bucket object published by this stream is:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+Publication:
+
+- `0xf0f0` flushes pending text, finalizes the valid current root through
+  `0xff1e`, marks page eject with pending text byte `0xff`, and clears the
+  current root.
+- `0xff1e` writes page/control pool state byte `+4 = 2`, preserves the bucket
+  root and context slot fields, writes published pool pointer `0x780ea6`, sets
+  publication flag `0x782996`, and clears current root pointer `0x78297a`.
+- The addressed fixture records one page root, one publication, one root
+  clear, one finalization, one pending-text marker, and one span flush.
+
+Bridge and render:
+
+- The scheduler later selects the published record into active source
+  `0x780eae`.
+- `0x1ed84` copies active published-record header fields into the selected
+  render work record.
+- `0x1edc6` copies the published bucket root to render-record `+0x18` and the
+  context slot to render-record `+0x24`.
+- `0x1ef6a` renders in call order
+  `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`; this stream dispatches one
+  compact bucket object through `0x1efc2 -> 0x1effe`.
+- The published FF page-record rows match the pre-eject compact text rows.
+
+State classification for this path:
+
+- Canonical state:
+  line-termination mode `0x78318f`, current page root `0x78297a`, compact
+  bucket object, page-root context slot, published page/control record,
+  published pool pointer `0x780ea6`, and render-record bucket/context roots.
+- Derived/cache state:
+  compact bucket/key fields from the printable path and render-band fields
+  `0x783a20`, `0x783a22`, and `0x783a28`.
+- Parser scratch:
+  parser modes and temporary six-byte records for `ESC &k2G`, unmatched
+  printable byte `0x21`, and direct control byte `0x0c`.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70`, `0x782a72`, `0x782a76`, publication flag
+  `0x782996`, page-root clear count, pending text byte `0xff`, scheduler
+  cursors, and render-work progress words.
+- Unknown:
+  no unresolved ROM-local FF publication-to-render edge remains for this
+  stream. Physical printer output timing remains outside the ROM-local
+  contract.
+
+Evidence for this path is in
+[publication-commands.md](publication-commands.md),
+[direct-control-codes.md](direct-control-codes.md),
+[page-record-storage.md](page-record-storage.md),
+[active-render-scheduler.md](active-render-scheduler.md), and
+[semantic-state-model.md](semantic-state-model.md). The key listings are
+`generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: Rectangle Rule
 
 This path covers a parameterized command family that does not use bucket-chain

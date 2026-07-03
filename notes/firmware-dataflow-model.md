@@ -2849,6 +2849,45 @@ Default inputs consumed by reset:
   detailed producer contract lives in
   [reset-default-environment.md](reset-default-environment.md).
 
+Default record producer chain:
+
+- `0x7822d5` selects the compact default-record bank. The ROM scales it
+  through helper `0x332ee(..., 3)` and uses
+  `0x780eda + 2 * scaled_index` as the active backing record base.
+- Loader `0x5e80` copies backing record byte `+0` to canonical default
+  `0x78219d`, copies record word `+2` to canonical line-spacing word
+  `0x78219e`, and derives canonical byte `0x7821a2` from record byte `+5`
+  bit 2 as `0x80` or `0`.
+- Menu/update handlers mirror field writes into both the backing record and
+  the canonical reset defaults: `0x5060` updates record byte `+0` and
+  `0x78219d`; `0x50be` updates record byte `+5` bit 2 and `0x7821a2`;
+  `0x52ba` updates record word `+2` and `0x78219e`.
+- Record maintenance helper `0x56c2` selects the active bank by scanning
+  word-2 entries for bit 15. Helper `0x571e` rotates/copies three-word
+  record groups, updates maintenance counter `0x780ef0`, and clears auxiliary
+  flags at `0x780eb8`. Helper `0x5a62` either clears all 16 backing records
+  for input byte `0xde` or rebuilds records from ROM fallback tables
+  `0xba3e` and `0xba44`.
+- Startup helper `0x5a16` forces dirty flags `0x780eba..0x780ed8` to all
+  ones, calls retained-record read helper `0x97e4`, then clears the flags.
+  The observed startup caller `0x2c84` does not branch on a readback success
+  value from `0x5a16`; active-record validation failure later reports
+  `67 SERVICE` through `0x56c2 -> 0x1284`.
+- Commit helper `0x96c4` serializes dirty records through command class
+  `0x83`, calls `0x97e4` for readback through command class `0x86`, restores
+  the pre-read RAM image, and compares dirty readback words. Exhausted commit
+  retries set status bit `0x780e39.3` through
+  `0x9bee(0x780e36, 0x00000008)`, which the service loop consumes as
+  `68 SERVICE`.
+- Serial helper `0x9a4a` writes low-three-bit phase pairs to `$a400` through
+  shadow `0x7828f6`. The retained-record callers use `1 -> 3` for zero bits,
+  `5 -> 7` for one bits, and `1 -> 0` for deassert. Read helper `0x994e`
+  samples `$8c01.1` into retained-record readback words.
+- Panel/service byte sampler `0xa3ca` returns a debounced byte from
+  `$8000.w & 0xff`; dispatcher `0x3dae` maps stable service bytes through the
+  table at `0x3d66`, including default-store paths `0xef -> 0x3ef8`,
+  `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`.
+
 Publication and output effect:
 
 - With a valid current page root, `0xcc70 -> 0xff1e` publishes queued page
@@ -2883,16 +2922,20 @@ State classification:
 - Firmware bookkeeping:
   publication flag `0x782996`, reset latch bytes `0x782997` / `0x782998`,
   cleared flags `0x782990`, `0x78297e`, `0x783184`, `0x783185`,
-  `0x782f2c`, `0x78318f`, `0x783190`, and status byte `0x782a93`.
+  `0x782f2c`, `0x78318f`, `0x783190`, status byte `0x782a93`,
+  default-record dirty flags `0x780eba..0x780ed8`, retained-readback buffers
+  `0x782252..0x782270`, pre-read snapshot `0x782232..0x782250`, and
+  maintenance words `0x780ede` / `0x780ef0`.
 - Hardware/external state:
   physical retained-storage device behind `$a400` / `$8c01`, external
   `$8000.w` panel/service producer, and board-level pin names remain external.
 - Unknown:
   no ROM-local middle edge remains for the software-visible `ESC E` valid-root
-  publication path, missing-root no-publication path, default consumption,
-  VMI/HMI rebuild, parser/data-chain clearing, or compact-text rendered reset
-  page. Remaining reset/default uncertainty is external physical/device
-  identity and manual-facing names for some latches.
+  publication path, missing-root no-publication path, selected-record load into
+  canonical defaults, canonical default consumption, VMI/HMI rebuild,
+  parser/data-chain clearing, or compact-text rendered reset page. Remaining
+  reset/default uncertainty is external physical/device identity and
+  manual-facing names for some latches.
 
 Evidence:
 
@@ -2902,19 +2945,30 @@ Evidence:
   `Publication Commands To Rendered Page Records` in
   [semantic-state-model.md](semantic-state-model.md).
 - Fixture evidence:
-  `ESC E stream publishes valid page root and resets environment/parser state`,
-  `ESC E stream clears missing page root without publication`,
-  `host-fetched ESC E clears missing page root without publication`,
-  `addressed printable reset publishes rendered page record`,
-  `0x5e80 -> 0xcda2 reset consumes default record outputs`, and
-  `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI`.
+  - `ESC E stream publishes valid page root and resets environment/parser state`
+  - `ESC E stream clears missing page root without publication`
+  - `host-fetched ESC E clears missing page root without publication`
+  - `addressed printable reset publishes rendered page record`
+  - `0x5e80 -> 0xcda2 reset consumes default record outputs`
+  - `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI`
+  - `0x5e80 loads selected default record into canonical defaults`
+  - `0x5060/0x50be/0x52ba update default record and dirty flags`
+  - `0x5a16 forces retained-record read mask then clears it`
+  - `0x56c2 selects active retained record or reports 67 SERVICE`
 - Disassembly evidence:
   `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,
   `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`,
   `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
-  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
-  `generated/disasm/ic30_ic13_default_env_load_005e80.lst`.
+  `generated/disasm/ic30_ic13_default_env_load_005e80.lst`,
+  `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`,
+  `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`,
+  `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`,
+  `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`,
+  `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`,
+  `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`,
+  `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`,
+  and `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`.
 
 ## Worked Path: FF Publication
 

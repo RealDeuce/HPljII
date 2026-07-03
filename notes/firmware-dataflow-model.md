@@ -1550,6 +1550,50 @@ Symbol and map behavior:
 - Secondary fixture `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` proves a class-one
   miss can recover through remembered word `0x000e` or fallback word
   `0x000e` before selecting the same secondary context.
+- Non-Roman symbol-set streams `ESC (0N`, `ESC (10U`, and `ESC (11U` route
+  through `0x120be` to symbol helper target `0x1c0a4`, then refresh through
+  the same `0x13eb8` / `0x14c64` path. The primary visible fixture pairs
+  those commands with `ESC (s0p10h12v0s0b3T!!`; the secondary fixture pairs
+  `ESC )0N`, `ESC )10U`, and `ESC )11U` with
+  `ESC )s0p16h8v0s0b0T SO !!`.
+- For those non-Roman primary streams, selected contexts are `0xc0080cb8`,
+  `0xc4080418`, and `0xc4080868`. The secondary streams select
+  `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`. The rendered rows remain in
+  the same primary and secondary digest families as the ordinary visible
+  streams, while the selected contexts and map patch path differ.
+- Final `@` forms are parser-visible default-symbol commands, not parser
+  artifacts. `ESC (0@`, `ESC )0@`, `ESC )1@`, `ESC )2@`, and `ESC (3@` all
+  route through terminal handler `0x120be` and then subdispatch to `0x1bed4`,
+  `0x1bed4`, `0x1bf0a`, `0x1bf36`, and `0x1bf74`.
+- The real-backed final-`@` stream reads default-symbol table words
+  `0x0005`, `0x000e`, `0x0155`, and `0x000e`, leaves final active words
+  `[0x000e, 0x0005]`, and then selects visible built-ins when followed by the
+  normal primary or secondary font-selection tails.
+- Final `X` font-ID forms also route through `0x120be`, but call helper
+  `0x17708` instead of replacing the previous requested symbol word. Primary
+  built-in `ESC (7X!!` selects context `0xc0089fb0`; secondary built-in
+  `ESC )8X SO !!` selects context `0xc00ae122`.
+- Bit-30-clear final-`X` streams select inline/downloaded context
+  `0x00000100`: primary `ESC (4660X!` queues compact prefix
+  `00 00 00 00 00 00 00 01 01 66 01 00 00 00`, and secondary
+  `ESC )4660X SO !` queues prefix
+  `00 00 00 00 00 01 00 01 01 66 01 00 00 00`.
+- `0x17708` has four documented non-selected exits: record scan miss,
+  candidate-slot miss, class mismatch, and page-root context-full. In those
+  cases no `0x14c64` map dispatch occurs, and later printable bytes render
+  from the prior primary or secondary context rather than from the requested
+  font ID.
+- `0x13eb8` also has preserved-output exits. The transient path stages
+  selected context `0xc008004c` in `0x782992` but does not write the normal
+  current-font context or rebuild the map; the cache-hit path returns after
+  `0x148f8`. Fixtures carry both exits through later printable/SO tails and
+  prove that the prior context remains the visible source.
+- Common refresh gate `0xc580` is the branch point that determines whether
+  parsed font state reaches a page-root slot. The documented branch cluster
+  covers dirty-1 primary/secondary installs, matching-context reuse,
+  full-table no-match skip, selector-mismatch refresh-only, dirty-2
+  selector-match installs, and dirty-2 selector-mismatch remembered-word-only
+  behavior.
 
 Page-root context install:
 
@@ -1624,8 +1668,10 @@ State classification for this path:
 - Derived/cache state:
   candidate survivor lists, selected candidate slot `0x7828a8`, selected
   target `0x7828de`, snapshot records `0x783148` / `0x783152`, HMI
-  `0x78315c`, compact coordinates, glyph-entry pointers, and render-band
-  fields.
+  `0x78315c`, transient selected context `0x782992`, current font ID
+  `0x782f2e`, default-symbol tables `0x782f1c`, `0x782f20`,
+  `0x782f24`, and `0x782f28`, compact coordinates, glyph-entry pointers, and
+  render-band fields.
 - Parser scratch:
   setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
   records, dirty flags `0x782f2c` / `0x782f2d` while refresh is pending, and
@@ -1654,7 +1700,8 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
 `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
-`generated/disasm/ic30_ic13_font_id_select_017708.lst`, and
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+`generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`, and
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 
 ## Worked Path: Pitch Mode To Font Refresh

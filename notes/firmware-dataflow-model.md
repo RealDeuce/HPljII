@@ -729,6 +729,155 @@ are `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
 `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
+## Worked Path: Cursor And Margin Placement
+
+This path covers `ESC &a` margin and cursor-position commands. These commands
+do not draw by themselves in the covered streams. They write canonical
+placement state, and the next printable byte consumes that state to produce a
+compact text object and visible glyph rows.
+
+Representative streams:
+
+```text
+ESC &a6l9M !
+ESC &a2c+1R !
+ESC *p30x30Y !
+```
+
+Parser dispatch:
+
+- All streams enter through host fetch `0xa904`, parser wrapper `0xda9a`,
+  and parser loop `0x11774`.
+- `ESC &a#L` dispatches to left-margin handler `0xeb58`.
+- Lowercase final `l` keeps parser mode `12` active, so the chained
+  parameter and final `M` dispatch to right-margin handler `0xec0c`.
+- `ESC &a#C` dispatches to horizontal column handler `0xf39e`.
+- Lowercase final `c` keeps parser mode `12` active, so relative row command
+  `+1R` dispatches to vertical row handler `0xf560`.
+- `ESC &a#H` dispatches to horizontal decipoint handler `0xf416`.
+- `ESC &a#V` dispatches to vertical decipoint handler `0xf60a`.
+- `ESC *p#X` and `ESC *p#Y` dispatch to dot-position handlers `0xf48c` and
+  `0xf692`.
+- The following printable byte `0x21` reaches `0xd04a` after those state
+  writes and becomes the visible consumer.
+
+Margin command behavior:
+
+- `0xeb58` converts the absolute column count through current HMI
+  `0x78315c`, rejects values beyond `0x782dda - HMI`, and writes accepted
+  values to left margin `0x782dd6`.
+- If the accepted left margin is right of current horizontal cursor
+  `0x782c8a`, or pending text is marked, `0xeb58` also moves `0x782c8a` and
+  can flush pending spans through `0xf34a`, `0x12714`, and `0x126e2`.
+- `0xec0c` converts `abs(parameter) + 1` columns through HMI, rejects values
+  before `0x782dd6 + HMI`, clamps beyond page width `0x782db8`, writes right
+  margin `0x782dda`, and can move `0x782c8a` left.
+- `0xec0c` also sets right-limit latch `0x782a57`.
+
+Cursor command behavior:
+
+- `0xf39e` converts column units through HMI `0x78315c`.
+- `0xf416` converts horizontal decipoints using five packed subunits per
+  decipoint.
+- Both horizontal handlers commit through helper `0xf4ca`, which applies the
+  parsed relative flag, clamps between zero and page width `0x782db8`, updates
+  right-limit state against `0x782dda`, clears pending text, and refreshes
+  active span state.
+- `0xf560` converts row units through VMI `0x783160`. Absolute row moves add
+  top offset `0x782dce` and the ROM's fractional row bias before conversion.
+- `0xf60a` converts vertical decipoints using five packed subunits per
+  decipoint.
+- Both vertical handlers commit through helper `0xf6e2`, which ensures a page
+  root, clears or flushes pending text state, applies the parsed relative flag
+  or top-offset base, clamps against vertical bounds, and writes vertical
+  cursor `0x782c8e`.
+- Dot-position handlers `0xf48c` and `0xf692` shift the parsed whole-dot
+  value into the packed coordinate domain, then commit through `0xf4ca` or
+  `0xf6e2`.
+
+Command behavior to page objects:
+
+- The placement commands themselves create no compact glyph object in the
+  covered streams.
+- The following printable byte consumes `0x782c8a`, `0x782c8e`, HMI
+  `0x78315c`, and font context in `0xd04a`.
+- `0xd04a -> 0xd824 -> 0x12f2e` creates the compact text source object.
+- `0x1387c` stores that compact object in the bucket chosen from the current
+  cursor-derived coordinate.
+- `ESC &a1L!`, `ESC &a1M!`, and `ESC &a6l9M!` route margin handlers
+  `0xeb58` / `0xec0c` into following `0xd04a` output at compact coords
+  `0x0801`, `0x0a02`, and `0x0207`.
+- `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, and
+  `ESC &a2c+1R!` route cursor handlers to compact coords `0x0a02`,
+  `0x0402`, `0x1001`, `0x9001`, and `0x1a02`.
+- `ESC *p30x30Y!` routes dot-position handlers `0xf48c` and `0xf692` to
+  following printable output at compact coord `0x9402`.
+
+Span-flush sibling behavior:
+
+- `ESC &a6L!` proves a margin command can also publish pending span state
+  before moving the cursor. `0xeb58` moves `0x782c8a` from packed `10` to
+  packed `108`, and its `0xf34a` path materializes selector-`0x4000`
+  segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10`.
+- `0x126e2` re-arms span bounds to x `108`, and the following printable
+  queues compact coord `0x0207`. Rendering produces span rows `3..5` beside
+  the compact glyph at x `114`.
+- `ESC &a1R!` proves a vertical cursor command can publish the same pending
+  span object before moving y. `0xf560` flushes pending state, moves y to
+  packed `95.1`, and the following printable queues compact coord `0xa001`
+  in bucket `4`.
+
+Render path:
+
+- Publication and render scheduling are unchanged from the printable path:
+  page publication reaches `0xff1e`, render setup reaches `0x1ed84`, and the
+  page-record bridge reaches `0x1edc6`.
+- The compact text objects created after placement commands dispatch through
+  `0x1ef6a`, compact renderer `0x1efc2`, glyph resolver `0x1f354`, and the
+  compact row-copy helpers.
+- The span-flush siblings also bridge selector-`0x4000` segment-list objects
+  from compact bucket storage and render them through the span renderer.
+
+State classification for this path:
+
+- Canonical state:
+  horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, left margin
+  `0x782dd6`, right margin `0x782dda`, page width `0x782db8`, vertical bounds
+  `0x782dc6` / `0x782dca`, top offset `0x782dce`, HMI `0x78315c`, VMI
+  `0x783160`, current page root `0x78297a`, compact bucket objects, and
+  selector-`0x4000` span objects.
+- Derived/cache state:
+  compact coordinates such as `0x0207`, `0x1a02`, `0x9402`, and `0xa001`,
+  packed unit conversions, right-limit comparisons, bucket keys, and
+  render-band fields.
+- Parser scratch:
+  parser mode `12` for lowercase-final command chaining, six-byte command
+  records at `0x78299e`, parsed relative-flag bit 0, numeric parameter
+  buffers, and the resumed parser state for the following printable byte.
+- Firmware bookkeeping:
+  right-limit latch `0x782a57`, pending-width latch `0x782a58`, pending-text
+  latch `0x782a6d`, span-flush enable `0x783184`, span re-arm fields
+  `0x783186` / `0x783188`, allocation cursors, publication flag `0x782996`,
+  and render-work progress words.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the listed
+  margin/cursor-to-printable streams. Broader variants remain open only where
+  they would produce different compact object bytes, bucket selection, span
+  object shape, or final physical device behavior.
+
+Evidence for this path is in
+[direct-control-codes.md](direct-control-codes.md),
+[pcl-command-map.md](pcl-command-map.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md),
+[text-span-flush.md](text-span-flush.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting listings
+are `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+`generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`,
+`generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: Transparent Print Data
 
 This path covers a counted payload mode. Transparent print data is not an

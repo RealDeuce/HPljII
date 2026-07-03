@@ -54,6 +54,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Firmware Font Sample Page`,
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
+  `Worked Path: Fixed-Record Resource Object`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
   `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source`,
@@ -3267,6 +3268,116 @@ are `generated/disasm/ic30_ic13_assign_font_id_015a56.lst`,
 `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
 `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: Fixed-Record Resource Object
+
+This path covers the zero-count downloaded-font descriptor route where
+`ESC )s0W` does not skip an empty payload. It restores a descriptor packet,
+selects a bit-30-clear resource object, writes or resumes a fixed-record
+bitmap object, and then lets the following printable byte produce visible
+compact text rows.
+
+Parser dispatch and resource-object selection:
+
+- Host bytes enter through `0xa904` and the parser loop at `0x11774`.
+- `ESC )s0W` reaches `0x11f96` through the same `)s#W` command family as
+  downloaded glyphs, but the zero parsed count schedules delayed handler
+  `0x15d0a` instead of the nonzero payload handler `0x16c14`.
+- `0x121cc` stores restored record `80 57 00 00 00 00`; `0x12218` later
+  restores that record and calls `0x15d0a`.
+- `0x15d0a` writes descriptor budget `0x783140`, consumes descriptor bytes
+  through `0x1599c`, and routes bit-30-clear current records with status `1`
+  through `0x15e42 -> 0x16606`.
+- The continuation route uses status `2` and
+  `0x15e64 -> 0x15c4c`. Both routes rejoin the parser through
+  `0x15dcc -> 0x12328`, so the next visible command is the following
+  printable handler `0xd04a`.
+
+Current-record install:
+
+- `0x16606` clears stale continuation fields before validating the fixed
+  resource descriptor.
+- In fixture
+  `host-fetched 0x15d0a current-record resource object feeds fixed-record render`,
+  the selected object installs glyph `0x21` into the fixed-record table entry
+  at payload `+0x48`.
+- The canonical fixed-record bytes are
+  `02 03 04 00 00 00 02 00`; the bitmap bytes copied to payload `+0x0200`
+  are `aa 55 f0 0f c3 3c`.
+- The copy succeeds with status `1`, stream position `6`,
+  `0x783140 = 0`, zero drained bytes, and parser return to `0xd04a`.
+
+Continuation install:
+
+- A partial `0x16606` copy saves continuation block fields `0x7827c6`,
+  `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,
+  `0x7827d6`, and `0x7827d8`.
+- `0x15c4c` consumes that block on the later status-`2` descriptor route. A
+  status-`1` resume clears the block, while a status-`2` resume advances and
+  resaves it.
+- Fixture `host-fetched 0x15d0a continuation resource object resumes fixed-record
+  render` splits bitmap copy across two packets: first `aa 55`, then `f0 0f c3 3c`.
+- Fixture `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render` proves the odd-width split-plane form with record `03 02 04 00 00
+  00 02 00` and completed bitmap layout `a0 a1 c0 c1 b0 d0`.
+- Fixture `0x15c4c failed resource resume releases fixed-record object`
+  covers status `0`: `0x15c4c` takes `0x15cb8..0x15ccc`, calls `0x17d7c`,
+  rewrites payload `+0x48`, refreshes active-primary marker
+  `0x7828de = 0`, and clears the continuation fields at `0x15cd6..0x15d08`.
+
+Page-object and visible output effect:
+
+- The font command itself does not draw. It updates fixed-record font data
+  that later consumers read after the parser returns.
+- `0x14c64` / `0x14e24` refresh the active fixed-record map, `0x1393a`
+  builds the printable source, and `0x12f2e` queues the compact page object.
+- The current-record fixture resolves printable `!` through the installed
+  fixed record, emits object prefix
+  `00 00 00 00 00 03 00 01 01 66 01`, and renders three mode-0 rows
+  beginning at x `22`, y `6`.
+- The split-plane continuation fixture emits object prefix
+  `00 00 00 00 00 03 00 01 01 76 01` and renders two rows beginning at
+  x `22`, y `7`.
+- FF publication and active rendering follow the shared page pipeline:
+  `0xff1e` publishes the page root, `0x1ed84` bridges it into the active
+  render record, and `0x1ef6a` dispatches compact rendering from the queued
+  object.
+
+State classification for this path:
+
+- Canonical state:
+  current character `0x782f30`, selected bit-30-clear payload pointer
+  `0x78285e`, fixed-record table entries at payload `+0x48`, bitmap bytes at
+  payload `+0x0200`, active fixed-record font payload, queued compact page
+  objects, and published page record.
+- Derived/cache state:
+  active fixed-record map from `0x14c64` / `0x14e24`, printable source object
+  from `0x1393a`, compact selector `0x0003`, page bucket placement, active
+  render record, and band-local compact renderer state.
+- Parser scratch:
+  restored delayed record `80 57 00 00 00 00`, descriptor byte budget
+  `0x783140`, and continuation block `0x7827c6..0x7827da`.
+- Firmware bookkeeping:
+  route edge, copy status, stream position, reject reason, stale-continuation
+  clear, active-context refresh marker `0x7828de`, and release rewrite state
+  owned by `0x17d7c`.
+- Unknown:
+  broader fixed-record object-shape variants remain outside the covered
+  fixtures. Exact unresolved boundaries are current-record variants between
+  `0x16606..0x16770` and continuation variants between `0x15c4c..0x15d08`
+  that are not the documented one-piece, linear-continuation,
+  split-plane-continuation, partial-resave, or failed-release cases.
+
+Evidence for this path is in
+[downloaded-fonts.md](downloaded-fonts.md) and
+[semantic-state-model.md](semantic-state-model.md), especially
+`Fixed-Record Resource Object Checkpoint`. Key supporting listings are
+`generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+`generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+`generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+`generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`,
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
 ### Boundary: Short Compact Downloaded-Glyph High Rows

@@ -656,6 +656,99 @@ Evidence and unresolved boundary:
   query byte `0x11`, physical output-register mapping, and whether a
   particular host script consumes these backchannel bytes.
 
+## Worked Path: External Ready Service Preemption
+
+This path covers a board/service loop that can preempt normal parser work but
+does not create page objects or pixels. It is the top-level placement for the
+`0x2e38 -> 0xba48` external-ready/service cluster.
+
+Entry and loop role:
+
+- `0xba48` is entered from the external-ready/service caller cluster, not from
+  a PCL command table row.
+- On the entry path, `0xba48` writes `0x7822da`, clears `0x780e09`, displays
+  ROM string `0xb63b` (`01 EXT READY`) through message wrapper `0x8c7a`, and
+  writes `$a200 = 0xff00`.
+- Helper `0xbb36` sets handshake latch `0x782302 = 1` only when the ROM enters
+  the external-ready loop.
+- `0xbb84` consumes `$fffee00b.7` as the loop live condition.
+- While live, the loop runs the helper family `0xbbb2`, `0xbc56`, `0xbc88`,
+  `0xbcfe`, `0xbd84`, `0xbdae`, `0xc092`, and `0xc0ae` for register shadows,
+  text input, outbound writes, handshaking, deferred action, and status-bit
+  publication.
+- When the loop leaves, teardown runs through `0xc06e -> 0xc108 -> 0x19dd2 ->
+  0x36e4`. The scheduler return value from `0x19dd2` is ignored; the final
+  aggregate status byte is written to `0x780e08`.
+
+Message and service behavior:
+
+- `0xc340` seeds buffer `0x782312` from `01 EXT READY`.
+- `0xbcfe` appends masked printable bytes from `$fffee011` into
+  `0x782312`; carriage return terminates the buffer and displays it through
+  `0x8c7a`.
+- `0xc1a6` clears message/service scratch fields `0x782300`, `0x782301`,
+  `0x7821aa`, and `0x7821ac`.
+- `0xc1c6` dispatches service/error conditions from status fields including
+  `0x780e36 & 0x18`, `0x780e2e & 0xc0`, `0x780e39.3`, `0x780e39.4`,
+  `0x780e31.7`, and `0x780e31.6`.
+- When retained-storage failure bit `0x780e39.3` is set, `0xc1c6` reaches
+  non-returning service display `0x85c0`, which displays ROM string
+  `0xb45c` (`68 SERVICE`) through wrapper `0x8c90`.
+- `0x571e` is a documented upstream writer for `0x780e39.3` through
+  `0x9bee(0x780e36, 0x00000008)` on retained-record commit failure paths.
+
+State classification:
+
+- Canonical status/output state: final aggregate byte `0x780e08`, status
+  longword `0x780e36..0x780e39`, `$a200`, `$fffee00d`, and `$a801`.
+- Derived/cache state: shadow byte `0x7822eb`, last sampled `$fffee00b` byte
+  `0x7822ec`, low-three-bit mirror `0x7828f9`, and timestamp snapshots
+  `0x78230a` / `0x78230e`.
+- Parser/status scratch: message count `0x782300`, pending-message flag
+  `0x782301`, message buffer `0x782312..0x782322`, last debounced `$8000.w`
+  byte `0x7821aa`, and timer baseline `0x7821ac`.
+- Firmware bookkeeping: handshake latch `0x782302`, service-poll latch
+  `0x7822fd`, deferred-action latch `0x7822fe`, edge latch `0x7822ff`,
+  sampled byte `0x7822fa`, and scratch bytes `0x7821e7..0x7821ef`.
+- Hardware/external state: `$fffee00b`, `$fffee00d`, `$fffee00f`,
+  `$fffee011`, `$fffee013`, `$fffee005`, `$fffee003`, `$fffee001`, `$a200`,
+  and `$a801` are ROM-visible but board-level in physical identity.
+
+Output effect:
+
+- This cluster can stop or defer normal parsing before page objects are
+  generated.
+- It can alter service/status latches and operator-panel messages, and it can
+  drive hardware registers.
+- It does not allocate a page root, queue page objects, publish a page/control
+  record, or call render entry `0x1ef6a`.
+- A byte-stream renderer that starts from canonical ready state and ignores
+  board service loops can skip this path. A board-level emulator must model it
+  because it can block parsing, change status bytes, or enter non-returning
+  service display.
+
+Evidence and unresolved boundaries:
+
+- Detail notes: [external-ready-service.md](external-ready-service.md),
+  [errors-and-status.md](errors-and-status.md),
+  [io-interfaces.md](io-interfaces.md), and
+  [page-font-scheduler.md](page-font-scheduler.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`,
+  `generated/disasm/ic30_ic13_external_service_io_00bcd8.lst`,
+  `generated/disasm/ic30_ic13_external_service_reset_00c06e.lst`,
+  `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`, and
+  `generated/analysis/ic30_ic13_strings.txt`.
+- Fixture evidence includes `0xc0ae publishes external status bits through
+  0x9bee`, `0xc1c6 dispatches 68 SERVICE from retained-status bit`,
+  `0xc1c6 displays pending external-ready message`, and
+  `0xbb0a external-ready teardown ignores scheduler return`.
+- The remaining exact boundaries are external: physical identity of the
+  `$fffee00*`, `$a200`, and `$a801` register family; one continuous live
+  fixture for `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`; startup
+  retained-load failure to `67 SERVICE`; and a full `0xba48` loop fixture that
+  drives `$fffee00b.7` through the live-condition transition.
+
 ## Worked Path: Printable Glyph
 
 This is the normal-byte counterpart to the raster example below. The primary

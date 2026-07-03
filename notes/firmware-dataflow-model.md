@@ -63,6 +63,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Render Dispatch And Pixel Composition`.
 - Non-text page objects and render dispatch:
   `Worked Path: Vertical Forms Control`,
+  `Worked Path: VFC Table And Channel Branch Matrix`,
   `Worked Path: Rectangle Rule`,
   `Worked Path: Rectangle Rule Selectors And Clipping`,
   `Worked Path: Raster Row`,
@@ -3648,6 +3649,153 @@ are `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`,
 `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: VFC Table And Channel Branch Matrix
+
+This path composes the VFC state block and `0x1280a` branch matrix beyond the
+basic table-load and forward jump examples. It documents the variants that
+change cursor placement, page publication, and the page object consumed by the
+next printable byte. The detail contract is in
+[vertical-forms-control.md](vertical-forms-control.md); the semantic checkpoint
+is `Vertical Forms Control` in
+[semantic-state-model.md](semantic-state-model.md).
+
+Canonical table and layout writers:
+
+- `0x12cfe` is the delayed `ESC &l#W` payload handler. It reads the restored
+  byte count, consumes payload through `0xdace`, writes channel words
+  `0x782dde..0x782edd`, derives VFC bottom `0x782dc2`, copies text-bottom
+  cache `0x782dd2`, and clears modified-layout flag `0x782ee1`.
+- `0x12b96` builds the default 128-word VFC table from cached line bounds.
+  The default-table fixture pins the one-based channel convention: selector
+  `n` maps to bit `1 << (n - 1)`.
+- Shared layout refresh `0xe5e2` recomputes top offset `0x782dce`, left/right
+  margins `0x782dd6` / `0x782dda`, vertical cursor `0x782c8e`, text-bottom
+  cache `0x782dd2`, line caches `0x782ede..0x782ee0`, and then calls
+  `0x12b96`.
+- `0xfe54` writes the line-count caches `0x782edf`, `0x782ee0`, and
+  `0x782ede`.
+
+Consumer fields at `0x1280a`:
+
+- Canonical VFC table:
+  `0x782dde..0x782edd`.
+- Canonical cursor/layout inputs:
+  VMI `0x783160`, top offset `0x782dce`, vertical cursor `0x782c8e`,
+  horizontal cursor `0x782c8a`, and left margin `0x782dd6`.
+- Derived/cache line bounds:
+  text-bottom cache `0x782dd2`, VFC limit `0x782dc2`, last-text/index fields
+  `0x782ede`, `0x782edf`, and `0x782ee0`.
+- Firmware bookkeeping:
+  pending cursor/text latches `0x782a58` and `0x782a6d`, pending span flag
+  `0x783184`, modified-layout flag `0x782ee1`, current root `0x78297a`, and
+  publication flag `0x782996`.
+
+Branch matrix:
+
+- `0x128ae..0x128f4`: before-top normalization. It rewrites the computed start
+  line before the ordinary forward scan and does not publish by itself.
+- `0x1292a..0x1295c -> 0x12aa6..0x12af8`: forward in-text hit. It resets x
+  through `0xf06e`, flushes pending text through `0xf34a`, writes target y,
+  and keeps the next printable on the current page.
+- `0x12966..0x1299a`: selector-zero target-equal exit. It computes
+  top-of-form and leaves x/y unchanged when the cursor is already there.
+- `0x1299c..0x129c4`: selector-zero page eject. It runs
+  `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publishes the old page, and leaves
+  the next printable on a fresh page.
+- `0x129c6..0x12af8`: wrap hit. It wraps to line `0`, finds a hit before the
+  original start line, publishes through `0xf124`, and then commits target y.
+- `0x129ee..0x12b5a`: publishing target-after-text recovery. It finds a
+  channel after `0x782ee0`, publishes the old page, then recovers y through
+  `0x12afc..0x12b5a`.
+- `0x129fc..0x12afc`: non-publishing target-after-text recovery. It is the
+  before-top sibling where start line `0` skips the `0xf124` edge and only
+  recovers x/y.
+- `0x12a02..0x12afc`: start-after-text no-wrap recovery. With no matching
+  channel bit, it skips publication and writes the recovered y.
+- `0x12a22..0x12a78`: wrap-no-hit page eject. With no matching bit through
+  the forward and wrapped scans, it publishes the old page and returns to
+  top-of-form y.
+- `0x12a7a..0x12af8`: start-after-text wrapped in-text hit. It wraps from a
+  start line past text bottom to an in-text channel and commits without
+  publication.
+- `0x12a7a..0x12afc`: start-after-text wrapped bottom recovery. It wraps to a
+  line after `0x782ee0`, skips publication, and writes recovered y.
+- `0x1299c..0x12b92`: selector-zero start-after-text recovery. It skips the
+  page-eject edge when the computed start line is already past text bottom and
+  writes top-of-form y.
+
+Output effects:
+
+- `ESC &l4W 00 00 00 02 !` proves table payload bytes are consumed before the
+  following printable byte, leaving the `!` queued at compact coordinate
+  `0x9001`.
+- Lowercase `ESC &l4w4W` proves the earlier lowercase delayed record
+  `80 77 00 04 00 00` survives until uppercase `W` terminates the family.
+- Forward and before-top selector-2 jumps queue the following printable at
+  compact coordinate `0xb001` after y is written to `176`.
+- Selector-zero target-equal `ESC &l0V!` leaves a matching top-of-form cursor
+  unchanged and queues `!` at compact coordinate `0x9e02`.
+- Selector-zero page eject `! ESC &l0V !`, wrap-hit `! ESC &l2V !`,
+  wrap-no-hit, and publishing target-after-text paths publish the old page
+  through `0xf124 -> 0xff1e` before the following printable byte is queued on
+  a fresh page.
+- Non-publishing recovery siblings write the same cursor state without calling
+  `0xf124`, so the following printable remains on the current page.
+
+State classification:
+
+- Canonical state:
+  VFC table `0x782dde..0x782edd`, VMI `0x783160`, top offset `0x782dce`,
+  cursor fields `0x782c8a` / `0x782c8e`, margins, current page root, published
+  source record, and render-record bucket/context roots.
+- Derived/cache state:
+  line-count caches `0x782ede`, `0x782edf`, `0x782ee0`, VFC limit
+  `0x782dc2`, text-bottom cache `0x782dd2`, selector masks, recovered y
+  values, and compact coordinates.
+- Parser scratch:
+  delayed record state `0x782a1a`, `0x782a1c`, `0x782a20..0x782a25`, command
+  cursor `0x78299e`, `ESC &l#V` selector, and direct payload bytes.
+- Firmware bookkeeping:
+  modified-layout flag `0x782ee1`, pending latches `0x782a58` and
+  `0x782a6d`, pending span flag `0x783184`, publication flag `0x782996`,
+  scheduler cursors, and render-work progress.
+- Hardware/external state:
+  none for the ROM-local VFC table and channel-jump contract.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented table-load,
+  default-table, forward jump, selector-zero, wrap-hit, wrap-no-hit,
+  target-after-text, start-after-text, and alternate high-start paths.
+  Manual-facing names for `0x782ede`, `0x782edf`, and `0x782ee0` remain
+  inferred.
+
+Evidence:
+
+- Detail note: [vertical-forms-control.md](vertical-forms-control.md).
+- Semantic checkpoint: `Vertical Forms Control` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixtures:
+  `0x12cfe ESC &l#W loads vertical forms control state`,
+  `mixed VFC definition stream consumes payload before printable page-record
+  queue`,
+  `mixed VFC lowercase delayed record survives until uppercase W`,
+  `mixed VFC channel jump stream moves cursor before printable page-record
+  queue`,
+  `mixed VFC before-top channel jump normalizes start line before printable`,
+  `mixed VFC selector-zero page-eject publishes old page before fresh
+  printable`,
+  `mixed VFC wrap-hit publishes old page before fresh printable`,
+  `mixed VFC wrap-no-hit publishes old page and returns to top`,
+  `mixed VFC target-after-text recovers near top before fresh printable`,
+  `0x1280a VFC alternate high-start recovery entries`, and
+  `0x12b96 default VFC table channel convention`.
+- Disassembly:
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
 ## Worked Path: Macro Execute Replay
 

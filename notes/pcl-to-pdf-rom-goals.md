@@ -129,6 +129,8 @@ Concrete software contracts already exist for these renderer components:
   transparent data, display-functions mode, VFC, reset/default records, and
   macro data-chain replay are composed first by
   `Worked Path: Reset And Default Environment`,
+  `Worked Path: Vertical Forms Control`,
+  `Worked Path: VFC Table And Channel Branch Matrix`,
   `Worked Path: Macro Execute Replay`, and
   `Worked Path: Macro Overlay Replay Publication` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in

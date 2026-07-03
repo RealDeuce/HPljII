@@ -124,6 +124,45 @@ The parser-level distinction that matters for reproduction is whether a byte:
 - is appended to macro/data-chain storage; or
 - is ignored/reset as an explicit table row.
 
+Payload and direct-reader modes:
+
+- Delayed payload snapshot:
+  `0x121cc` rewinds command-record cursor `0x78299e`, writes pending byte
+  `0x782a1a`, stores handler pointer `0x782a1c`, and saves the active
+  six-byte record at `0x782a20..0x782a25`. Terminal mode-zero reset later
+  calls `0x12218`, which restores that record and calls the saved handler.
+- Raster payload:
+  `ESC *b#W` arms `0x105d0` through `0x11f82 -> 0x121cc`. After
+  `0x12218`, `0x105d0` rereads restored record `+2` as byte count, drains or
+  caps bytes through `0xdace` / `0xa904`, and queues accepted encoded-span
+  objects through `0x13070` / `0x13250`.
+- Transparent text payload:
+  `ESC &p#X` arms `0x12452` through `0x11f5a -> 0x121cc`. After restore,
+  `0x12452` reads the absolute count, fetches payload bytes directly through
+  `0xa904`, applies its local `1a 58 -> 7f` rule, and routes bytes to
+  printable/control text handlers.
+- Vertical forms payload:
+  `ESC &l#W` arms `0x12cfe` through `0x11f6e -> 0x121cc`. After restore,
+  `0x12cfe` reads the count, consumes bytes through `0xdace`, writes VFC
+  table `0x782dde..0x782edd`, and updates cursor-limit state consumed by
+  `ESC &l#V`.
+- Downloaded font and glyph payloads:
+  `ESC (s#W` / `ESC )s#W` use handler `0x11f96`. Count zero schedules
+  descriptor path `0x15d0a`; nonzero counts schedule resource/character
+  payload path `0x16c14`. Both consume the restored record and payload budget
+  `0x783140` before updating downloaded-resource records that later printable
+  glyphs consume.
+- Generic counted payload wrapper:
+  stateful tokenizer helpers can schedule `0x1228a`; after restore it drains
+  the absolute count through `0x12328` without echoing bytes. In
+  alternate/data mode, `0x12358` either delegates to `0x1228a` or appends
+  positive-count payload bytes through the alternate append path.
+- Direct reader loops:
+  display-functions handlers `0x12536` and `0x12120` do not use the delayed
+  snapshot. They read bytes directly through `0xa904` until local `ESC Z`
+  termination, routing normal-mode bytes to text output or alternate/data
+  bytes to append storage.
+
 ## Command Dispatch
 
 [pcl-command-map.md](pcl-command-map.md) is the command-family index. It maps

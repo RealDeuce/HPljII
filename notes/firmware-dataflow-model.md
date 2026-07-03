@@ -24,6 +24,43 @@ This file is intentionally top-down. It names the state handoffs a renderer or
 emulator must preserve, then points to the detail notes that own each command
 family or object producer.
 
+## Reader Path Index
+
+Use these worked paths as entry points for the byte-stream-to-pixel model:
+
+- Host byte source and replay priority:
+  `Worked Path: Host Byte Source Priority`.
+- Parser records, dispatch tables, delayed payloads, ignored rows, and
+  parser artifacts:
+  `Worked Path: Command Record And Payload Dispatch`,
+  `Worked Path: Explicit No-Output Parser Rows`.
+- Host/status side channels with no direct page-object effect:
+  `Worked Path: Model-ID And Status Backchannel`,
+  `Worked Path: External Ready Service Preemption`.
+- Text, controls, cursor placement, and transparent/display byte readers:
+  `Worked Path: Printable Glyph`,
+  `Worked Path: Mixed Direct Controls`,
+  `Worked Path: Cursor And Margin Placement`,
+  `Worked Path: Underline Text Span`,
+  `Worked Path: Transparent Print Data`,
+  `Worked Path: Display Functions Direct Reader`.
+- Font selection, downloaded glyphs, macro replay, and resource boundaries:
+  `Worked Path: Font Selection To Visible Glyphs`,
+  `Worked Path: Downloaded Glyph`,
+  `Worked Path: Macro Execute Replay`,
+  `Boundary: Secondary Segment-57 Source`.
+- Page publication, page environment changes, and active render scheduling:
+  `Worked Path: FF Publication`,
+  `Worked Path: Page Environment Publication`,
+  `Worked Path: Published Record To Active Bands`.
+- Non-text page objects and render dispatch:
+  `Worked Path: Vertical Forms Control`,
+  `Worked Path: Rectangle Rule`,
+  `Worked Path: Raster Row`.
+
+Each worked path names the handlers, ROM fields, output effect, field
+classification, evidence files, and unresolved boundary for that slice.
+
 ## Host Bytes
 
 All normal parser input is funneled through the byte-source multiplexer at

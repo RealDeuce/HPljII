@@ -2124,29 +2124,55 @@ Filter-on variant:
   entries, proving that display-functions bytes in control-looking ranges can
   become visible glyphs when the filters are nonzero.
 
+Neighboring command-family status paths:
+
+- Control-Z handlers are local mode-specific consumers, not one global
+  parser rule. Handler `0x120d2` conditionally routes literal `0x1a` through
+  `0xd04a` when the selected context byte equals `1`; handler `0x1210c`
+  appends literal `0x1a` through `0xe002`; handler `0x1219e` routes synthetic
+  value `0x100` through `0xd04a`; and handler `0x121b2` calls `0xd99a` before
+  appending normalized value `0x7f` through `0xe002`.
+- `ESC z` is the display-functions-off/status terminal at `0xcd86`, not a
+  text-rendering command. It consumes active data-chain frame pointer
+  `0x782d76`, tests frame byte `+9`, and calls `0x9c2c` only when that byte
+  is zero.
+- Helper `0x9c2c` waits while service/status busy bit `0x780e2d.3` is set,
+  sets service-in-progress marker `0x7821cc`, sets status marker `0x7822db`,
+  ORs `0x08` into warning/status accumulator `0x780e2a` through
+  `0x9b5e(0x780e2a, 0x8)`, and clears `0x7821cc` before return.
+- These status paths do not allocate page roots, queue page objects, publish
+  pages, or render pixels. They matter to reproduction only as parser-visible
+  command behavior and as status-side state that can affect a bidirectional
+  host or service loop.
+
 State classification for this path:
 
 - Canonical state:
   direct-reader termination flag `D4`, normalized loop value `D5`, selected
   text/context slot `0x782f06`, current page root `0x78297a`, compact text
-  objects, macro/data append stream for alternate mode, published source
-  record, and render-record bucket/context roots.
+  objects, macro/data append stream for alternate mode, active data-chain frame
+  pointer `0x782d76`, published source record, and render-record
+  bucket/context roots.
 - Derived/cache state:
   selected context byte `0x782eea + 0x10 * slot`, fallback filter byte
   `0x782efa`, local high-control filter word, compact coordinates, glyph
-  mapping results, and render-band fields.
+  mapping results, status marker `0x7822db`, warning/status bit `0x780e2a.3`,
+  and render-band fields.
 - Parser scratch:
   initial `ESC Y` parser mode and table dispatch state, plus any parser state
   resumed after the direct reader returns.
 - Firmware bookkeeping:
   `0xd99a` local control-report side effect, `0xf054` CR post-handler,
   append sink `0xe002`, stream allocator fields, publication flag
-  `0x782996`, scheduler cursors, and render-work progress words.
+  `0x782996`, service-in-progress marker `0x7821cc`, `0x9c2c` wait behavior
+  on `0x780e2d.3`, scheduler cursors, and render-work progress words.
 - Unknown:
   no unresolved ROM-local middle edge remains for the normal `0x12536` direct
   reader loop, its default-filter and filter-on route predicates, or the
-  alternate/data `0x12120` append loop. External status-consumer naming for
-  neighboring `ESC z` remains outside this visible-output path.
+  alternate/data `0x12120` append loop, local Control-Z handlers, or the
+  `0xcd86 -> 0x9c2c` display-functions-off status edge. External
+  status-consumer naming for `0x7821cc`, `0x7822db`, and `0x780e2a.3`
+  remains outside this ROM-local path.
 
 Evidence for this path is in
 [display-functions.md](display-functions.md),

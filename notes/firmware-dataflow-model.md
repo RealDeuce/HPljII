@@ -2661,6 +2661,15 @@ The continuation policy is physical/resource-window state:
   a full mirror at `0x0c0000` would expose a second `HEAD` chain and `48`
   typed records, while code-pair and zero-fill continuations expose non-HEAD
   markers and keep the same `24` typed records as the verified image.
+- The same scanner split is visible in the candidate-count fields: a visible
+  mirror doubles total `0x78278e` to `48` and low class counters `0x782792` /
+  `0x78279a` to `24` each; code-pair and zero-fill keep the verified
+  `24` / `12` / `12` state.
+- Tool `tools/probe_resource_window.py --quiet` is the checked-in repro entry
+  for this boundary. It reports the verified resource-pair hashes, the
+  `478`-byte suffix digest, the `802`-byte continuation candidate hashes, the
+  current-band digest, and the scanner/candidate-count split above without
+  dumping row-level logs on success.
 
 The exact unresolved boundary is therefore firmware range
 `0x0c0000..0x0c0321`. Closing it requires board or emulator memory-map

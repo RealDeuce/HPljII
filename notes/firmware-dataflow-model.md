@@ -45,7 +45,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Text Source Objects And Compact Buckets`,
   `Worked Path: Mixed Direct Controls`,
   `Worked Path: Cursor And Margin Placement`,
-  `Worked Path: Underline And Pending Text Span`,
+  `Worked Path: Text Span Flush And Fixed-Width Spans`,
   `Worked Path: Transparent Print Data`,
   `Worked Path: Display Functions Direct Reader`.
 - Font selection, downloaded glyphs, macro replay, and resource boundaries:
@@ -2925,16 +2925,14 @@ are `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
 `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
-## Worked Path: Underline And Pending Text Span
+## Worked Path: Text Span Flush And Fixed-Width Spans
 
-This path covers text-span output driven by underline/text-attribute state.
-The printable glyph still queues through the compact text path, but the
-attribute also makes the font metric consumer maintain pending span bounds.
-The later underline terminal command flushes those bounds into a
-selector-`0x4000` segment-list object that renders separate mask rows. The
-same pending-span state also feeds non-underline control movements,
-orientation-specific page objects, and an allocation-failure publication
-retry path.
+This path covers pending text-span output driven by underline/text-attribute
+state, printable metric consumers, and direct-control flush points. The
+printable glyph still queues through the compact text path, but span consumers
+maintain pending bounds that can later flush into selector-`0x4000`
+segment-list objects, landscape fixed-width objects, or a publication retry
+path.
 
 Primary stream:
 

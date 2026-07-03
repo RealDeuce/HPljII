@@ -196,6 +196,74 @@ pixel-perfect rendering:
 - `ESC (s#W` / `ESC )s#W`, handler `0x011f96`: delayed
   font/downloaded-character payload selector.
 
+## Checked-In Semantic Anchors
+
+Use this index before starting a new trace from the command table. Rows here
+are not just named handlers; they already have checked-in notes with field
+groups, writers, readers/consumers, output effects, fixtures, and disassembly
+evidence. New work should start from variants that change one of those
+contracts.
+
+- Parser records and dispatch:
+  [pcl-parser-core.md](pcl-parser-core.md) and
+  `Parser Record And Delayed Payload State` in
+  [semantic-state-model.md](semantic-state-model.md) cover
+  `0xda9a`, `0xdaf0`, `0xdb74`, `0x11774`, `0x121cc`, and `0x12218`,
+  including normal and alternate/data blank-row behavior.
+- Direct text controls, cursor movement, margins, HMI/VMI, line
+  termination, wrap, perforation skip, cursor stack, and underline/span
+  controls:
+  [direct-control-codes.md](direct-control-codes.md) and
+  `Text Cursor And Direct Controls` in
+  [semantic-state-model.md](semantic-state-model.md) cover handlers
+  `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xe9ba`,
+  `0xf176`, `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf560`,
+  `0xf60a`, `0xca8c`, `0xedf8`, `0xedb0`, `0xee64`, `0xf75e`,
+  and `0x12622`.
+- Page geometry and publication boundaries:
+  [publication-commands.md](publication-commands.md),
+  [reset-default-environment.md](reset-default-environment.md), and
+  `Publication Commands To Rendered Page Records` in
+  [semantic-state-model.md](semantic-state-model.md) cover reset, FF,
+  page size, orientation, paper source, and copies through `0xff1e`,
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+- Vertical forms control:
+  [vertical-forms-control.md](vertical-forms-control.md) and
+  `Vertical Forms Control Channels` in
+  [semantic-state-model.md](semantic-state-model.md) cover
+  `0x11f6e`, `0x12cfe`, `0x12b96`, and `0x1280a`.
+- Transparent print data and display functions:
+  [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md), and their semantic-model
+  sections cover `0x11f5a -> 0x12452`, `0x12536`, `0x12120`,
+  Control-Z siblings, and `0xcd86 -> 0x9c2c`.
+- Raster and rectangle graphics:
+  [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md), and the raster/rule
+  semantic-model sections cover `0x10808`, `0x1075a`, `0x107fa`,
+  `0x11f82`, `0x105d0`, `0x13070`, `0x13250`, `0x10898`,
+  `0x10b80`, `0x13386`, and render dispatch.
+- Font selection, symbol sets, font IDs, downloaded-font payloads, and
+  metric producer/consumer behavior:
+  [resource-rom.md](resource-rom.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [downloaded-fonts.md](downloaded-fonts.md), and the font-selection
+  semantic-model sections cover `0x120be`, `0x1be22`, `0xc580`,
+  `0x13eb8`, `0x156de`, `0x17708`, `0x14c64`, `0x11f96`,
+  `0x15d0a`, and `0x16c14`.
+- Macro definition, execute/call replay, data-chain frames, and overlay
+  publication:
+  [macro-data-chain.md](macro-data-chain.md) and
+  `Macro Definition And Data-Chain Replay` in
+  [semantic-state-model.md](semantic-state-model.md) cover `0xe112`,
+  `0xdd08`, `0xe0a4`, `0xe002`, `0xe418`, `0xe4f4`, `0xe22c`,
+  `0xe65c`, and overlay replay through page publication.
+- Host/status backchannel and model-ID response:
+  [host-byte-fetch.md](host-byte-fetch.md) and
+  [errors-and-status.md](errors-and-status.md) cover `0xa904..0xabf0`,
+  all direct byte-fetch callers, and the `0x12034 -> 0x122be`
+  `33440A\r\n` response path.
+
 ## First Handler Observations
 
 `ESC &l#A` at `0x00fc74` maps PCL page-size parameters into internal

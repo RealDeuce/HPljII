@@ -395,6 +395,192 @@ are `generated/analysis/ic30_ic13_printable_text_path.md`,
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and focused listing
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 
+## Worked Path: Font Selection To Visible Glyphs
+
+This path covers the font-selection state that the printable path consumes.
+Font commands do not draw immediately. They update primary or secondary font
+request fields, select a concrete resource candidate, rebuild a host-byte to
+glyph map, install the selected context into the page root, and only then let
+later printable bytes create visible compact text objects.
+
+Primary stream:
+
+```text
+ESC (s0p10h12v0s0b3T ! !
+```
+
+Secondary stream:
+
+```text
+ESC )s0p16h8v0s0b0T SO ! !
+```
+
+Parser dispatch:
+
+- Both streams enter through host fetch `0xa904`, parser wrapper `0xda9a`,
+  and parser loop `0x11774`.
+- `ESC (` creates the primary setup record through `0x1201e`; `ESC )` creates
+  the secondary setup record through `0x12008`.
+- Parser modes advance `0 -> 1 -> 4 -> 13` for the `s...T` attribute
+  sequence. Lowercase finals stay in mode `13`; uppercase final `T` returns
+  to mode `0`.
+- Lowercase finals dispatch to spacing `p` handler `0xc930`, pitch `h`
+  handler `0xc89c`, point-size `v` handler `0xc6ec`, style `s` handler
+  `0xc780`, and stroke `b` handler `0xc840`.
+- Uppercase final `T` reaches wrapper `0x1205a`, which calls typeface writer
+  `0xc7e0` and common refresh `0xc580`.
+- In the secondary stream, SO byte `0x0e` later reaches handler `0xc6b8`,
+  which selects secondary text slot `1`. SI byte `0x0f` reaches sibling
+  handler `0xc68a`, which selects primary slot `0`.
+
+Font request and candidate selection:
+
+- The primary request decodes to spacing `0`, pitch `0x03e8`, height
+  `0x04b0`, style `0`, stroke `0`, and typeface `3`.
+- The writer fields are stored in the primary request block around
+  `0x782eec..0x782ef2`, and refresh flags `0x782f2c` / `0x782f2d` are marked
+  dirty before `0xc580`.
+- `0xc580` calls refresh path `0x13eb8(0)` for the primary slot.
+- The primary fixture follows
+  `0x148f8 -> 0x1569c -> 0x156de -> 0x153c6 -> 0x1519a -> 0x147b2 ->
+  0x14758 -> 0x14398 -> 0x144d2 -> 0x14c64`.
+- Symbol filtering keeps primary slots `0x782354`, `0x782364`, and
+  `0x782374`; later pitch, height, and stroke filters select slot
+  `0x782354`, record `0x00004c`, and context longword `0xc008004c`.
+- `0x144d2` writes primary current-font context record `0x782ee6`.
+- `0x14c64` rebuilds primary map `0x782f32`.
+- The secondary stream follows the same family with class selector `1`;
+  symbol filtering keeps slots `0x782330`, `0x782340`, and `0x782350`, and
+  nearest-pitch selection chooses slot `0x782350`, record `0x02e122`, and
+  context longword `0xc00ae122`.
+- `0x144d2` writes secondary current-font context record `0x782ef6`.
+- `0x14c64` rebuilds secondary map `0x783032`.
+
+Symbol and map behavior:
+
+- Symbol-set commands share terminal handler `0x120be` and symbol-word helper
+  `0x1be22`.
+- Ordinary symbol-set finals store the requested word at
+  `0x782ef4 + 0x10 * slot` and call `0xc580`.
+- `0x156de` consumes requested, remembered, and fallback symbol words while
+  filtering the active candidate list.
+- `0x14c64` rebuilds the selected map from either the bit-30 resource path
+  `0x14d9c` or the bit-30-clear inline/downloaded path `0x14e24` /
+  `0x14eb6`, then applies symbol patcher `0x14f16` and snapshot helper
+  `0x1440c`.
+- Primary fixture `ESC (1234U ESC (s0p10h12v0s0b3T!!` proves a requested
+  symbol miss falls back to word `0x0115` before selecting the same primary
+  context and rendering the same compact rows.
+- Secondary fixture `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` proves a class-one
+  miss can recover through remembered word `0x000e` or fallback word
+  `0x000e` before selecting the same secondary context.
+
+Page-root context install:
+
+- `0xc428(slot)` selects `0x782ee6` for primary slot `0` and `0x782ef6` for
+  secondary slot `1`.
+- With an existing current page root, `0xc428` calls `0xc4fc` to find a
+  matching page-root context slot by low 24 bits or the first inactive slot.
+- The selected page-root slot is written to `0x78297e`.
+- Printable queueing later marks the live flag `0x78297f + slot`.
+- Live primary fixture `SI !!` proves seeded current-font RAM
+  `0x782ee6 = 0xc008004c` installs page-root context slot `0` without first
+  allocating a page root.
+- Live secondary fixture `SO !!` proves seeded current-font RAM
+  `0x782ef6 = 0xc00ae122` installs page-root context slot `1`.
+
+Printable and page-object effect:
+
+- In the primary stream, the two printable `!` bytes route through `0xd04a`
+  after selection.
+- `0x1393a` reads selected slot `0`, context `0xc008004c`, and map
+  `0x782f32`; host byte `0x21` maps to glyph `0x00`.
+- The selected built-in record supplies HMI from byte `+0x21 = 0` and
+  longword `+0x24 = 0x00780000`, which converts to packed advance `30`.
+- `0x12f2e` queues this compact object:
+
+```text
+00 00 00 00 00 00 00 02 00 6a 00 00 68 02
+```
+
+- The primary entries use compact coordinates `0x6a00` and `0x6802`.
+- In the secondary stream, SO selects slot `1`; `0x1393a` reads context
+  `0xc00ae122` and map `0x783032`, maps host byte `0x21` to glyph `0x00`,
+  and uses HMI advance `18`.
+- The secondary compact object prefix is:
+
+```text
+00 00 00 00 00 01 00 02 00 c9 00 00 cb 01
+```
+
+Render path:
+
+- Publication uses the ordinary page-root path through `0xff1e`.
+- `0x1ed84` selects the published page/control record into a render work
+  record.
+- `0x1edc6` copies page-root context slots into render-record context slots.
+- The primary stream carries render-record context slot `0` as `0xc008004c`.
+- The secondary stream carries render-record context slots
+  `(0xc008004c, 0xc00ae122)`.
+- Compact render dispatch `0x1ef6a -> 0x1efc2 -> 0x1effe` resolves glyphs
+  through `0x1f354` using those copied context slots, so the selected font
+  determines the actual bitmap rows.
+- The primary fixture's first nonblank row is:
+
+```text
+.............###...........................###...
+```
+
+- The secondary fixture's first visible row is:
+
+```text
+.........################..################...###
+```
+
+State classification for this path:
+
+- Canonical state:
+  selected text slot `0x782f06`, primary context `0x782ee6`, secondary context
+  `0x782ef6`, primary map `0x782f32`, secondary map `0x783032`, active symbol
+  words `0x783144` / `0x783146`, remembered symbol words `0x782f08` /
+  `0x782f0a`, page-root context slots, selected page-root slot `0x78297e`,
+  compact text objects, and render-record context slots.
+- Derived/cache state:
+  candidate survivor lists, selected candidate slot `0x7828a8`, selected
+  target `0x7828de`, snapshot records `0x783148` / `0x783152`, HMI
+  `0x78315c`, compact coordinates, glyph-entry pointers, and render-band
+  fields.
+- Parser scratch:
+  setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
+  records, dirty flags `0x782f2c` / `0x782f2d` while refresh is pending, and
+  the following printable bytes.
+- Firmware bookkeeping:
+  page-root live-font flags, `0xc4fc` slot scan state, symbol-map snapshot
+  provenance byte `+0x09`, selected-font flags `0x783132` / `0x783133`,
+  publication flag `0x782996`, scheduler cursors, and render-work progress
+  words.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the primary and secondary
+  built-in selection streams documented here. Remaining font work is limited
+  to variants that choose different candidate records, map bytes, context
+  flags, compact object shapes, bridge state, or physical-device output.
+
+Evidence for this path is in
+[font-context-metrics.md](font-context-metrics.md),
+[built-in-resource-scan.md](built-in-resource-scan.md),
+[pcl-command-map.md](pcl-command-map.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting reports are
+`generated/analysis/ic30_ic13_active_symbol_set_flow.md`,
+`generated/analysis/ic30_ic13_font_context_bridge.md`,
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and focused listings
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`, and
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+
 ## Worked Path: Explicit No-Output Parser Rows
 
 This path covers ignored/no-output parser behavior. The primary normal-mode

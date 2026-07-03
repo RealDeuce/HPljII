@@ -66,6 +66,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Shared Page-Record Storage And Allocator`,
   `Worked Path: Published Record To Active Bands`,
   `Worked Path: Mixed Text/Rule/Raster Page Record`,
+  `Worked Path: Compact Glyph Row-Copy Helpers`,
   `Worked Path: Render Dispatch And Pixel Composition`.
 - Non-text page objects and render dispatch:
   `Worked Path: Vertical Forms Control`,
@@ -3362,6 +3363,118 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+
+## Worked Path: Compact Glyph Row-Copy Helpers
+
+This path covers the shared renderer helper family that turns compact text and
+downloaded-glyph page objects into destination bitmap rows. It is downstream
+of parser dispatch, page-object allocation, publication, and render-record
+copying: by the time this path starts, `0x1ef6a` has selected a compact bucket
+object and `0x1effe` is dispatching its selector byte.
+
+Entry and dispatch:
+
+- `0x1efc2` walks compact bucket objects from the active render record and
+  calls `0x1effe` for each object whose band word is active.
+- `0x1effe` dispatches selector forms to the compact glyph renderers:
+  normal compact `0x1f034`, wide compact `0x1f0d2`, segmented compact
+  `0x1f1f0`, and segmented-wide compact `0x1f264`.
+- `0x1f354` resolves the page-record context slot and glyph id. Bit-30-set
+  contexts use the resource offset-table form; bit-30-clear contexts use
+  fixed eight-byte inline/downloaded glyph entries.
+- `0x1f414` splits returned row count `D3` into current-band rows and
+  fallback rows before the selected row-copy helper runs.
+
+Helper-family contract:
+
+- `0x1f034` and `0x1f1f0` use main width table `0x1f08e`. Width indexes
+  `1..16` select row-copy helpers `0x1fa5c`, `0x1fe76`, `0x20290`,
+  `0x207ac`, `0x20cc8`, `0x212e4`, `0x21900`, `0x2201c`, `0x22738`,
+  `0x22f54`, `0x23770`, `0x24090`, `0x249b0`, `0x253d0`, `0x25df0`, and
+  `0x26910`.
+- `0x1f0d2` and `0x1f264` render full 16-byte chunks through helper
+  `0x2f27c`, then use wide-remainder table `0x1f1ac` for remainder widths
+  `1..15`. Remainder `0` means another full chunk, not a remainder helper.
+- Every helper uses a row-count jump table. The table indexes `D3`, jumps into
+  an unrolled copy tail, and copies one destination row per table step.
+- Even byte widths copy words only from `A2`. Odd byte widths copy word
+  pairs from `A2` plus one trailing byte per row from `A3`.
+- Destination row advance comes from stride `0x783a1c`. Wide and
+  segmented-wide helpers also use caches `0x783a40`, `0x783a42`,
+  `0x783a44`, `0x783a46`, and `0x783a48` written by `0x1f0d2` and
+  `0x1f264`.
+
+State classification:
+
+- Canonical state:
+  render-record compact bucket roots, page-root context slots copied by
+  `0x1edc6`, selected font/downloaded glyph context records, glyph table
+  entries, installed glyph row/width/mode words, and bitmap payload bytes.
+- Derived/cache state:
+  active context longword `0x783a2c`, destination stride `0x783a1c`,
+  current-band fields `0x783a20`, `0x783a22`, and `0x783a28`, glyph source
+  registers `A2` and `A3`, span `D1`, row count `D3`, row-split outputs from
+  `0x1f414`, and wide-mode caches `0x783a40..0x783a48`.
+- Parser scratch:
+  none consumed by these helpers. Parser records and delayed downloaded-glyph
+  payload records are upstream evidence for installed glyph data, not state
+  read by row-copy helpers.
+- Firmware bookkeeping:
+  render-work progress fields, continuation fields for partial downloaded
+  payload copies, and invalid row-copy table targets used only as failure
+  boundaries.
+- Hardware/external state:
+  none for the software row-copy contract.
+- Unknown:
+  physical page comparison remains open for some legal command cross-products.
+  ROM-local invalid-index edges remain exact boundaries rather than modeled
+  pixels: short compact `0x1fe76` fallback row indexes above `128`, and
+  wrapped low-byte width cases that select non-helper mode-0 table targets.
+
+Output effect:
+
+- Built-in-font fixtures prove host-fetched primary/secondary selection and
+  symbol-set variants install page-root context slots, queue compact objects,
+  pass through `0x1ed84` / `0x1ef6a`, and render visible rows through this
+  helper family.
+- Downloaded-glyph fixtures prove parser-produced `ESC )s#W` payloads install
+  normal, wide, segmented, and segmented-wide glyph payloads, publish compact
+  objects, and render rows matching installed bitmap bytes through all main
+  helpers and the wide chunk/remainder path.
+- Row-count and width-boundary fixtures classify the failures separately:
+  installed canonical row/width words may survive, while the current printable
+  source record exposes only low row/width bytes to `0x12f2e`; those wrapped
+  page-object bytes can choose invalid helper-table entries.
+
+Evidence:
+
+- Detail note:
+  [page-raster-imaging.md](page-raster-imaging.md), section
+  `Subrenderer Payloads`.
+- Downloaded-glyph producer note:
+  [downloaded-fonts.md](downloaded-fonts.md), section
+  `Downloaded Glyph Row-Count Publication Checkpoint`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+- Generated table evidence:
+  `generated/analysis/ic30_ic13_render_subrenderers.md` and
+  `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`.
+- Fixture families:
+  `downloaded glyph width-span matrix publishes and renders all main
+  helpers`,
+  `downloaded glyph wide-remainder matrix publishes and renders compact
+  chunks`,
+  `downloaded glyph segmented-wide matrix publishes and renders compact
+  chunks`,
+  `downloaded segmented-wide row-span cross-products render selected segment`,
+  `downloaded glyph width-byte boundary truncates page-record span`,
+  `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts`, and
+  `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`.
 
 ## Worked Path: Reset And Default Environment
 

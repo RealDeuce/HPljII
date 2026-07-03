@@ -1057,12 +1057,142 @@ Evidence for this path is in
 [pcl-command-map.md](pcl-command-map.md),
 [page-record-storage.md](page-record-storage.md),
 [page-raster-imaging.md](page-raster-imaging.md),
-[text-span-flush.md](text-span-flush.md), and
+[font-context-metrics.md](font-context-metrics.md), and
 [semantic-state-model.md](semantic-state-model.md). Key supporting listings
 are `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
 `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`,
 `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: Underline Text Span
+
+This path covers text-span output driven by underline/text-attribute state.
+The printable glyph still queues through the compact text path, but the
+attribute also makes the font metric consumer maintain pending span bounds.
+The later underline terminal command flushes those bounds into a
+selector-`0x4000` segment-list object that renders separate mask rows.
+
+Primary stream:
+
+```text
+ESC &d3D ! ESC &d@
+```
+
+Parser dispatch:
+
+- The command bytes enter through host fetch `0xa904`, parser wrapper
+  `0xda9a`, and parser loop `0x11774`.
+- `ESC &d3D` dispatches to underline/text-attribute tokenizer `0x12622`.
+- `0x12622` writes selector byte `0x783185 = 1` for the covered `3D`
+  selector path.
+- Printable byte `0x21` then routes through `0xd04a`.
+- Final `ESC &d@` dispatches to `0x12622` again, takes the terminal flush
+  path, and calls `0x12714` before `0x126e2` re-arms span state.
+
+Printable span update:
+
+- `0xd04a` calls `0x1393a` to build source object `0x782d7e` from the
+  selected font context.
+- In the covered flagged built-in path, the printable byte takes
+  `0xd550 -> 0xd824`.
+- `0xd824` queues the compact glyph through `0x12f2e` and marks the selected
+  page-root font slot live at `0x78297f + slot`.
+- After queueing, `0xd824` calls span consumer `0xd8fc` when span updates are
+  enabled.
+- `0xd8fc` reads selected context fields `+0x16`, `+0x18`, and `+0x1a`.
+  Because `0x783185` is set, it uses alternate offset word `+0x1a` to update
+  the high-y span bound.
+- The span state now lives in pending fields `0x783184`, `0x783186`,
+  `0x783188`, and `0x78318a`; it is not yet a page object.
+
+Page-object creation:
+
+- Final `ESC &d@` reaches `0x12622` and flushes the pending span.
+- `0x12714` builds a local span source from pending span bounds and calls the
+  shared display-list producer path `0x13520`.
+- Portrait span insertion reaches `0x135f0`, which stores a segment-list
+  object under the page-root compact bucket array.
+- The object flushed by the covered underline stream is:
+
+```text
+00 00 00 00 40 00 00 01 3a 00 03 00 00 12
+```
+
+Object fields:
+
+- `+0x04`: class byte `0x40`, selecting segment-list rendering.
+- `+0x06`: one segment-list entry.
+- Entry key `0x3a00`: packed bucket/key for the span.
+- Entry y `3`.
+- Entry width/extent `18`.
+
+Render path:
+
+- The compact glyph and segment-list span remain under the current page root
+  until publication.
+- `0xff1e` publishes the root and `0x1ed84` selects the published
+  page/control record into a render work record.
+- `0x1edc6` copies the compact bucket array to render-record `+0x18` and
+  context slots to render-record `+0x24..+0x60`.
+- `0x1ef6a` calls `0x1ef86`, bucket dispatcher `0x1efc2`, rule/list renderer
+  `0x1f446`, and fixed-list renderer `0x1f756`.
+- `0x1efc2` dispatches the segment-list object by `+0x04 & 0xc0 == 0x40` to
+  `0x1f812`.
+- `0x1f812` consumes the six-byte entry and calls `0x1f862`, which writes
+  counted mask spans using full words plus a trailing mask from table
+  `0x308f2`.
+
+Related producer variants:
+
+- `ESC &k1G!\r` proves CR handler `0xf02c` can materialize pending span state
+  through `0xf34a -> 0x12714 -> 0x126e2` before cursor reset/line advance.
+- `ESC &a6L!` proves left-margin handler `0xeb58` can flush the same portrait
+  segment-list object before moving horizontal cursor to packed `108`.
+- `ESC &a1R!` proves vertical cursor handler `0xf560` can flush the span
+  before moving y to packed `95.1`, leaving the span in bucket `0` and the
+  following compact glyph in bucket `4`.
+- Synthetic and parser-produced metric fixtures in
+  [font-context-metrics.md](font-context-metrics.md) prove both `0xd4ac`
+  unflagged and `0xd8fc` flagged span consumers can emit or suppress span
+  objects according to selected font metric fields.
+
+State classification for this path:
+
+- Canonical state:
+  underline/text-attribute selector `0x783185`, pending span enable
+  `0x783184`, span bounds `0x783186` / `0x783188` / `0x78318a`, selected
+  font context, current page root `0x78297a`, compact glyph object, and
+  selector-`0x4000` segment-list span object.
+- Derived/cache state:
+  packed segment-list key `0x3a00`, compact text coordinate, selected context
+  metric fields, render-band fields, and the renderer trailing-mask lookup.
+- Parser scratch:
+  six-byte `ESC &d3D` and `ESC &d@` records at `0x78299e`, parser mode state,
+  and the printable byte between the two commands.
+- Firmware bookkeeping:
+  page-root live-font flags, span re-arm work in `0x126e2`, allocation cursors
+  for `0x13520` / `0x135f0`, publication flag `0x782996`, scheduler cursors,
+  and render-work progress words.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented underline
+  span stream. Remaining span work is broader metric, orientation, and
+  allocation variants that change object bytes, list selection, bridge state,
+  or physical-device output.
+
+Evidence for this path is in
+[direct-control-codes.md](direct-control-codes.md),
+[font-context-metrics.md](font-context-metrics.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting reports are
+`generated/analysis/ic30_ic13_text_cursor_span_flow.md`,
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
+`generated/analysis/ic30_ic13_render_dispatch_tables.md`. Key listings are
+`generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+`generated/disasm/ic30_ic13_text_span_flush_012714.lst`,
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`.
 
 ## Worked Path: Transparent Print Data
 

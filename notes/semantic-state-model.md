@@ -1215,6 +1215,11 @@ payload consumption.
   `0x0b` as matched zero-handler terminal rows. They write next mode zero,
   trigger the `0x12218` terminal restore boundary, reset parser record/scratch
   cursors, and bypass the unmatched-byte selected-context fallback.
+- In alternate/data mode, `0x11774` treats matched mode-zero blank C0 rows
+  `0x00` and `0x07..0x0f` as append-preserving terminal rows. The path
+  `0x11930..0x11ab8` stores the byte in scratch, flushes command and numeric
+  scratch through `0x123ae` and `0x123de`, appends the matched byte through
+  `0xe002`, then rejoins the `0x12218` terminal reset boundary.
 - `0x11ba6` consumes one extra host byte through `0xda9a` for incoming
   `0x21..0x2f` punctuation-prefixed commands, echoes it through `0x9ec0`,
   then tokenizes at `0x11bdc` unless it is space.
@@ -1251,6 +1256,11 @@ so the parser finalizes and resets state through `0x11912..0x119bc` instead
 of reaching the unmatched-byte fallback at `0x118d6..0x11900`.
 Their reproduction contract is to preserve parser finalization and any pending
 delayed-payload restore, not to emit text, fixed-space, or page objects.
+Alternate/data mode-zero blank C0 rows have an append-stream effect before
+that reset: the current byte is emitted through `0xe002` after scratch helpers
+`0x123ae` and `0x123de`. A reimplementation must therefore preserve those
+bytes in macro/data-chain collection while still suppressing the normal
+mode-zero control handlers.
 
 Fixture `0x11774 ROM dispatch table routes raster stream to delayed transfer`
 proves the parser reaches `0x11f82` and stores the delayed raster transfer

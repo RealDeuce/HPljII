@@ -214,6 +214,16 @@ That fallback is the only path in this loop that consults `0x782f06` /
 `0x782eeb` and may route an otherwise unmatched byte through printable handler
 `0xd04a`.
 
+Alternate/data mode uses a different zero-handler subpath before the same
+terminal reset. For mode-zero matched C0 rows with no handler, including
+`0x00`, `0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`, `0x0c`, `0x0d`,
+`0x0e`, and `0x0f`, `0x11930..0x11ab8` stores the byte in parser scratch,
+optionally flushes prior scratch through `0x123ae`, flushes numeric scratch
+through `0x123de`, appends the matched byte through `0xe002`, then rejoins
+`0x119b0..0x119f4`. The byte is therefore preserved in the alternate/data
+append stream, but still does not run the normal-mode control handler or
+printable fallback.
+
 If no table entry matches in mode zero normal mode, the loop consults the active
 font-context state at `0x782f06` / `0x782eeb`. If that context byte is `1`, it calls
 `0xd04a` for the byte; otherwise it ignores the byte and fetches again.

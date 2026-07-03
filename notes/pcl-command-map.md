@@ -31,6 +31,11 @@ byte_to_match, next_mode, handler_long
 The alternate/data table keeps the same state transitions but suppresses
 many final handlers. That is consistent with a mode that must still
 parse or collect PCL syntax while deferring normal side effects.
+For matched mode-zero C0 rows with blank handlers, alternate/data mode does
+not treat the byte as a normal control command; it appends the byte through
+`0xe002` after the shared scratch-flush helpers and then rejoins the terminal
+parser reset path. Normal mode-zero blank C0 rows instead reset/finalize
+without page-record output or alternate append.
 Lowercase finals that keep the parser in the same command family are
 reported as chaining forms of the matching uppercase PCL command.
 Rows labeled as parser prefixes are setup/scaffolding entries, not terminal
@@ -67,6 +72,11 @@ produce no direct page-record output. Since they match explicit table rows,
 they do not reach the selected-context unmatched-byte fallback that can send
 other bytes to printable handler `0xd04a`. The low-level path is documented in
 [pcl-parser-core.md](pcl-parser-core.md).
+
+The alternate/data table has blank mode-zero C0 rows for `0x00` and
+`0x07..0x0f`. Those rows preserve the current byte in the append stream
+through `0xe002` before the same terminal reset path; they do not dispatch to
+the normal control handlers for BS, HT, LF, FF, CR, SO, or SI.
 
 ## High-Value Normal-Mode Handlers
 

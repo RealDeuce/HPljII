@@ -92,8 +92,10 @@ Suggested renderer components:
 
 ## Current ROM-Derived Renderer Contract
 
-The implementation-facing pipeline is now documented in
-[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md):
+The implementation-facing pipeline is documented first in
+[firmware-dataflow-model.md](firmware-dataflow-model.md), whose
+`Reader Path Index` maps each stage to worked paths. The subordinate coverage
+map is [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md):
 
 ```text
 host bytes
@@ -218,6 +220,10 @@ Current milestone status:
 - Reset/startup, scheduler bootstrap, host byte fetch, parser dispatch,
   page geometry, font/resource records, downloaded fonts, page records,
   publication, render bridge, and render dispatch all have tracked notes.
+- [firmware-dataflow-model.md](firmware-dataflow-model.md) is the current
+  reader-facing spine for the ROM-derived stream-to-pixel path. The
+  end-to-end map remains an evidence/coverage companion rather than the
+  controlling explanation.
 - Behavioral fixtures now cover the major parser-to-render command families
   named above. Remaining fixture work should target new byte-stream variants
   that expose different ROM state or broader cross-product validation, not
@@ -258,6 +264,10 @@ Expected remaining boundaries:
   [resource-rom.md](resource-rom.md). The startup resource-pair byte-sum covers
   `0x080000..0x0bffff`, so checksum success does not resolve those continuation
   bytes.
+- Optional resource-window contents at `0x200000..0x3ffffe` and
+  `0x400000..0x5ffffe`. The ROM scanner and scheduler behavior are documented,
+  but cartridge/external resource images are not part of the verified local ROM
+  set.
 - Physical/manual correlation: manual-facing baseline/cell terminology and
   physical paper comparison for the full internal-font printout, after the
   ROM-side sample page and rendered-surface digest already documented in

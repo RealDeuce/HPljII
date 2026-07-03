@@ -395,6 +395,154 @@ are `generated/analysis/ic30_ic13_printable_text_path.md`,
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and focused listing
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 
+## Worked Path: Transparent Print Data
+
+This path covers a counted payload mode. Transparent print data is not an
+opaque binary skip: the payload reader consumes raw bytes and routes each
+normalized value back into text or fixed-space behavior.
+
+The primary stream is:
+
+```text
+ESC &p4X ! 05 85 !
+```
+
+In bytes:
+
+```text
+1b 26 70 34 58 21 05 85 21
+```
+
+Parser dispatch and delayed payload setup:
+
+- The command bytes enter through `0xa904`, parser wrapper `0xda9a`, and
+  parser loop `0x11774`.
+- `ESC &p4X` routes through the command table to handler `0x11f5a`.
+- `0x11f5a` is an arming stub. It pushes delayed handler `0x12452` and calls
+  shared scheduler `0x121cc`.
+- `0x121cc` rewinds command-record cursor `0x78299e` by six, stores pending
+  flag `0x782a1a = 1`, stores handler longword `0x782a1c = 0x12452`, and
+  saves command record `80 58 00 04 00 00` at `0x782a20..0x782a25`.
+- When parser mode returns to zero, `0x12218` restores the saved record and
+  calls `0x12452`.
+
+Payload reader behavior:
+
+- `0x12452` rewinds `0x78299e` by six and reads command-record word `+2`.
+  The absolute value of that word is the transparent payload count.
+- It reads selected text/context slot `0x782f06`, scales the slot through
+  helper `0x332ee`, and reads context byte `0x782eea + 0x10 * slot`.
+- If high-character flags `0x783132` and `0x783133` are clear, the local
+  high-control filtering word comes from fallback byte `0x782efa`; otherwise
+  it comes from the selected context byte.
+- The payload loop fetches raw bytes through `0xa904`. A `-1` byte returns
+  early. A byte `0x1a` probes one more byte: `1a 58` becomes transparent
+  value `0x7f` after `0xd99a`, while `1a xx` with `xx != 58` routes `xx` and
+  consumes the probe prefix.
+- For the primary stream with default zero filtering, payload values
+  `21 05 85 21` route as `d04a d0f0 d0f0 d04a`.
+
+Command behavior and page objects:
+
+- Payload byte `0x21` takes the normal printable path through `0xd04a`.
+  In the pinned `LINE_PRINTER` case, it maps to glyph byte `0x20` and queues a
+  compact text entry through `0xd824 -> 0x12f2e -> 0x1387c`.
+- C0 payload byte `0x05` routes through fixed-space handler `0xd0f0` because
+  the selected context byte is zero.
+- High-control payload byte `0x85` also routes through `0xd0f0` because the
+  local filtering word is zero.
+- In the flagged built-in source path, `0xd0f0` substitutes host space
+  `0x20`, clears source longword `+4`, enters `0xd550`, and advances cursor
+  spacing without allocating a compact text object.
+- The final `0x21` routes through `0xd04a` and queues the second visible
+  compact text entry after the two spacing advances.
+
+The compact object prefix for the primary stream is:
+
+```text
+00 00 00 00 00 00 00 02 20 00 01 20 06 04
+```
+
+Object fields:
+
+- `+0x00`: next pointer `0`.
+- `+0x04`: compact class byte `0`.
+- `+0x05`: context slot `0`.
+- `+0x06`: entry count `2`.
+- payload entry 0: glyph `0x20`, compact coordinate `0x0001`.
+- payload entry 1: glyph `0x20`, compact coordinate `0x0604`.
+
+Publication, bridge, and pixels:
+
+- The queued compact object remains under current page-root bucket array
+  `+0x1c` until page publication.
+- `0xff1e` publishes the page root and clears current root pointer
+  `0x78297a`.
+- `0x1ed84` seeds the active render record from selected source
+  `0x780eae`.
+- `0x1edc6` copies the bucket root to render-record `+0x18` and copies the
+  selected context slot into render-record context slots.
+- `0x1ef6a` calls `0x1efc2`; the compact object dispatches through
+  `0x1effe`, glyph resolver `0x1f354`, and the same row-copy helpers used by
+  direct printable text.
+- The visible rows contain two `!` glyphs separated by spacing from the two
+  default-filtered payload bytes.
+
+Covered routing variants:
+
+- `ESC &p2X!!` routes both payload bytes through `0xd04a` and renders the same
+  rows as plain `!!`.
+- `ESC &p2X 1a 41 !` uses restored count `2` but consumes three host bytes;
+  the routed values are `41 21`, so the probe prefix is not visible.
+- With nonzero selected-context and filtering bytes, `ESC &p4X ! 05 80 !`
+  routes all four payload values through `0xd04a` and queues visible compact
+  entries for both control-range bytes.
+- In an unflagged fixed-record context, default-filtered C0 payload byte
+  `0x05` still enters `0xd0f0`, but the substituted space can queue a compact
+  glyph object instead of becoming cursor-only spacing.
+- After SO selects secondary context slot `1`, `SO ESC &p3X ! 80 !` follows
+  the same delayed reader and route decision but can produce segmented
+  page-record objects instead of short compact objects.
+
+State classification for this path:
+
+- Canonical state:
+  restored command record word `+2`, selected text/context slot `0x782f06`,
+  text cursor `0x782c8a`, current page root `0x78297a`, compact text object,
+  published source record, and render-record bucket/context roots.
+- Derived/cache state:
+  selected-slot context byte `0x782eea + 0x10 * 0x782f06`, fallback filtering
+  byte `0x782efa`, high-character flags `0x783132` and `0x783133`, compact
+  coordinates `0x0001` and `0x0604`, and render-band fields.
+- Parser scratch:
+  delayed-payload pending flag `0x782a1a`, delayed handler pointer
+  `0x782a1c`, saved record bytes `0x782a20..0x782a25`, command-record cursor
+  `0x78299e`, and the current payload count in `0x12452`.
+- Firmware bookkeeping:
+  local filtering word at `A6-2`, source-object scratch `0x782d7e`, stream
+  allocator fields, publication flag `0x782996`, scheduler cursors, and
+  render-work progress words.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the primary mixed
+  transparent-data path or the listed route-polarity variants. The remaining
+  transparent edge is the secondary segmented high-control fallback-row
+  physical resource-window source at firmware range `0x0c0000..0x0c0321`,
+  not the `ESC &p#X` parser route, payload counter, or compact-renderer
+  dispatch.
+
+Evidence for this path is in
+[transparent-print-data.md](transparent-print-data.md),
+[pcl-parser-core.md](pcl-parser-core.md),
+[direct-control-codes.md](direct-control-codes.md),
+[font-context-metrics.md](font-context-metrics.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting listings
+are `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`,
+`generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: FF Publication
 
 This path shows how an already queued page object becomes a published page

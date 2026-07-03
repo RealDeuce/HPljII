@@ -57,6 +57,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Reset And Default Environment`,
   `Worked Path: FF Publication`,
   `Worked Path: Page Environment Publication`,
+  `Worked Path: Page Length, Wrap, And Perforation Controls`,
   `Worked Path: Shared Page-Record Storage And Allocator`,
   `Worked Path: Published Record To Active Bands`,
   `Worked Path: Mixed Text/Rule/Raster Page Record`,
@@ -3111,6 +3112,136 @@ are `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
 `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: Page Length, Wrap, And Perforation Controls
+
+This path covers layout controls whose command bytes normally do not emit
+pixels immediately, but whose state changes alter the next printable object or
+the next vertical overflow decision. It links three parser-dispatched command
+handlers, two shared printable/vertical consumers, and one
+following-printable page-record output path.
+
+Representative streams:
+
+```text
+ESC &l66P !
+ESC &l0P
+ESC &l1L !
+ESC &s0C
+ESC &s1C
+```
+
+Parser dispatch:
+
+- All host-fetched streams enter through byte fetch `0xa904`, parser wrapper
+  `0xda9a`, and parser loop `0x11774`.
+- `ESC &l66P` and `ESC &l0P` dispatch to page-length handler `0xf9e8`.
+- `ESC &l1L` dispatches to perforation-skip handler `0xee64`.
+- `ESC &s0C` and `ESC &s1C` dispatch to wrap-mode handler `0xedb0`.
+- The following printable byte `0x21` reaches `0xd04a`, then page-record
+  queueing through `0x12f2e` / `0x1387c`, and later render dispatch through
+  `0x1ed84` / `0x1ef6a`.
+
+Command behavior:
+
+- `ESC &l66P` converts the parsed line count through current VMI
+  `0x783160`, writes page extent `0x782dba = 3300`, selects internal page
+  code `2`, recomputes geometry/text-bottom state, and refreshes the
+  following printable cursor to compact coordinate `0x9001`.
+- `ESC &l0P` takes the default-page branch. It publishes pending state if a
+  current root exists, optionally mirrors paper-source byte `0x782da6` to
+  software-visible output byte `0x780e8f`, signals control word `0x780e26`,
+  and selects the default page code from `0x780e97` or fallback code `2`.
+- `ESC &l1L` sets perforation-skip byte `0x783191 = 1`. Selector `0` clears
+  it; selectors outside `0..1` leave the prior byte unchanged.
+- `ESC &s0C` sets end-of-line wrap flag `0x783190 = 1`. `ESC &s1C` clears
+  it; selectors outside `0..1` preserve the previous flag.
+
+Downstream consumers:
+
+- Printable prechecks `0xd28a` and `0xd6bc` consume `0x783190`. With wrap
+  clear, horizontal overflow returns precheck result `1` and suppresses the
+  glyph queue. With wrap set, the precheck calls recovery helper `0xf054`,
+  retries from recovered x `0`, and returns `0` when the retried glyph fits.
+  Vertical extent failure still returns reject result `1`.
+- Vertical overflow helper `0xf36c` consumes cursor y `0x782c8e`,
+  text-bottom/perforation limit `0x782dc2`, and perforation-skip byte
+  `0x783191`. Below-limit cursor, zero `0x782dc2`, and disabled
+  perforation skip all return `D7 = 1` without page eject. Enabled overflow
+  with `cursor_y > 0x782dc2` calls modeled page-eject helper `0xf124`,
+  increments page finalization, clears pending text, recomputes y from top
+  offset and VMI, and returns `D7 = 0`.
+- The `ESC &l1L !` and `ESC &l66P !` streams prove that these delayed layout
+  controls reach visible page-record output when followed by printable data.
+  The perforation-skip stream pins the `0xee64` writer plus the following
+  compact object and rendered rows. The page-length stream pins the
+  `0xf9e8 -> 0xd04a` path, including refreshed cursor y and the compact text
+  object.
+
+Output effect:
+
+- Page-length, wrap-mode, and perforation-skip commands do not create glyph
+  pixels by themselves in the covered streams.
+- Page length changes later printable placement and page geometry. The
+  nonzero fixture proves the `ESC &l66P !` stream queues the following
+  printable at compact coordinate `0x9001` after the handler recomputes
+  vertical extent and cursor-derived state.
+- Wrap mode changes whether later horizontal overflow is rejected or recovered
+  into a new-line retry before queueing.
+- Perforation skip changes whether later vertical overflow performs a page
+  eject through `0xf124` or leaves the caller on the reject/no-eject path.
+
+State classification for this path:
+
+- Canonical state:
+  page length/vertical extent `0x782dba`, VMI `0x783160`,
+  end-of-line wrap flag `0x783190`, perforation-skip byte `0x783191`,
+  current cursor x/y `0x782c8a` / `0x782c8e`, page code/default selection
+  bytes, paper-source byte `0x782da6`, and software-visible output/control
+  bytes `0x780e8f` / `0x780e26`.
+- Derived/cache state:
+  text-bottom/perforation limit `0x782dc2`, compact text coordinates,
+  recomputed page geometry, bucket selection, and render-band caches created
+  after `0x1ed84`.
+- Parser scratch:
+  six-byte command records for `ESC &l#P`, `ESC &l#L`, and `ESC &s#C`,
+  parser cursor `0x78299e`, and host-ring drain state from `0xa904`.
+- Firmware bookkeeping:
+  pending publication latches, current-root clear state, pending text latch,
+  page-finalization counters, and scheduler progress words after a later
+  publication.
+- Hardware/external state:
+  `0x780e8f` and `0x780e26` are ROM-visible output/control bytes in the
+  `ESC &l0P` branch. Their physical formatter-to-engine timing is outside
+  the ROM-local proof.
+- Unknown:
+  no unresolved ROM-local parser-to-handler or handler-to-following-printable
+  middle edge remains for these covered streams. Remaining uncertainty is the
+  manual-facing naming of some latches and physical device behavior past
+  `0x780e8f` / `0x780e26`.
+
+Evidence for this path is in
+[direct-control-codes.md](direct-control-codes.md),
+[publication-commands.md](publication-commands.md),
+[semantic-state-model.md](semantic-state-model.md), and
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). Key
+supporting listings are
+`generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+`generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
+`generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+The fixtures cited by those notes are:
+
+- "0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+  page code"
+- "0xf9e8 ESC &l#P stream reaches page-length handler"
+- "mixed page-length stream refreshes cursor before printable page-record
+  queue"
+- "0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only"
+- "perforation skip parser trace feeds page-record queue"
+- "0xf36c perforation skip gates vertical overflow page eject"
+- "0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only"
+- "0xd28a and 0xd6bc prechecks share continue reject and wrap decisions"
 
 ## Worked Path: Published Record To Active Bands
 

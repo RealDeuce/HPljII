@@ -261,6 +261,140 @@ Renderer-facing examples:
 - Landscape/fixed-width span output converges through `0x136d2`, bridge list
   `+0x20`, and renderer `0x1f756`.
 
+## Worked Path: Printable Glyph
+
+This is the normal-byte counterpart to the raster example below. The primary
+stream is one printable byte:
+
+```text
+!
+```
+
+In bytes:
+
+```text
+21
+```
+
+Parser dispatch:
+
+- The host byte is fetched through `0xa904` and returned through the normal
+  parser wrapper `0xda9a`.
+- Parser loop `0x11774` is in mode zero, parser state byte `0x782999` is
+  zero, and alternate/data mode `0x782c18` is clear.
+- No command-dispatch table row claims byte `0x21`, so the normal printable
+  fallback calls `0xd04a`.
+
+Printable source construction:
+
+- `0xd04a` uses scratch source object `0x782d7e` and calls
+  `0x1393a(host_byte, 0x782d7e)`.
+- `0x1393a` consumes the selected current-font context and character map. In
+  the documented built-in `LINE_PRINTER` case, host byte `0x21` maps to glyph
+  byte `0x20`, glyph-entry pointer `0x015330`, and source flag `1`.
+- `0xd04a` tests source byte `+0x10`. The flagged built-in source takes the
+  `0xd550` path.
+
+Cursor and queue handoff:
+
+- `0xd550` calls `0xd6bc` for cursor and metric arithmetic.
+- The positioned queue handoff `0xd824` writes source coordinates from current
+  cursor/page geometry into source words `+0x12` and `+0x14`.
+- For the pinned `LINE_PRINTER` source with cursor x `10`, cursor y `21`, and
+  glyph offsets x `6`, y `21`, `0xd824` writes positioned source x `16`,
+  y `0`, and context slot `0`.
+- `0xd824` marks the current page-root font slot live at
+  `0x78297f + slot`, then calls `0x12f2e`.
+
+Page-object creation:
+
+- `0x12f2e` copies source byte `+0x0b` as the compact glyph byte and consumes
+  positioned source fields `+0x12`, `+0x14`, and `+0x16`.
+- `0x12f2e` computes the compact bucket/key fields and calls `0x1387c`.
+- `0x1387c` uses page-root `+0x1c` as the compact bucket array. It reuses a
+  matching object while capacity remains, or allocates a new stream object
+  through the shared allocator.
+
+The pinned positioned compact object is:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+Object fields:
+
+- `+0x00`: next pointer `0`.
+- `+0x04`: class/selector byte `0`, selecting short compact rendering.
+- `+0x05`: context slot `0`.
+- `+0x06`: entry count `1`.
+- `+0x08`: first compact payload byte, glyph `0x20`.
+- payload coordinate: `0x0001`, decoded by the compact renderer as the
+  positioned destination for this glyph.
+
+Publication and bridge:
+
+- The compact object remains under the current page root until a publication
+  path finalizes the root.
+- `0xff1e` publishes the root when a page boundary or publication command
+  requires it, and clears current root pointer `0x78297a`.
+- `0x1ed84` seeds the active render record from selected source
+  `0x780eae`.
+- `0x1edc6` copies source root `+0x1c` to render-record `+0x18` and copies
+  page-root context slots `+0x2c..+0x68` to render-record slots
+  `+0x24..+0x60`.
+
+Render scheduling and pixels:
+
+- `0x1eba4` calls `0x1ef6a` for an active band when scheduler capacity allows
+  rendering.
+- `0x1ef6a` calls `0x1ef86` for band setup, then `0x1efc2` for bucket-chain
+  dispatch.
+- `0x1efc2` sees compact class byte `+0x04 & 0xc0 == 0` and dispatches to
+  `0x1effe`.
+- `0x1effe` selects short compact renderer `0x1f034`; the glyph resolver
+  `0x1f354` resolves glyph `0x20` through the copied context slot.
+- The row-copy helper table selects helper `0x01fa5c` for this one-byte-span
+  glyph. The positioned fixture renders the first rows as:
+
+```text
+................####
+....................
+................####
+```
+
+State classification for this path:
+
+- Canonical state:
+  selected font context, active character map, source object `0x782d7e`,
+  current page root `0x78297a`, compact bucket object, page-root context slot,
+  published source record, and render-record bucket/context roots.
+- Derived/cache state:
+  compact bucket/key fields `0x782a7a..0x782a7e`, glyph offsets from the
+  selected font record, render-band fields `0x783a20`, `0x783a22`, and
+  `0x783a28`, and compact context cache `0x783a2c`.
+- Parser scratch:
+  parser state byte `0x782999`, alternate/data mode `0x782c18`, and the
+  current unmatched byte `0x21`.
+- Firmware bookkeeping:
+  page-root live-font flags at `0x78297f + slot`, stream allocator fields
+  `0x782a70`, `0x782a72`, and `0x782a76`, publication flag `0x782996`,
+  scheduler cursors, and render-work progress words.
+- Unknown:
+  no unresolved ROM-local parser-to-compact-object edge remains for this
+  pinned printable path. Remaining text work is byte streams that change the
+  selected context, character map, source flag, compact selector class,
+  bridge state, or rendered rows.
+
+Evidence for this path is in
+[font-context-metrics.md](font-context-metrics.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). The key supporting reports
+are `generated/analysis/ic30_ic13_printable_text_path.md`,
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`,
+`generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and focused listing
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+
 ## Worked Path: Raster Row
 
 This is the current concrete example of the full dataflow. The primary byte

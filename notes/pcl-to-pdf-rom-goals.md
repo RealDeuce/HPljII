@@ -132,8 +132,10 @@ Concrete software contracts already exist for these renderer components:
 - Font state:
   built-in resource scans, candidate windows, primary/secondary selected
   contexts, symbol fallbacks, final-`@`, final-`X`, page-root context-slot
-  installs, downloaded descriptors, downloaded glyph payloads, and span
-  metrics are composed in [resource-rom.md](resource-rom.md),
+  installs, downloaded descriptors, downloaded glyph payloads, optional
+  resource-window refresh through `0x19dd2`, and span metrics are composed in
+  [resource-rom.md](resource-rom.md),
+  [page-font-scheduler.md](page-font-scheduler.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [downloaded-fonts.md](downloaded-fonts.md).
 - Page model:

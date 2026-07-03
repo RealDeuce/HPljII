@@ -263,6 +263,16 @@ contracts.
   [errors-and-status.md](errors-and-status.md) cover `0xa904..0xabf0`,
   all direct byte-fetch callers, and the `0x12034 -> 0x122be`
   `33440A\r\n` response path.
+- External-ready service and page/font scheduler handoff:
+  [external-ready-service.md](external-ready-service.md),
+  [page-font-scheduler.md](page-font-scheduler.md), and
+  `Worked Path: Page Font Scheduler Resource Handoff` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) cover
+  `0xba48..0xc36e`, `0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`,
+  optional-window scratch scans, canonical resource-window comparison,
+  candidate pruning, downloaded-font payload release, active-context refresh,
+  caller-specific `D7` handling, and the exact external resource-window
+  boundary.
 
 ## First Handler Observations
 

@@ -130,6 +130,7 @@ Concrete software contracts already exist for these renderer components:
   macro data-chain replay are composed first by
   `Worked Path: Reset And Default Environment`,
   `Worked Path: Page Length, Wrap, And Perforation Controls`,
+  `Worked Path: Underline And Pending Text Span`,
   `Worked Path: Vertical Forms Control`,
   `Worked Path: VFC Table And Channel Branch Matrix`,
   `Worked Path: Macro Execute Replay`, and

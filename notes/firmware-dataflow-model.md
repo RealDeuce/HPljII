@@ -41,7 +41,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Printable Glyph`,
   `Worked Path: Mixed Direct Controls`,
   `Worked Path: Cursor And Margin Placement`,
-  `Worked Path: Underline Text Span`,
+  `Worked Path: Underline And Pending Text Span`,
   `Worked Path: Transparent Print Data`,
   `Worked Path: Display Functions Direct Reader`.
 - Font selection, downloaded glyphs, macro replay, and resource boundaries:
@@ -2170,13 +2170,16 @@ are `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
 `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
-## Worked Path: Underline Text Span
+## Worked Path: Underline And Pending Text Span
 
 This path covers text-span output driven by underline/text-attribute state.
 The printable glyph still queues through the compact text path, but the
 attribute also makes the font metric consumer maintain pending span bounds.
 The later underline terminal command flushes those bounds into a
-selector-`0x4000` segment-list object that renders separate mask rows.
+selector-`0x4000` segment-list object that renders separate mask rows. The
+same pending-span state also feeds non-underline control movements,
+orientation-specific page objects, and an allocation-failure publication
+retry path.
 
 Primary stream:
 
@@ -2261,29 +2264,69 @@ Related producer variants:
   [font-context-metrics.md](font-context-metrics.md) prove both `0xd4ac`
   unflagged and `0xd8fc` flagged span consumers can emit or suppress span
   objects according to selected font metric fields.
+- Portrait `0x12714` fixtures prove the local source can queue a single
+  segment-list object or split a three-row span across adjacent bucket
+  objects when the span crosses a 16-row bucket boundary.
+- Landscape `0x12714` fixtures prove the same pending fields are transformed
+  into fixed-list objects under page-root `+0x28`, bridged to render
+  `+0x20`, and consumed by `0x1f756` / `0x1f7b0`.
+- Allocation-failure fixture
+  `0x12714 allocation failure publishes page and retries span` proves that
+  a failed first `0x136d2` allocation marks page-root `+0x14`, publishes the
+  existing page through `0xff1e`, creates a fresh root through `0x10084`,
+  rebuilds the same local span source, and retries the fixed-list insertion.
+
+Orientation and retry behavior:
+
+- `0x12714` clears pending flag `0x783184`, packages an 8-byte local source,
+  ensures current root `0x78297a` through `0x10084`, gates the source against
+  page extent `0x782db6`, and then calls `0x13520`.
+- `0x13520` uses orientation byte `0x782da3` after `0x137a2` derives
+  selector/key state. Portrait orientation routes to `0x1354a` /
+  `0x135f0`; landscape routes to `0x136d2`.
+- Portrait producer `0x135f0` appends six-byte entries to a segment-list
+  object with class byte `0x40`. Renderer `0x1f812` consumes those entries
+  from render root `+0x18` and writes counted mask rows.
+- Portrait splitter `0x1354a` emits the first entry before a 16-row bucket
+  boundary, increments bucket index `0x782a7c`, clears row bits in key
+  `0x782a7e`, and emits the remaining rows in the next bucket.
+- Landscape producer `0x136d2` inserts a fixed-width object ordered by bucket
+  byte under root `+0x28`. Bridge `0x1edc6` copies it to render `+0x20`,
+  copies source word `+8` to render word `+0x0a`, and sets continuation
+  bytes `+0x0c = 1` and `+0x0d = 8`.
+- Fixed-list renderer `0x1f756` runs on five-band boundaries, filters object
+  byte `+4` against the current band, uses `object[5] & 0x0f` to select a
+  pattern longword from ROM table `0x308de`, clears bridge flag bit `0x10`,
+  decrements remaining rows at object `+0x0a`, and writes the low pattern
+  word through `0x1f7b0` / `0x1f626`.
 
 State classification for this path:
 
 - Canonical state:
   underline/text-attribute selector `0x783185`, pending span enable
   `0x783184`, span bounds `0x783186` / `0x783188` / `0x78318a`, selected
-  font context, current page root `0x78297a`, compact glyph object, and
-  selector-`0x4000` segment-list span object.
+  font context, orientation byte `0x782da3`, geometry inputs `0x782db2` and
+  `0x782db6`, current page root `0x78297a`, compact glyph object,
+  selector-`0x4000` segment-list span object, and landscape fixed-list object.
 - Derived/cache state:
-  packed segment-list key `0x3a00`, compact text coordinate, selected context
-  metric fields, render-band fields, and the renderer trailing-mask lookup.
+  packed segment-list keys such as `0x3a00`, landscape key `0x3300`,
+  producer bucket/key fields `0x782a7c..0x782a7e`, compact text coordinate,
+  selected context metric fields, render-band fields, segment-list trailing
+  masks from `0x308f2`, and fixed-list pattern words from `0x308de`.
 - Parser scratch:
   six-byte `ESC &d3D` and `ESC &d@` records at `0x78299e`, parser mode state,
   and the printable byte between the two commands.
 - Firmware bookkeeping:
   page-root live-font flags, span re-arm work in `0x126e2`, allocation cursors
-  for `0x13520` / `0x135f0`, publication flag `0x782996`, scheduler cursors,
-  and render-work progress words.
+  for `0x13520` / `0x135f0` / `0x136d2`, retry/finalization bit in page-root
+  flag word `+0x14`, publication flag `0x782996`, scheduler cursors, and
+  render-work progress words.
 - Unknown:
   no unresolved ROM-local middle edge remains for the documented underline
-  span stream. Remaining span work is broader metric, orientation, and
-  allocation variants that change object bytes, list selection, bridge state,
-  or physical-device output.
+  stream, CR/margin/vertical-cursor span flushes, portrait split, landscape
+  fixed-list insertion, or allocation-failure retry. Remaining span work is
+  broader selected-font combinations or physical-device comparison, not the
+  pending-span-to-page-object handoff.
 
 Evidence for this path is in
 [direct-control-codes.md](direct-control-codes.md),
@@ -2293,6 +2336,8 @@ Evidence for this path is in
 [semantic-state-model.md](semantic-state-model.md). Key supporting reports are
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`,
 `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
+`generated/disasm/ic30_ic13_text_span_flush_012714.lst`,
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`, and
 `generated/analysis/ic30_ic13_render_dispatch_tables.md`. Key listings are
 `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
 `generated/disasm/ic30_ic13_text_span_flush_012714.lst`,

@@ -1039,6 +1039,24 @@ Alternate/data-mode counterpart:
   `0x0e`, and `0x0f` are preserved as stored bytes instead of running the
   normal-mode BS, HT, LF, FF, CR, SO, or SI handlers.
 
+Other parser artifacts and unimplemented rows:
+
+- `ESC ?` is handled inside parser byte wrapper `0xda9a`, not as a terminal
+  imaging command. After `0xda9a` sees `ESC`, wrapper fetch `0xdaa6` checks
+  the next byte. If it is `?`, wrapper fetch `0xdab2` consumes a third byte.
+  Third byte `0x11` is swallowed and the wrapper restarts; any other third
+  byte is reported through `0x9ec0` and the wrapper returns `ESC` to the main
+  parser.
+- `ESC Z` is the local terminator for `ESC Y ... ESC Z` display-functions
+  readers. Normal handler `0x12536` and alternate/data handler `0x12120`
+  consume the terminating bytes inside their direct `0xa904` loops. The main
+  parser table row is therefore not a standalone page-output command.
+- `ESC &lT/t` is intentionally unimplemented in the parser table. Uppercase
+  `T` has no terminal handler longword. Lowercase `t` only reaches generic
+  helper `0x11f4c`, which rewinds `0x78299e` for lowercase command-family
+  chaining; it does not write page environment, page objects, or render state
+  by itself.
+
 State classification for this path:
 
 - Canonical state:
@@ -1058,8 +1076,10 @@ State classification for this path:
 - Unknown:
   no unresolved ROM-local middle edge remains for the normal-mode
   `0x00`/`0x07`/`0x0b` no-output rows or alternate/data append-preserving C0
-  rows. Output uncertainty is not physical; the documented effect is absence
-  of page-object production in normal mode.
+  rows. The `ESC ?`, `ESC Z`, and `ESC &lT/t` rows above are parser
+  artifacts or unimplemented rows, not unknown page-output commands. Output
+  uncertainty is not physical; the documented effect is absence of page-object
+  production in normal mode.
 
 Evidence for this path is in [pcl-parser-core.md](pcl-parser-core.md),
 [pcl-command-map.md](pcl-command-map.md), and
@@ -1068,7 +1088,10 @@ extract `generated/analysis/ic30_ic13_parser_dispatch_tables.md` shows the
 normal-mode blank rows at mode-0 table `0x010eae..0x010ef6` and the
 alternate/data blank rows at mode-0 table `0x0112f4..0x01133c`. Key supporting
 listings are `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` and
-`generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
+`generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`. The command-map
+classification for `ESC ?`, `ESC Z`, and `ESC &lT/t` is in
+[pcl-command-map.md](pcl-command-map.md) and generated table extract
+`generated/analysis/ic30_ic13_pcl_command_map.md`.
 
 ## Worked Path: Display Functions Direct Reader
 

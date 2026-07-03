@@ -122,6 +122,23 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x1a3c2` ignores scheduler `D7`, `0x1a3c8..0x1a3e0` passes
   `0x78219b/0x78219c` plus local `A6-0x02` to `0x1b50e`, and only resolver
   `D7 == 0` reaches `0x6364`.
+- Host/status side channels:
+  ROM evidence is `0x12034`, `0x122be..0x12326`,
+  `0xb022..0xb0c0`, `0xae2c..0xaece`, and `0x2888..0x2c3a`.
+  Checked-in documentation is [errors-and-status.md](errors-and-status.md),
+  [io-interfaces.md](io-interfaces.md), [host-byte-fetch.md](host-byte-fetch.md),
+  and the semantic checkpoints `Host Interface Output FIFO` and
+  `Page Environment Status And Pool Cursor Gate` in
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` and
+  `Worked Path: Page Environment Status Bridge` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). This cluster has
+  no direct page-object or pixel effect: `ESC *r1K 11` and the `ESC *s#^`
+  sibling enqueue literal `33440A\r\n` through host-output FIFO helpers, and
+  status producers such as `0x2888` feed outbound status bytes through
+  `0xaece`. It still belongs in byte-stream reproduction because a full FIFO
+  can stall producer `0xb090`, and a bidirectional host can react to the
+  backchannel bytes by sending different future input.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   The checked-in contracts are [pcl-parser-core.md](pcl-parser-core.md) and

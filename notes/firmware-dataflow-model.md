@@ -1618,6 +1618,57 @@ are `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`,
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
+### Boundary: Secondary Segment-57 Source
+
+The remaining transparent-data boundary is precise and external. It is not an
+unresolved parser, transparent payload, page-record, or row-skip edge.
+
+The stream `SO ESC &p3X ! 80 !` proves a secondary high-control byte can enter
+the segmented page-record path. The renderable prefix reaches bucket `448`.
+The first unresolved bucket is `456`:
+
+- selector `0x2001`;
+- glyph `0x5f`;
+- segment `0x39`;
+- row skip `7296`;
+- resolved glyph entry file offset `0x02e122`;
+- bitmap source file offset `0x03fe22`;
+- firmware source address `0x0bfe22`;
+- required read range `0x0bfe22..0x0c0321`.
+
+Only bytes `0x0bfe22..0x0bffff` are inside the verified `IC32,IC15`
+resource-pair image. The remaining `802` bytes begin at firmware address
+`0x0c0000`, outside the verified resource pair.
+
+Disassembly evidence makes the software side exact:
+
+- `0x1f354` takes the bit-30 offset-table form, adds the selected table entry,
+  and reads row count, width, mode, and bitmap delta from the resulting glyph
+  record.
+- For secondary `LINE_PRINTER`, table index `0x5f` has relative offset `0`,
+  so the glyph entry resolves to the record header at file offset `0x02e122`.
+- `0x1f1f0` computes `segment << 7`, subtracts that row skip from the row
+  count, clamps remaining rows to `0x80`, multiplies by even byte span `10`,
+  and advances the bitmap pointer to file offset `0x03fe22`.
+
+The continuation policy is physical/resource-window state:
+
+- Mirror, code-pair continuation, and zero-fill policies all produce the same
+  current-band digest
+  `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`.
+- They diverge only for fallback rows after the verified suffix.
+- The verified suffix `0x0bfe22..0x0bffff` has digest
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`.
+- Startup scanner evidence constrains but does not choose the continuation:
+  a full mirror at `0x0c0000` would expose a second `HEAD` chain and `48`
+  typed records, while code-pair and zero-fill continuations expose non-HEAD
+  markers and keep the same `24` typed records as the verified image.
+
+The exact unresolved boundary is therefore firmware range
+`0x0c0000..0x0c0321`. Closing it requires board or emulator memory-map
+evidence, a direct bus read around `0x0c0000`, live startup candidate counters,
+or an observed page result that matches one of the fallback-row policies.
+
 ## Worked Path: Downloaded Glyph
 
 This path covers a host-fetched downloaded-character stream whose installed

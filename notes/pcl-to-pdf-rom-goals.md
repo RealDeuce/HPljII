@@ -154,6 +154,7 @@ Concrete software contracts already exist for these renderer components:
   contexts, symbol fallbacks, final-`@`, final-`X`, page-root context-slot
   installs, downloaded descriptors, downloaded glyph payloads, optional
   resource-window refresh through `0x19dd2`, and span metrics are composed in
+  `Worked Path: Built-In Resource Scan And Candidate Windows`,
   `Worked Path: Font Selection To Visible Glyphs`,
   `Worked Path: Pitch Mode To Font Refresh`,
   `Worked Path: Firmware Font Sample Page`,

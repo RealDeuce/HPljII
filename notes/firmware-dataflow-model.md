@@ -50,6 +50,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Display Functions Direct Reader`.
 - Font selection, downloaded glyphs, macro replay, and resource boundaries:
   `Worked Path: Page Font Scheduler Resource Handoff`,
+  `Worked Path: Built-In Resource Scan And Candidate Windows`,
   `Worked Path: Font Selection To Visible Glyphs`,
   `Worked Path: Pitch Mode To Font Refresh`,
   `Worked Path: Firmware Font Sample Page`,
@@ -1452,6 +1453,118 @@ Evidence and unresolved boundary:
   need cartridge or board memory-map evidence to name physical contents and to
   exercise every classifier boundary beyond the modeled changed, unchanged,
   and status-return exits.
+
+## Worked Path: Built-In Resource Scan And Candidate Windows
+
+This path covers how the verified `IC32,IC15` resource ROM becomes the
+candidate windows that later font-selection commands consume. It does not draw
+pixels by itself; its pixel effect is choosing which built-in context longword,
+glyph map, metrics, and bitmap payloads printable text will use.
+
+Resource scan and candidate producer:
+
+- `0x1a2e4` clears candidate counters, seeds cursor windows at `0x782324`,
+  sets built-in scan bounds `0x080000..0x0ffffe`, and calls `0x1a616`.
+- `0x1a616` scans resource records and recognizes or skips signatures such as
+  `HEAD`, `FONT`, `TABL`, `tabl`, and `DUMY`.
+- Accepted font records are handed to `0x1a9be`, which writes candidate
+  longwords, increments total count `0x78278e`, partitions records by class
+  and address range, and advances cursor windows `0x7827a0..0x7827b4`.
+- Fixture `0x41a HEAD scanner walks verified IC32/IC15 resource chain` pins
+  the startup-visible typed-record chain that bounds this built-in window:
+  24 typed records from firmware address `0x08004c` through `0x0ae122`,
+  terminating at `0x0b2f80`.
+- Fixture `actual IC32/IC15 built-in records feed 0x1a9be partitions` pins
+  the decoded built-in scan result for candidate partitioning.
+
+Candidate-window state:
+
+- Canonical state includes candidate pointer-list base `0x782324`, total
+  candidate count `0x78278e`, class/range counts `0x782790..0x78279e`,
+  cursor windows `0x7827a0..0x7827b4`, active candidate window
+  `0x78287c` / `0x7827b8`, selected candidate slot `0x7828a8`, and selected
+  context records `0x782ee6` / `0x782ef6`.
+- For the verified built-ins, class-one low/range counters are
+  `0x782792 = 12` and `0x782794 = 0`; class-zero low/range counters are
+  `0x78279a = 12` and `0x78279c = 0`.
+- Final cursor windows are `0x7827a0 = 0x782324`,
+  `0x7827a4 = 0x782354`, `0x7827a8 = 0x782354`,
+  `0x7827ac = 0x782354`, `0x7827b0 = 0x782384`, and
+  `0x7827b4 = 0x782384`.
+- Fixture `0x1a616 candidate scan continuation policy changes built-in counts`
+  constrains segment-57 continuation behavior: an `IC32,IC15` mirror at
+  offset `0x40000` would double total count to `48`, while code-pair and
+  zero-fill continuations preserve the verified `24` total.
+
+Activation, filtering, and selection consumers:
+
+- `0x1569c` activates the selected class window, writes `0x78287c` /
+  `0x7827b8`, and sets candidate active bit `0x80000000`.
+- `0x156de` filters active candidates by requested or fallback symbol words
+  from parser-produced state. It reads resource symbol words through
+  `0x15890` / `0x158be`.
+- `0x1519a` filters requested height through decoded built-in heights from
+  `0x13bca`; `0x153c6` filters spacing and pitch through resource byte
+  `+0x21` and decoded pitch from `0x13b76`.
+- `0x14398` and comparator `0x13c06` choose selected slot `0x7828a8` using
+  resource window, decoded height, byte `+0x2f`, signed byte `+0x30`, and
+  byte `+0x31`.
+- `0x13eb8`, `0x144d2`, and `0x14c64` consume the selected candidate to write
+  current context records and rebuild active glyph maps for printable text.
+
+Output effect:
+
+- The scan changes pixels only through later font selection. For
+  `ESC (s0p10h12v0s0b3T!!`, the verified candidate windows select primary
+  slot `0x782354` and context `0xc008004c`.
+- For `ESC )s0p16h8v0s0b0T SO !!`, the same candidate state selects
+  secondary slot `0x782350` and context `0xc00ae122`.
+- `0x1393a`, `0xd824`, `0x12f2e`, `0x1ed84`, and `0x1ef6a` then consume
+  those selected contexts indirectly when printable bytes become compact
+  objects and rendered rows.
+- Resource glyph fixtures connect the canonical bitmap payloads to compact
+  row-copy output for contexts `0x4008004c`, `0x44080418`, and `0x440946b4`.
+  Fixture `line-printer built-in base map host 0x21 to glyph 32` pins the
+  default Line Printer map used by the ordinary printable fixtures.
+
+State classification for this path:
+
+- Canonical state:
+  built-in resource records, glyph-table entries, bitmap payloads, candidate
+  pointer list `0x782324`, candidate counts/windows, active candidate window,
+  selected slot `0x7828a8`, selected contexts, and active glyph maps.
+- Derived/cache state:
+  scan cursor `0x782884`, scan bounds `0x78288c` / `0x782890`, active symbol
+  words `0x783144` / `0x783146`, fallback tables `0x782f0c..0x782f18`,
+  default-symbol tables `0x782f1c..0x782f28`, HMI/cache values, and decoded
+  height/pitch values.
+- Parser scratch:
+  requested symbol words `0x782ef4` / `0x782f04`, parsed font-selection
+  request fields `0x782eec..0x782f06`, final-`X` transient font ID state, and
+  final-`@` command records.
+- Firmware bookkeeping:
+  candidate active bit `0x80000000`, bit-30 built-in context flag, bit-26
+  record-byte mirror, dirty refresh bytes `0x782f2c` / `0x782f2d`, and
+  page-root context install state written after selection.
+- Unknown:
+  cartridge/external windows outside `0x080000..0x0ffffe` remain
+  unverified, and manual-facing names for record metadata `+0x28..+0x31`
+  remain inferred from decoded-height and chooser behavior.
+
+Evidence for this path is in
+[built-in-resource-scan.md](built-in-resource-scan.md),
+[resource-rom.md](resource-rom.md),
+[font-context-metrics.md](font-context-metrics.md), and
+[semantic-state-model.md](semantic-state-model.md), section
+`Built-In Resource Scan And Candidate Windows`. Key supporting reports and
+listings are `generated/analysis/ic32_ic15_font_records.md`,
+`generated/analysis/ic32_ic15_resource_glyph_probe.md`,
+`generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`,
+`generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`,
+`generated/disasm/ic30_ic13_active_object_scan_014398.lst`, and
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`.
 
 ## Worked Path: Printable Glyph
 

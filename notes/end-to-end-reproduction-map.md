@@ -187,7 +187,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [pcl-parser-core.md](pcl-parser-core.md), and the command-family checkpoints
   in [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
   `generated/analysis/ic30_ic13_pcl_command_map.md` and ROM dispatch trace
-  fixtures.
+  fixtures. The `Checked-In Semantic Anchors` section in
+  [pcl-command-map.md](pcl-command-map.md) is the current command-family index:
+  it maps parser rows to the checked-in notes that already carry field groups,
+  writers, readers/consumers, output effects, fixtures, and disassembly
+  evidence.
 - Direct controls and cursor state:
   ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, and cursor handlers.
   Reproduction evidence is `Text Cursor And Direct Controls` in

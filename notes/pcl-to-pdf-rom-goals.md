@@ -120,7 +120,7 @@ Concrete software contracts already exist for these renderer components:
 - Parser:
   six-byte parser records, dispatch tables, alternate/data mode, and
   delayed-payload restore through `0x121cc` / `0x12218` are composed first by
-  `Command output-effect classes` in
+  `Payload and direct-reader modes` and `Command output-effect classes` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [pcl-parser-core.md](pcl-parser-core.md) and
   [pcl-command-map.md](pcl-command-map.md).

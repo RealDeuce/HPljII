@@ -342,6 +342,12 @@ Expected remaining boundaries:
   high-row segmented-wide span-31 cases. They reach selector `0x3003`, bucket
   `8` segment `1`, renderer `0x1f264`, and the `32/96` row split before
   stopping at fallback A2 source offset `+0xb50`.
+- ROM-local parser/payload boundary:
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
+  `Boundary: Downloaded-Glyph Payload Count Cap` for oversized segmented-wide
+  high-row streams that exceed the restored `ESC )s#W` count cap `0x7fff`.
+  Adjacent below-cap products render through `0x1f264`; oversized products
+  stop before installed glyph publication or render dispatch.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

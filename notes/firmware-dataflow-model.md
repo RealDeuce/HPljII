@@ -57,6 +57,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
   `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source`,
+  `Boundary: Downloaded-Glyph Payload Count Cap`,
   `Worked Path: Macro Execute Replay`,
   `Worked Path: Macro Overlay Replay Publication`,
   `Boundary: Secondary Segment-57 Source`.
@@ -3552,6 +3553,101 @@ Evidence:
   `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`, and
   `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+### Boundary: Downloaded-Glyph Payload Count Cap
+
+This is the exact parser/payload boundary for segmented-wide high-row
+downloaded glyphs whose required `ESC )s#W` bitmap byte count exceeds the
+parser's restored count cap. These cases do not reach the installed-glyph
+writer or renderer in this host-fetched stream shape.
+
+Boundary stream family:
+
+- Fixtures `downloaded segmented-wide high-row 0x04xx oversized payload counts
+  stop before renderer`,
+  `downloaded segmented-wide high-row 0x05xx oversized payload counts stop
+  before renderer`, and
+  `downloaded segmented-wide high-row parser-limit oversized counts stop
+  before renderer` record the stopped cases.
+- Successful neighboring cases are documented for the same family:
+  rows `0x0481`, `0x0482`, and `0x04ff` render spans `17`, `18`, and `24`;
+  rows `0x0581` and `0x0582` render spans `17`, `18`, and `23`;
+  row `0x05ff` renders spans `17`, `18`, and `21`;
+  rows `0x0681` and `0x0682` render spans `17`, `18`, and `19`;
+  row `0x06ff` renders spans `17` and `18`; rows `0x0781`, `0x0782`, and
+  `0x0787` render span `17`.
+
+Producer and consumer behavior:
+
+- The parser-delayed payload path restores an `ESC )s#W` byte count clamped to
+  `0x7fff`.
+- Oversized products such as `0x0481*31`, `0x0481*32`, `0x0482*31`,
+  `0x0482*32`, `0x04ff*31`, `0x04ff*32`, `0x0581*24`, `0x0581*32`,
+  `0x0582*24`, `0x0582*32`, `0x05ff*22`, `0x05ff*32`, `0x0681*20`,
+  `0x0682*20`, `0x06ff*19`, `0x0781*18`, `0x0782*18`, `0x0787*18`, and
+  `0x0788*17` exceed that cap.
+- For those streams, the restored payload count stops inside the bitmap data
+  before the next command byte is reached. The fixtures record
+  `command_prefix_length`, `parser_stop_offset`, and `full_payload_end_offset`.
+- Because the stream stops before `0x16498` completes an installed glyph
+  object, no selector `0x3003` page object is produced and no `0x1f264`
+  renderer/source boundary is reached.
+
+State classification:
+
+- Canonical state:
+  none newly installed for the stopped oversized payload. Successful
+  neighboring below-cap cases install canonical downloaded glyph row/width
+  words, bitmap bytes, and selector-`0x3003` bucket objects.
+- Derived/cache state:
+  computed row/span product, clamped restored payload count `0x7fff`, parser
+  stop offset, and full payload end offset.
+- Parser scratch:
+  delayed `ESC )s#W` records, pending payload handler state, payload byte
+  budget `0x783140`, and the host byte-source position where the stream stops
+  before renderer entry.
+- Firmware bookkeeping:
+  partial parser/delayed-payload state used to drain or resume command input;
+  no completed downloaded-record allocation or page publication for the
+  stopped cases.
+- Hardware/external state:
+  none for this ROM-local parser cap.
+- Unknown:
+  no ROM-local renderer edge is open for these oversized streams because they
+  do not reach the renderer. Remaining uncertainty is only what a broader
+  host/application stream does after the parser stop point.
+
+Output effect:
+
+- Below-cap neighbors produce installed glyphs, publish selector `0x3003`
+  buckets, and render selected segment `1` through `0x1f264`.
+- Oversized cases produce no page pixels in this path. They stop at the
+  parser payload-count boundary before installed glyph publication and before
+  render dispatch.
+- Row `0x0787` at span `17` is the last sampled segmented-wide high-row case
+  that reaches the renderer through this host-fetched `ESC )s#W` shape; the
+  adjacent `0x0788*17` stream stops at the count cap.
+
+Evidence:
+
+- Detail note: [downloaded-fonts.md](downloaded-fonts.md), section
+  `Downloaded Glyph Row-Count Publication Checkpoint`.
+- Renderer summary: [page-raster-imaging.md](page-raster-imaging.md),
+  compact glyph row-copy checkpoint.
+- Semantic checkpoint: `Downloaded Glyph Row-Count Publication Checkpoint` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixture evidence:
+  `downloaded segmented-wide high-row 0x04xx oversized payload counts stop
+  before renderer`,
+  `downloaded segmented-wide high-row 0x05xx oversized payload counts stop
+  before renderer`, and
+  `downloaded segmented-wide high-row parser-limit oversized counts stop
+  before renderer`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+  `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`, and
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+
 ## Worked Path: Compact Glyph Row-Copy Helpers
 
 This path covers the shared renderer helper family that turns compact text and
@@ -5849,6 +5945,13 @@ Current top-level boundaries include:
   `8` segment `1` through `0x1f264`, and split into `32` current rows plus
   `96` fallback rows; the adjacent span-31 siblings through row `0x03ff` stop
   at fallback A2 source offset `+0xb50`.
+- ROM-local parser/payload boundary:
+  `Boundary: Downloaded-Glyph Payload Count Cap` documents oversized
+  segmented-wide high-row streams that exceed the restored `ESC )s#W` count
+  cap `0x7fff`. Adjacent below-cap row/span products reach `0x16498`,
+  selector `0x3003`, and renderer `0x1f264`; oversized products such as
+  `0x0788*17` stop at the recorded parser payload offset before installed
+  glyph publication or render dispatch.
 - ROM-local variant boundaries rather than generic gaps:
   dense page/object streams that change `0x1381c` rollover, `0x13250` encoded
   raster gate outcomes, `0x133aa` / `0x136d2` list ordering, or bridge fields;

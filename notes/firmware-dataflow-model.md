@@ -1740,6 +1740,136 @@ are `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
+## Worked Path: Published Record To Active Bands
+
+This path covers the scheduler handoff after a page/control record has already
+been published by `0xff1e`. The scheduler does not create page objects. It
+selects a published source record, chooses an active render work record,
+copies bucket/list/context roots through `0x1ed84` / `0x1edc6`, and decides
+which band words reach `0x1ef6a`.
+
+Starting condition:
+
+- A previous command path has created a current page root and `0xff1e` has
+  published it.
+- `0xff1e` wrote the source root longword to protected pool-head pointer
+  `0x780ea6`, set publication flag `0x782996`, and cleared current root
+  `0x78297a`.
+- Parser work is complete. This scheduler path starts from page/control pool
+  records, not host bytes.
+
+Source selection:
+
+- Pool initialization `0x3144..0x3162` seeds `0x780ea6`, `0x780eaa`,
+  `0x780eae`, `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
+- Candidate selection `0x7ec6..0x7f90` promotes a selectable candidate from
+  `0x780e6e[]` into scheduler cursor `0x780eaa` and release cursor
+  `0x780eb2`.
+- Cursor path `0x7722..0x779a` advances or releases scheduler cursors while
+  respecting protected pool head `0x780ea6`.
+- Active scheduler entry `0x1eb32..0x1eb50` copies selected cursor
+  `0x780eaa` into active source record pointer `0x780eae`.
+
+Render work selection and bridge:
+
+- Startup `0x2feb6` initializes two-work-record selector state
+  `0x7820bc = 1` and `0x7820c0 = 1`, then clears paired render-work header
+  words.
+- `0x1ecd6..0x1ed76` toggles selector `0x7820bc`, chooses destination render
+  work record `0x7820c4` or `0x782128`, and writes active render pointer
+  `0x783a18`.
+- If geometry changed, `0x1ed6c..0x1ed76` calls setup helper `0x1ee9e` before
+  active-record copy.
+- If geometry matches the previous work record, `0x1ed36..0x1ed6a` computes a
+  same-geometry remainder through helper `0x33238`, copies previous geometry
+  fields, and then reaches the same `0x1ed84` copy path.
+- `0x1ed84` consumes active source `0x780eae`, copies source header words into
+  the selected render work record, and calls `0x1edc6`.
+- `0x1edc6` copies source bucket root `+0x1c` to render `+0x18`, source
+  rule-list root `+0x24` to render `+0x1c`, source fixed-list root `+0x28` to
+  render `+0x20`, and context slots `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
+
+Active band loop:
+
+- Active loop `0x1eba4..0x1ecd2` reads active render pointer `0x783a18`,
+  active selector `0x7820bc`, paired selector `0x7820c0`, and active work
+  words `+0x06`, `+0x0c`, `+0x0e`, `+0x10`, and `+0x16`.
+- Cleanup branch: if `0x780ea5 == 1` or active work `+0x0c < +0x10`, the loop
+  calls `0x1ef38`, clears active-render flag `0x780ea4`, and signals wait
+  object `0x780182` through trap veneers.
+- Throttle branch: if active work `+0x0e > 0x28`, the loop clears `+0x0e`,
+  signals `0x780182`, and yields through `0x10d8(2)`.
+- Capacity branch: the loop computes available capacity from active and paired
+  remaining rows. If capacity is less than `9`, it clears `+0x0e`, signals
+  `0x780182`, and waits through `0x10d0(2)`.
+- Render branch: if capacity is at least `9`, the loop calls `0x1ef6a`, then
+  increments active band word `+0x10` and throttle word `+0x0e`.
+
+Output effect:
+
+- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
+  published source `0x00d0eaa0` reaches active source `0x780eae`, render work
+  `0x782128`, active render pointer `0x783a18`, and the same rows as direct
+  `0x1ed84` / `0x1ef6a` rendering.
+- Fixture `0x1ecd6 same-geometry render work reuse reaches render entry`
+  proves the same-geometry branch computes destination word `+8`, derives
+  `0x783a20 = 0x0020`, `0x783a22 = 3`, and
+  `0x783a28 = 0x00103800`, and still reaches the same composed rows.
+- Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` pins
+  the render, capacity-wait, cleanup, and throttle outcomes from active and
+  paired work-record fields.
+- Fixture `0x1eba4 scheduler band words render published downloaded glyph`
+  proves ten scheduler-produced band words `0..9` feed a published
+  downloaded-glyph page record into `0x1ef6a`; only buckets `1` and `9`
+  dispatch compact objects, and bucket `9` produces visible page row `86`.
+
+State classification for this path:
+
+- Canonical state:
+  published pool-head pointer `0x780ea6`, scheduler cursor `0x780eaa`, active
+  source pointer `0x780eae`, release cursor `0x780eb2`, active render pointer
+  `0x783a18`, paired render work records `0x7820c4` / `0x782128`, and copied
+  render roots `+0x18`, `+0x1c`, `+0x20`, and `+0x24..+0x60`.
+- Derived/cache state:
+  render-band rows `0x783a20`, remainder `0x783a22`, destination base
+  `0x783a28`, render stride `0x783a1c`, same-geometry destination word `+8`,
+  row-copy source pointer `0x783992`, and active-pool row-copy scalars.
+- Parser scratch:
+  none. Host parsing and page-object production have ended before this
+  scheduler path begins.
+- Firmware bookkeeping:
+  candidate slots `0x780e6e[]`, record state byte `+4`, selector bytes
+  `0x7820bc` / `0x7820c0`, active flags `0x780ea4` / `0x780ea5`, wait-object
+  records rooted at `0x780182`, timer/status latches, and scheduler trap
+  state.
+- Hardware/external state:
+  MMIO-facing fields and strobes around `$8000`, `$8a01`, `$a200`, `$a400`,
+  `$a801`, and `0xffff2000` are software-visible, but their exact
+  formatter/DC connector timing is outside this ROM-local proof.
+- Unknown:
+  no unresolved software-visible middle edge remains for published-record
+  selection, render-work alternation, active bridge fields, or scheduler band
+  words in the covered fixtures. Remaining uncertainty is physical engine
+  pacing and bit-to-signal naming for formatter/DC hardware.
+
+Evidence for this path is in
+[active-render-scheduler.md](active-render-scheduler.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md),
+[dc-controller-engine.md](dc-controller-engine.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting reports are
+`generated/analysis/ic30_ic13_page_record_bridge.md` and
+`generated/analysis/ic30_ic13_render_path_references.md`. Key listings are
+`generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`,
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+`generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`,
+`generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`,
+`generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`, and
+`generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`.
+
 ## Worked Path: Vertical Forms Control
 
 This path covers the VFC command family: `ESC &l#W` loads a channel table, and

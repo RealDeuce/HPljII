@@ -3071,16 +3071,46 @@ resource data, or unverified physical output behavior.
 
 Current top-level boundaries include:
 
-- host/interface physical signal naming behind some `$8000`, `$a200`, `$a400`,
-  and `$fffee00x` accesses;
-- formatter/DC signal mapping for the final board-facing video/page path;
-- optional cartridge/resource window contents where the ROM scans outside the
-  verified IC32/IC15 resource-pair bytes;
-- transparent secondary segment-57 continuation data at
-  `0x0c0000..0x0c0321`;
-- renderer edge cases that have exact helper boundaries in the detail notes,
-  such as short compact downloaded-glyph fallback indices beyond the documented
-  `0x1fe76` table range.
+- Hardware/MMIO: direct host-input and host-output register names behind
+  `0x8e01`, `0x8801`, `0x8c01`, `0xa601`, `0xaa01`,
+  `0xfffee001`, `0xfffee003`, `0xfffee005`, `0xfffee009`,
+  `0xfffe0001`, and `0xfffe0003`. The ROM-visible ready/data/status and
+  control-shadow roles are documented; physical serial/parallel/optional-I/O
+  mapping still needs board correlation.
+- Hardware/MMIO: service, panel, and retained-storage sources behind
+  `$8000.w`, `$a200`, `$a400`, `$a801`, `$8a01`, and the `$fffee00b`,
+  `$fffee00d`, `$fffee00f`, `$fffee011`, `$fffee013` register family. ROM
+  consumers and status effects are documented in the reset/default,
+  host-byte-fetch, and external-ready notes; the external device/protocol
+  identity remains board-level.
+- Hardware/MMIO to physical engine: scheduler and status helper ranges
+  `0x0d52..0x0f7a`, `0x0f84..0x0fa0`, `0x1020..0x102e`,
+  `0x10bc..0x11f8`, `0x123a..0x1282`, and `0x1cf8..0x1ea8`.
+  Software-visible wait objects, latches, and render scheduling are modeled;
+  mapping to formatter/DC signals such as `BD`, `VDO`, `VSREQ`, `VSYNC`,
+  `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`, `PCLK`, `SBSY`, `RDY`, `PPRDY`,
+  and `CPRDY` remains physical timing work.
+- Missing external resource data: optional resource windows
+  `0x200000..0x3ffffe` and `0x400000..0x5ffffe`. The ROM scan and scheduler
+  state are documented; cartridge/external resource contents are not present in
+  the verified local ROM set.
+- Missing physical memory-map data: built-in resource continuation
+  `0x0c0000..0x0c0321`. Transparent secondary segment-57 rendering reaches
+  source range `0x0bfe22..0x0c0321`; only `0x0bfe22..0x0bffff` is inside the
+  verified IC32/IC15 resource-pair image. Mirror, code-pair, and zero-fill
+  policies are fixture-bounded, but the physical decode after `0x0c0000`
+  remains unproven.
+- ROM-local visible-output helper boundary:
+  short compact downloaded-glyph fallback indices above `128` in helper
+  `0x1fe76`. Parser-produced rows `0x0101..0x0103` preserve installed row
+  state and prove the low-byte source boundary, but table indices above the
+  documented valid range remain an exact renderer-helper edge.
+- ROM-local variant boundaries rather than generic gaps:
+  dense page/object streams that change `0x1381c` rollover, `0x13250` encoded
+  raster gate outcomes, `0x133aa` / `0x136d2` list ordering, or bridge fields;
+  macro overlay payload variants beyond the documented matrix; and selected
+  font combinations that change context/map/selector state before visible
+  output.
 
 These are not blockers for documenting ROM-local parser, command, page-object,
 or render behavior that is already visible in the disassembly.

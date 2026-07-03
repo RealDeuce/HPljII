@@ -151,6 +151,25 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   events, six-byte records are saved through `0x121cc`, restored through
   `0x12218`, and then consumed by raster, transparent text, downloaded-font,
   generic payload, macro, and alternate/data handlers.
+- Ignored and no-output parser rows:
+  ROM evidence is parser loop `0x11774`, terminal reset path
+  `0x11912..0x119bc`, delayed restore helper `0x12218`, normal parser table
+  `0x112a4`, and alternate/data parser table `0x116f6`. Checked-in
+  documentation is [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md), and `Parser Record And Delayed
+  Payload State` in [semantic-state-model.md](semantic-state-model.md),
+  surfaced first as `Worked Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Normal mode-zero
+  bytes `0x00`, `0x07`, and `0x0b` are explicit zero-handler rows: they write
+  next mode `0`, run pending delayed restore through `0x12218`, reset
+  `0x78299e`, `0x782a26`, `0x782a3e`, `0x782a56`, and matched-byte scratch,
+  and do not allocate a page root, queue a page object, publish a record, or
+  schedule render work. Alternate/data blank C0 rows `0x00` and `0x07..0x0f`
+  append through `0xe002` before the same terminal reset path instead of
+  running normal BS/HT/LF/FF/CR/SO/SI handlers. Related parser artifacts are
+  bounded separately: `ESC ?` is consumed in wrapper `0xda9a`, `ESC Z`
+  terminates the direct display-functions reader, and `ESC &lT/t` has no
+  standalone page-output effect.
 - Transparent print data:
   ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
   plus disassembly
@@ -395,6 +414,16 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `ESC 9 clear margins feeds CR and page-record output`,
   `ESC = half-line feed reaches shifted page-record output`, and
   `ESC &d underline selector materializes span output`.
+- Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
+  alternate/data blank C0 append-preserving rows. Evidence:
+  `Worked Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md), and generated parser table extract
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`. The reproduction
+  effect is absence of page objects in normal mode while preserving pending
+  delayed restore at `0x12218`; in alternate/data mode the bytes are stored
+  through `0xe002` before parser reset.
 - Transparent print data streams are covered for printable bytes,
   default-filtered C0/high-control bytes, nonzero-filtered C0/high-control
   bytes, `1a 58` and non-`0x58` probe handling, primary high-control samples

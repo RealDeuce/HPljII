@@ -336,6 +336,12 @@ Expected remaining boundaries:
   exposes only low width bytes `0x00..0x10` to `0x12f2e`, selecting invalid
   compact mode-0 helper targets. Low bytes `0x11..0xff` render through
   compact-wide helper `0x1f0d2`.
+- ROM-local visible-output source boundary:
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
+  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` for sampled
+  high-row segmented-wide span-31 cases. They reach selector `0x3003`, bucket
+  `8` segment `1`, renderer `0x1f264`, and the `32/96` row split before
+  stopping at fallback A2 source offset `+0xb50`.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

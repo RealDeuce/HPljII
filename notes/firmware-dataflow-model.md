@@ -56,6 +56,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Downloaded Glyph`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
+  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source`,
   `Worked Path: Macro Execute Replay`,
   `Worked Path: Macro Overlay Replay Publication`,
   `Boundary: Secondary Segment-57 Source`.
@@ -3451,6 +3452,106 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+### Boundary: Segmented-Wide Downloaded-Glyph Fallback Source
+
+This is the exact ROM-local visible-output boundary for sampled
+segmented-wide high-row downloaded glyphs whose selected segment reaches
+renderer `0x1f264`, but whose span-31 fallback row-copy would read past the
+modeled A2 bitmap source. The same parser, install, publication, bridge, and
+renderer path is pixel-defined for neighboring spans.
+
+Boundary stream family:
+
+- The primary fixture is `downloaded segmented-wide high-row span-31 fallback
+  hits source boundary`.
+- Sibling fixtures repeat the same split for row words `0x0182`, `0x01ff`,
+  `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, and `0x03ff`.
+- The successful neighboring spans are documented for the same row family:
+  spans `17`, `18`, and `32` render selected segment `1` through `0x1f264`
+  with `32` current rows and `96` fallback rows matching installed bitmap
+  bytes.
+
+Producer and consumer behavior:
+
+- `0x16498` preserves the canonical installed row word and span in the
+  downloaded glyph record. For row words above `0x00ff`, the printable source
+  still exposes only the low row byte to `0x12f2e`.
+- `0x12f2e` therefore publishes selector `0x3003` segments `1` and `0`
+  under buckets `8` and `0` for low row bytes above `0x80`.
+- `0xff1e`, `0x1ed84`, and `0x1ef6a` preserve the selected bucket path.
+  Bucket `8` dispatches segment `1` through compact target `0x1effe` to
+  segmented-wide renderer `0x1f264`.
+- `0x1f414` splits the selected segment into `32` current rows and `96`
+  fallback rows for the sampled high-row cases.
+- Span `31` reaches the same selected-segment path but stops when
+  `validate_wide_compact_row_copy` detects fallback A2 source read past the
+  modeled bitmap at offset `+0xb50`.
+- Higher row/span siblings diverge at a separate parser-count boundary:
+  `0x04xx` span-31/span-32, `0x05xx` span-24-or-above, and tested higher
+  oversized cases stop inside the `ESC )s#W` payload before renderer entry.
+
+State classification:
+
+- Canonical state:
+  downloaded glyph table entries, installed row and width words, bitmap
+  payload bytes, selector-`0x3003` bucket objects, bucket `8` selected segment
+  `1`, bucket `0` segment `0`, and render-record bucket roots.
+- Derived/cache state:
+  printable source low row byte, segment row skip `0x80`, A2/A3 source
+  offsets, full-chunk helper `0x2f27c`, `0x1f1ac` remainder choice,
+  `0x1f414` current/fallback split, and fallback A2 source offset `+0xb50`.
+- Parser scratch:
+  restored `ESC )s#W` records, payload byte budget `0x783140`, copy status
+  `1`, zero-byte drain through `0x12328`, and next handler `0xd04a` for the
+  successful below-cap cases.
+- Firmware bookkeeping:
+  downloaded-record allocation/release state around `0x16c14` / `0x16498`,
+  stream allocator state, publication flag `0x782996`, and render-work
+  progress.
+- Hardware/external state:
+  none for the ROM-local renderer source-boundary classification.
+- Unknown:
+  physical/full-row comparison for the explicit span-31 source-boundary cases.
+  The parser/install/publication/bridge path, selected segment, renderer
+  target, row split, and exact source offset are documented.
+
+Output effect:
+
+- The successful siblings are pixel-defined: the sampled rows render selected
+  segment `1` through `0x1f264` with current and fallback rows matching the
+  installed bitmap.
+- The span-31 siblings through row `0x03ff` are not pixel-modeled past A2
+  offset `+0xb50`. That is a bounded source-read edge, not an unknown selector
+  or render-dispatch edge.
+- Oversized higher siblings are parser-count boundaries before renderer entry,
+  not `0x1f264` source-boundary cases.
+
+Evidence:
+
+- Detail note: [downloaded-fonts.md](downloaded-fonts.md), section
+  `Downloaded Glyph Row-Count Publication Checkpoint`.
+- Renderer detail: [page-raster-imaging.md](page-raster-imaging.md),
+  compact glyph row-copy sections around `0x1f264`.
+- Fixture evidence:
+  `downloaded segmented-wide high-row span-31 fallback hits source boundary`,
+  `downloaded segmented-wide row-0x0182 span-31 fallback hits source
+  boundary`,
+  `downloaded segmented-wide row-0x01ff span-31 fallback hits source
+  boundary`,
+  `downloaded segmented-wide row-0x0281 span-31 fallback hits source
+  boundary`,
+  `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source
+  boundary`, and
+  `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source
+  boundary`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+
 ## Worked Path: Compact Glyph Row-Copy Helpers
 
 This path covers the shared renderer helper family that turns compact text and
@@ -5741,6 +5842,13 @@ Current top-level boundaries include:
   helper heads, including in-firmware target `0x0066cc` at opcode `0x4a39`
   for span `0x0102`; high source bytes `0x11..0xff` render through
   compact-wide helper `0x1f0d2`.
+- ROM-local visible-output source boundary:
+  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` documents the
+  exact span-31 selected-segment source edge. Sampled high-row segmented-wide
+  glyphs preserve installed rows, publish selector `0x3003`, dispatch bucket
+  `8` segment `1` through `0x1f264`, and split into `32` current rows plus
+  `96` fallback rows; the adjacent span-31 siblings through row `0x03ff` stop
+  at fallback A2 source offset `+0xb50`.
 - ROM-local variant boundaries rather than generic gaps:
   dense page/object streams that change `0x1381c` rollover, `0x13250` encoded
   raster gate outcomes, `0x133aa` / `0x136d2` list ordering, or bridge fields;

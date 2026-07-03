@@ -201,7 +201,9 @@ The strongest current byte-stream fixtures include:
 - reset, FF, page-size, orientation, paper-source, copies, and VFC
   publication through `0xff1e`: `host-fetched publication streams reach parser
   and published rows`, `published page records feed 0x1ed84 and 0x1ef6a render
-  entry`, and the VFC fixtures named in
+  entry`, documented first by
+  `Worked Path: Publication Commands To Rendered Page Records`, and the VFC
+  fixtures named in
   [vertical-forms-control.md](vertical-forms-control.md);
 - mixed text/selector-7 rule/raster/FF publication through page-record
   storage and final rows: `host-fetched text rectangle raster FF publishes

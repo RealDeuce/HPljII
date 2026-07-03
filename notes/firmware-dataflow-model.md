@@ -68,7 +68,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Page publication, page environment changes, and active render scheduling:
   `Worked Path: Reset And Default Environment`,
   `Worked Path: FF Publication`,
-  `Worked Path: Page Environment Publication`,
+  `Worked Path: Publication Commands To Rendered Page Records`,
   `Worked Path: Page Length, Wrap, And Perforation Controls`,
   `Worked Path: Shared Page-Record Storage And Allocator`,
   `Worked Path: Published Record To Active Bands`,
@@ -4511,12 +4511,13 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
-## Worked Path: Page Environment Publication
+## Worked Path: Publication Commands To Rendered Page Records
 
-This path covers publication commands whose visible pixels come from already
-queued page objects, while the command itself changes page or environment
-state around the publication boundary. It extends the FF-only publication path
-to reset, page size, orientation, paper source, and copy-count streams.
+This path covers page-environment publication commands whose visible pixels
+come from already queued page objects, while the command itself changes page
+or environment state around the publication boundary. It extends the FF-only
+publication path to reset, page size, orientation, paper source, and
+copy-count streams.
 
 Representative streams:
 

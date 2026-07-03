@@ -171,6 +171,7 @@ Concrete software contracts already exist for these renderer components:
   buckets `0x1387c`, rule/fixed lists `0x133aa` / `0x136d2`, the
   producer-to-renderer map, publication `0xff1e`, and render bridge
   `0x1ed84` / `0x1edc6` are composed first by
+  `Worked Path: Text Source Objects And Compact Buckets` and
   `Worked Path: Shared Page-Record Storage And Allocator` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [page-record-storage.md](page-record-storage.md),

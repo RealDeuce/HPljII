@@ -162,6 +162,7 @@ Concrete software contracts already exist for these renderer components:
   compact text, built-in and downloaded glyphs, raster modes `0..3`,
   rectangle/rule fills, shared `0x1ef6a` dispatch order, band walking, and
   mixed text/rule/raster page streams are documented first by
+  `Worked Path: Rectangle Rule Selectors And Clipping`,
   `Worked Path: Raster Transfer Gates And Modes`,
   `Worked Path: Mixed Text/Rule/Raster Page Record`, and
   `Worked Path: Render Dispatch And Pixel Composition` in

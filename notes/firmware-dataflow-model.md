@@ -64,6 +64,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Non-text page objects and render dispatch:
   `Worked Path: Vertical Forms Control`,
   `Worked Path: Rectangle Rule`,
+  `Worked Path: Rectangle Rule Selectors And Clipping`,
   `Worked Path: Raster Row`,
   `Worked Path: Raster Transfer Gates And Modes`.
 
@@ -4081,6 +4082,161 @@ is `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`; the focused
 listings are `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
 `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+## Worked Path: Rectangle Rule Selectors And Clipping
+
+This path composes the rectangle/rule command-family variants beyond the
+primary selector-7 black rule. It covers size writers, fill-selector mapping,
+clipping and reject gates, ordered rule-list storage, no-room retry,
+bridge-normalized rule objects, and solid/pattern renderers. The detailed
+contract is in [rectangle-graphics.md](rectangle-graphics.md); the semantic
+checkpoint is `Rectangle Rule Producer And Renderer` in
+[semantic-state-model.md](semantic-state-model.md).
+
+Command-family writers:
+
+- `0x10e68` handles `ESC *c#A` and writes dot width `0x78316a`.
+- `0x10e22` handles `ESC *c#B` and writes dot height `0x783166`.
+- `0x10a40` handles `ESC *c#H`; `0x10ae0` handles `ESC *c#V`.
+  These decipoint handlers multiply by five 300-dpi subunits, round
+  fractional subunits up, add the firmware `+11` subunit bias, and write the
+  same width/height fields.
+- `0x10dce` handles `ESC *c#G` and writes area-fill id `0x78316e`.
+- `0x10898` handles `ESC *c#P`, maps the active fill selector, validates the
+  stored width/height, and calls the rectangle source producer when a queued
+  rule should be created.
+
+Fill selector mapping:
+
+- Missing or `0P` maps to selector `7` for solid black.
+- `2P` maps area-fill percentages in `0x78316e` to gray selectors `0..7`.
+  Fixture streams cover fill ids `2`, `10`, `20`, `35`, `50`, `80`, and
+  `99`.
+- `3P` maps pattern ids `1..6` to selectors `8..13` in portrait.
+- In landscape, pattern ids `1..4` remap to `1 -> 9`, `2 -> 8`,
+  `3 -> 11`, and `4 -> 10`.
+- Invalid mode/id combinations return without queueing. Zero width or height
+  records the selector but does not create a rule object.
+
+Clipping and rule-source production:
+
+- `0x10b80` consumes cursor fields `0x782c8a` and `0x782c8e`, orientation
+  `0x782da3`, page extents `0x782db8` and `0x782db6`, stored width/height,
+  and the mapped selector.
+- It writes source record `0x782a88`: x `+0`, y `+2`, width `+4`, height
+  `+6`, and selector `+8`.
+- Portrait clipping rejects rectangles wholly outside the page, clips negative
+  left/top edges to zero, and clips right/bottom edges to the page extent.
+- Landscape uses the same reject/clip gates, then swaps axes so portrait
+  height becomes rule width and portrait width becomes rule height.
+- The negative-left fixture starts at x `-3`, width `10`, and queues x `0`,
+  width `7`. The clipping matrix also covers right-edge, top-edge,
+  bottom-edge, landscape-right-edge, horizontal-outside, vertical-outside, and
+  empty-after-clip outcomes.
+
+Rule-list storage and no-room retry:
+
+- `0x13386` calls `0x134d6`, which derives bucket index `0x782a7c` and packed
+  key `0x782a7e` from source x/y plus horizontal phase `0x782dc0`.
+- `0x133aa` allocates a 14-byte rule object through `0x1381c` and inserts it
+  under page-root list `+0x24` in ascending object byte `+4` order. Equal
+  bucket bytes insert after the existing equal node.
+- Rule object fields are next pointer `+0`, bucket byte `+4`, fill selector
+  `+5`, packed key `+6`, width `+8`, height `+0a`, and continuation height
+  `+0c`.
+- If `0x13386` returns zero, retry path `0x10d22..0x10d3e` sets page-root
+  retry flag `+0x15.0`, publishes the current root through `0xff1e`, ensures a
+  fresh root through `0x10084`, and retries the same source record through
+  `0x13386`.
+
+Bridge and render consumers:
+
+- `0x1edc6` copies source root `+0x24` to render-record `+0x1c`, ORs object
+  byte `+5` with `0x10`, and copies height `+0x0a` into continuation word
+  `+0x0c`.
+- `0x1ef6a` calls `0x1f446` after bucket-chain dispatch `0x1efc2` and before
+  fixed-list dispatch `0x1f756`.
+- `0x1f446` walks bridged rule-list nodes for each band. Selector `7`
+  dispatches to solid helper `0x1f596`; selectors `0..6` and `8..13`
+  dispatch to pattern helper `0x1f4e0`.
+- `0x1f596` and `0x1f4e0` consume packed key, width, selector, and
+  continuation height. Crossing rules mutate continuation word `+0x0c` and
+  resume on the next band.
+
+State classification:
+
+- Canonical state:
+  rectangle width `0x78316a`, rectangle height `0x783166`, area-fill id
+  `0x78316e`, source record `0x782a88`, rule objects under page-root `+0x24`,
+  published rule list, and bridged render-record rule list `+0x1c`.
+- Derived/cache state:
+  bucket/key fields `0x782a7c`, `0x782a7d`, and `0x782a7e`; horizontal phase
+  `0x782dc0`; bridged selector bit `0x10`; continuation word `+0x0c`; row
+  digests and render-band fields.
+- Parser scratch:
+  six-byte command records consumed by `0x10e68`, `0x10e22`, `0x10a40`,
+  `0x10ae0`, `0x10dce`, and `0x10898`; parser mode and command cursor
+  `0x78299e`.
+- Firmware bookkeeping:
+  stream allocator cursors `0x782a70`, `0x782a72`, and `0x782a76`; retry flag
+  `+0x15.0`; publication flag `0x782996`; scheduler cursors and render-work
+  progress words.
+- Hardware/external state:
+  none for the ROM-local rectangle/rule command-family contract.
+- Unknown:
+  no unresolved software-visible middle edge remains for the covered
+  selector-7, gray-selector, pattern-selector, landscape-remap, clipping,
+  no-room retry, addressed-storage, publication, and mixed text/rule/raster
+  streams. Remaining rectangle work is limited to byte streams that change
+  clipping output, allocation rollover, retry publication fields, rule object
+  bytes, bridge state, render dispatch, or rendered rows.
+
+Output effect:
+
+- Selector `7` renders through `0x1f596`; the solid crossing fixture starts at
+  y `78`, draws two rows in the first band, carries three rows in `+0x0c`,
+  and draws the remainder at y `0` in the next band.
+- Non-solid selectors render through `0x1f4e0`. The selector matrix pins gray
+  selectors `0..6`, pattern selectors `8..13`, sub-byte shifted HP pattern
+  rows, and patterned continuation across bands.
+- `host-fetched alternate rectangle selectors feed full page records` proves
+  gray selector `4` and portrait pattern selector `9` with compact text,
+  bridge normalization, `0x1f446` dispatch, and composed page-row digests.
+- `host-fetched rectangle selector matrix feeds full page records` extends
+  that page-visible path to every non-solid selector id and the landscape
+  pattern remaps.
+- The no-room retry fixture proves allocation failure publishes the existing
+  compact text bucket, creates a fresh root, retries the preserved selector-7
+  source record, bridges it, and renders the retried rule.
+
+Evidence:
+
+- Detail note: [rectangle-graphics.md](rectangle-graphics.md).
+- Semantic checkpoint: `Rectangle Rule Producer And Renderer` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Fixtures:
+  `0x10e68/0x10e22/0x10a40/0x10ae0 rectangle size commands update packed
+  dimensions`,
+  `0x10898 ESC *c#P maps fill selectors and queues rule object`,
+  `0x10b80 rectangle fill clips negative left edge before queueing`,
+  `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
+  fills`,
+  `0x13386/0x133aa-modeled rectangle/rule list object and bridge
+  normalization`,
+  `0x1f446/0x1f596 renders solid black rectangle rule pixels`,
+  `0x1f4e0 renders gray and HP pattern selector matrix`,
+  `0x1f4e0 carries patterned rule remainder across render bands`,
+  `0x1f446 page-band walk assembles patterned rule rows`,
+  `host-fetched alternate rectangle selectors feed full page records`,
+  `host-fetched rectangle selector matrix feeds full page records`, and
+  `rectangle parser trace feeds no-room retry path`.
+- Disassembly:
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+  `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.
 
 ## Worked Path: Raster Row
 

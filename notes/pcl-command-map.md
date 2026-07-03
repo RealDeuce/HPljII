@@ -59,6 +59,15 @@ undocumented imaging commands:
   `ESC Z` bytes inside their direct `0xa904` reader loops before returning. The
   checked-in semantic contract is [display-functions.md](display-functions.md).
 
+Normal mode-zero C0 rows `0x00`, `0x07`, and `0x0b` are also matched
+zero-handler table rows, not unknown imaging commands. They enter the shared
+terminal state-transition path in the main parser loop, restore any pending
+delayed payload through `0x12218`, reset parser record and scratch cursors, and
+produce no direct page-record output. Since they match explicit table rows,
+they do not reach the selected-context unmatched-byte fallback that can send
+other bytes to printable handler `0xd04a`. The low-level path is documented in
+[pcl-parser-core.md](pcl-parser-core.md).
+
 ## High-Value Normal-Mode Handlers
 
 These command-to-handler anchors are current priorities for

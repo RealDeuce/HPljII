@@ -204,6 +204,16 @@ rather than an immediate action. In normal mode, the loop writes entry `+1` to
 delayed payload, then resets the command-record and scratch cursors to their initial
 parser values.
 
+The normal table's mode-zero blank C0 rows `0x00`, `0x07`, and `0x0b`
+are concrete examples of that matched zero-handler path. They have next mode
+zero, so they enter `0x11912..0x119bc`, call `0x12218`, reset
+`0x78299e`, `0x782a26`, `0x782a3e`, and `0x782a56`, and clear the
+local matched-byte buffer. Because these bytes match explicit table entries,
+they bypass the unmatched mode-zero normal fallback at `0x118d6..0x11900`.
+That fallback is the only path in this loop that consults `0x782f06` /
+`0x782eeb` and may route an otherwise unmatched byte through printable handler
+`0xd04a`.
+
 If no table entry matches in mode zero normal mode, the loop consults the active
 font-context state at `0x782f06` / `0x782eeb`. If that context byte is `1`, it calls
 `0xd04a` for the byte; otherwise it ignores the byte and fetches again.

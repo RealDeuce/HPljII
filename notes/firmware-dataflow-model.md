@@ -261,6 +261,147 @@ Renderer-facing examples:
 - Landscape/fixed-width span output converges through `0x136d2`, bridge list
   `+0x20`, and renderer `0x1f756`.
 
+## Worked Path: Raster Row
+
+This is the current concrete example of the full dataflow. The primary byte
+stream is:
+
+```text
+ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55
+```
+
+In bytes:
+
+```text
+1b 2a 74 33 30 30 52 1b 2a 72 31 41
+1b 2a 62 34 57 f0 0f aa 55
+```
+
+Parser dispatch:
+
+- The host bytes are fetched through `0xa904` and delivered to parser loop
+  `0x11774`.
+- `ESC *t300R` produces command record `80 52 01 2c 00 00` and calls
+  handler `0x10808`.
+- `ESC *r1A` produces command record `80 41 00 01 00 00` and calls handler
+  `0x1075a`.
+- `ESC *b4W` produces command record `80 57 00 04 00 00` and calls handler
+  `0x11f82`.
+
+Command behavior:
+
+- `0x10808` handles raster resolution. Because raster active byte
+  `0x783182` is clear, requested `300` selects scale `1` and encoded mode
+  `0` in raster state block `0x783170`.
+- `0x1075a` starts raster graphics. Parameter `1` seeds the origin from the
+  active cursor axis, copies that origin to raster state `+0x00`, computes
+  byte limit `+0x10`, and leaves the raster state ready for row transfers.
+- `0x11f82` does not consume the four payload bytes. It schedules delayed
+  handler `0x105d0` through `0x121cc`, saving the handler longword and the
+  six-byte command record in parser scratch.
+
+Delayed payload handoff:
+
+- `0x121cc` stores pending byte `0x782a1a = 1`, handler longword
+  `0x782a1c = 0x105d0`, and snapshot
+  `01 00 01 05 d0 80 57 00 04 00 00`.
+- When parser mode returns to zero, `0x12218` restores record
+  `80 57 00 04 00 00` into the command-record buffer and calls `0x105d0`
+  through the saved handler pointer.
+- `0x105d0` rewinds `0x78299e` by six, reads record word `+2` as byte count
+  `4`, sets active byte `+0x12`, computes the transfer row, and gates the
+  payload against page extent and byte limit.
+
+Page-object creation:
+
+- Accepted rows pass the beyond-extent test, so `0x105d0` ensures a current
+  page root through `0x10084`.
+- `0x105d0` stores the raster row word in state `+0x02`, accepted byte count
+  in state `+0x04`, and overflow count in state `+0x06`.
+- Nonnegative accepted rows call `0x13070` with raster state block
+  `0x783170`.
+- `0x13070` computes bucket index `0x782a7c` from row `+0x02`, packed key
+  `0x782a7e` from row/x state, and requested object size from accepted count
+  `+0x04`.
+- `0x13250` allocates and links an encoded raster bucket object under
+  page-root `+0x1c`.
+- `0x138de` copies the accepted payload bytes from `0xa904` into object
+  payload `+0x0a`. Its local control-pair rule maps queued `1a 58` to byte
+  `00`; the primary stream has no such pair.
+
+The primary encoded object is:
+
+```text
+00 00 00 00 80 00 00 04 00 01 f0 0f aa 55
+```
+
+Object fields:
+
+- `+0x00`: next pointer `0`.
+- `+0x04`: class byte `0x80`, selecting encoded raster rendering.
+- `+0x05`: encoded mode `0`.
+- `+0x06`: payload capacity `4`.
+- `+0x08`: packed coordinate/key `0x0001`.
+- `+0x0a`: payload bytes `f0 0f aa 55`.
+
+Publication and bridge:
+
+- The row object remains page content under the current page root until a
+  publication path such as FF or `0xff1e` finalizes the root.
+- `0xff1e` publishes the current root, sets publication flag `0x782996`, and
+  clears current root pointer `0x78297a`.
+- The scheduler selects a published source into `0x780eae`.
+- `0x1ed84` seeds the active render record.
+- `0x1edc6` copies source root `+0x1c` to render-record `+0x18`, preserving
+  the encoded raster bucket chain for render dispatch.
+
+Render scheduling and pixels:
+
+- `0x1eba4` advances active render work and calls `0x1ef6a` when the current
+  band has capacity.
+- `0x1ef6a` calls `0x1ef86` to compute band destination fields, then calls
+  `0x1efc2` for bucket-chain objects.
+- `0x1efc2` sees object byte `+4 & 0xc0 == 0x80` and dispatches to encoded
+  raster writer `0x1f88e`.
+- `0x1f88e` selects helper `0x1f8da` from table `0x1f8ca` because
+  `object[5] & 0x03 == 0`.
+- Mode `0` copies literal payload words into the destination row. For the
+  primary object above, the documented rendered row is:
+
+```text
+................####........#####.#.#.#..#.#.#.#
+```
+
+State classification for this path:
+
+- Canonical state:
+  raster block `0x783170`, current page root `0x78297a`, encoded bucket object
+  fields, published source record, and render-record bucket root.
+- Derived/cache state:
+  `0x782a7c`, `0x782a7e`, `0x782a80`, `0x783a20`, `0x783a22`, and
+  `0x783a28`.
+- Parser scratch:
+  delayed snapshot fields `0x782a1a`, `0x782a1c`, `0x782a20..0x782a25`,
+  restored record `80 57 00 04 00 00`, and payload source position.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70`, `0x782a72`, `0x782a76`, publication
+  flag `0x782996`, scheduler cursors, and render-work progress words.
+- Unknown:
+  no unresolved ROM-local object layout or dispatch edge remains for this
+  primary path. Remaining raster work is byte-stream variants that change gate
+  outcomes, dense-row splitting, bridge fields, or rendered rows.
+
+Evidence for the path is in [raster-graphics.md](raster-graphics.md),
+[page-record-storage.md](page-record-storage.md),
+[active-render-scheduler.md](active-render-scheduler.md), and
+[page-raster-imaging.md](page-raster-imaging.md). The key focused listings are
+`generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`, and
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
+
 ## State Classification
 
 Detail notes should classify fields by role so the reproduction model does not

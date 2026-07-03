@@ -47,6 +47,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Font selection, downloaded glyphs, macro replay, and resource boundaries:
   `Worked Path: Page Font Scheduler Resource Handoff`,
   `Worked Path: Font Selection To Visible Glyphs`,
+  `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
   `Worked Path: Macro Execute Replay`,
   `Boundary: Secondary Segment-57 Source`.
@@ -1403,6 +1404,137 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
 `generated/disasm/ic30_ic13_font_id_select_017708.lst`, and
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+
+## Worked Path: Selected Font Metrics To Span Output
+
+This path covers the metric side of selected-font state. It starts with a
+selected context or downloaded descriptor payload and ends with a visible
+segment-list span. It is separate from compact glyph bitmap lookup: the same
+printable byte can queue a compact glyph object through `0x12f2e` and update
+span watermarks through `0xd4ac` or `0xd8fc`.
+
+Producer and selection flow:
+
+- Built-in, inline, and downloaded selection all converge on a current-font
+  context written by `0x144d2`, map rebuild `0x14c64`, page-root slot install
+  `0xc428` / `0xc4fc`, and printable source capture `0x1393a`.
+- Source byte `+0x10` selects the metric consumer family. Zero enters the
+  unflagged printable path `0xd140 -> 0xd3b2 -> 0xd4ac`; nonzero enters the
+  flagged path `0xd550 -> 0xd824 -> 0xd8fc`.
+- Downloaded descriptor validation `0x16fae..0x17016` reads the 32-entry
+  descriptor table at `0x16eae`. It stages fields under `0x782862`;
+  `0x1719c..0x1725c` copies the accepted fields into the allocated payload
+  consumed later by printable source capture.
+
+Metric fields:
+
+- Unflagged consumer `0xd4ac` reads context bytes `+0x2b`, `+0x2c`, and
+  `+0x2d`. They act as alternate y offset, lower y bound, and height or page
+  extent contribution for pending text spans.
+- Flagged consumer `0xd8fc` reads context words `+0x16`, `+0x18`, and
+  `+0x1a`. They act as lower y bound, height or page extent contribution, and
+  alternate y offset for offset-table/resource-style contexts.
+- Parser-produced downloaded metrics use canonical descriptor fields
+  `+0x16` first code or lower bound, `+0x14` range/count, and `+0x1a` signed
+  flagged offset. Helper `0x17430..0x1749c` derives
+  `+0x18 = +0x14 - +0x16 - 1`; helper `0x1762a..0x1763c` writes signed
+  offset word `+0x1a`.
+- Derived unflagged field `+0x2c` is written by `0x1757a..0x175b8` as
+  `min((value + 2) >> 2, word(+0x14)) << 2`.
+
+Span state and consumers:
+
+- Pending span state lives in derived/cache fields `0x783184..0x78318a`.
+  `0x783184` enables the span update, `0x783185` selects alternate-y
+  behavior, `0x783186` / `0x783188` carry low/high x, and `0x78318a`
+  carries high y.
+- `0xd4ac` and `0xd8fc` both reject disabled state, before-lower y, and
+  beyond-page-extent y. On accepted input, they update high-y and high-x from
+  the selected metric fields and current cursor.
+- When current x is below low-water `0x783186`, both consumers flush through
+  `0x12714` / `0x126e2`. The flush produces segment-list bucket objects under
+  page-root `+0x1c`.
+- Those segment-list objects bridge through `0x1edc6` to render record
+  `+0x18` and render through `0x1ef6a -> 0x1efc2 -> 0x1f812`.
+
+State classification:
+
+- Canonical state:
+  selected context records `0x782ee6` / `0x782ef6`, page-root context slots,
+  source flag byte `+0x10`, unflagged fields `+0x2b..+0x2d`, flagged fields
+  `+0x16`, `+0x18`, `+0x1a`, and segment-list page objects emitted by
+  `0x12714`.
+- Derived/cache state:
+  descriptor-derived words `+0x18` and `+0x2c`, pending span watermarks
+  `0x783184..0x78318a`, selected candidate pointers `0x7828a8` /
+  `0x7828de`, and render-band fields used by `0x1f812`.
+- Parser scratch:
+  descriptor staging base `0x782862`, validation cursor, payload budget
+  `0x783140`, optional symbol staging `0x782842..0x782856`, and active
+  command records while downloaded descriptors are parsed.
+- Firmware bookkeeping:
+  descriptor type byte `+0x0c`, allocation units `0x7827ba`, downloaded
+  record/candidate management around `0x16c14`, page-root live flags, and
+  publication/scheduler progress.
+- Hardware/external state:
+  none for this ROM-local span contract.
+- Unknown:
+  no unresolved middle edge remains for the documented producer formulas,
+  legal selected forms, `0xd4ac` / `0xd8fc` consumer gates, or segment-list
+  render handoff. Remaining work is broader selected-font cross-products or
+  manual-facing names for consumed validation fields, unless a new stream
+  changes copied metric fields, selected context form, span object bytes, or
+  rendered rows.
+
+Output effects:
+
+- Fixture `unflagged printable d4ac low-watermark flush renders span` proves
+  cursor y `21`, fields `+0x2b/+0x2c/+0x2d = 7/0/10`, and alternate-y state
+  produce high-y `28`, flush through `0x12714`, and render segment-list rows
+  `12..14`.
+- Fixture `flagged printable d8fc low-watermark flush renders span` proves
+  cursor y `21`, fields `+0x16/+0x18/+0x1a = 0/10/18`, and alternate-y state
+  produce high-y `3`, flush through `0x12714`, and render segment-list rows
+  `3..5`.
+- Host-fetched `ESC )s80W` descriptor fixtures prove `0x16fae` /
+  `0x1719c` can feed both legal forms: inline/unflagged contexts reach
+  `0xd4ac` and resource/flagged contexts reach `0xd8fc`; swapped forms fail
+  at concrete map/render boundaries rather than forming additional legal
+  metric paths.
+- Legal descriptor-matrix fixtures prove the ROM formulas above across lower
+  bounds, page extent equality, signed-offset extremes, range endpoints,
+  low-nibble rounding, byte-boundary rounding, mixed values, and tight ranges.
+
+Evidence:
+
+- Detail note: [font-context-metrics.md](font-context-metrics.md), especially
+  `Canonical span-metric consumers`,
+  `Parser-produced downloaded-font metric fields`, and the fixture-pinned
+  metric effects.
+- Semantic checkpoint:
+  `Text Span Flush And Fixed-Width Spans` and
+  `Selected-Font Metric Producer/Consumer Contract` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`, and
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`.
+- Fixture evidence includes
+  `flagged printable d8fc low-watermark flush renders span`,
+  `unflagged printable d4ac low-watermark flush renders span`,
+  `d4ac and d8fc span consumer branch family controls flush output`,
+  `host-fetched 0x1719c payload metrics feed d4ac span rows`,
+  `host-fetched 0x1719c payload metrics feed d8fc span rows`,
+  `descriptor metric fields match across inline and resource contexts`,
+  `legal descriptor metric value matrix drives d4ac and d8fc consumers`,
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`,
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`,
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc
+  consumers`, and
+  `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
+  consumers`.
 
 ## Worked Path: Explicit No-Output Parser Rows
 

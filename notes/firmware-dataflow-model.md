@@ -167,6 +167,57 @@ payload readers. The command-family notes own those effects:
   [vertical-forms-control.md](vertical-forms-control.md) documents VFC table
   definition and channel jumps.
 
+Command output-effect classes:
+
+- Immediate compact text output:
+  unmatched printable bytes and byte readers such as transparent data
+  `0x11f5a -> 0x12452` and display functions `0x12536` eventually re-enter
+  printable/text queue paths `0xd04a`, `0xd0f0`, `0xd824`, and `0x12f2e`.
+- Cursor and layout state for later output:
+  CR/LF/HT/BS handlers `0xf02c`, `0xf08c`, `0xf1cc`, and `0xf2a8`,
+  cursor/margin handlers `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf560`,
+  `0xf60a`, `0xf48c`, and `0xf692`, HMI/VMI handlers `0xca8c`, `0xcb00`,
+  and `0xc992`, and wrap/perforation handlers `0xedb0` and `0xee64` mutate
+  state consumed by later printable text, span flushing, VFC, or raster
+  placement.
+- Publication/page-boundary commands:
+  FF `0xf0f0`, reset `0xcc52`, page-size `0xfc74`, orientation `0x10220`,
+  paper-source `0xef62`, and copy-count storage `0xeef0` converge on
+  publication through `0xff1e` before render bridge `0x1ed84` / `0x1edc6`.
+- Binary payload producers:
+  raster transfer `0x11f82 -> 0x105d0`, VFC table load
+  `0x11f6e -> 0x12cfe`, transparent data `0x11f5a -> 0x12452`, and
+  downloaded-font/glyph payloads `0x11f96 -> 0x15d0a/0x16c14` use delayed
+  parser restore `0x121cc -> 0x12218`, then either queue page objects or
+  update state consumed by later commands.
+- Font/resource state for later output:
+  symbol/font-designation wrapper `0x120be`, attribute wrappers
+  `0x12082`, `0x12096`, `0x12046`, `0x1206e`, `0x120aa`, and `0x1205a`,
+  common refresh `0xc580`, candidate selection `0x13eb8`, symbol fallback
+  `0x156de`, font-ID selection `0x17708`, and page-root context install
+  `0xc428` / `0xc4fc` affect later `0xd04a` glyph resolution rather than
+  drawing pixels immediately.
+- Non-text page-object producers:
+  rectangle/rule commands `0x10e68`, `0x10e22`, `0x10dce`, `0x10a40`,
+  `0x10ae0`, and final fill `0x10898` write rule state and queue objects
+  through `0x10b80`, `0x13386`, and `0x133aa`; raster commands `0x10808`,
+  `0x1075a`, `0x107fa`, and delayed `0x105d0` queue encoded-span objects
+  through `0x13070` / `0x13250`.
+- Macro/data-chain replay:
+  macro ID `0xe112`, macro control `0xdd08`, lookup `0xe0a4`, append
+  `0xe002`, execute/call frame builder `0xe418`, overlay frame builder
+  `0xe4f4`, and cleanup `0xe22c` create or consume stored byte streams that
+  return to byte fetch `0xa904`.
+- Host/status output without page objects:
+  model-ID wrapper `0x12034 -> 0x122be` and host-output FIFO helpers
+  `0xb0c0`, `0xb090`, and `0xae2c` write backchannel bytes rather than page
+  records.
+- Explicit no-page-output parser rows:
+  normal mode-zero rows for `0x00`, `0x07`, and `0x0b`, alternate/data C0
+  append rows, `ESC ?`, `ESC Z`, and unimplemented `ESC &lT/t` parser rows
+  are documented as parser artifacts or direct-reader terminators, not missing
+  imaging commands.
+
 For each command family, the detail note should identify the parsed command
 record, handler address, state fields read and written, downstream consumers,
 visible output effect, and unresolved boundaries.

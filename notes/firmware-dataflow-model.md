@@ -489,6 +489,127 @@ alternate/data blank rows at mode-0 table `0x0112f4..0x01133c`. Key supporting
 listings are `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` and
 `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
 
+## Worked Path: Display Functions Direct Reader
+
+This path covers `ESC Y ... ESC Z`, which is not parsed as ordinary bytes after
+the `Y` command. The handler enters a direct reader loop over later host bytes
+and stops only after a normalized `ESC Z` pair or no-byte return.
+
+The primary stream is:
+
+```text
+ESC Y ! 05 ! ESC Z
+```
+
+Parser dispatch:
+
+- The initial command bytes enter through `0xa904`, parser wrapper `0xda9a`,
+  and parser loop `0x11774`.
+- Normal parser mode 1 routes byte `Y` to handler `0x12536`.
+- Alternate/data parser mode 1 routes byte `Y` to handler `0x12120`.
+- After that dispatch, both handlers fetch loop bytes directly through
+  `0xa904`, not through `0xda9a` and not through the normal parser table.
+- The local loop tracks whether the previous routed/appended value was
+  `ESC` in flag `D4`. A value `Z` terminates only when `D4 == 1`.
+- Pair `1a 58` is normalized inside the reader to value `0x7f` after
+  side-effect helper `0xd99a`.
+
+Normal output behavior:
+
+- Handler `0x12536` derives the same filter state used by transparent print
+  data: selected slot `0x782f06`, selected context byte
+  `0x782eea + 0x10 * slot`, fallback high-control byte `0x782efa`, and local
+  high-control filter word at `A6-2`.
+- Values `0x00..0x1f` route through fixed-space handler `0xd0f0` only when
+  the selected context byte is zero.
+- Values `0x80..0x9f` route through `0xd0f0` only when the local filter word
+  is zero.
+- All other values route through printable handler `0xd04a`.
+- If the routed value is CR `0x0d`, `0x12536` calls post-handler `0xf054`
+  after the text/control route.
+
+For the primary stream, `0x12536` consumes values `21 05 21 1b 5a` and routes
+them as:
+
+```text
+d04a d0f0 d04a d0f0 d04a
+```
+
+The terminating `ESC Z` bytes participate as routed values before the loop
+exits. The visible entries are `!`, `!`, and `Z`, queued at compact
+coordinates `0x0001`, `0x0403`, and `0x0405`. The fixed-space routes advance
+cursor state without producing compact glyph entries in the pinned built-in
+source path.
+
+Page-object and render path:
+
+- Routed printable values use the same `0xd04a -> 0xd824 -> 0x12f2e`
+  compact text path as ordinary printable bytes.
+- `0x12f2e` queues compact text entries under current page-root bucket array
+  `+0x1c` through shared bucket producer `0x1387c`.
+- A later publication path calls `0xff1e`, then `0x1ed84` and `0x1edc6` copy
+  the bucket and context roots into an active render work record.
+- `0x1ef6a` dispatches the compact object through `0x1efc2`, `0x1effe`,
+  glyph resolver `0x1f354`, and the compact row-copy helpers.
+
+Alternate/data behavior:
+
+- Handler `0x12120` writes literal prefix `ESC Y` through macro/data append
+  sink `0xe002`.
+- It then appends each normalized loop value through `0xe002` until the same
+  `ESC Z` termination or no-byte return.
+- The fixture-backed append stream `21 1a 58 1b 5a` is stored as:
+
+```text
+1b 59 21 7f 1b 5a
+```
+
+- This alternate/data path has no immediate pixels. Its output is stored input
+  for later macro/data-chain replay.
+
+Filter-on variant:
+
+- With selected-context byte `1` and high-control filter `1`, stream
+  `ESC Y 05 80 1a 58 ! ESC Z` normalizes `1a 58` to `0x7f`.
+- Values `05 80 7f 21 1b 5a` all route through `0xd04a` and queue six compact
+  entries, proving that display-functions bytes in control-looking ranges can
+  become visible glyphs when the filters are nonzero.
+
+State classification for this path:
+
+- Canonical state:
+  direct-reader termination flag `D4`, normalized loop value `D5`, selected
+  text/context slot `0x782f06`, current page root `0x78297a`, compact text
+  objects, macro/data append stream for alternate mode, published source
+  record, and render-record bucket/context roots.
+- Derived/cache state:
+  selected context byte `0x782eea + 0x10 * slot`, fallback filter byte
+  `0x782efa`, local high-control filter word, compact coordinates, glyph
+  mapping results, and render-band fields.
+- Parser scratch:
+  initial `ESC Y` parser mode and table dispatch state, plus any parser state
+  resumed after the direct reader returns.
+- Firmware bookkeeping:
+  `0xd99a` local control-report side effect, `0xf054` CR post-handler,
+  append sink `0xe002`, stream allocator fields, publication flag
+  `0x782996`, scheduler cursors, and render-work progress words.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the normal `0x12536` direct
+  reader loop, its default-filter and filter-on route predicates, or the
+  alternate/data `0x12120` append loop. External status-consumer naming for
+  neighboring `ESC z` remains outside this visible-output path.
+
+Evidence for this path is in
+[display-functions.md](display-functions.md),
+[pcl-parser-core.md](pcl-parser-core.md),
+[transparent-print-data.md](transparent-print-data.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting listings
+are `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+`generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: Transparent Print Data
 
 This path covers a counted payload mode. Transparent print data is not an

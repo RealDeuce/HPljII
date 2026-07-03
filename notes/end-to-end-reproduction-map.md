@@ -80,7 +80,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   Reproduction evidence is
   [external-ready-service.md](external-ready-service.md),
   `External Ready And Service Status Loop` in `notes/semantic-state-model.md`,
-  plus fixtures for `0xc0ae` publishing
+  and `Worked Path: External Ready Service Preemption` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus fixtures for
+  `0xc0ae` publishing
   `$fffee005.7/.6` through `0x9bee(0x780e2e, 0x80/0x40)`, `0xc1c6`
   entering non-returning `68 SERVICE` at `0x85c0` from
   `0x780e36 & 0x00000008`, and `0xc1c6` replaying pending buffer
@@ -148,7 +150,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`; derived/filtering state
   is `0x782eea + 0x10 * 0x782f06`, `0x782efa`, and high-byte flags
   `0x783132`/`0x783133`. Remaining risk is the secondary segment-57
-  resource-window continuation: fixture
+  resource-window continuation, tracked by
+  `Boundary: Secondary Segment-57 Source` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md): fixture
   `transparent secondary segment-57 continuation policies diverge after
   verified bytes` pins glyph `0x5f`, segment `0x39`, firmware source
   `0x0bfe22`, required range `0x0bfe22..0x0c0321`, and the first `478`
@@ -165,8 +169,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   and alternate table `0x116f6`. Reproduction evidence is
   [display-functions.md](display-functions.md),
   `Display Functions ESC Y Reader` in `notes/semantic-state-model.md`,
-  `ESC Y Display Functions Readers` in `notes/pcl-parser-core.md`, and
-  disassembly
+  `ESC Y Display Functions Readers` in `notes/pcl-parser-core.md`, surfaced
+  first as `Worked Path: Display Functions Direct Reader` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and disassembly
   `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
   The covered command-family contract is `ESC Y ... ESC Z` as a direct
   `0xa904` reader loop with local `1a 58 -> 7f` normalization, loop-local
@@ -190,8 +195,10 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
   Checked-in documentation is [pcl-command-map.md](pcl-command-map.md),
   [pcl-parser-core.md](pcl-parser-core.md), and the command-family checkpoints
-  in [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
-  `generated/analysis/ic30_ic13_pcl_command_map.md` and ROM dispatch trace
+  in [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Command Record And Payload Dispatch` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is `generated/analysis/ic30_ic13_pcl_command_map.md` and ROM dispatch trace
   fixtures. The `Checked-In Semantic Anchors` section in
   [pcl-command-map.md](pcl-command-map.md) is the current command-family index:
   it maps parser rows to the checked-in notes that already carry field groups,
@@ -230,7 +237,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Rule/rectangle producers:
   ROM evidence is `0x10898`, `0x10b80`, `0x13386`, and `0x133aa`.
   Reproduction evidence is `notes/rectangle-graphics.md` and
-  parser-to-rule fixtures, including
+  parser-to-rule fixtures, surfaced first as `Worked Path: Rectangle Rule` and
+  `Worked Path: Rectangle Rule Selectors And Clipping` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), including
   `host-fetched alternate rectangle selectors feed full page records` and
   `host-fetched rectangle selector matrix feeds full page records`.
 - Raster producers:
@@ -284,8 +293,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   Checked-in documentation is
   [publication-commands.md](publication-commands.md) and
   `Publication Commands To Rendered Page Records` in
-  [semantic-state-model.md](semantic-state-model.md). Supporting evidence is
-  `generated/analysis/ic30_ic13_page_root_finalization.md` plus reset, FF,
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Reset And Default Environment`, `Worked Path: FF Publication`,
+  and `Worked Path: Publication Commands To Rendered Page Records` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  is `generated/analysis/ic30_ic13_page_root_finalization.md` plus reset, FF,
   geometry, and retry publication fixtures.
 - Render bridge:
   ROM evidence is `0x1ed84`, `0x1edc6`, and `0x1ef86`.
@@ -299,7 +311,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 - Active render scheduler:
   ROM evidence is `0x1eb2a`, `0x1ecd6`, `0x1ed84`, and `0x1eba4`.
   Reproduction evidence is
-  [active-render-scheduler.md](active-render-scheduler.md) plus
+  [active-render-scheduler.md](active-render-scheduler.md), surfaced first as
+  `Worked Path: Published Record To Active Bands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus
   scheduler-produced band-word fixtures.
 - Render dispatch:
   ROM evidence is `0x1ef6a`, `0x1efc2`, `0x1f446`, `0x1f756`,
@@ -318,7 +332,9 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0xf0f0`, then publication and render handlers `0xff1e`,
   `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
   Reproduction evidence is `Mixed Text/Rule/Raster Page Record` in
-  `notes/semantic-state-model.md` plus fixtures
+  `notes/semantic-state-model.md`, surfaced first as
+  `Worked Path: Mixed Text/Rule/Raster Page Record` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus fixtures
   `host-fetched text rectangle raster FF publishes rendered page record`,
   `addressed text rectangle raster FF publishes rendered page record`,
   `addressed text/rule/raster field groups reach publication and render
@@ -332,9 +348,14 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   Checked-in documentation is [resource-rom.md](resource-rom.md),
   [built-in-resource-scan.md](built-in-resource-scan.md),
   [font-context-metrics.md](font-context-metrics.md), and
-  [font-sample-page.md](font-sample-page.md). Supporting evidence includes
-  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and compact glyph
-  fixtures.
+  [font-sample-page.md](font-sample-page.md), surfaced first as
+  `Worked Path: Built-In Resource Scan And Candidate Windows`,
+  `Worked Path: Font Selection To Visible Glyphs`,
+  `Worked Path: Firmware Font Sample Page`, and
+  `Worked Path: Compact Glyph Row-Copy Helpers` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
+  includes `generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and compact
+  glyph fixtures.
 - Downloaded font payloads:
   ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
   `0x1719c`.

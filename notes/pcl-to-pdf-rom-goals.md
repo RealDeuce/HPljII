@@ -146,8 +146,11 @@ Concrete software contracts already exist for these renderer components:
   [semantic-state-model.md](semantic-state-model.md).
 - Renderers:
   compact text, built-in and downloaded glyphs, raster modes `0..3`,
-  rectangle/rule fills, band walking, and mixed text/rule/raster page
-  streams are documented in [page-raster-imaging.md](page-raster-imaging.md),
+  rectangle/rule fills, shared `0x1ef6a` dispatch order, band walking, and
+  mixed text/rule/raster page streams are documented first by
+  `Worked Path: Render Dispatch And Pixel Composition` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
+  [page-raster-imaging.md](page-raster-imaging.md),
   [raster-graphics.md](raster-graphics.md), and
   [rectangle-graphics.md](rectangle-graphics.md).
 

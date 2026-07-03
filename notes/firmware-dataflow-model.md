@@ -610,6 +610,125 @@ are `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
 `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
+## Worked Path: Mixed Direct Controls
+
+This path covers a mixed text/control stream where an `ESC &k#G`
+line-termination command changes how a later direct CR byte mutates cursor
+state before the next printable glyph. It connects normal parser dispatch,
+direct-control state, compact page records, and rendered glyph rows.
+
+The primary stream is:
+
+```text
+ESC &k1G ! CR !
+```
+
+In bytes:
+
+```text
+1b 26 6b 31 47 21 0d 21
+```
+
+Parser dispatch:
+
+- The command bytes enter through host fetch `0xa904`, parser wrapper
+  `0xda9a`, and parser loop `0x11774`.
+- `ESC &k1G` dispatches to handler `0xedf8`.
+- `0xedf8` rewinds the six-byte command record at `0x78299e`, normalizes
+  selector `1`, and writes line-termination byte `0x80` to `0x78318f`.
+- The first printable byte `0x21` falls through the normal printable route
+  at `0xd04a`.
+- Direct CR byte `0x0d` is a normal mode-zero table entry whose handler is
+  `0xf02c`.
+- `0xf02c` calls CR helper `0xf06e`, which copies left/default margin
+  `0x782dd6` into horizontal cursor `0x782c8a`.
+- `0xf02c` then calls span flush helper `0xf34a`; that preserves any
+  pending text span before the cursor state changes.
+- Because `0x78318f` bit 7 is set, `0xf02c` calls LF helper `0xf0b2`.
+  That advances vertical cursor `0x782c8e` by VMI `0x783160`.
+- The second printable byte `0x21` again reaches `0xd04a`, now using the
+  post-CR and post-LF cursor position.
+
+Command behavior and page objects:
+
+- Both printable bytes use the compact text path documented in
+  `Worked Path: Printable Glyph`: `0xd04a -> 0xd824 -> 0x12f2e`, with
+  shared compact bucket storage through `0x1387c`.
+- The first glyph proves that ordinary printable routing remains active
+  after the `ESC &k1G` command.
+- The direct CR byte itself produces no compact glyph object. Its page-visible
+  effect is the cursor mutation consumed by the later printable byte.
+- Fixture `mixed printable/control parser trace feeds page-record queue`
+  pins the handler sequence `0xedf8`, `0xd04a`, `0xf02c`, `0xd04a`.
+- Fixture `mixed printable/control page-record stream queues through
+  0x1387c` pins a single page-record root and compact bucket reuse.
+- The second glyph queues at compact coord `0x3b00`, proving that the
+  `0xf02c` CR handler applied the stored CR+LF mode before the later
+  `0xd04a` placement.
+
+Render path:
+
+- Publication uses the same page-root publication path described in
+  `Worked Path: FF Publication`: `0xff1e` selects the queued page objects
+  for rendering.
+- Render setup `0x1ed84` and bridge `0x1edc6` copy the compact bucket and
+  context roots into the active render work record.
+- Render dispatch `0x1ef6a` reaches compact text renderer `0x1efc2` and
+  the glyph-row copy helpers through the normal compact text branch.
+- Fixture `mixed printable/control page-record bridge renders post-CR glyph
+  rows` pins the bridged rows for the second glyph, so the documented state
+  mutation is visible as shifted output rows rather than only as RAM state.
+
+Related direct-control variants:
+
+- `ESC &k2G!\n!` writes mode byte `0x60`; LF handler `0xf08c` tests bit 6
+  and applies CR+LF before the second glyph, also queueing it at compact
+  coord `0x3b00`.
+- `ESC &k2G!\f` routes FF through `0xf0f0`; mode `0x60` makes FF perform
+  a CR-style horizontal reset and page-eject work.
+- `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`.
+  HT advances horizontal cursor to `21`, BS backs it to `20`, and the glyph
+  queues at compact coord `0x0a01` / pixel x `26`.
+- `ESC &k6H!!` routes HMI handler `0xca8c`; packed HMI value `15` moves the
+  second glyph to compact coord `0x0501` without changing downstream compact
+  text storage or render dispatch.
+
+State classification for this path:
+
+- Canonical state:
+  line-termination mode `0x78318f`, horizontal cursor `0x782c8a`, vertical
+  cursor `0x782c8e`, left/default margin `0x782dd6`, VMI `0x783160`, current
+  page root `0x78297a`, compact bucket object, published source record, and
+  render-record bucket/context roots.
+- Derived/cache state:
+  compact text coordinates, including pinned second-glyph coord `0x3b00`,
+  glyph metrics used by `0xd04a`, and render-band fields produced after
+  bridge setup.
+- Parser scratch:
+  parser mode byte `0x782999`, command-record cursor `0x78299e`, six-byte
+  `ESC &k1G` record contents, normal direct-control byte `0x0d`, and the
+  parser state resumed for the second printable byte.
+- Firmware bookkeeping:
+  page-root allocation state, compact bucket allocation cursors, span-flush
+  bookkeeping in `0xf34a`, publication flag `0x782996`, scheduler cursors,
+  and render-work progress words.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented
+  `ESC &k1G!\r!` parser-to-render path. Remaining uncertainty is outside this
+  stream: broader direct-control variants, hardware output timing, and
+  physical print-engine effects.
+
+Evidence for this path is in
+[direct-control-codes.md](direct-control-codes.md),
+[pcl-command-map.md](pcl-command-map.md),
+[font-context-metrics.md](font-context-metrics.md),
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md). Key supporting listings
+are `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+`generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
 ## Worked Path: Transparent Print Data
 
 This path covers a counted payload mode. Transparent print data is not an

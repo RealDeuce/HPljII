@@ -202,6 +202,56 @@ The shared producers are:
 - `0x133aa`: insert ordered rectangle/rule objects under root `+0x24`.
 - `0x136d2`: insert fixed-width or landscape span objects under root `+0x28`.
 
+Producer-to-renderer map:
+
+- `0x12f2e -> 0x1387c`: printable text, transparent/display bytes, and
+  downloaded glyphs. These write bucket-array objects under root `+0x1c`,
+  bridge to render `+0x18`, and render through compact dispatch
+  `0x1efc2 -> 0x1effe`.
+- `0x12714 -> 0x13520/0x135f0`: portrait flushed text spans. These write
+  segment-list bucket objects under root `+0x1c`, bridge to render `+0x18`,
+  and render through `0x1f812`.
+- `0x12714 -> 0x136d2`: landscape flushed text spans. These write fixed-list
+  objects under root `+0x28`, bridge to render `+0x20`, and render through
+  `0x1f756`.
+- `0x13070 -> 0x13250`: raster payload rows from `ESC *b#W`. These write
+  encoded-span bucket objects under root `+0x1c`, bridge to render `+0x18`,
+  and render through `0x1f88e`.
+- `0x13386 -> 0x133aa`: rectangle/rule commands from `ESC *c#P`. These write
+  rule-list objects under root `+0x24`, bridge to render `+0x1c`, and render
+  through `0x1f446`.
+
+The shared stream allocator means these objects can be interleaved in the same
+page root. Fixture `addressed page-record writers share 0x1381c across chunk
+rollover` proves compact, rule, and fixed-list writers share the same root
+stream. Fixture `addressed text/rule/raster field groups reach publication and
+render entry` proves compact text, selector-7 rule, and mode-0 raster objects
+publish from one page record and render through the bridge. The dense raster
+split path `0x132b6` may create multiple encoded-span bucket objects from one
+accepted transfer, but those objects still use the same `+0x1c -> +0x18 ->
+0x1f88e` consumer path.
+
+State role split:
+
+- Canonical page-object state:
+  root fields `+0x1c`, `+0x24`, `+0x28`, context slots `+0x2c..+0x68`, and
+  object headers/payloads allocated through `0x1381c`.
+- Derived/cache state:
+  producer keys `0x782a7a..0x782a7e`, stream allocator cursors
+  `0x782a70`, `0x782a72`, and `0x782a76`, and bridge/render caches such as
+  `0x783a20`, `0x783a22`, `0x783a28`, and `0x783a2c`.
+- Parser scratch:
+  the six-byte records and delayed-payload snapshots that led to these
+  producers; they are no longer consulted after objects are queued.
+- Firmware bookkeeping:
+  publication flag `0x782996`, page-root state byte `+4`, no-room/retry flags,
+  and scheduler progress fields.
+- Unknown:
+  no unresolved ROM-local producer-to-root-to-render mapping remains for the
+  listed object classes. New work should start from byte streams that create a
+  different object shape, root field, bridge value, continuation state, or
+  rendered row.
+
 This means command behavior should usually be documented as:
 
 ```text

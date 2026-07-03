@@ -37,7 +37,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Command Record And Payload Dispatch`,
   `Worked Path: Explicit No-Output Parser Rows`.
 - Host/status side channels with no direct page-object effect:
-  `Worked Path: Model-ID And Status Backchannel`,
+  `Worked Path: Host Interface Output FIFO And Model-ID Backchannel`,
   `Worked Path: Page Environment Status Bridge`,
   `Worked Path: External Ready Service Preemption`.
 - Text, controls, cursor placement, and transparent/display byte readers:
@@ -965,12 +965,13 @@ Evidence and reproduction contract:
 - Preserve the cursor rewind and delayed snapshot. Do not collapse command
   final bytes and following payload bytes into one parser event.
 
-## Worked Path: Model-ID And Status Backchannel
+## Worked Path: Host Interface Output FIFO And Model-ID Backchannel
 
-This path covers a parser-visible command that produces host/interface output
-instead of page objects. It belongs in the dataflow model because a
-bidirectional host can react to these bytes and change the later stream that
-reaches `0xa904`, even though the ROM does not draw pixels for the response.
+This path covers the host-interface output FIFO, its status-byte worker, and a
+parser-visible command that produces host/interface output instead of page
+objects. It belongs in the dataflow model because a bidirectional host can
+react to these bytes and change the later stream that reaches `0xa904`, even
+though the ROM does not draw pixels for the response.
 
 The primary response stream is:
 

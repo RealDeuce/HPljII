@@ -123,7 +123,8 @@ Concrete software contracts already exist for these renderer components:
   composed in [host-byte-fetch.md](host-byte-fetch.md),
   [io-interfaces.md](io-interfaces.md), and
   [semantic-state-model.md](semantic-state-model.md). Status side effects are
-  composed first by `Worked Path: Model-ID And Status Backchannel` and
+  composed first by
+  `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` and
   `Worked Path: Page Environment Status Bridge` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Parser:

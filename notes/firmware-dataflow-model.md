@@ -261,6 +261,144 @@ Renderer-facing examples:
 - Landscape/fixed-width span output converges through `0x136d2`, bridge list
   `+0x20`, and renderer `0x1f756`.
 
+## Worked Path: Host Byte Source Priority
+
+This is the byte-source boundary before any PCL command semantics. The primary
+direct stream is the mixed printable/control stream:
+
+```text
+ESC &k1G ! CR !
+```
+
+In bytes:
+
+```text
+1b 26 6b 31 47 21 0d 21
+```
+
+Source priority:
+
+- `0xa904` first runs pending service helper `0x10cc(0x780202)` and retries
+  from the top when service byte `0x7821cd` is set.
+- If buffered-source byte `0x780e66` is set and gate byte `0x780e3b` is also
+  set, `0xa904` returns `D7 = -1` before consuming any byte source.
+- The first pushback stack then wins over all later sources. Its canonical
+  fields are count word `0x783e8c` and one-past-next pointer `0x783e8e`.
+- The active data-chain frame at `0x782d76` wins next. Frame `+0x00/+0x04`
+  hold the payload pointer and remaining byte count, or `+0x04 = -1` for an
+  end marker that makes `0xa904` call `0xe22c` and retry.
+- The second pushback stack follows, using count word `0x783e76` and
+  one-past-next pointer `0x783e78`.
+- When selector byte `0x780e40` is zero, the ring source follows. It reads
+  from pointer `0x783e56`, decrements occupancy word `0x783e54`, wraps after
+  `0x783e53` back to `0x783a4c`, and returns the byte in `D7`.
+- Direct hardware modes run only after the buffered sources and ring source
+  have not supplied a byte. Selector `0x780e40 == 1` polls `0x8e01` and reads
+  `0x8801`; other nonzero selector values poll `0xfffee005` and read
+  `0xfffee001`.
+
+Startup/reset helper `0x3178` is the empty-state producer for this path. It
+clears the ring and pushback counts, initializes ring read/write pointers
+`0x783e56` and `0x783e5a` to `0x783a4c`, sets LIFO pointers `0x783e78` and
+`0x783e8e`, and sets low-water threshold `0x783e5e = 0x40`.
+
+Parser handoff:
+
+- Normal parser bytes go through `0xda9a`. It calls `0xa904`, returns
+  non-ESC bytes unchanged, and only performs ESC lookahead/logging when the
+  first returned byte is `0x1b`.
+- `0xdaf0` and `0xdb74` build six-byte command records from bytes supplied
+  by `0xda9a`; they do not choose host sources themselves.
+- Payload/control reader `0xdace` is separate. It calls `0xa904`, and only
+  its local `0x1a 0x58` probe maps to a normalized control result. This is
+  not a global byte-source normalization.
+- Display-functions, transparent-text, raster, VFC, and downloaded-font
+  payload readers either call `0xa904` directly or call a payload reader that
+  does. Each reader owns its own negative-return and `0x1a` pair behavior.
+
+Direct-output stream effect:
+
+- With the primary ring stream above, `0xa904` supplies bytes to `0xda9a`.
+- Parser loop `0x11774` dispatches `ESC &k1G` to wrap-mode handler `0xedf8`.
+- The following `!` reaches printable handler `0xd04a` and queues a compact
+  glyph through `0x12f2e` / `0x1387c`.
+- `CR` reaches control-code handler `0xf02c`, mutates text cursor state, and
+  leaves no direct pixels by itself.
+- The final `!` again reaches `0xd04a`, queues another compact glyph, and the
+  later bridge/render path `0x1ed84` / `0x1edc6` / `0x1ef6a` renders the same
+  page objects documented in the mixed-control path below.
+
+Macro replay effect:
+
+- Macro execute/call handlers build data-chain frames through `0xe418`.
+  Overlay/page-finalization replay builds a non-replay frame through
+  `0xe4f4`.
+- Those frames become the active `0x782d76` source. The replay bytes do not
+  enter a special parser; `0xa904` returns them before ring or direct
+  hardware input, so the same `0xda9a`, `0x11774`, command handlers, page
+  object producers, and renderers consume them.
+- Fixture `macro execute frame payload feeds 0xa904 data-chain bytes` proves
+  the source handoff. Fixtures `macro execute data-chain parser trace feeds
+  page-record stream` and `macro mixed-control data-chain parser trace feeds
+  page-record stream` prove the replayed bytes reach the same parser and page
+  record consumers as live ring bytes.
+
+State classification:
+
+- Canonical input state: first pushback stack `0x783e8c` / `0x783e8e`,
+  active data-chain pointer `0x782d76` and frame `+0x00`, `+0x04`, `+0x08`,
+  `+0x09`, `+0x0a`, second pushback stack `0x783e76` / `0x783e78`, ring
+  occupancy/read/write fields `0x783e54`, `0x783e56`, `0x783e5a`, and direct
+  selector byte `0x780e40`.
+- Derived/cache state: ring free capacity derived by `0xa6f4` from
+  `0x783e54`, low-water threshold `0x783e5e`, and status-sequence cursor
+  `0x783e62`.
+- Parser scratch: none is owned by `0xa904`. Scratch starts once a byte
+  reaches `0xda9a`, parser loop `0x11774`, delayed payload restore `0x12218`,
+  or a direct payload reader.
+- Firmware bookkeeping: service bytes `0x7821cd` and `0x7821cc`, buffered
+  source/gate bytes `0x780e66` and `0x780e3b`, direct-mode handshake shadows
+  `0x7821c4`, `0x7828ec`, `0x7828fa`, `0x7828fb`, and status accumulator
+  `0x780e2e`.
+- Unknown or external state: the board-level names for direct hardware
+  registers `0x8e01`, `0x8801`, `0x8c01`, `0xa601`, `0xaa01`,
+  `0xfffee001`, `0xfffee005`, and `0xfffee009`, and any data-chain frame
+  class outside observed `+0x09` values `2`, `3`, and `4`.
+
+Writers, readers, and evidence:
+
+- `0xa904` consumes all byte sources and updates source counts, pointers,
+  pending bits, retry state, and data-chain end state.
+- `0x9ec0` writes the two pushback stacks consumed by `0xa904`.
+- `0xa6cc` and `0xa846` write the ring source consumed by `0xa904`.
+- `0xe418`, `0xe4f4`, `0x9f6a`, and `0xe22c` own data-chain frame
+  production, byte consumption, and frame-end cleanup.
+- `0xda9a`, `0xdaf0`, `0xdb74`, `0xdace`, `0x11774`, payload readers, and
+  macro replay are the observed byte-source consumers.
+- The low-level contract is documented in
+  [host-byte-fetch.md](host-byte-fetch.md), [pcl-parser-core.md](pcl-parser-core.md),
+  and [macro-data-chain.md](macro-data-chain.md). Disassembly evidence is
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
+  `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  and
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`.
+
+Reproduction contract:
+
+- Preserve the `0xa904` source priority exactly: no-byte gate, first pushback,
+  active data-chain frame, second pushback, ring, then direct hardware.
+- Preserve service retry as invisible to parser callers except for the
+  immediate `D7 = -1` gate branch.
+- Preserve data-chain replay as a byte-source override before live input.
+- Preserve local payload-reader normalization. Do not rewrite `0x1a 0x58`
+  globally before dispatch.
+- Treat direct hardware register naming as external unless emulating the live
+  board interface. For byte-stream rendering, the ring and data-chain sources
+  are sufficient software-visible producers.
+
 ## Worked Path: Printable Glyph
 
 This is the normal-byte counterpart to the raster example below. The primary

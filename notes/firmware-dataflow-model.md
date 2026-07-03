@@ -54,6 +54,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: FF Publication`,
   `Worked Path: Page Environment Publication`,
   `Worked Path: Published Record To Active Bands`,
+  `Worked Path: Mixed Text/Rule/Raster Page Record`,
   `Worked Path: Render Dispatch And Pixel Composition`.
 - Non-text page objects and render dispatch:
   `Worked Path: Vertical Forms Control`,
@@ -2904,6 +2905,134 @@ Evidence:
   `0x1f0d2 renders wide inline compact payload row`,
   `0x1f1f0 renders segmented inline compact payload row`, and
   `0x1f264 renders segmented wide inline compact payload row`.
+
+## Worked Path: Mixed Text/Rule/Raster Page Record
+
+This path is the current heterogeneous page-image contract. It follows one
+host byte stream through parser dispatch, page-record storage, publication,
+render-record bridging, and pixel composition:
+
+```text
+! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF
+```
+
+The stream is important because no single command draws the final image. The
+parser queues three typed objects under one current page root, `0xff1e`
+publishes that root, `0x1ed84` / `0x1edc6` bridge it into a render record,
+and `0x1ef6a` renders the bucket and rule lists.
+
+Parser and command flow:
+
+- Host bytes are fetched by `0xa904` and dispatched by parser loop
+  `0x11774`.
+- Printable `!` reaches `0xd04a`, builds a source through `0x1393a`,
+  positions it through `0xd824`, ensures a root through `0x10084`, and queues
+  compact text through `0x12f2e` / `0x1387c`.
+- `ESC *c12a5b0P` reaches `0x10e68`, `0x10e22`, and final fill handler
+  `0x10898`, which queues a selector-7 rectangle rule through `0x10b80`,
+  `0x13386`, and `0x133aa`.
+- `ESC *t300R` reaches `0x10808`, and `ESC *r0A` reaches `0x1075a`, preparing
+  raster state block `0x783170`.
+- `ESC *b2W` reaches `0x11f82`, which schedules delayed handler `0x105d0`
+  through `0x121cc`. Terminal restore `0x12218` reinstalls command record
+  `80 57 00 02 00 00`; `0x105d0` consumes payload `c3 3c` and queues a
+  mode-0 encoded raster object through `0x13070` / `0x13250`.
+- FF reaches `0xf0f0` and publishes the current page through `0xff1e`.
+
+Canonical objects and fields:
+
+- Page-root bucket array `+0x1c` holds the compact text object at
+  `0x00d0c004` and the raster object at `0x00d0c038`; the published bucket
+  root is the encoded object bytes
+  `00 d0 c0 04 80 00 00 02 00 00 c3 3c`.
+- Page-root rule list `+0x24` holds the rectangle object at `0x00d0c02a`;
+  the published rule bytes are
+  `00 00 00 00 01 07 5c 01 00 0c 00 05 00 00`.
+- Context slots starting at root `+0x2c` are copied with the page; slot 0 is
+  `0x440946b4` in the addressed fixture for this stream.
+- `0x1edc6` copies root `+0x1c` to render `+0x18`, root `+0x24` to render
+  `+0x1c`, and context slots to render `+0x24..+0x60`.
+
+State classification:
+
+- Canonical state:
+  current page root `0x78297a`, bucket/rule/context root fields, compact text
+  object bytes, selector-7 rule object bytes, encoded raster object bytes,
+  published source record, and render-record roots.
+- Derived/cache state:
+  stream allocator cursors `0x782a70 = 0x00bc`,
+  `0x782a72 = 0x00d0c000`, `0x782a76 = 0x00d0c044`, plus render-band caches
+  `0x783a20 = 0x0050`, `0x783a22 = 0`, and
+  `0x783a28 = 0x00100000`.
+- Parser scratch:
+  delayed snapshot `01 00 01 05 d0 80 57 00 02 00 00`, restored transfer
+  record `80 57 00 02 00 00`, payload offset `28`, and payload bytes
+  `c3 3c`.
+- Firmware bookkeeping:
+  one stream allocation, one page-root allocation, one publication, one root
+  clear, publication flag `0x782996`, and active render scheduler progress.
+- Hardware/external state:
+  none required for the ROM-local byte-to-bitmap contract. Physical engine
+  pacing is a separate output boundary after the rendered band buffer exists.
+- Unknown:
+  no unresolved middle edge remains for the object fields or render bridge in
+  this exact stream. Remaining ROM-local work is byte streams that change text
+  source fields, rectangle clipping or selector state, raster gate outcomes,
+  `0x1381c` allocation/rollover fields, bridge roots, continuation state, or
+  rendered rows.
+
+Output and composition effect:
+
+- `0xff1e` publishes the same compact text, selector-7 rule, and mode-0 raster
+  objects that were assembled under the current page root.
+- `0x1ef6a` calls `0x1ef86`, then renders bucket objects through `0x1efc2`.
+  The raster object dispatches to `0x1f88e`, and the compact text object
+  dispatches to `0x1effe`.
+- `0x1ef6a` then renders the rule list through `0x1f446`; selector `7`
+  reaches solid helper `0x1f596`.
+- The documented row output contains the compact `!`, the mode-0 raster row
+  from payload `c3 3c`, and the rectangle rule after the same publication and
+  render-entry boundaries.
+
+The consecutive-raster sibling extends this path with two delayed transfers:
+
+```text
+! ESC *c12a5b0P ESC *t300R ESC *r0A
+ESC *b2W f0 0f ESC *b2W 0f f0 FF
+```
+
+It stores raster objects at `0x00d0d038` and `0x00d0d044`, publishes bucket
+chain `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, leaves allocator state
+`0x782a70 = 0x00b0`, `0x782a72 = 0x00d0d000`,
+`0x782a76 = 0x00d0d050`, and renders encoded row `0f f0`, encoded row
+`f0 0f`, then compact text. Raster `row_y` advances to `2`.
+
+Evidence:
+
+- Detail checkpoint: `Mixed Text/Rule/Raster Page Record` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Reproduction map:
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+- Fixture evidence:
+  `host-fetched text rectangle raster FF publishes rendered page record`,
+  `addressed text rectangle raster FF publishes rendered page record`,
+  `addressed text/rule/raster field groups reach publication and render
+  entry`,
+  `host-fetched text rectangle multi-row raster FF publishes rendered page
+  record`,
+  `addressed text/rule/multi-row raster publication preserves bucket chain`,
+  and `0x1ef6a page-band walk merges text raster and crossing rule`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
 
 ## Worked Path: Vertical Forms Control
 

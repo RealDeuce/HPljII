@@ -1036,6 +1036,30 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   preserves bucket `9` raster plus segment-1 objects and bucket `1`
   segment-0 objects, and renders the published records with the same two
   digests.
+  The parser-driven even-span stream is one 54-byte `0xa904` ring fetch:
+  font bytes `0..24` install the glyph, and page bytes `24..54` draw the
+  rule/raster/text composition with no remaining ring bytes. The font phase
+  reaches delayed handler `0x16c14` through `0x11eb6`, `0x12008`,
+  `0x11ff6`, and `0x11f96`; `0x16498` installs glyph `0x29` by writing table
+  entry `0x00ee`, record delta `0x0780`, record bytes
+  `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset `0x078c`, bitmap
+  size `18`, and the 18 linear bitmap bytes
+  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. The page phase
+  consumes the font-command helper's final header as the page memory image,
+  then routes through page handlers `0x10e68`, `0x10e22`, `0x10898`,
+  `0xd04a`, `0x10808`, `0x1075a`, and delayed `0x105d0`.
+  The resulting page objects are bucket-5 downloaded glyph object
+  `00 00 00 00 10 03 00 01 29 06 01...`, bridged selector-7 rule
+  `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and mode-0 raster object
+  `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry uses call order
+  `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`: `0x1ef6a` dispatches the
+  raster object to `0x1f88e`, the glyph object to `0x1effe` / `0x1f0d2`, and
+  the rule to solid helper `0x1f596`. The compared rows are row `0` with
+  raster payload `c3 3c`, downloaded glyph at x `22`, and rule from x `24`
+  through x `35`, followed by rows `1` and `2` containing the rule only.
+  Remaining variant work starts only when a byte stream changes the final
+  header, installed record, post-install drain, following parser handler,
+  page-object bytes, bucket assignment, dispatch target, or rows.
 - Built-in and downloaded text rendering is covered for selected offset-table,
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and

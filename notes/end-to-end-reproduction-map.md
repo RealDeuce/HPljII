@@ -551,6 +551,24 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `perforation skip parser trace feeds page-record queue`. The reproduction
   effect is later placement, queue suppression/recovery, or page-eject
   behavior through the same page-record and render pipeline as ordinary text.
+  The concrete layout-control path starts at `0xa904 -> 0xda9a -> 0x11774`.
+  `ESC &l66P` and `ESC &l0P` dispatch to `0xf9e8`; `ESC &l1L` dispatches to
+  `0xee64`; and `ESC &s0C` / `ESC &s1C` dispatch to `0xedb0`. Nonzero page
+  length uses VMI `0x783160`, writes page extent `0x782dba`, selects internal
+  page code `0x782da2`, recomputes geometry/text-bottom state, and the covered
+  `ESC &l66P !` stream queues the following printable at compact coord
+  `0x9001`. The zero-length branch flushes pending text, can publish through
+  `0xff1e`, mirrors `0x782da6` to `0x780e8f`, signals `0x780e26`, and selects
+  default page code `0x780e97` or fallback `2`. Wrap handler `0xedb0` writes
+  `0x783190`: selector `0` enables and selector `1` clears. Printable
+  prechecks `0xd28a` and `0xd6bc` consume that byte: disabled wrap rejects
+  horizontal overflow, enabled wrap recovers through `0xf054` and retries from
+  the recovered cursor when the retried placement fits. Perforation handler
+  `0xee64` writes `0x783191`: selector `1` enables and selector `0` clears.
+  Overflow helper `0xf36c` consumes `0x782c8e`, `0x782dc2`, and `0x783191`;
+  only enabled overflow with nonzero limit calls `0xf124`, publishes/ejects,
+  recomputes y from top offset and VMI, and returns `D7 = 0`. Other cases
+  return `D7 = 1` without page eject.
 - Built-in font-selection streams are covered for primary and secondary
   visible output, symbol fallback, remembered-symbol recovery, non-Roman
   symbol sets, real final-`@` default-symbol table streams, final-`X` font-ID

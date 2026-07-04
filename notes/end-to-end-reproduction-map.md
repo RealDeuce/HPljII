@@ -599,6 +599,27 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   effect is absence of page objects in normal mode while preserving pending
   delayed restore at `0x12218`; in alternate/data mode the bytes are stored
   through `0xe002` before parser reset.
+  Normal mode-zero rows `0x00`, `0x07`, and `0x0b` enter through
+  `0xa904 -> 0xda9a -> 0x11774`, match explicit parser-table entries with
+  next mode `0` and no handler longword, and therefore bypass the unmatched
+  mode-zero fallback at `0x118d6..0x11900` that can route other bytes through
+  selected-context printable handler `0xd04a`. The zero-handler path writes
+  parser mode `0`, calls the terminal restore/reset boundary `0x12218`, and
+  resets command-record cursor `0x78299e`, nonnumeric scratch cursor
+  `0x782a26`, numeric scratch cursor `0x782a3e`, alternate echo latch
+  `0x782a56`, and matched-byte scratch `0x783196..0x783199`. It does not run
+  adjacent normal C0 handlers such as BS `0xf2a8`, HT `0xf1cc`, LF `0xf08c`,
+  FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, or SI `0xc68a`.
+  Alternate/data mode uses parser table `0x116f6`: blank C0 rows `0x00` and
+  `0x07..0x0f` first store the byte in parser scratch, flush command and
+  numeric scratch through `0x123ae` and `0x123de`, append the matched byte
+  through macro/data sink `0xe002`, and then rejoin the same terminal reset
+  boundary. Canonical state for this checkpoint is parser mode `0x782999`,
+  alternate/data selector `0x782c18`, delayed-payload fields
+  `0x782a1a`/`0x782a1c`/`0x782a20..0x782a25`, and the command/scratch cursors;
+  derived output exists only as stored macro/data input in alternate/data
+  mode. No ROM-local page-object, publication, or render edge remains for
+  these rows.
 - Transparent print data streams are covered for printable bytes,
   default-filtered C0/high-control bytes, nonzero-filtered C0/high-control
   bytes, `1a 58` and non-`0x58` probe handling, primary high-control samples

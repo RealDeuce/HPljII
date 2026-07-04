@@ -987,6 +987,30 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x1eba4 scheduler band words render published downloaded glyph`, plus
   `Downloaded Font Descriptor And Payload Chain` in
   `notes/semantic-state-model.md`.
+  The FF publication stream is `2216` host bytes: font-control bytes
+  `0..14`, downloaded-character payload bytes `14..2214`, printable `%` at
+  `2214..2215`, and FF at `2215..2216`. Font control writes current font id
+  `0x782f2e = 0x1234`, current character `0x782f30 = 0x25`, and marks the
+  current downloaded-font record through `0x16df6`. The `ESC )s2193W` payload
+  installs a split-plane downloaded glyph at record delta `0x0500`; after copy,
+  return edge `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` leaves remaining
+  count `0x783140 = 0`, drains zero bytes, and resumes at handler `0xd04a`
+  for printable `%`.
+  Printable `%` consumes the installed object through the ordinary
+  `0xd04a -> 0x1393a -> 0x12f2e` path and queues segmented-wide selector
+  `0x3003` for glyph `0x25`. Publication keeps bucket root
+  `00 00 00 00 30 03 00 01 25 01 66 01...`, publishes bucket array entries
+  `9` and `1`, leaves rule/fixed lists empty, copies context slots
+  `0,0,0,0`, clears current root `0x78297a`, and sets publication flag `1`.
+  `0x1ed84` seeds render work from that published record; `0x1ef6a` walks
+  modeled band words `1` and `9`, dispatches both compact objects through
+  `0x1effe`, leaves the bucket-1 segment-0 band blank for this payload, and
+  renders the visible downloaded segment-1 row from bucket `9` at page row
+  `86`. Scheduler fixture `0x1eba4 scheduler band words render published
+  downloaded glyph` starts from the `0xff1e`/`0x1ed84` seed with source
+  `+0x18` cleared and render work `+0x10/+0x16` zero, then produces
+  `0x1ef6a` calls for band words `0..9`; only published buckets `1` and `9`
+  dispatch compact objects.
 - Downloaded-glyph/rule/raster render composition is covered for the
   host-fetched `ESC )s18W` even-span wide glyph install and a parser-driven
   page stream `ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`. Evidence:

@@ -380,16 +380,34 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), plus
   scheduler-produced band-word fixtures.
 - Render dispatch:
-  ROM evidence is `0x1ef6a`, `0x1efc2`, `0x1f446`, `0x1f756`,
-  `0x1f812`, and `0x1f88e`.
+  ROM evidence is `0x1ef6a`, `0x1ef86`, `0x1efc2`, `0x1f446`,
+  `0x1f756`, `0x1f812`, and `0x1f88e`, plus destination helpers
+  `0x1f3d4` and `0x1f626`.
   Checked-in documentation is the `Bitmap Object Dispatch Semantic Checkpoint`
   in [page-raster-imaging.md](page-raster-imaging.md) and
   `Bitmap Render Dispatch Contract` in
   [semantic-state-model.md](semantic-state-model.md), surfaced first as
   `Worked Path: Render Dispatch And Pixel Composition` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
-  is `generated/analysis/ic30_ic13_render_dispatch_tables.md` plus text/rule/
-  raster composition fixtures.
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  The shared render contract starts from active render pointer `0x783a18`.
+  `0x1ef6a` calls `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`: band-cache
+  setup, bucket-chain dispatch from render `+0x18`, rule-list dispatch from
+  render `+0x1c`, and fixed-list dispatch from render `+0x20`.
+  Bucket object byte `+0x04` splits compact `0x00..0x3f` objects through
+  `0x1effe` and compact helpers `0x1f034/0x1f0d2/0x1f1f0/0x1f264`,
+  segment-list `0x40..0x7f` objects through `0x1f812`, and encoded raster
+  `0x80..0xff` objects through `0x1f88e` modes `0..3`.
+  Pixel writers compute destinations from packed coordinates, band state
+  `0x783a20`, destination base `0x783a28`, stride `0x783a1c`, offset table
+  `0x7839f8..`, fallback base `0x7810b4`, and phase byte `$a001`.
+  Rule selectors dispatch through `0x1f446` to solid writer `0x1f596` or
+  pattern writer `0x1f4e0`; fixed-list rows use `0x1f756/0x1f7b0`.
+  Supporting evidence is
+  `generated/analysis/ic30_ic13_render_dispatch_tables.md`, fixtures for
+  `0x1ef6a` render entry and page-band composition, segment-list object
+  rendering through `0x1f812`, fixed-list object rendering through `0x1f756`,
+  solid and patterned rule rendering through `0x1f596` and `0x1f4e0`, and
+  encoded raster modes through `0x1f88e`.
 - Mixed page-image stream:
   ROM evidence crosses parser handlers `0xd04a`, `0x10e68`,
   `0x10e22`, `0x10898`, `0x10808`, `0x1075a`, `0x11f82`, and

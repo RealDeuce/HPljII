@@ -689,6 +689,48 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   The renderer-visible secondary prefix is covered through bucket `448`;
   bucket `456` is bounded as the physical resource-window continuation issue
   above.
+  The command path starts at `0xa904 -> 0xda9a -> 0x11774`. `ESC &p#X`
+  dispatches to arming stub `0x11f5a`, which pushes delayed handler `0x12452`
+  and calls `0x121cc`. `0x121cc` rewinds command-record cursor `0x78299e` by
+  six, stores pending flag `0x782a1a = 1`, stores handler pointer
+  `0x782a1c = 0x12452`, and saves the six-byte command record at
+  `0x782a20..0x782a25`. When parser mode returns to zero, `0x12218` restores
+  that record and calls `0x12452`; for `ESC &p4X`, the restored record is
+  `80 58 00 04 00 00`.
+  `0x12452` is a counted direct reader, not an opaque binary skip. It rewinds
+  `0x78299e`, reads signed record word `+2`, uses its absolute value as the
+  payload count, reads selected text/context slot `0x782f06`, scales it
+  through `0x332ee`, and reads context byte `0x782eea + 0x10 * slot`. If
+  high-character flags `0x783132` and `0x783133` are clear, local high-control
+  filter word `A6-2` comes from fallback byte `0x782efa`; otherwise it comes
+  from the selected context byte. The loop fetches raw payload bytes through
+  `0xa904`. Byte `0x1a` probes one more byte: `1a 58` calls `0xd99a` and
+  routes normalized value `0x7f`, while `1a xx` with `xx != 0x58` consumes
+  the probe prefix and routes `xx`.
+  After normalization, C0 values `0x00..0x1f` route through `0xd0f0` only
+  when selected context byte `D3` is zero; high controls `0x80..0x9f` route
+  through `0xd0f0` only when local filter word `A6-2` is zero; all other
+  values route through `0xd04a`. The default `ESC &p4X!\x05\x85!` stream
+  therefore routes `21 05 85 21` as `d04a d0f0 d0f0 d04a`: the printable
+  bytes queue compact entries, while the default-filtered C0 and high-control
+  bytes advance fixed spacing in the flagged built-in path without allocating
+  compact text objects. Nonzero filters send those same ranges through
+  `0xd04a`; an unflagged fixed-record context can let the `0xd0f0`
+  substituted space queue a compact object instead of cursor-only spacing.
+  Printable transparent values re-enter the ordinary text/page path:
+  `0xd04a -> 0x1393a -> 0xd824/0xd3b2 -> 0x12f2e -> 0x1387c -> 0xff1e ->
+  0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Canonical state is the restored count word
+  `+2`, selected slot `0x782f06`, cursor `0x782c8a`, current page root
+  `0x78297a`, compact text object, published record, and render-record
+  bucket/context roots. Derived/cache state is selected context byte
+  `0x782eea + 0x10 * slot`, fallback filter `0x782efa`, high-character flags,
+  compact coordinates, and render-band fields. Parser scratch is the delayed
+  payload state `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, command-record
+  cursor `0x78299e`, and local payload count. No ROM-local middle edge remains
+  for `ESC &p#X` parser dispatch, payload counting, probe normalization,
+  route predicates, compact object production, bridge, or render dispatch; the
+  remaining transparent edge is only the external resource-window source for
+  the secondary segmented fallback rows at `0x0c0000..0x0c0321`.
 - Display-functions streams are covered for normal page output and
   alternate/data append. Normal fixture `ESC Y display-functions stream
   reaches page-record output` drives `ESC Y!\x05! ESC Z` through handler

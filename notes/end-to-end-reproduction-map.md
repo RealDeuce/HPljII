@@ -420,6 +420,25 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
   includes `generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and compact
   glyph fixtures.
+- Font selection to visible glyphs:
+  ROM evidence is parser terminal handler `0x120be`, symbol/default helper
+  `0x1be22`, common refresh `0xc580`, candidate filter/selection path
+  `0x13eb8 -> 0x156de`, font-ID helper `0x17708`, map rebuild `0x14c64`,
+  printable source path `0xd04a -> 0x1393a -> 0x12f2e`, and render dispatch
+  through `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354`. Checked-in
+  documentation is [font-context-metrics.md](font-context-metrics.md) and
+  `Built-In Font Selection To Visible Text` in
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Font Selection To Visible Glyphs` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). The covered
+  primary and secondary streams update request fields, select contexts
+  `0xc008004c` and `0xc00ae122`, rebuild maps `0x782f32` and `0x783032`,
+  install page-root context slots through `0xc428` / `0xc4fc`, and make later
+  printable bytes render from those selected contexts. Symbol-miss fallback,
+  remembered-symbol recovery, non-Roman symbols, final-`@` defaults, final-`X`
+  font-ID success, final-`X` no-selection exits, and bit-30-clear
+  inline/downloaded context selection are all documented as visible-output
+  variants.
 - Downloaded font payloads:
   ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
   `0x1719c`.
@@ -456,6 +475,26 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `perforation skip parser trace feeds page-record queue`. The reproduction
   effect is later placement, queue suppression/recovery, or page-eject
   behavior through the same page-record and render pipeline as ordinary text.
+- Built-in font-selection streams are covered for primary and secondary
+  visible output, symbol fallback, remembered-symbol recovery, non-Roman
+  symbol sets, real final-`@` default-symbol table streams, final-`X` font-ID
+  success, final-`X` preserved-output exits, bit-30-clear inline/downloaded
+  context selection, and selected current-font RAM handoff through SI/SO.
+  Evidence: [font-context-metrics.md](font-context-metrics.md),
+  `Worked Path: Font Selection To Visible Glyphs` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and fixtures
+  `inline primary font selection stream renders visible rows`,
+  `inline secondary font selection stream renders SO visible rows`,
+  `primary symbol miss falls back before visible page-record rows`,
+  `remembered secondary symbol feeds visible SO page-record rows`,
+  `non-Roman symbol streams select visible built-ins`,
+  `real final-@ default-table streams select visible built-ins`,
+  `font-ID built-in selection feeds visible page-record rows`,
+  `font-ID secondary built-in selection feeds visible SO page-record rows`,
+  `font-ID primary inline/downloaded selection feeds visible page-record rows`,
+  and `font-ID non-selected exits keep prior visible rows`. The reproduction
+  effect is context/map selection before ordinary printable bytes queue compact
+  objects; font-selection commands have no separate renderer.
 - Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
   alternate/data blank C0 append-preserving rows. Evidence:
   `Worked Path: Explicit No-Output Parser Rows` in

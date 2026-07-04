@@ -628,6 +628,31 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   Alternate/data fixture `0x12120 ESC Y alternate append stores normalized
   display bytes` proves append-only output `1b 59 21 7f 1b 5a` through
   `0xe002` without text imaging.
+  The command-family contract is [display-functions.md](display-functions.md).
+  Initial bytes enter through `0xa904 -> 0xda9a -> 0x11774`, but after the
+  mode-1 dispatch the reader loops fetch later bytes directly through
+  `0xa904`. Normal mode dispatches `ESC Y` to `0x12536`; alternate/data mode
+  dispatches it to `0x12120`. Both loops keep local termination flag `D4`,
+  route or append normalized loop value `D5`, normalize local pair
+  `0x1a 0x58` to `0x7f` through `0xd99a`, and stop only after a normalized
+  `ESC Z` pair or no-byte return. Normal `0x12536` consumes selected slot
+  `0x782f06`, selected context byte `0x782eea + 0x10 * slot`, fallback filter
+  `0x782efa`, high-character flags `0x783132` / `0x783133`, and stack filter
+  word `A6-2`. C0 values `0x00..0x1f` route to `0xd0f0` only when the
+  selected context byte is zero; high controls `0x80..0x9f` route to `0xd0f0`
+  only when the local high-control filter is zero; all other values route to
+  `0xd04a`. Printable routes then use the ordinary text path
+  `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84/0x1edc6 ->
+  0x1ef6a`. Alternate/data `0x12120` writes literal `ESC Y` and each
+  normalized value through append sink `0xe002` into macro/data-chain storage,
+  so it has no immediate page objects. Neighboring `ESC z` at `0xcd86` is a
+  status edge, not the `ESC Y` reader: it reads active data-chain frame
+  pointer `0x782d76`, tests frame byte `+9`, and calls `0x9c2c` only when that
+  byte is zero; `0x9c2c` sets `0x7821cc` / `0x7822db`, signals bit `0x8` in
+  `0x780e2a` through `0x9b5e`, and clears `0x7821cc`. No ROM-local middle edge
+  remains for `0x12536..0x1261e`, `0x12120..0x1219c`, the local Control-Z
+  siblings, or the `0xcd86 -> 0x9c2c` status boundary; unresolved names are
+  external status-consumer labels.
 - Page-geometry streams are covered for page size, orientation, nonzero
   page length, and the `ESC &l0P` zero-length default-page branch. Evidence:
   fixture

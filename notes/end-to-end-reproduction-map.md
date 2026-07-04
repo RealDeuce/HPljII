@@ -335,6 +335,25 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
   is `generated/analysis/ic30_ic13_page_root_finalization.md` plus reset, FF,
   geometry, and retry publication fixtures.
+- Macro/data-chain replay:
+  ROM evidence is `0xe112`, `0xdd08`, `0xe0a4`, `0xe002`, `0xe418`,
+  `0xe4f4`, `0xe22c`, `0xe65c`, byte-source multiplexer `0xa904`, parser loop
+  `0x11774`, and publication branch `0xff1e..0xff8e`. Checked-in
+  documentation is [macro-data-chain.md](macro-data-chain.md) and
+  `Macro Definition And Data-Chain Replay` in
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
+  `Worked Path: Macro Execute Replay` and
+  `Worked Path: Macro Overlay Replay Publication` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). The covered
+  execute/call path defines macro id `123`, stores payload `21 0d`, builds a
+  data-chain frame with `+8 = 4` and frame kind `+9 = 2` or `3`, lets
+  `0xa904` replay the stored bytes ahead of live input, and routes them back
+  through normal parser handlers `0xd04a` and `0xf02c` to the same compact text
+  page object and render path as live host bytes. The overlay path stores
+  selector state `0x782a92/0x782a94`; `0xff1e` resolves the saved record,
+  builds a non-replay frame through `0xe4f4`, re-enters parser loop `0x11774`,
+  and queues replayed text, controls, transparent payloads, spans, or raster
+  objects before the page is published.
 - Render bridge:
   ROM evidence is `0x1ed84`, `0x1edc6`, and `0x1ef86`.
   Checked-in documentation is [page-record-storage.md](page-record-storage.md),
@@ -490,6 +509,24 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [semantic-state-model.md](semantic-state-model.md), with supporting reports
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md` and
   `generated/analysis/ic30_ic13_page_root_finalization.md`.
+- Macro replay streams are covered for definition, execute/call replay,
+  mixed-control replay, overlay publication, repeated overlay publication,
+  overlay skip gates, and overlay payloads that cross cursor, margin,
+  transparent-data, raster, multi-row raster, and span-flush command families.
+  Evidence: [macro-data-chain.md](macro-data-chain.md),
+  `Worked Path: Macro Execute Replay` and
+  `Worked Path: Macro Overlay Replay Publication` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and fixtures
+  `macro execute data-chain replay feeds page-record stream`,
+  `host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a`,
+  `macro execute page-record layer composes with rule and raster band`,
+  `macro overlay finalization replays before page publication`,
+  `macro overlay replays across repeated page publications`,
+  `macro overlay skip gates preserve base page publication`, and the overlay
+  mixed-control, cursor-position, chained-margin, transparent, raster,
+  multi-row raster, and span-flush publication fixtures. The reproduction
+  effect is that replayed macro bytes become normal parser input through
+  `0xa904`/`0x11774`; macro replay has no separate renderer.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.

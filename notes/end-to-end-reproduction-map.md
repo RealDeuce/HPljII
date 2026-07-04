@@ -651,6 +651,26 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   page records, and the landscape pattern remaps. Evidence:
   `notes/rectangle-graphics.md` and parser trace fixtures for `ESC *c` rule
   streams.
+  The primary chained stream `ESC *c12a5b0P` reaches handlers `0x10e68`,
+  `0x10e22`, and `0x10898`: width field `0x78316a`, height field
+  `0x783166`, and fill selector `7` for solid black. `0x10898` then calls
+  clip/queue helper `0x10b80`, which consumes cursor `0x782c8a` /
+  `0x782c8e`, extents `0x782db8` / `0x782db6`, orientation `0x782da3`, and
+  current page root `0x78297a` to populate source record `0x782a88`.
+  `0x13386` / `0x133aa` derive bucket/key fields `0x782a7c..0x782a7e`, allocate
+  a 14-byte rule object through `0x1381c`, and insert it under page-root
+  `+0x24`. The selector-7 object for the primary stream is
+  `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00`: bucket byte `+4`, fill
+  selector `+5`, packed key `+6`, width `+8`, height `+0a`, and continuation
+  `+0c`.
+  Bridge `0x1edc6` copies page-root `+0x24` to render-record `+0x1c`, ORs
+  selector byte `+5` with `0x10`, and copies height `+0x0a` into continuation
+  `+0x0c`. `0x1ef6a` renders rule lists after bucket objects: `0x1f446`
+  dispatches selector `7` to solid helper `0x1f596`, while gray selectors
+  `0..6` and HP pattern selectors `8..13` dispatch to `0x1f4e0`.
+  The selector matrix fixtures cover gray percent mapping, portrait pattern
+  ids, and landscape remaps `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10`,
+  including continuation across render bands.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
   paths are covered through `0xff1e` for current modeled page records. VFC
   coverage includes `ESC &l#W` delayed table payloads, lowercase

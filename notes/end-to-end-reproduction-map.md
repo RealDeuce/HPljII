@@ -991,6 +991,52 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   reports `generated/analysis/ic30_ic13_text_glyph_index_flow.md`,
   `generated/analysis/ic30_ic13_font_control_flow.md`, and
   `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`.
+  The shared text renderer starts when parser loop `0x11774` leaves a
+  printable byte in `D5` and `0xd04a` calls `0x1393a(host_byte, 0x782d7e)`.
+  Source object `0x782d7e` is canonical: `0x1393a` writes selected context
+  pointer `+0x00`, glyph or fixed-record pointer `+0x04`, mapped compact glyph
+  byte `+0x0b`, and source-class flag `+0x10`. Flag `+0x10 = 0` takes the
+  unflagged inline/downloaded path `0xd140 -> 0xd3b2`; nonzero takes the
+  flagged built-in path `0xd550 -> 0xd824`. Both paths share prechecks
+  `0xd28a` / `0xd6bc`, gate result `0x782a6e`, cursor advance/commit through
+  `0x782c8a`, positioned source fields `+0x12`, `+0x14`, `+0x16`, page-root
+  live-font flag `0x78297f + 0x78297e`, and queue handoff to `0x12f2e`.
+  `0x12f2e` consumes source pointer `+0x04`, mapped glyph `+0x0b`, source
+  flag `+0x10`, positioned fields, and context slot `+0x16`; derives bucket
+  index `0x782a7c`, compact coordinate/key fields, and selector bits; then
+  calls `0x1387c` to allocate or reuse a compact bucket object under page-root
+  bucket array `+0x1c`. Short objects use size `0x26`, capacity `0x0a`, and
+  `glyph, coord` entries. Segmented objects use size `0x28`, capacity `0x08`,
+  and `glyph, segment, coord` entries. Width above the compact threshold sets
+  selector bit `0x1000`; tall rows set `0x2000`; both together set selector
+  `0x3000`.
+  Publication preserves those bucket heads through `0xff1e`; bridge
+  `0x1ed84` / `0x1edc6` copies bucket roots and context slots into the active
+  render record; `0x1ef6a -> 0x1efc2` sends compact class objects to
+  `0x1effe`. `0x1effe` selects short renderer `0x1f034`, compact-wide
+  renderer `0x1f0d2`, segmented renderer `0x1f1f0`, or segmented-wide
+  renderer `0x1f264` from object byte bits `0x10` and `0x20`. Downloaded
+  glyph fixtures carry the same compact path for selector `0x0003`,
+  compact-wide `0x1003`, segmented `0x2003`, and segmented-wide `0x3003`;
+  built-in fixtures carry the flagged offset-table source through the same
+  page-record and compact-render dispatch.
+  Queue no-room recovery is also part of the reproduction contract:
+  `0xd3b2` and `0xd824` preserve source fields, set page-root retry flag
+  `+0x14.0`, publish the old root through `0xff1e`, ensure a fresh root
+  through `0x10084`, and retry `0x12f2e`. Canonical state for this cluster is
+  source object `0x782d7e`, selected font context, cursor words `0x782c8a` /
+  `0x782c8e`, current page root `0x78297a`, selected context slot
+  `0x78297e`, live-font flags, compact bucket objects, published bucket roots,
+  and render-record bucket/context roots. Derived/cache state is precheck
+  result `0x782a6e`, bucket index `0x782a7c`, compact coordinate/selector
+  bits, glyph offsets, span watermarks `0x783186..0x78318a`, and render-band
+  fields. Parser scratch is the unmatched printable byte, parser state
+  `0x782999`, alternate/data selector `0x782c18`, and high-character flags.
+  No ROM-local middle edge remains for the documented source classes, selector
+  modes, precheck outcomes, high-byte normalization cases, no-room retries, or
+  compact renderer dispatch; remaining work starts from byte streams that
+  change source-object fields, selected maps, selector class, bridge state, or
+  rendered rows.
 
 ## Canonical State Groups
 

@@ -209,7 +209,11 @@ contracts.
   `Parser Record And Delayed Payload State` in
   [semantic-state-model.md](semantic-state-model.md) cover
   `0xda9a`, `0xdaf0`, `0xdb74`, `0x11774`, `0x121cc`, and `0x12218`,
-  including normal and alternate/data blank-row behavior.
+  including normal and alternate/data blank-row behavior. Use
+  `Worked Path: Command Record And Payload Dispatch` and
+  `Worked Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) as the
+  reader-facing entry points.
 - Direct text controls, cursor movement, margins, HMI/VMI, line
   termination, wrap, perforation skip, cursor stack, and underline/span
   controls:

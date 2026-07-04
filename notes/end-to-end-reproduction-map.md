@@ -1165,6 +1165,37 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   bytes `0x78297e`, `0x782c72`, `0x782c73`, retry flag bit in page-root
   `+0x14`, macro/data-chain frames, and heap/resource allocation metadata.
   Evidence: page-finalization, macro, allocator, and font-resource notes.
+- Hardware/external state: physical host/interface and engine timing surfaces
+  that the ROM observes but does not define as byte-stream semantics. The
+  covered host-byte model starts after external events have produced
+  ROM-visible bytes or status bits; remaining physical-interface work is
+  mapping MMIO banks and serial/parallel/RS-422/optional-I/O signals rather
+  than parser behavior. Evidence: [io-interfaces.md](io-interfaces.md) and
+  [host-byte-fetch.md](host-byte-fetch.md). Formatter/DC timing is similarly
+  external after the ROM-visible scheduler state: notes
+  [page-raster-imaging.md](page-raster-imaging.md) and
+  [dc-controller-engine.md](dc-controller-engine.md) track unresolved mapping
+  from `$a200`, `$a400`, `0xffff2000`, `$a601`, `$a801`, `$aa01`,
+  `0xfffe0001`, and `0xfffe0003` to connector signals such as `BD`, `VDO`,
+  `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`, `PCLK`,
+  `SBSY`, `RDY`, `PPRDY`, and `CPRDY`. Timing-sensitive ROM ranges
+  `0x0f84..0x1282`, `0x1cf8..0x1ea8`, and active-render handoff
+  `0x1eb2a..0x1ed84` are modeled as ROM-visible state machines; the residual
+  boundary is when physical events make status bits, wait objects, and engine
+  readiness change.
+- Unknown or unresolved state: explicit bounded edges rather than generic
+  gaps. The remaining pixel-affecting resource-window edge is the secondary
+  transparent-data segmented source read at firmware range
+  `0x0c0000..0x0c0321`. The software path to that read is documented through
+  `0x12452`, page-record storage, bridge, and compact renderer `0x1f1f0`; the
+  unresolved part is physical ROM decode after verified resource-pair suffix
+  `0x0bfe22..0x0bffff`. Evidence:
+  [transparent-print-data.md](transparent-print-data.md),
+  [resource-rom.md](resource-rom.md), and
+  [built-in-resource-scan.md](built-in-resource-scan.md). The other broad
+  unknown is final device-output validation: current fixtures prove
+  ROM-derived rows internally, while physical LaserJet II sample comparison
+  remains a validation boundary, not a hidden parser/page/render field.
 
 ## Pixel-Perfect Coverage And Residual Risks
 

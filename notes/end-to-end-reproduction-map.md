@@ -626,6 +626,25 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [semantic-state-model.md](semantic-state-model.md), host-fetched raster
   fixtures, and supporting report
   `generated/analysis/ic30_ic13_raster_graphics_flow.md`.
+  The primary stream
+  `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` reaches parser handlers
+  `0x10808`, `0x1075a`, and `0x11f82`. `0x11f82` schedules delayed transfer
+  handler `0x105d0` through `0x121cc`; `0x12218` restores record
+  `80 57 00 04 00 00` and calls `0x105d0` when payload bytes are available.
+  Canonical raster state is rooted at `0x783170`: mode `+0x08`, scale `+0x0e`,
+  active flag `+0x12`, row coordinate `+0x02`, accepted count `+0x04`,
+  overflow count `+0x06`, origin `+0x0a`, and maximum row byte count `+0x10`.
+  Accepted rows pass through `0x10084`, `0x13070`, `0x13250`, and `0x138de` to
+  queue encoded raster objects such as
+  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`: class byte `0x80`, mode byte
+  `0`, capacity `4`, packed key `0x0001`, and payload bytes at `+0x0a`.
+  Publication and rendering copy the bucket chain through `0xff1e`,
+  `0x1ed84`, and `0x1edc6`; `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders the object.
+  Mode `0` copies literal words, while modes `1`, `2`, and `3` expand payload
+  bytes into two, three, or four output rows through ROM expansion tables.
+  The gate fixtures classify capped transfers, beyond-extent drains, negative
+  rows, consecutive transfers, and active-resolution ignore as object or
+  no-object outcomes before this same render path.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule

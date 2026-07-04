@@ -589,6 +589,58 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   and `font-ID non-selected exits keep prior visible rows`. The reproduction
   effect is context/map selection before ordinary printable bytes queue compact
   objects; font-selection commands have no separate renderer.
+  The concrete request path starts at `0xa904 -> 0xda9a -> 0x11774`. Primary
+  `ESC (` setup uses `0x1201e`; secondary `ESC )` setup uses `0x12008`.
+  Attribute finals in parser mode `13` write request fields through handlers
+  such as spacing `0xc930`, pitch `0xc89c`, point size `0xc6ec`, style
+  `0xc780`, stroke `0xc840`, and uppercase typeface wrapper
+  `0x1205a -> 0xc7e0 -> 0xc580`. Primary requests write
+  `0x782eec..0x782ef2`; secondary requests write the sibling request block.
+  Refresh `0xc580` calls `0x13eb8(slot)`, which filters candidates through
+  `0x148f8`, `0x1569c`, `0x156de`, `0x153c6`, `0x1519a`, `0x147b2`,
+  `0x14758`, `0x14398`, `0x144d2`, and `0x14c64`. The selected primary
+  stream writes current context `0x782ee6 = 0xc008004c` and map `0x782f32`;
+  the selected secondary stream writes current context `0x782ef6 =
+  0xc00ae122` and map `0x783032`.
+  Symbol-set finals route through `0x120be -> 0x1be22`, write requested
+  symbol words at `0x782ef4 + 0x10 * slot`, dirty refresh flags
+  `0x782f2c` / `0x782f2d`, and use `0x156de` to consume requested,
+  remembered, and fallback words before the same candidate/map path. Final
+  `@` subdispatches through `0x1bed4`, `0x1bf0a`, `0x1bf36`, or `0x1bf74`
+  to copy default-symbol table words `0x782f1c`, `0x782f20`, `0x782f24`,
+  and `0x782f28`. Final `X` keeps the prior requested symbol word and calls
+  `0x17708(slot, parameter)`, selecting built-in contexts such as
+  `0xc0089fb0` / `0xc00ae122` or bit-30-clear inline/downloaded context
+  `0x00000100`; its scan-miss, candidate-slot-miss, class-mismatch, and
+  context-full exits preserve the prior visible context.
+  `0xc428(slot)` installs the selected context into the active page root:
+  slot `0` reads `0x782ee6`, slot `1` reads `0x782ef6`, `0xc4fc` finds a
+  matching or free page-root context slot, and `0xc428` writes selected
+  page-root slot `0x78297e`. SI `0xc68a` installs/selects primary slot `0`;
+  SO `0xc6b8` installs/selects secondary slot `1` and updates selected text
+  slot `0x782f06`. Later printable bytes consume that state through
+  `0xd04a -> 0x1393a`: primary text reads context `0xc008004c` and map
+  `0x782f32`, secondary text reads context `0xc00ae122` and map `0x783032`,
+  and `0x12f2e` queues compact objects under the ordinary page-root bucket
+  path. Publication and rendering are unchanged:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe -> 0x1f354`, with
+  `0x1edc6` copying page-root context slots into render-record context slots.
+  Canonical state is selected slot `0x782f06`, primary/secondary contexts
+  `0x782ee6` / `0x782ef6`, maps `0x782f32` / `0x783032`, active and remembered
+  symbol words `0x783144` / `0x783146` and `0x782f08` / `0x782f0a`,
+  page-root context slots, selected page-root slot `0x78297e`, compact text
+  objects, and render-record context slots. Derived/cache state includes
+  candidate survivor lists, selected candidate slot `0x7828a8`, selected
+  target `0x7828de`, snapshot records `0x783148` / `0x783152`, HMI
+  `0x78315c`, transient selected context `0x782992`, current font ID
+  `0x782f2e`, default-symbol tables, compact coordinates, and glyph-entry
+  pointers. Parser scratch is the setup records from `0x1201e` / `0x12008`,
+  mode-13 command records, dirty flags while refresh is pending, and following
+  printable bytes. Remaining font-selection work is variant breadth that
+  changes selected contexts, map bytes, compact object shape, bridge state, or
+  physical output; no ROM-local middle edge remains for the listed primary,
+  secondary, symbol fallback, default-symbol, font-ID, and SI/SO handoff
+  streams.
 - Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
   alternate/data blank C0 append-preserving rows. Evidence:
   `Worked Path: Explicit No-Output Parser Rows` in

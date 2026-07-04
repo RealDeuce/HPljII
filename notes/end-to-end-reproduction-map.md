@@ -686,6 +686,29 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [semantic-state-model.md](semantic-state-model.md), with supporting reports
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md` and
   `generated/analysis/ic30_ic13_page_root_finalization.md`.
+  The shared publication path consumes current page root `0x78297a` through
+  `0xff1e`, writes published pool pointer `0x780ea6`, sets publication flag
+  `0x782996`, copies compact bucket root `+0x1c` and context slot `+0x2c`, and
+  clears the current root before `0x1ed84` / `0x1edc6` bridge the published
+  record into `0x1ef6a`.
+  Covered parser-to-publication streams are `! ESC E` through reset handler
+  `0xcc52`, `ESC &k2G ! FF` through `0xedf8` and `0xf0f0`, `! ESC &l1A`
+  through page-size handler `0xfc74`, `! ESC &l1O` through orientation handler
+  `0x10220`, `! ESC &l2H` through paper-source handler `0xef62`, and
+  `! ESC &l2X FF` through copy-count handler `0xeef0` before FF publication.
+  The command-side fields are copy count `0x782da4`, paper-source byte
+  `0x782da6`, pending paper-source refresh `0x782998`, output bytes
+  `0x780e8f` / `0x780e26`, orientation `0x782da3`, and geometry fields updated
+  after page-size/orientation publication.
+  VFC table load `ESC &l#W` uses `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`
+  to consume delayed payload bytes into table `0x782dde..0x782edd`, derive
+  VFC limit `0x782dc2`, copy text-bottom cache `0x782dd2`, and clear modified
+  layout flag `0x782ee1`. VFC channel jumps through `0x1280a` consume that
+  table, VMI `0x783160`, top offset `0x782dce`, current y `0x782c8e`, and
+  line caches `0x782ede` / `0x782edf` / `0x782ee0`.
+  Non-publishing VFC paths only reset x/y before the next `0xd04a` printable;
+  publishing VFC paths call `0xf124 -> 0xff1e` so the pre-VFC printable renders
+  from the old page and the following printable queues on a fresh page.
 - Macro replay streams are covered for definition, execute/call replay,
   mixed-control replay, overlay publication, repeated overlay publication,
   overlay skip gates, and overlay payloads that cross cursor, margin,

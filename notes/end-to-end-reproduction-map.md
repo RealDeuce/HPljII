@@ -438,6 +438,27 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
   includes `generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and compact
   glyph fixtures.
+  IC32/IC15 file offset `N` maps to firmware resource address `0x80000 + N`.
+  Header-like font records such as first `COURIER` record `0x080418`
+  / context `0x44080418` and first `LINE_PRINTER` record `0x0946b4`
+  / context `0x440946b4` carry bit-30 offset-table form. Font selection and
+  sample-page paths install those contexts into current-font state
+  `0x782ee6` / `0x782ef6`, rebuild maps `0x782f32` / `0x783032`, and refresh
+  page-root slots through `0xc428` / `0xc4fc`.
+  Printable bytes then flow through `0xd04a -> 0x1393a -> 0x12f2e` into
+  compact page objects. Publication/rendering copies page-root context slots
+  through `0x1ed84` / `0x1edc6`; compact dispatch
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` resolves the selected resource
+  offset table. `0x1f354` consumes glyph-entry byte `+4` as bitmap delta,
+  byte `+5` as small mode/plane, word `+6` as row count, and word `+8` as
+  pixel width before the row-copy helpers emit pixels.
+  Firmware-generated sample pages enter the same path after `0x1e0b2`,
+  `0x1c204`, resolver `0x1b50e`, installer `0x1c5e8`, row formatter
+  `0x1cabe`, and sample-run helper `0x1cf34`. Fixture
+  `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+  pins eight class/source segments, render-bucket counts
+  `[1, 6, 6, 65, 1, 5, 5, 50]`, and aggregate rendered-surface digest
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
 - Font selection to visible glyphs:
   ROM evidence is parser terminal handler `0x120be`, symbol/default helper
   `0x1be22`, common refresh `0xc580`, candidate filter/selection path

@@ -480,7 +480,8 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   variants.
 - Downloaded font payloads:
   ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
-  `0x1719c`.
+  `0x1719c`, with font-control writers `0x15a56`, `0x15a18`, and
+  `0x16df6`.
   Checked-in documentation is [downloaded-fonts.md](downloaded-fonts.md) and
   the downloaded-font checkpoints in
   [semantic-state-model.md](semantic-state-model.md), surfaced first as
@@ -489,6 +490,26 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
   is the font descriptor, resource, and character fixtures in
   `tools/render_fixture_harness.py`.
+  Font-control commands write canonical selection state: current font id
+  `0x782f2e`, current character `0x782f30`, parser cursor `0x78299e`, and
+  current-record pool `0x782640..0x782776`. Nonzero `ESC )s#W` schedules
+  delayed handler `0x16c14`, which loads byte budget `0x783140`, finds the
+  current record, and installs downloaded character or resource payload state.
+  Linear bitmap copies use `0x168dc`; split-plane copies use `0x16942`.
+  Resource-header payloads validate through `0x16fae`, allocate through
+  `0x17026`, initialize `0x1719c` payload headers, and install bit-30
+  candidate longwords through `0x16c14` / `0x1bc38`.
+  Printable bytes then use the installed payload through
+  `0xd04a -> 0x1393a -> 0xd824/0xd3b2 -> 0x12f2e`. The documented
+  segmented-wide stream installs glyph `%` with record bytes
+  `00 00 00 00 0c 02 00 81 00 88 00 00`, queues selector `0x3003` in buckets
+  `9` and `1`, publishes through `0xff1e`, copies through `0x1ed84` /
+  `0x1edc6`, and renders through
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f1f0/0x1f264`.
+  Covered variants also include short selector `0x0003` through `0x1fe76`,
+  wide selector `0x1003` through `0x1f0d2`, segmented selector `0x2000` /
+  `0x2003` through `0x1f1f0`, and segmented-wide selector `0x3003` through
+  `0x1f264`, including mixed rule/raster composition before `0x1ef6a`.
 
 ## Reproducible Byte-Stream Families
 

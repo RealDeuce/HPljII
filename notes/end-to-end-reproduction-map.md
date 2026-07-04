@@ -727,6 +727,31 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   multi-row raster, and span-flush publication fixtures. The reproduction
   effect is that replayed macro bytes become normal parser input through
   `0xa904`/`0x11774`; macro replay has no separate renderer.
+  Macro command state starts with current macro id `0x783164` from handler
+  `0xe112` and a 32-entry macro record pool at `0x782a98`. Each record stores
+  payload-chain head `+0x00`, raw byte count `+0x04`, id word `+0x08`, and
+  temporary/permanent byte `+0x0a`; selected record pointer `0x782d7a` is
+  written by lookup helper `0xe0a4`.
+  `ESC &f#X` handler `0xdd08` dispatches selectors `0..10`: definition start
+  and stop, execute, call, overlay enable/disable, delete, and permanence
+  controls. Definition appends payload through `0xe002` into linked `0x100`
+  byte chunks. Execute/call selectors build data-chain frames through `0xe418`
+  at active pointer `0x782d76`, with frame `+0x00/+0x04` copied from the macro
+  record, byte `+0x08 = 4`, frame kind `+0x09 = 2` for execute or `3` for call,
+  and snapshot pointer `+0x0a`.
+  `0xa904` gives those frame bytes priority over live host bytes, so replayed
+  payloads re-enter parser loop `0x11774` and route through the ordinary
+  handlers such as `0xd04a`, `0xf02c`, `0xedf8`, cursor/margin handlers,
+  transparent handler `0x12452`, raster transfer `0x105d0`, and span flush
+  `0x12714`. Page objects, publication, bridge, and render dispatch are then
+  the normal `0x1387c` / `0x1381c`, `0xff1e`, `0x1ed84` / `0x1edc6`, and
+  `0x1ef6a` path.
+  Overlay state uses `0x782a92` and saved overlay id `0x782a94`. During
+  publication, `0xff1e` consumes that state and page-root retry bit `+0x14.0`;
+  when the enabled overlay record exists, `0xe4f4` builds a non-replay frame
+  with kind `+0x09 = 4`, replays the stored payload before the same publication
+  boundary, and `0xe22c` restores parser/page state afterward. Disabled,
+  missing-record, or retry-flag skip gates preserve the base page publication.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.

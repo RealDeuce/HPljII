@@ -241,13 +241,22 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   writers, readers/consumers, output effects, fixtures, and disassembly
   evidence.
 - Direct controls and cursor state:
-  ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, and cursor handlers.
+  ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, cursor handlers
+  `0xf39e` / `0xf416` / `0xf48c` / `0xf560` / `0xf60a` / `0xf692`, page
+  length handler `0xf9e8`, wrap handler `0xedb0`, and perforation-skip handler
+  `0xee64`.
   Reproduction evidence is `Text Cursor And Direct Controls` in
   `notes/semantic-state-model.md`, surfaced first as
   `Worked Path: Mixed Direct Controls` and
   `Worked Path: Cursor And Margin Placement` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), plus host-fetched
-  direct-control fixtures.
+  direct-control fixtures. Layout-control evidence is surfaced first as
+  `Worked Path: Page Length, Wrap, And Perforation Controls`: `ESC &l#P`
+  writes page extent `0x782dba`, `ESC &s#C` writes end-of-line wrap flag
+  `0x783190`, and `ESC &l#L` writes perforation-skip byte `0x783191`.
+  Those commands normally do not draw immediately; their visible effect is
+  through later printable prechecks `0xd28a` / `0xd6bc`, vertical overflow
+  helper `0xf36c`, or the following printable path `0xd04a -> 0x12f2e`.
 - Text source object creation:
   ROM evidence is `0xd3b2`, `0xd824`, `0x12f2e`, and `0x1387c`.
   Reproduction evidence is `Text Source Objects And Compact Buckets` in
@@ -433,6 +442,20 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `ESC 9 clear margins feeds CR and page-record output`,
   `ESC = half-line feed reaches shifted page-record output`, and
   `ESC &d underline selector materializes span output`.
+- Layout-control streams are covered where command bytes alter later visible
+  output without drawing immediately. Evidence:
+  `Worked Path: Page Length, Wrap, And Perforation Controls` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [direct-control-codes.md](direct-control-codes.md), fixtures
+  `0xf9e8 ESC &l#P stream reaches page-length handler`,
+  `mixed page-length stream refreshes cursor before printable page-record
+  queue`, `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1
+  only`, `0xd28a and 0xd6bc prechecks share continue reject and wrap
+  decisions`, `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1
+  only`, `0xf36c perforation skip gates vertical overflow page eject`, and
+  `perforation skip parser trace feeds page-record queue`. The reproduction
+  effect is later placement, queue suppression/recovery, or page-eject
+  behavior through the same page-record and render pipeline as ordinary text.
 - Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
   alternate/data blank C0 append-preserving rows. Evidence:
   `Worked Path: Explicit No-Output Parser Rows` in

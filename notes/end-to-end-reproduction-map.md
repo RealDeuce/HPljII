@@ -934,6 +934,27 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   publishes through `0xff1e`, crosses the `0x1ed84` / `0x1edc6`
   render bridge, and compares the final composed rows. Evidence:
   `Mixed Text/Rule/Raster Page Record` in `notes/semantic-state-model.md`.
+  The representative page root has compact/raster bucket array `+0x1c`, rule
+  list `+0x24`, and context slots `+0x2c`. Addressed fixtures place the text
+  object at `0x00d0c004`, rule object at `0x00d0c02a`, raster object at
+  `0x00d0c038`, and context slot 0 as `0x440946b4`. Publication preserves the
+  bucket root as `00 d0 c0 04 80 00 00 02 00 00 c3 3c` and the selector-7
+  rule list as `00 00 00 00 01 07 5c 01 00 0c 00 05 00 00`. Parser scratch
+  for the delayed raster transfer is restored record `80 57 00 02 00 00`,
+  delayed snapshot `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`,
+  and payload `c3 3c`. Firmware allocator bookkeeping ends at
+  `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`, and
+  `0x782a76 = 0x00d0c044`.
+  The multi-row sibling proves bucket ordering for consecutive raster objects:
+  bucket `+0x1c` chains `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, so render
+  dispatch sees the second raster row, first raster row, then compact text,
+  with raster `row_y = 2`. Writers are the parser handlers
+  `0xd04a`, `0x10e68`, `0x10e22`, `0x10898`, `0x10808`, `0x1075a`,
+  delayed `0x105d0`, and FF handler `0xf0f0`; consumers are allocator
+  `0x1381c` / `0x1387c`, publication `0xff1e`, bridge `0x1ed84` /
+  `0x1edc6`, and renderer `0x1ef6a`. Render call order is
+  `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`, with raster chain items going
+  to `0x1f88e` and compact text going to `0x1effe`.
 - The modeled per-band renderer now covers a crossing patterned rule
   together with compact text and a mode-0 raster row. Fixture
   `0x1ef6a page-band walk merges text raster and crossing rule`
@@ -942,6 +963,16 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   and leaves no rule/fixed-list residue. This closes the modeled
   per-band merge for that heterogeneous case; remaining render risk is
   live engine pacing and physical output comparison.
+  Derived render fields for the fixture include band/cursor state
+  `0x783a20 = 0x0050`, `0x783a22 = 0`, and `0x783a28 = 0x00100000`.
+  When `0x1f446` / `0x1f4e0` cannot finish the patterned rule in the current
+  band, the mutated rule node remains on the render record with its row count
+  reduced; the second-band entry consumes that carried node and finishes the
+  rule while preserving the already-rendered text/raster rows. No unresolved
+  software-visible middle edge remains for the documented text/rule/raster
+  page-record fields, publication, bridge, bucket order, or per-band merge;
+  future work belongs to byte streams that change object bytes, allocator
+  state, bridge roots, render dispatch, or physical output.
 - A downloaded-glyph page-image stream is covered for
   `ESC *c4660d37e5F`, `ESC )s2193W <0x0891 payload bytes>`, printable
   `%`, and FF publication. The fixture drains the same modeled `0xa904`

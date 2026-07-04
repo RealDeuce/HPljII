@@ -521,6 +521,22 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `ESC 9 clear margins feeds CR and page-record output`,
   `ESC = half-line feed reaches shifted page-record output`, and
   `ESC &d underline selector materializes span output`.
+  The representative control path is `ESC &k1G ! CR !`: host bytes enter
+  `0xa904 -> 0xda9a -> 0x11774`, command handler `0xedf8` writes
+  line-termination byte `0x78318f = 0x80`, the first `!` reaches `0xd04a`,
+  CR handler `0xf02c` resets horizontal cursor `0x782c8a` from left margin
+  `0x782dd6`, flushes pending span state through `0xf34a`, and calls LF helper
+  `0xf0b2` because bit 7 is set. The second `!` then queues at compact coord
+  `0x3b00` through `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`, publishes through
+  `0xff1e`, crosses `0x1ed84` / `0x1edc6`, and renders through `0x1ef6a`.
+  Direct-control variants share the same canonical placement fields:
+  horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, margins
+  `0x782dd6` / `0x782dda`, HMI `0x78315c`, VMI `0x783160`, wrap byte
+  `0x783190`, and perforation-skip byte `0x783191`. `ESC 9` handler `0xe9ba`
+  clears margins before later CR/text consumes them; `ESC =` handler `0xf176`
+  advances by half VMI before later text; `ESC &d` handler `0x12622` writes
+  underline selector `0x783185` and can flush selector-`0x4000` span objects
+  through `0x12714`, which later render through segment-list path `0x1f812`.
 - Layout-control streams are covered where command bytes alter later visible
   output without drawing immediately. Evidence:
   `Worked Path: Page Length, Wrap, And Perforation Controls` in

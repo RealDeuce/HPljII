@@ -618,6 +618,21 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `mixed printable/page-size page-record stream publishes queued text`,
   and `mixed printable/orientation page-record stream publishes queued text
   before landscape change`.
+  Page-size handler `0xfc74` writes internal page code `0x782da2` and reloads
+  table-backed geometry. Orientation handler `0x10220` writes orientation byte
+  `0x782da3`, publishes any queued page first, then swaps active extents and
+  margin bases. The ROM lookup helpers `0x9d16`, `0x9d4e`, `0x9d86`, and
+  `0x9dbe` read tables `0x00a112`, `0x00a128`, `0x00a13e`, and `0x00a154`;
+  they mask page code with `0x7f`, accept indexes `0..10`, and supply table
+  outputs such as `0x782db2` and `0x782db4` before orientation refresh.
+  Page-length handler `0xf9e8` writes page length/vertical extent `0x782dba`.
+  Its zero-parameter branch compares pending page-environment byte `0x782da6`
+  against active byte `0x780e8e`, can mirror output byte `0x780e8f`, signal
+  control word `0x780e26`, and select default page code from `0x780e97` with
+  fallback code `2`. These fields are consumed later by printable placement,
+  VFC, perforation skip, raster origin, rectangle clipping, span orientation,
+  publication, and render scheduling; the geometry commands have no separate
+  pixel renderer.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:

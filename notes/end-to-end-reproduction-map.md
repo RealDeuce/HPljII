@@ -312,11 +312,67 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   object handoff; remaining work is broader selected-font combinations and
   physical-device comparison outside this cluster.
 - Page-root storage:
-  ROM evidence is `0x10084`, `0x10110`, `0x1381c`, and `0x1387c`.
-  Reproduction evidence is `Shared Page-Record Storage And Allocator`,
-  surfaced first as `Worked Path: Shared Page-Record Storage And Allocator` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), addressed storage
-  fixtures, and chunk-rollover fixtures.
+  The shared page-object state starts at current root pointer `0x78297a`.
+  Canonical root fields are bucket heads `+0x1c` for compact text,
+  segment-list spans, and encoded raster; stream chunk head `+0x20`;
+  rule-list head `+0x24`; fixed-list head `+0x28`; current font/context slots
+  `+0x2c..+0x68`; and root state byte `+4`, initialized as current state `1`
+  and published as state `2`.
+  `0x10084` ensures or allocates the root, seeds stream pointer
+  `0x782a72 = root + 0x20`, calls initializer `0x10110`, clears transient
+  byte `0x782990`, and zeroes the 256 bucket heads.
+  `0x1381c` is the shared variable-size object allocator: it writes allocator
+  cursors `0x782a70`, `0x782a72`, and `0x782a76`, and links fresh 0x100-byte
+  chunks when the current chunk cannot satisfy a producer.
+  Producer families share that storage: `0x12f2e` / `0x1387c` write compact
+  text and glyph entries under root `+0x1c`; `0x12714` / `0x13520` /
+  `0x135f0` write portrait segment-list spans under `+0x1c`; `0x13070` /
+  `0x13250` write encoded-raster objects under `+0x1c`; `0x13386` /
+  `0x133aa` write ordered rule nodes under `+0x24`; and `0x136d2` writes
+  fixed-list or landscape span nodes under `+0x28`.
+  Derived/cache state is producer key state `0x782a7a..0x782a7e`, allocator
+  cursors, and bridge/render caches such as `0x783a20`, `0x783a22`, and
+  `0x783a28`.
+  Parser scratch ends at the producer boundary: six-byte command records,
+  delayed raster payload snapshots, and printable bytes are no longer
+  consulted after the page objects are queued.
+  Firmware bookkeeping is publication flag `0x782996`, root state byte `+4`,
+  no-room/retry bits such as root flag word `+0x14`, allocator failure
+  returns, and render-work progress fields.
+  Publication `0xff1e` consumes the current root, copies its roots and header
+  fields into the page/control pool, writes pool head `0x780ea6`, sets
+  `0x782996`, and clears `0x78297a`.
+  Render bridge `0x1ed84` selects the page/control source; `0x1edc6` copies
+  source `+0x1c` to render `+0x18`, `+0x24` to render `+0x1c`, `+0x28` to
+  render `+0x20`, and context slots `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
+  The storage layer has no pixels by itself, but it determines which objects
+  exist, their list order, and which render dispatcher later consumes them:
+  compact and raster bucket dispatch through `0x1efc2`, segment-list spans
+  through `0x1f812`, rules through `0x1f446`, and fixed-list rows through
+  `0x1f756`.
+  Concrete output evidence includes fixtures `0x10084-modeled page-root
+  allocation side effects`, `0x10110 page-root initializer installs selected
+  context slot`, `0x1381c stream allocator chunks display-list storage`,
+  `0x1387c address-aware bucket allocation uses 0x1381c storage`,
+  `addressed page-record writers share 0x1381c across chunk rollover`,
+  `addressed text/rule/raster field groups reach publication and render
+  entry`, `addressed stream page record materializes through 0xff1e and
+  0x1ed84`, `0x1edc6 page-record bridge copies compact bucket and context
+  slots`, and `0x1edc6 page-record bridge normalizes rule and fixed lists`.
+  Checked-in evidence is [page-record-storage.md](page-record-storage.md),
+  `Shared Page-Record Storage And Allocator` in
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Shared
+  Page-Record Storage And Allocator` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for first-root setup, shared stream allocation, producer
+  roots, chunk rollover, no-room preservation, publication, bridge copies, and
+  render-dispatch ownership because the cited fixtures cover multiple writer
+  families and the shared consumers.
+  No unresolved ROM-local producer-to-root-to-render mapping remains for the
+  listed object classes; remaining work starts from byte streams that create a
+  new object shape, root field, bridge value, continuation state, or rendered
+  row.
 - Rule/rectangle producers:
   ROM evidence is `0x10898`, `0x10b80`, `0x13386`, and `0x133aa`.
   Reproduction evidence is `notes/rectangle-graphics.md` and

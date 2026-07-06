@@ -2738,93 +2738,91 @@ A byte-stream renderer must preserve:
   segmented-wide high-row 0x02xx matrix renders selected segment` and `downloaded
   segmented-wide high-row 0x02xx span-31 matrix hits source boundary` prove the same
   split for rows `0x0282` and `0x02ff`. Fixtures `downloaded segmented-wide high-row
-  0x03xx matrix renders selected segment` and `downloaded segmented-wide high-row
-  0x03xx span-31 matrix hits source boundary` prove the same split for rows `0x0381`,
-  `0x0382`, and `0x03ff`. Fixture `downloaded segmented-wide high-row 0x04xx matrix
-  renders selected segment` proves the same selected-segment render state for rows
-  `0x0481`, `0x0482`, and `0x04ff` at spans `17`, `18`, and `24`; fixtures
-  `downloaded segmented-wide high-row 0x05xx matrix renders selected segment` and
+  0x03xx matrix renders selected segment` and `downloaded segmented-wide high-row 0x03xx
+  span-31 matrix hits source boundary` prove the same split for rows `0x0381`, `0x0382`,
+  and `0x03ff`. Fixture `downloaded segmented-wide high-row 0x04xx matrix renders
+  selected segment` proves the same selected-segment render state for rows `0x0481`,
+  `0x0482`, and `0x04ff` at spans `17`, `18`, and `24`; fixtures `downloaded
+  segmented-wide high-row 0x05xx matrix renders selected segment` and `downloaded
+  segmented-wide high-row parser-limit matrix renders selected segment` extend it
+  through sampled rows up to `0x0787`; their oversized siblings classify adjacent
+  payloads as parser-count-cap boundaries before `0x16498` renderer entry. Remaining
+  parser-produced comparisons are bounded cross-products: physical/pixel behavior after
+  the fully documented wrapped source-byte mode-0 invalid-helper boundaries, publication
+  combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
+  rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
+  truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
+  segmented-glyph plus raster, split-plane segmented-glyph plus raster,
+  segmented-glyph/raster FF publication, segmented-wide, even-span wide, payload-control
+  wide, wide-remainder matrix, segmented-wide matrix, no-install, and status-`2` compact
+  bucket variants, and return-boundary variants beyond the covered normal even-span,
+  no-install, status-`2`, row-count-matrix short/segmented, linear-segmented
+  publication, split-plane segmented publication, and segmented-wide publication
+  fixtures. The normal even-span fixture pins the `0x15dc6 -> 0x16498 -> 0x15dcc ->
+  0x12328` boundary with zero remaining budget and next handler `0x10e68`; fixture
+  `0x16498 no-install exits preserve following printable output` pins six-byte `0x12328`
+  drains before handler `0xd04a`; fixture `0x16498 status-2 partial installs remain
+  printable` pins the linear/split status-`2` zero-drain returns before handler
+  `0xd04a`; fixture `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts` pins short rows `0x0001..0x001f`, `0x0021..0x003f`, and
+  `0x0041..0x007f`, plus segmented rows `0x0083..0x00ff`, through zero-drain returns
+  before handler `0xd04a`; fixture `downloaded glyph wide-remainder matrix publishes and
+  renders compact chunks` pins spans `17..32`, selector `0x1003`, object byte `0x10`,
+  compact target `0x1effe` / `0x1f0d2`, remainders `1..15`, and the no-remainder
+  span-`32` case through the same zero-drain return boundary, and probes spans `33`,
+  `48`, `49`, `64`, and `255` through the same upstream boundary and the same
+  model-derived rows; fixture `downloaded glyph segmented-wide matrix publishes and
+  renders compact chunks` pins spans `17..32`, rows `0x81`, selector `0x3003`, buckets
+  `0` and `8`, object byte `0x30`, compact target `0x1effe` / `0x1f264`, segment-1 row
+  skip `0x80`, A2/A3 source offsets, remainders `1..15`, and the no-remainder span-`32`
+  case through the same zero-drain return boundary, and probes spans `33`, `48`, `49`,
+  and `64` through the same upstream boundary and the same model-derived segment-1 rows;
+  fixture `downloaded segmented-wide row-span cross-products render selected segment`
+  pins rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32` through
+  the same zero-drain return boundary; fixtures `downloaded segmented-wide high-row
+  fallback renders selected segment`, `downloaded segmented-wide high-row even-span
+  fallback renders selected segment`, and `downloaded segmented-wide high-row span-32
+  fallback renders selected segment` pin row `0x0181`, spans `17`, `18`, and `32`,
+  segment `1`, and their `32/96` row splits through the same zero-drain return boundary;
+  fixture `downloaded segmented-wide high-row span-31 fallback hits source boundary`
+  pins the neighboring span-31 source-read boundary at `+0xb50`; fixtures `downloaded
+  segmented-wide row-0x0182 fallbacks render selected segment` and `downloaded
+  segmented-wide row-0x0182 span-31 fallback hits source boundary` pin the same
+  return/boundary split for row `0x0182`; fixtures `downloaded segmented-wide row-0x01ff
+  fallbacks render selected segment` and `downloaded segmented-wide row-0x01ff span-31
+  fallback hits source boundary` pin the same return/boundary split for row `0x01ff`;
+  fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected segment`,
+  `downloaded segmented-wide high-row 0x03xx matrix renders selected segment`, and
+  `downloaded segmented-wide high-row 0x04xx matrix renders selected segment`,
+  `downloaded segmented-wide high-row 0x05xx matrix renders selected segment`, and
   `downloaded segmented-wide high-row parser-limit matrix renders selected segment`
-  extend it through sampled rows up to `0x0787`; their oversized siblings classify
-  adjacent payloads as parser-count-cap boundaries before `0x16498` renderer entry.
-  Remaining parser-produced comparisons are bounded cross-products:
-  physical/pixel behavior after the fully documented wrapped source-byte
-  mode-0 invalid-helper boundaries, publication combinations beyond the
-  documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
-  row-`0x80`, row-count-matrix short/segmented, rows-`0x0102` truncated,
-  linear-segmented, rows-`0x82` segmented, split-plane segmented, segmented-glyph plus
-  raster, split-plane segmented-glyph plus raster, segmented-glyph/raster FF
-  publication, segmented-wide, even-span wide, payload-control wide, wide-remainder
-  matrix, segmented-wide matrix, no-install, and status-`2` compact bucket variants, and
-  return-boundary variants beyond the covered normal even-span, no-install, status-`2`,
-  row-count-matrix short/segmented, linear-segmented publication, split-plane segmented
-  publication, and segmented-wide publication fixtures. The normal even-span fixture
-  pins the `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
-  budget and next handler `0x10e68`; fixture `0x16498 no-install exits preserve
-  following printable output` pins six-byte `0x12328` drains before handler `0xd04a`;
-  fixture `0x16498 status-2 partial installs remain printable` pins the linear/split
-  status-`2` zero-drain returns before handler `0xd04a`; fixture `downloaded glyph
-  row-count matrix publishes and renders additional short/segmented counts` pins short
-  rows `0x0001..0x001f`, `0x0021..0x003f`, and `0x0041..0x007f`, plus segmented rows
-  `0x0083..0x00ff`, through zero-drain returns before handler `0xd04a`; fixture
-  `downloaded glyph wide-remainder matrix publishes and renders compact chunks` pins
-  spans `17..32`, selector `0x1003`, object byte `0x10`, compact target `0x1effe` /
-  `0x1f0d2`, remainders `1..15`, and the no-remainder span-`32` case through the same
-  zero-drain return boundary, and probes spans `33`, `48`, `49`, `64`, and `255` through
-  the same upstream boundary with matching rendered rows; fixture `downloaded glyph
-  segmented-wide matrix publishes and renders compact chunks` pins spans `17..32`, rows
-  `0x81`, selector `0x3003`, buckets `0` and `8`, object byte `0x30`, compact target
-  `0x1effe` / `0x1f264`, segment-1 row skip `0x80`, A2/A3 source offsets, remainders
-  `1..15`, and the no-remainder span-`32` case through the same zero-drain return
-  boundary, and probes spans `33`, `48`, `49`, and `64` through the same upstream
-  boundary with matching segment-1 rows; fixture `downloaded segmented-wide row-span
-  cross-products render selected segment` pins rows `0x0082` and `0x0083` crossed with
-  spans `17`, `18`, `31`, and `32` through the same zero-drain return boundary; fixtures
-  `downloaded segmented-wide high-row fallback renders selected segment`, `downloaded
-  segmented-wide high-row even-span fallback renders selected segment`, and `downloaded
-  segmented-wide high-row span-32 fallback renders selected segment` pin row `0x0181`,
-  spans `17`, `18`, and `32`, segment `1`, and their `32/96` row splits through the same
-  zero-drain return boundary; fixture `downloaded segmented-wide high-row span-31
-  fallback hits source boundary` pins the neighboring span-31 source-read boundary at
-  `+0xb50`; fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
-  segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits source
-  boundary` pin the same return/boundary split for row `0x0182`; fixtures `downloaded
-  segmented-wide row-0x01ff fallbacks render selected segment` and `downloaded
-  segmented-wide row-0x01ff span-31 fallback hits source boundary` pin the same
-  return/boundary split for row `0x01ff`; fixtures `downloaded segmented-wide
-  high-row 0x02xx matrix renders selected segment`, `downloaded segmented-wide
-  high-row 0x03xx matrix renders selected segment`, and `downloaded segmented-wide
-  high-row 0x04xx matrix renders selected segment`, `downloaded segmented-wide
-  high-row 0x05xx matrix renders selected segment`, and `downloaded segmented-wide
-  high-row parser-limit matrix renders selected segment` extend the selected-segment
-  zero-drain return boundary through sampled rows up to `0x0787`, with higher rows
-  limited by the parser payload-count cap; the corresponding oversized fixtures record
-  parser stop offsets before renderer entry; fixture
-  `downloaded normal row-0x80 and segmented glyph FF publications render page
-  records` pins normal, row-`0x80`, and
-  linear-segmented zero-drain returns before handler `0xd04a`; fixture `split-plane
-  segmented downloaded glyph FF publication renders page record` pins the split-plane
-  segmented zero-drain return before handler `0xd04a`; fixtures `host-fetched 0x15d0a
-  current-record resource object feeds fixed-record render`, `host-fetched 0x15d0a
-  continuation resource object resumes fixed-record render`, and `host-fetched 0x15d0a
-  split-plane continuation resource object resumes fixed-record render` pin the
-  bit-30-clear fixed-record current-record and continuation zero-drain returns before
-  handler `0xd04a`; fixture `combined font download FF publishes installed glyph page
-  record` pins the segmented-wide zero-drain return before handler `0xd04a`; fixture
-  `host-fetched payload-control downloaded glyph FF publishes page record` pins the
-  payload-control wide nonzero drain where `0x12328` consumes `&` and leaves FF for
-  handler `0xf0f0`. Other uncomposed full-success return siblings are regression
-  cross-products of the same zero-drain join unless they expose a different
-  `0x783140` remainder, drain status, next handler, or page-record selector.
-  Accepted descriptor-record mode bytes are closed for the covered
-  helper table by fixture `0x16b1a descriptor width helper emits only mode 1/2`:
-  disassembly `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and
-  `0x16b26..0x16b34` rejects invalid widths without writing scratch. The mode-byte-`0`
-  no-install boundary itself is no longer a vague open edge: fixture `0x16498 no-install
-  exits preserve following printable output` proves status
-  `0`/`unsupported-record-shape` plus unchanged visible output, and fixture `0x16498
-  replacement allocation failure partial and rejected downloaded character exits
-  preserve state` proves the same table/header no-write boundary at the object level.
+  extend the selected-segment zero-drain return boundary through sampled rows up to
+  `0x0787`, with higher rows limited by the parser payload-count cap; the corresponding
+  oversized fixtures record parser stop offsets before renderer entry; fixture
+  `downloaded normal row-0x80 and segmented glyph FF publications render page records`
+  pins normal, row-`0x80`, and linear-segmented zero-drain returns before handler
+  `0xd04a`; fixture `split-plane segmented downloaded glyph FF publication renders page
+  record` pins the split-plane segmented zero-drain return before handler `0xd04a`;
+  fixtures `host-fetched 0x15d0a current-record resource object feeds fixed-record
+  render`, `host-fetched 0x15d0a continuation resource object resumes fixed-record
+  render`, and `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render` pin the bit-30-clear fixed-record current-record and continuation
+  zero-drain returns before handler `0xd04a`; fixture `combined font download FF
+  publishes installed glyph page record` pins the segmented-wide zero-drain return
+  before handler `0xd04a`; fixture `host-fetched payload-control downloaded glyph FF
+  publishes page record` pins the payload-control wide nonzero drain where `0x12328`
+  consumes `&` and leaves FF for handler `0xf0f0`. Other uncomposed full-success return
+  siblings are regression cross-products of the same zero-drain join unless they expose
+  a different `0x783140` remainder, drain status, next handler, or page-record selector.
+  Accepted descriptor-record mode bytes are closed for the covered helper table by
+  fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
+  `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and `0x16b26..0x16b34`
+  rejects invalid widths without writing scratch. The mode-byte-`0` no-install boundary
+  itself is no longer a vague open edge: fixture `0x16498 no-install exits preserve
+  following printable output` proves status `0`/`unsupported-record-shape` plus
+  unchanged visible output, and fixture `0x16498 replacement allocation failure partial
+  and rejected downloaded character exits preserve state` proves the same table/header
+  no-write boundary at the object level.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
   buckets; the normal, rows-`0x20` short, rows-`0x40` short, linear-segmented,
   rows-`0x82` segmented, split-plane segmented, compact-wide matrix,

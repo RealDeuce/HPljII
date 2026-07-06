@@ -581,10 +581,12 @@ Evidence and confidence:
   0x1381c across chunk rollover`.
 - Confidence is high for the ROM-local split algorithm and object fields
   because the branch boundaries, field writes, and static large-payload
-  walkthrough are direct disassembly. Confidence for broader dense-row pixel
-  construction remains limited only where a new byte stream changes the
-  accepted count, allocator pre-state, packed-key advance, bridge bucket root,
-  or `0x1f88e` mode-specific row construction.
+  walkthrough are direct disassembly. A parser-fed fixture would only check
+  that our transcription reaches the documented object chain; it would not
+  supply an independent pixel oracle. Broader dense-row documentation remains
+  open only where a new byte stream changes the accepted count, allocator
+  pre-state, packed-key advance, bridge bucket root, or `0x1f88e`
+  mode-specific row construction.
 
 ## Render Dispatch
 

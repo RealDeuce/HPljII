@@ -7610,7 +7610,7 @@ coverage.
   `ESC )s#W validation failures preserve following printable output` proves
   those seven `ESC )s80W` no-install exits plus the short-budget `ESC )s8W`
   entry-5 failure leave the next printable `!` on the unchanged default-font
-  page-record path with matching rendered rows. Disassembly of the predicate
+  page-record path and same model-derived rows. Disassembly of the predicate
   helpers shows these are the complete ROM-internal rejecting families; the
   remaining validation edge is external HP manual naming for
   consumed-but-not-staged fields.

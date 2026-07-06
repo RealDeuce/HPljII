@@ -419,8 +419,8 @@ the same handlers and `0x144d2` context update as the primary visible
 selection fixture, producing `0x782ee6 = 0xc008004c` and map `0x782f32`; the
 tail `SI !!` then follows the live primary handoff fixture through
 `0xc68a`, `0xc428(0)`, `0xc4fc`, page-root slot `0`, and two printable
-`0xd04a` events. Its rendered rows are asserted to match the pinned parsed
-primary visible rows.
+`0xd04a` events. It reaches the same documented compact-object fields and
+model-derived visible rows as the pinned parsed primary visible path.
 
 Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
@@ -470,8 +470,8 @@ adds the secondary composed contract. The combined host-fetched stream is
 `ESC )s0p16h8v0s0b0T SO !!`: the selection phase writes
 `0x782ef6 = 0xc00ae122` and map `0x783032`, then the tail `SO !!` follows
 `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and two printable
-`0xd04a` events. Its rendered rows are asserted to match the pinned parsed
-secondary visible rows.
+`0xd04a` events. It reaches the same documented compact-object fields and
+model-derived visible rows as the pinned parsed secondary visible path.
 
 Fixture `inline secondary font selection stream renders SO visible rows` runs
 that same secondary stream through one mixed-stream state instead of a split

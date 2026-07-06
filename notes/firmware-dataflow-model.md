@@ -6422,6 +6422,13 @@ Current top-level boundaries include:
   verified IC32/IC15 resource-pair image. Mirror, code-pair, and zero-fill
   policies are fixture-bounded, but the physical decode after `0x0c0000`
   remains unproven.
+- Unverified physical output behavior: full internal-font sample and
+  self-test/page-placement comparison against a real LaserJet II output.
+  The ROM-local path is documented through sample traversal
+  `0x1c334..0x1c5e4`, page-object production `0x1c5e8..0x1ed84`, bridge
+  `0x1ed84` / `0x1edc6`, and render entry `0x1ef6a`; the remaining boundary
+  is physical baseline/header/cell placement on paper, not parser, resource,
+  page-record, or bitmap-renderer state.
 - ROM-local visible-output helper boundary:
   `Boundary: Short Compact Downloaded-Glyph High Rows` documents the exact
   short compact downloaded-glyph fallback edge in helper `0x1fe76`. Rows

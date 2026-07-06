@@ -52,6 +52,57 @@ strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
+## Supported Stream Entry Points
+
+Use this index when starting from a concrete byte stream. Each entry points to
+the checked-in note that carries the parser route, state fields, page/render
+objects, fixtures, evidence, and unresolved boundaries for that stream family:
+
+- Printable text, direct controls, and cursor placement:
+  `!!`, `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`,
+  `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &d3D! ESC &d@`;
+  start with `Worked Path: Printable Glyph`,
+  `Worked Path: Mixed Direct Controls`, `Worked Path: Cursor And Margin
+  Placement`, and `Worked Path: Text Span Flush And Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Parser artifacts and no-output cases:
+  normal `0x00` / `0x07` / `0x0b`, alternate/data blank C0 rows, `ESC ?`,
+  `ESC Z`, and `ESC &lT/t`; start with
+  `Worked Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) and
+  [pcl-parser-core.md](pcl-parser-core.md).
+- Transparent/display payload readers:
+  `ESC &p#X...`, `ESC Y ... ESC Z`, and local Control-Z forms; start with
+  [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md), and their worked paths in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Font selection and visible glyph output:
+  `ESC (s0p10h12v0s0b3T!!`,
+  `ESC )s0p16h8v0s0b0T SO !!`, final-`X` / final-`@` streams, and
+  pitch-mode `ESC &k#S`; start with
+  [font-context-metrics.md](font-context-metrics.md),
+  [resource-rom.md](resource-rom.md), and `Worked Path: Font Selection To
+  Visible Glyphs`.
+- Downloaded-font payloads and downloaded-glyph rendering:
+  `ESC )s#W` descriptor/character streams followed by printable output or
+  rule/raster composition; start with [downloaded-fonts.md](downloaded-fonts.md)
+  and the downloaded-glyph worked paths and boundaries in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Raster, rectangle/rule, and mixed page-image streams:
+  `ESC *t300R ESC *r0A ESC *b2W...`,
+  `ESC *c12a5b0P`, and
+  `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`;
+  start with [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md), and `Worked Path: Mixed
+  Text/Rule/Raster Page Record`.
+- Publication, VFC, macro replay, and status side channels:
+  `! ESC E`, `ESC &k2G! FF`, `! ESC &l2X FF`, `ESC &l#W` / `ESC &l#V`,
+  macro `ESC &f#X` streams, and `ESC *r1K 11`; start with
+  [publication-commands.md](publication-commands.md),
+  [vertical-forms-control.md](vertical-forms-control.md),
+  [macro-data-chain.md](macro-data-chain.md), and
+  [errors-and-status.md](errors-and-status.md).
+
 ## Current End-To-End Coverage
 
 - Host byte source priority and callers:

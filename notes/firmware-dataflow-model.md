@@ -6300,6 +6300,16 @@ Dense-row allocation and splitting:
   loops for remaining accepted bytes.
 - Zero-length, no-room, and copy-stop exits drain the remaining accepted plus
   overflow count through `0x12328`.
+- The instruction-level split rule is documented as
+  `Dense-Row Split Composition Checkpoint` in
+  [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint):
+  `0x132be..0x13320` is same-chunk allocation,
+  `0x132ce..0x132fc` is current-tail allocation, and
+  `0x13328..0x13382` is new-chunk or capped-new-chunk allocation. Current
+  checked-in fixtures prove ordinary encoded-object layout and shared
+  allocator rollover, but do not yet include a parser-fed `ESC *b#W` stream
+  large enough to force the current-tail or capped-new-chunk split and compare
+  multi-object rendered rows.
 
 State classification:
 
@@ -6322,9 +6332,10 @@ State classification:
   none for the ROM-local raster command-family contract.
 - Unknown:
   no unresolved ROM-local parser, gate, object layout, bridge, mode dispatch,
-  or dense-row split rule remains for the covered raster streams. Remaining
+  or dense-row branch target remains for the covered raster streams. Remaining
   raster work is byte-stream variants that expose different gate outcomes,
-  object bytes, bridge state, or rendered rows.
+  object bytes, bridge state, rendered rows, or a forced dense-row
+  current-tail/capped-new-chunk split.
 
 Output effect:
 
@@ -6461,11 +6472,13 @@ Current top-level boundaries include:
   `0x0788*17` stop at the recorded parser payload offset before installed
   glyph publication or render dispatch.
 - ROM-local variant boundaries rather than generic gaps:
-  dense page/object streams that change `0x1381c` rollover, `0x13250` encoded
-  raster gate outcomes, `0x133aa` / `0x136d2` list ordering, or bridge fields;
-  macro overlay payload variants beyond the documented matrix; and selected
-  font combinations that change context/map/selector state before visible
-  output.
+  parser-fed raster streams that force `0x132b6..0x13382` current-tail or
+  capped-new-chunk allocation, then prove the resulting multi-object
+  `0x13250` bucket chain and rendered rows; dense page/object streams that
+  change `0x1381c` rollover, `0x133aa` / `0x136d2` list ordering, or bridge
+  fields; macro overlay payload variants beyond the documented matrix; and
+  selected font combinations that change context/map/selector state before
+  visible output.
 
 These are not blockers for documenting ROM-local parser, command, page-object,
 or render behavior that is already visible in the disassembly.

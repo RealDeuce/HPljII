@@ -458,8 +458,93 @@ Field grouping for this dense-row split:
   source consumed through `0xa904` / `0x138de` or drained through `0x12328`;
 - firmware bookkeeping: stream allocator state `0x782a70`, `0x782a72`, and
   `0x782a76`, plus copy-stop/publication flag `0x782996`;
-- unknown: no ROM-local split rule remains unresolved at `0x132b6`; remaining
-  work is byte streams that force these split paths and change rendered rows.
+- unknown: no instruction-level split branch remains unlocated at `0x132b6`.
+  The remaining validation boundary is a parser-fed byte stream that forces
+  the current-tail or capped-new-chunk split and proves the resulting multiple
+  encoded objects and rendered rows.
+
+### Dense-Row Split Composition Checkpoint
+
+This checkpoint is the semantic contract for a raster row that is too large
+for one stream object. It is separate from the `0x1f88e` bitmap renderer: the
+split happens while building page-record bucket objects, before publication
+and before render scheduling.
+
+Writers and branch boundaries:
+
+- `0x105d0` writes accepted byte count `+0x04`, overflow count `+0x06`, row
+  word `+0x02`, and active byte `+0x12` in raster state block `0x783170`.
+  These fields decide whether `0x13070` is called at all.
+- `0x13070..0x13136` computes bucket index `0x782a7c`, packed key
+  `0x782a7e`, odd-byte rounding, requested object size `accepted + 0x0a`, and
+  mode argument from raster state `+0x08` before calling `0x13250`.
+- `0x13250..0x132ae` links each returned object at the head of the selected
+  page-root `+0x1c` bucket chain, writes class byte `+0x04 = 0x80`, and copies
+  the mode byte into object `+0x05`.
+- `0x132be..0x13320` is the same-chunk branch: when requested size fits
+  remaining stream bytes `0x782a70`, it writes `0x782a80 = size - 0x0a`,
+  advances `0x782a76`, subtracts the requested size from `0x782a70`, and
+  returns the old free pointer.
+- `0x132ce..0x132fc` is the current-tail branch: when the request does not fit
+  but at least `12` bytes remain, it writes tail capacity
+  `0x782a80 = 0x782a70 - 0x0a`, clears `0x782a70`, and returns the current
+  free pointer without allocating a fresh chunk.
+- `0x13328..0x13382` is the new-chunk branch: it allocates a `0x100`-byte
+  stream chunk through `0x1710`, links it through `0x782a72`, seeds
+  `0x782a76 = chunk + 4`, and either falls back to the same-chunk branch or,
+  for oversized requests, returns a capped object with
+  `0x782a80 = 0x00f2` and no remaining chunk space.
+- If allocation fails and `0x132b6` returns zero, `0x13070` does not publish a
+  partial encoded object. The caller drains the remaining accepted plus
+  overflow count through `0x12328`.
+
+Consumers and output effect:
+
+- `0x13146..0x13220` writes object word `+0x06` from `0x782a80`, writes object
+  word `+0x08` from `0x782a7e`, copies up to `0x782a80` bytes through
+  `0x138de`, and loops while accepted bytes remain.
+- `0x1319e..0x131d0` subtracts the copied capacity from raster state `+0x04`,
+  advances the packed key through `0x332ee(0x782a80, mode + 1)`, and returns
+  to `0x130ea` to allocate the next encoded object.
+- Publication and rendering consume the resulting bucket chain through
+  `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, `0x1efc2`, and `0x1f88e`. The
+  split therefore changes page-image object topology and bucket traversal
+  before the encoded-span renderer sees the row.
+
+Field classification:
+
+- Canonical: raster state `0x783170 +0x02/+0x04/+0x06/+0x08/+0x12`, encoded
+  object bytes under page-root `+0x1c`, and the page-root bucket heads that
+  preserve those objects until publication.
+- Derived/cache: bucket index `0x782a7c`, packed key `0x782a7e`, split
+  capacity `0x782a80`, and the render-record bucket root copied by `0x1edc6`.
+- Parser scratch: restored delayed `80 57 ...` record, payload cursor, and
+  bytes consumed by `0x138de` or drained by `0x12328`.
+- Firmware bookkeeping: stream cursors `0x782a70`, `0x782a72`, `0x782a76`,
+  allocator return pointer, and publication/copy-stop byte `0x782996`.
+- Unknown: no branch target or state field is unknown inside
+  `0x13070..0x13382`, but the checked-in fixtures do not yet contain a
+  host/parser stream whose raster payload is large enough to force the
+  current-tail or capped-new-chunk split and then render the resulting
+  multi-object row.
+
+Evidence and confidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst` at
+  `0x13070..0x13250` for producer setup, `0x13250..0x132ae` for bucket linking,
+  `0x132b6..0x13382` for split allocation, and `0x138de` for payload copy.
+- Fixtures:
+  `0x13070/0x13250 raster row queues encoded-span object`,
+  `0x13070/0x13250 raster row queues non-byte-aligned encoded-span object`,
+  the mode-`1` through mode-`3` row-object fixtures, `0x1381c stream allocator
+  chunks display-list storage`, and `addressed page-record writers share
+  0x1381c across chunk rollover`.
+- Confidence is high for the ROM-local split algorithm and object fields
+  because the branch boundaries and field writes are direct disassembly. It is
+  medium for pixel output of a forced dense split until a parser-fed fixture
+  drives a large `ESC *b#W` payload through the current-tail or capped-new-chunk
+  branch and compares the rendered rows.
 
 ## Render Dispatch
 

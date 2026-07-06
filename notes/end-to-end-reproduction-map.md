@@ -565,21 +565,115 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   and queues replayed text, controls, transparent payloads, spans, or raster
   objects before the page is published.
 - Render bridge:
-  ROM evidence is `0x1ed84`, `0x1edc6`, and `0x1ef86`.
-  Checked-in documentation is [page-record-storage.md](page-record-storage.md),
-  [page-raster-imaging.md](page-raster-imaging.md), and the publication/render
-  entries in [semantic-state-model.md](semantic-state-model.md), surfaced first
-  as `Worked Path: Published Record To Active Bands` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
-  is `generated/analysis/ic30_ic13_page_record_bridge.md` and published-record
-  render-entry fixtures.
-- Active render scheduler:
-  ROM evidence is `0x1eb2a`, `0x1ecd6`, `0x1ed84`, and `0x1eba4`.
-  Reproduction evidence is
-  [active-render-scheduler.md](active-render-scheduler.md), surfaced first as
+  The render bridge is the copied-record boundary from active source
+  `0x780eae` into the render work record selected at `0x783a18`.
+  Entry `0x1ed84` consumes source header words and source roots from
+  `0x780eae`, seeds render header words from source `+0x18/+0x1a`, and then
+  delegates queue/list/context copying to `0x1edc6`.
+  `0x1edc6` copies source bucket root `+0x1c` to render `+0x18`, source
+  rule-list root `+0x24` to render `+0x1c`, source fixed-list root `+0x28` to
+  render `+0x20`, and context slots `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
+  Rule and fixed-list objects are normalized during this bridge: rule selector
+  byte `+5` is ORed with `0x10`, rule height `+0x0a` is copied into
+  continuation `+0x0c`, and fixed-list continuation/count fields are prepared
+  for `0x1f756`.
+  Canonical render roots after the bridge are render `+0x18` for compact,
+  segment-list, and encoded-raster bucket objects; render `+0x1c` for
+  rule-list objects; render `+0x20` for fixed-list objects; and render
+  `+0x24..+0x60` for font/resource contexts.
+  Derived/cache state includes render-band fields later written by `0x1ef86`
+  (`0x783a20`, `0x783a22`, `0x783a28`), render stride `0x783a1c`, and
+  bridge-normalized continuation fields; parser scratch is none because parser
+  records have already become page objects before publication.
+  Downstream consumer `0x1ef6a` reads `0x783a18`, calls `0x1ef86`, dispatches
+  render `+0x18` through `0x1efc2`, render `+0x1c` through `0x1f446`, and
+  render `+0x20` through `0x1f756`.
+  Concrete output evidence includes fixtures `0x1ed84 active page-record copy
+  seeds render-record header words`, `0x1edc6 page-record bridge copies
+  compact bucket and context slots`, `0x1edc6 page-record bridge normalizes
+  rule and fixed lists`, `0x1edc6 bridge records render-record destination
+  offsets`, `published page records feed 0x1ed84 and 0x1ef6a render entry`,
+  and mixed text/rule/raster bridge fixtures.
+  Checked-in evidence is [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md),
+  `Shared Page-Record Storage And Allocator`,
+  `Published Record To Active Render Scheduler`, and
+  `Bitmap Render Dispatch Contract` in
+  [semantic-state-model.md](semantic-state-model.md), surfaced first as
   `Worked Path: Published Record To Active Bands` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus
-  scheduler-produced band-word fixtures.
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for source-root copying, context-slot copying,
+  rule/fixed normalization, render-root ownership, and rendered rows after the
+  bridge.
+  No unresolved ROM-local bridge edge remains for the documented compact,
+  segment-list, encoded-raster, rule, and fixed-list objects; remaining work
+  starts from byte streams that change source record fields, bridge-normalized
+  values, or rendered rows.
+- Active render scheduler:
+  The active render scheduler is the software-visible path from a published
+  page/control record to render-band calls.
+  Canonical pool state is protected published head `0x780ea6`, scheduler
+  cursor `0x780eaa`, active source `0x780eae`, release cursor `0x780eb2`, and
+  engine/status counter `0x780e04`.
+  Pool initialization `0x3144..0x3162` seeds those cursors; candidate staging
+  and release paths `0x1c04..0x2016` populate `0x780e6e[]`; candidate
+  selection `0x7ec6..0x7f90` promotes a selectable record into
+  `0x780eaa/0x780eb2`; cursor path `0x7722..0x779a` advances or releases
+  cursors while protecting `0x780ea6`.
+  Active scheduler entry `0x1eb32..0x1eb50` copies `0x780eaa` into
+  `0x780eae`.
+  Canonical render-work state is two-work-record selector bytes `0x7820bc`
+  and `0x7820c0`, paired records `0x7820c4` and `0x782128`, and active render
+  pointer `0x783a18`; startup `0x2feb6` initializes selector state, and
+  `0x1ecd6..0x1ed76` alternates the destination record, writes `0x783a18`,
+  initializes geometry through `0x1ee9e` when needed, or reuses
+  same-geometry fields through helper `0x33238` before calling `0x1ed84`.
+  Derived/cache state is band rows `0x783a20`, remainder `0x783a22`,
+  destination base `0x783a28`, stride `0x783a1c`, same-geometry destination
+  word `+8`, row-copy pointers/scalars such as `0x783992`,
+  `0x7839a0`, `0x7839a4`, `0x7839a8`, `0x7839ac`, and status latches
+  `0x78399e/0x78399f/0x78398c`.
+  Firmware bookkeeping includes active flags `0x780ea4/0x780ea5`, candidate
+  slots `0x780e6e[]`, record state byte `+4`, wait-object records rooted at
+  `0x780182`, scheduler pending bits `0x78017e`, timer/status dividers
+  `0x78017f..0x780181`, and copied RAM trap/vector stubs
+  `0x780000..0x780173`.
+  The active band loop `0x1eba4..0x1ecd2` consumes active and paired
+  work-record fields `+0x06`, `+0x0c`, `+0x0e`, `+0x10`, and `+0x16`.
+  It cleans up when `0x780ea5` is set or `+0x0c < +0x10`, throttles when
+  `+0x0e > 0x28`, waits when computed capacity is below `9`, and otherwise
+  calls `0x1ef6a` before incrementing render band word `+0x10` and throttle
+  word `+0x0e`.
+  Hardware/external state is the MMIO-facing timing surface around `$8000`,
+  `$8a01`, `$a200`, `$a400`, `$a801`, and `0xffff2000`: the firmware-visible
+  latches and wait-object effects are documented, but exact board-signal names
+  remain outside this ROM-local scheduler checkpoint.
+  Concrete output evidence includes fixtures `0x1eb2a/0x1ecd6 selects
+  published record for render entry`, `0x1ecd6 same-geometry render work reuse
+  reaches render entry`, `0x3144/0x7ec6/0x7712 page pool aliases feed
+  scheduler cursor`, `0x1958/0x1c04/0x1eea staged candidate reaches render
+  scheduler`, `0x2126/0x1a4c/0x2038 active pool copy window feeds engine
+  rows`, `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`,
+  `0x1036/0x108e/0x123a wait-object scheduler handoff`,
+  `0x1144..0x11f8 scheduler trap handlers update wait objects`,
+  `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`,
+  `0x1eba4/0x1ef6a active render loop advances or yields bands`, and
+  `0x1eba4 scheduler band words render published downloaded glyph`.
+  Checked-in evidence is
+  [active-render-scheduler.md](active-render-scheduler.md),
+  `Published Record To Active Render Scheduler` in
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
+  Published Record To Active Bands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for pool-head versus cursor roles, candidate selection,
+  `0x780eaa -> 0x780eae`, work-record alternation, `0x783a18`,
+  same-geometry reuse, active-loop branches, wait-object transitions, and
+  rendered rows.
+  Remaining edges are bounded hardware/MMIO timing and naming edges:
+  `0x0d52..0x0f7a`, `0x0f84..0x102e`, `0x10bc..0x1282`, and
+  `0x1cf8..0x1ea8` are modeled as firmware-visible scheduler and wait-object
+  state, but not yet mapped one-to-one to formatter/DC connector signals.
 - Render dispatch:
   ROM evidence is `0x1ef6a`, `0x1ef86`, `0x1efc2`, `0x1f446`,
   `0x1f756`, `0x1f812`, and `0x1f88e`, plus destination helpers

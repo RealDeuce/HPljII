@@ -1774,9 +1774,13 @@ Field groups:
     bytes `32 9a d3 c0` from the row-copy code region as target
     `0x329ad3c0`.
 - Unknown:
-  - legal downloaded descriptor metric, selected-font state, and byte-width
-    combinations that have not yet been tied to concrete byte streams remain
-    open.
+  - no unresolved middle edge remains for documented downloaded-descriptor
+    metric formulas, legal selected-context forms, `0xd4ac` / `0xd8fc`
+    consumer gates, or segment-list render handoff. The remaining ROM-local
+    boundary is broader selected-font cross-products or byte streams that
+    change copied metric fields, selected-context form, span object bytes, or
+    rendered rows; exact HP manual names for consumed-but-not-staged
+    validation fields remain external/manual naming work.
 
 Writers:
 
@@ -2063,6 +2067,9 @@ Disassembly evidence:
   width-table, remainder-table, multi-row, and A2/A3 write traces.
 - [font-context-metrics.md](font-context-metrics.md): parser-produced
   built-in and resource-context metric fixtures.
+- [semantic-state-model.md](semantic-state-model.md), `Descriptor Metric
+  Semantic Checkpoint`: field grouping and writers/readers for
+  `0x16fae..0x1719c` descriptor metrics through `0xd4ac` / `0xd8fc`.
 - [downloaded-fonts.md](downloaded-fonts.md): parser-produced downloaded
   glyph installs, publications, and compact render fixtures.
 

@@ -8923,8 +8923,10 @@ This is the concrete handoff now known inside the remaining
 - `0x132b6..0x13382`: `0x132b6` allocates from current stream chunk state
   `0x782a70` / `0x782a76`; if fewer than 12 bytes remain it allocates a new
   `0x100`-byte chunk through `0x1710`, links it via `0x782a72`, seeds
-  payload cursor `0x782a76 = chunk + 4`, and records object payload capacity
-  in `0x782a80`.
+  payload cursor `0x782a76 = chunk + 4`, seeds `0x782a70 = 0x00fc`, and
+  records object payload capacity in `0x782a80`. Requests above `0x00fc`
+  take the capped-new-chunk exit with `0x782a80 = 0x00f2` and no remaining
+  chunk space.
 - `0x13146..0x13220`: after allocation, `0x13070` writes object `+0x06`
   from `0x782a80`, object `+0x08` from `0x782a7e`, calls `0x138de` with the
   state pointer, object payload pointer, and copy count, then loops for
@@ -8967,15 +8969,36 @@ The primary parser-derived stream queues object
 ................####........#####.#.#.#..#.#.#.#
 ```
 
-The capped transfer fixture proves byte count `4` with limit `2` stores
+The capped transfer fixture checks byte count `4` with limit `2` stores
 `+0x04 = 2`, stores overflow `+0x06 = 2`, queues payload `f0 0f`, and renders
 `####........####`. The beyond-extent fixture drains four bytes, queues no
 object, and leaves the root unensured; the negative-row fixture drains four
 bytes, queues no object, stores the same capped count/overflow pair as the
 in-range capped case, ensures a root, and advances to row zero. The mode
-fixtures prove byte-aligned mode `0`, non-byte-aligned mode `0`, mode `1`,
+fixtures check byte-aligned mode `0`, non-byte-aligned mode `0`, mode `1`,
 mode `2`, shifted mode `2`, band-clipped mode `2`, and mode `3` object/render
 contracts through `0x1f88e`.
+
+The dense-row static walkthrough in
+[raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint)
+derives the multi-object row shape directly from
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`. For a mode-0
+transfer with accepted count `0x012c` and fewer than `12` bytes free in the
+current stream chunk, the first `0x132b6` pass allocates a fresh chunk and
+returns a capped object with capacity `0x00f2`; `0x13070` copies payload bytes
+`0x0000..0x00f1`, subtracts that capacity, advances the packed key through
+`0x332ee(0x00f2, 1)`, and loops with `0x003a` bytes remaining. The second pass
+allocates a new chunk, takes the same-chunk branch with capacity `0x003a`,
+leaves `0x782a70 = 0x00b8`, and copies payload bytes `0x00f2..0x012b`.
+Because `0x13250` inserts at the selected page-root bucket head, the later
+`0x003a` object points at the earlier `0x00f2` object before publication and
+render dispatch consume the chain.
+
+The same checkpoint documents the current-tail sibling: if earlier page-object
+allocation leaves `0x782a70 = 0x0014` and the raster request needs object size
+`0x0028`, `0x132ce..0x132fc` records `0x782a80 = 0x000a`, clears
+`0x782a70`, and returns the old free pointer. The next `0x13070` loop carries
+the remaining accepted bytes through the same new-chunk or same-chunk rules.
 
 The encoded-raster primitive fixtures pin the helper math behind those row
 fixtures. `mode 0 literal words` copies payload bytes to literal 16-bit words;
@@ -8987,7 +9010,7 @@ count 5` returns split word `0x00040001`. `destination shifted current band`
 selects the shifted current-band destination branch, and `destination fallback
 buffer` selects the fallback-buffer branch.
 
-Lower-resolution parser fixtures now prove the same host-fetched command/data
+Lower-resolution parser fixtures now check the same host-fetched command/data
 boundary for modes `1`, `2`, and `3`: each stream drains through the modeled
 `0xa904` ring source, reaches parser handlers `0x10808`, `0x1075a`, and
 `0x11f82`, restores the delayed transfer record, queues the mode-specific
@@ -9009,7 +9032,7 @@ While active, `ESC *t75R` is ignored: fixture
 current mode and scale unchanged before the next `ESC *b2W` queues a mode-0
 object.
 
-The mixed composition fixtures prove raster rows share the same page-record
+The mixed composition fixtures check that raster rows share the same page-record
 publication path as text and rule objects. Fixture `bridged text, rule, and
 raster layers compose into one page band` renders the copied render-record
 layers together after `0x1ed84` / `0x1ef6a`; fixtures `host-fetched text
@@ -9024,7 +9047,7 @@ High for parser handler order, delayed snapshot bytes, delayed scratch layout,
 direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
 root boundary for beyond-extent versus negative rows, encoded object layout,
 bridge preservation, mode dispatch helpers, and rendered rows because those are
-asserted by named harness fixtures and by disassembly addresses
+supported by disassembly addresses and checked by named harness fixtures:
 `0x121cc..0x12262`, `0x105e4..0x106cc`, `0x10084..0x10218`,
 `0x13070..0x13250`, and `0x132b6..0x13382`. High for the covered raster-state
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
@@ -9141,26 +9164,29 @@ encoded object fields, bridge fields, or rendered rows.
 
 - `0x105d0..0x13250`: delayed record restore, gate outcomes, encoded object
   layout, rendered mode contracts, resolution-active interactions,
-  consecutive transfers, and same-family lowercase chaining are
-  fixture-backed. Parser scratch is the delayed `80 57 ...` record,
+  consecutive transfers, and same-family lowercase chaining are documented
+  with fixture checks. Parser scratch is the delayed `80 57 ...` record,
   `0x782a1a` pending byte, `0x782a1c` handler longword, `0x782a20..0x782a25`
   saved record, payload offset, and drained bytes; canonical output is the
   page-root `+0x1c` raster chain plus object bytes from `0x13070` /
-  `0x13250`; derived/cache state is the bucket/key and render-record copy
+  `0x13250`; dense split variants include the static `0x00f2 + 0x003a`
+  capped-new-chunk chain and the `0x000a` current-tail capacity example;
+  derived/cache state is the bucket/key and render-record copy
   consumed by `0x1ed84` / `0x1ef6a`. The remaining edge is no longer the
   parser-to-handler record handoff: disassembly pins `0x12218` restoring the
   record and `0x105d0` re-reading it from `0x78299e - 6`. The remaining work is
   dense parser-produced byte streams that change the
   `0x105d8..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, or
   `0x132b6..0x13382` gate outcomes, allocation fields, object bytes, bridge
-  state, or rendered rows.
+  state, copy-stop behavior, packed-key advance, or rendered rows.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as
   `00 d0 c0 04 80 00 00 02 00 00 c3 3c`. The remaining gap is not object
-  layout or addressed storage; it is parser-produced stream variants that
-  change chunk rollover `0x132b6..0x13382`, early payload stop when
-  `0x782996` flips during `0x138de`, or the rendered rows.
+  layout, addressed storage, or the dense split branch rules; it is
+  parser-produced stream variants that change chunk rollover pre-state, early
+  payload stop when `0x782996` flips during `0x138de`, packed-key advance, or
+  rendered rows.
 
 ## Rectangle Rule Producer And Renderer
 

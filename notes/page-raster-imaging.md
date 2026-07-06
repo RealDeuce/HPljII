@@ -633,16 +633,21 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and second-chunk
-  rollover are fixture-backed. Remaining work here is dense byte streams that
-  expose a new page-root field, stream-allocation transition, or object shape.
+  rollover are documented with fixture checks. Remaining work here is dense
+  byte streams that expose a new page-root field, stream-allocation
+  transition, or object shape.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
   [raster-graphics.md](raster-graphics.md). Parser dispatch, delayed record
   restore, gate outcomes, addressed `0x13250` storage, and render-entry rows
-  are fixture-backed. The parser-to-handler record handoff is disassembly-pinned
-  through `0x121cc`, `0x12218`, and `0x105d0` re-reading `0x78299e - 6`; the
-  remaining closure boundary is byte streams that change the
-  `0x105d0 -> 0x10084 -> 0x13070` gate result, encoded-row fields, or
-  rendered output.
+  are documented with fixture checks. The parser-to-handler record handoff is
+  disassembly-pinned through `0x121cc`, `0x12218`, and `0x105d0` re-reading
+  `0x78299e - 6`; the dense split branch rule is disassembly-pinned through
+  `0x132b6..0x13382`, including the static `0x00f2 + 0x003a`
+  capped-new-chunk chain and `0x000a` current-tail capacity example in
+  [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint).
+  The remaining closure boundary is byte streams that change the
+  `0x105d0 -> 0x10084 -> 0x13070` gate result, encoded-row fields,
+  copy-stop behavior, packed-key advance, or rendered output.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes, and local no-room returns are
   fixture-backed for both root `+0x24` and root `+0x28`. The parser-produced
@@ -1488,8 +1493,10 @@ Unresolved middle edges:
   portrait text spans; broader orientation/page-size cross-checks still need
   visible page comparisons.
 - `0x13070..0x1f88e`: raster mode producers and encoded renderers are
-  connected for modes `0..3`; remaining work is dense mixed-page variants that
-  change encoded object fields, bridge state, or rendered rows.
+  connected for modes `0..3`; dense split object-chain rules are documented for
+  capped-new-chunk and current-tail allocation. Remaining work is mixed-page
+  variants that change encoded object fields, bridge state, packed-key advance,
+  copy-stop behavior, or rendered rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the selector fixtures above; the remaining work is a broader
   selector/page-visible matrix and physical-device comparison.

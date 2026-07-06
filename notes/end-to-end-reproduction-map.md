@@ -1579,12 +1579,14 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   compact text and rule objects.
   Confidence is high for delayed-record restore, `0x105d0` gate outcomes,
   root boundary, encoded object layout, bridge preservation, mode helpers,
-  active-resolution behavior, lowercase `*b` chaining, and rendered rows for
-  the cited streams. No unresolved ROM-local raster object, bridge, or render
-  edge remains for the documented paths. Remaining work is new byte streams
-  that expose different `0x105d8..0x10752`, `0x10084..0x10218`,
-  `0x13070..0x13250`, or `0x132b6..0x13382` gate/allocator outcomes or
-  physical-device output beyond the ROM render buffer.
+  active-resolution behavior, lowercase `*b` chaining, dense
+  capped-new-chunk/current-tail allocation through `0x132b6..0x13382`, and
+  rendered rows for the cited streams. No unresolved ROM-local raster object,
+  bridge, or render edge remains for the documented paths. Remaining work is
+  new byte streams that expose different `0x105d8..0x10752`,
+  `0x10084..0x10218`, `0x13070..0x13250`, or `0x132b6..0x13382` gate outcomes,
+  accepted counts, allocator pre-state, object bytes, bridge state, copy-stop
+  behavior, packed-key advance, or rendered rows.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule

@@ -6305,11 +6305,11 @@ Dense-row allocation and splitting:
   [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint):
   `0x132be..0x13320` is same-chunk allocation,
   `0x132ce..0x132fc` is current-tail allocation, and
-  `0x13328..0x13382` is new-chunk or capped-new-chunk allocation. Current
-  checked-in fixtures prove ordinary encoded-object layout and shared
-  allocator rollover, but do not yet include a parser-fed `ESC *b#W` stream
-  large enough to force the current-tail or capped-new-chunk split and compare
-  multi-object rendered rows.
+  `0x13328..0x13382` is new-chunk or capped-new-chunk allocation. The static
+  dense-row walkthrough there derives a fresh-chunk `0x012c` accepted transfer
+  into `0x00f2` and `0x003a` encoded objects, with the later object inserted at
+  the bucket head, and separately derives the current-tail branch when prior
+  page objects leave at least `12` but not enough remaining chunk bytes.
 
 State classification:
 
@@ -6334,8 +6334,8 @@ State classification:
   no unresolved ROM-local parser, gate, object layout, bridge, mode dispatch,
   or dense-row branch target remains for the covered raster streams. Remaining
   raster work is byte-stream variants that expose different gate outcomes,
-  object bytes, bridge state, rendered rows, or a forced dense-row
-  current-tail/capped-new-chunk split.
+  accepted counts, allocator pre-state, object bytes, bridge state, rendered
+  rows, copy-stop behavior, or packed-key advance.
 
 Output effect:
 
@@ -6343,11 +6343,11 @@ Output effect:
   objects under page-root `+0x1c`; publication and render dispatch later copy
   those objects through `0x1ed84` / `0x1edc6` and render them through
   `0x1ef6a -> 0x1efc2 -> 0x1f88e`.
-- The capped transfer fixture proves count `4` with limit `2` queues payload
+- The capped transfer fixture checks count `4` with limit `2` queues payload
   `f0 0f`, stores overflow `2`, and renders `####........####`.
-- Beyond-extent and negative-row fixtures prove discarded payloads are still
+- Beyond-extent and negative-row fixtures check that discarded payloads are still
   consumed, with the negative-row branch ensuring a root before draining.
-- Mode fixtures prove visible rows for modes `0..3`, including shifted mode-0
+- Mode fixtures check visible rows for modes `0..3`, including shifted mode-0
   and mode-2 rows and a mode-2 band-clipped current/fallback split.
 
 Evidence:
@@ -6472,12 +6472,11 @@ Current top-level boundaries include:
   `0x0788*17` stop at the recorded parser payload offset before installed
   glyph publication or render dispatch.
 - ROM-local variant boundaries rather than generic gaps:
-  parser-fed raster streams that force `0x132b6..0x13382` current-tail or
-  capped-new-chunk allocation, then prove the resulting multi-object
-  `0x13250` bucket chain and rendered rows; dense page/object streams that
-  change `0x1381c` rollover, `0x133aa` / `0x136d2` list ordering, or bridge
-  fields; macro overlay payload variants beyond the documented matrix; and
-  selected font combinations that change context/map/selector state before
+  parser-fed raster streams that change the documented `0x132b6..0x13382`
+  current-tail or capped-new-chunk object-chain derivation; dense page/object
+  streams that change `0x1381c` rollover, `0x133aa` / `0x136d2` list ordering,
+  or bridge fields; macro overlay payload variants beyond the documented
+  matrix; and selected font combinations that change context/map/selector state before
   visible output.
 
 These are not blockers for documenting ROM-local parser, command, page-object,

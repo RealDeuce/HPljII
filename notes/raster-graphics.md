@@ -459,9 +459,10 @@ Field grouping for this dense-row split:
 - firmware bookkeeping: stream allocator state `0x782a70`, `0x782a72`, and
   `0x782a76`, plus copy-stop/publication flag `0x782996`;
 - unknown: no instruction-level split branch remains unlocated at `0x132b6`.
-  The remaining validation boundary is a parser-fed byte stream that forces
-  the current-tail or capped-new-chunk split and documents the resulting
-  multiple encoded objects and rendered rows.
+  Capped-new-chunk and current-tail object-chain derivations are documented
+  below. Remaining dense-row work starts from byte streams that change accepted
+  count, allocator pre-state, copy-stop behavior, packed-key advance, bridge
+  bucket roots, or encoded-renderer row construction.
 
 ### Dense-Row Split Composition Checkpoint
 
@@ -511,6 +512,44 @@ Consumers and output effect:
   split therefore changes page-image object topology and bucket traversal
   before the encoded-span renderer sees the row.
 
+Static large-payload walkthrough:
+
+- For a parser-restored mode-0 transfer whose accepted count at raster state
+  `+0x04` is `0x012c` bytes and whose current stream chunk has fewer than
+  `12` bytes free, `0x13070` asks `0x13250` for object size
+  `0x012c + 0x0a = 0x0136`. `0x132b6` allocates a new `0x100`-byte chunk at
+  `0x13328..0x1335c`, sees that `0x0136 > 0x00fc` at `0x13364..0x1336a`,
+  writes `0x782a80 = 0x00f2`, clears `0x782a70`, and returns the new payload
+  cursor.
+- `0x13146..0x13220` writes the first encoded object with class `0x80`, mode
+  `0`, capacity word `+0x06 = 0x00f2`, packed key from the initial
+  `0x782a7e`, and payload bytes `0x0000..0x00f1` from the `ESC *b#W` data.
+  `0x1319e..0x131d0` subtracts `0x00f2` from accepted count, advances the
+  packed key through `0x332ee(0x00f2, 1)`, and loops with `0x003a` bytes
+  remaining.
+- The second loop asks for object size `0x003a + 0x0a = 0x0044`. Because the
+  previous capped object cleared `0x782a70`, `0x132b6` allocates another
+  chunk, takes the same-chunk branch, records `0x782a80 = 0x003a`, advances
+  `0x782a76` by `0x0044`, leaves `0x782a70 = 0x00b8`, and copies payload
+  bytes `0x00f2..0x012b`.
+- Each `0x13250` call inserts its returned object at the head of the selected
+  page-root `+0x1c` bucket. For this two-object row, the later `0x003a` object
+  is therefore the bucket head and points at the earlier `0x00f2` object. The
+  renderer still receives both segments through the normal publication bridge:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+
+Static current-tail walkthrough:
+
+- If prior page objects leave `0x782a70 = 0x0014` and a later accepted raster
+  count needs object size `0x0028`, `0x132be..0x132cc` rejects the same-chunk
+  branch, while `0x132d6..0x132dc` accepts the current-tail branch because
+  `0x0014 >= 0x000c`.
+- `0x132de..0x132f6` writes `0x782a80 = 0x0014 - 0x0a = 0x000a`, clears
+  `0x782a70`, and returns the old `0x782a76`. `0x13070` then emits one
+  encoded object for the first ten payload bytes, advances the packed key
+  through `0x332ee(0x000a, mode + 1)`, and loops for the remaining accepted
+  bytes. The next iteration follows the new-chunk or same-chunk rules above.
+
 Field classification:
 
 - Canonical: raster state `0x783170 +0x02/+0x04/+0x06/+0x08/+0x12`, encoded
@@ -523,10 +562,10 @@ Field classification:
 - Firmware bookkeeping: stream cursors `0x782a70`, `0x782a72`, `0x782a76`,
   allocator return pointer, and publication/copy-stop byte `0x782996`.
 - Unknown: no branch target or state field is unknown inside
-  `0x13070..0x13382`, but the checked-in fixtures do not yet contain a
-  host/parser stream whose raster payload is large enough to force the
-  current-tail or capped-new-chunk split and then carry the resulting
-  multi-object row through the documented render routines.
+  `0x13070..0x13382`. The remaining dense-row work is byte streams that change
+  accepted count, allocator pre-state, copy-stop behavior, packed-key advance,
+  bridge bucket roots, or encoded-renderer row construction beyond the static
+  split cases above.
 
 Evidence and confidence:
 
@@ -541,12 +580,11 @@ Evidence and confidence:
   chunks display-list storage`, and `addressed page-record writers share
   0x1381c across chunk rollover`.
 - Confidence is high for the ROM-local split algorithm and object fields
-  because the branch boundaries and field writes are direct disassembly. It is
-  medium for the full byte-stream-to-row derivation of a forced dense split
-  until a parser-fed static walkthrough carries a large `ESC *b#W` payload
-  through the current-tail or capped-new-chunk branch, the resulting
-  multi-object bucket chain, the `0x1edc6` bridge, and the `0x1f88e` row
-  construction.
+  because the branch boundaries, field writes, and static large-payload
+  walkthrough are direct disassembly. Confidence for broader dense-row pixel
+  construction remains limited only where a new byte stream changes the
+  accepted count, allocator pre-state, packed-key advance, bridge bucket root,
+  or `0x1f88e` mode-specific row construction.
 
 ## Render Dispatch
 
@@ -743,9 +781,10 @@ A byte-stream reproduction must preserve these behaviors:
   [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
 - Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
   `0x132b6` should target new byte streams that change the raster chain,
-  object bytes, bridge state, or rendered rows. Canonical output state is
-  fixture-pinned as the page-root `+0x1c` raster chain and object bytes written
-  by `0x13070`/`0x13250`; derived/cache state is the bucket/key and
+  object bytes, bridge state, copy-stop behavior, packed-key advance, or
+  rendered rows. Canonical output state is documented as the page-root `+0x1c`
+  raster chain and object bytes written by `0x13070`/`0x13250`; derived/cache
+  state is the bucket/key and
   render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed
   `80 57 ...` command record, snapshot, payload offset, and drained payload
   bytes; firmware bookkeeping is the modeled allocation result and

@@ -106,10 +106,12 @@ Parser scratch and firmware bookkeeping:
 - `0x78297a`: current page-root pointer. `0x10084` ensures it before a VFC
   jump; `0xf124`/`0xff1e` publishes and clears it on page-eject paths.
 
-Unknown:
+External/manual naming:
 
 - `0x782ede`, `0x782edf`, and `0x782ee0` have line-count roles proven by use
-  and fixtures, but their HP manual names are still inferred.
+  and fixtures, but their HP manual names are still inferred. This is not an
+  unresolved ROM-local parser, table-load, channel-jump, page-publication, or
+  render boundary for the documented VFC streams.
 
 ## Table Definition
 

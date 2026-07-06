@@ -13292,10 +13292,9 @@ alternate high-start entries through `0x12a02..0x12afc`,
 the direct fixture uses start line `80`, wrapped target line `70`, and
 selector zero from the same state block. High for the `0x12b96` default
 table channel convention because the fixture ties selector masks to
-generated table words and channel sets. Medium for the exact semantic
-names of `0x782ede`/`0x782edf`/`0x782ee0`; the line-count interpretation
-matches fixtures and disassembly, but the byte names remain inferred from
-their use rather than from HP terminology.
+generated table words and channel sets. High for the ROM-visible
+line-count roles of `0x782ede`/`0x782edf`/`0x782ee0`; their HP/manual
+names remain inferred from use rather than from HP terminology.
 
 ### Fixtures
 

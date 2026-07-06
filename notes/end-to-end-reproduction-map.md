@@ -1283,27 +1283,81 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   external status-consumer labels.
 - Page-geometry streams are covered for page size, orientation, nonzero
   page length, and the `ESC &l0P` zero-length default-page branch. Evidence:
-  fixture
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [publication-commands.md](publication-commands.md),
+  [pcl-command-map.md](pcl-command-map.md), `Page Geometry And Direct Layout
+  State` and `Publication Commands To Rendered Page Records` in
+  [semantic-state-model.md](semantic-state-model.md), fixtures
+  `0x9d16/0x9d4e/0x9d86/0x9dbe page geometry lookups mask page code`,
+  `ROM page geometry tables match manual logical dimensions`,
+  `ROM page geometry tables recover manual printable-area margins`,
+  `0xfc74 ESC &l#A maps page size and recomputes portrait geometry`,
+  `0x10220 ESC &l#O swaps active extents and selects orientation margins`,
+  `0xfc74/0x10220 chained ESC &l stream selects page size then orientation`,
   `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
   page code`, `0xf9e8 ESC &l#P stream reaches page-length handler`,
   `mixed printable/page-size page-record stream publishes queued text`,
-  and `mixed printable/orientation page-record stream publishes queued text
-  before landscape change`.
-  Page-size handler `0xfc74` writes internal page code `0x782da2` and reloads
-  table-backed geometry. Orientation handler `0x10220` writes orientation byte
-  `0x782da3`, publishes any queued page first, then swaps active extents and
-  margin bases. The ROM lookup helpers `0x9d16`, `0x9d4e`, `0x9d86`, and
-  `0x9dbe` read tables `0x00a112`, `0x00a128`, `0x00a13e`, and `0x00a154`;
-  they mask page code with `0x7f`, accept indexes `0..10`, and supply table
-  outputs such as `0x782db2` and `0x782db4` before orientation refresh.
-  Page-length handler `0xf9e8` writes page length/vertical extent `0x782dba`.
-  Its zero-parameter branch compares pending page-environment byte `0x782da6`
-  against active byte `0x780e8e`, can mirror output byte `0x780e8f`, signal
-  control word `0x780e26`, and select default page code from `0x780e97` with
-  fallback code `2`. These fields are consumed later by printable placement,
-  VFC, perforation skip, raster origin, rectangle clipping, span orientation,
-  publication, and render scheduling; the geometry commands have no separate
-  pixel renderer.
+  `mixed printable/page-size page-record finalization publishes bridged
+  record`, `mixed printable/orientation page-record stream publishes queued
+  text before landscape change`, `mixed printable/orientation page-record
+  finalization publishes bridged record`, and `addressed page geometry
+  publications render page records`.
+  Geometry commands are parser-state-to-later-placement commands, not pixel
+  renderers. Page-size handler `0xfc74` publishes any queued page before
+  storing internal page code `0x782da2` and reloading table-backed geometry.
+  Orientation handler `0x10220` publishes any queued page before writing
+  orientation byte `0x782da3`, swapping active extents, and selecting
+  orientation-specific margins. Page-length handler `0xf9e8` writes page
+  length/vertical extent `0x782dba`; nonzero lengths recompute geometry and
+  refresh the next printable cursor, while `ESC &l0P` takes the default-page
+  branch through `0xfa62..0xfaa6` and `0xfb4a..0xfc52`.
+  Canonical geometry state is internal page code `0x782da2`, orientation
+  `0x782da3`, table outputs `0x782db2` and `0x782db4`, active extents
+  `0x782db6` and `0x782db8`, vertical extent `0x782dba`, top offset
+  `0x782dce`, text bottom `0x782dd2`, and page-environment bytes
+  `0x782da6`, `0x780e8e`, `0x780e8f`, `0x780e26`, and `0x780e97`.
+  The ROM lookup helpers `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe` read
+  tables `0x00a112`, `0x00a128`, `0x00a13e`, and `0x00a154`; they mask page
+  code with `0x7f`, accept indexes `0..10`, and recover manual logical
+  dimensions and printable-area margins for supported page sizes
+  `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91`.
+  Derived/cache state includes orientation-specific margin sequence
+  `0x782daa..0x782db0`, half-page remainder `0x782dc0`, default text-length
+  caches, HMI/VMI-derived printable cursor refresh, render-band geometry, and
+  page-change/status flags. Parser scratch is the six-byte command record at
+  `0x78299e`, the parsed parameter word, and pending text/span state flushed
+  before geometry mutation.
+  Firmware bookkeeping is the publication-before-mutation ordering through
+  `0xf34a` / `0xff1e`, wait/status edge `0x9ac2`, default-page fallback code
+  selection, optional page-environment mirroring, and current-page-root
+  clearing after publication.
+  Writers are `0xfc74` for page size, `0x10220` for orientation, `0xf9e8`
+  for page length/default-page refresh, `0x9d16` / `0x9d4e` / `0x9d86` /
+  `0x9dbe` for table lookup outputs, and `0xff1e` for published records when
+  queued content must be finalized first.
+  Readers/consumers are later printable placement through
+  `0xd04a -> 0xd824 -> 0x12f2e`, VFC and perforation-skip helpers,
+  raster-origin handlers `0x1075a` / `0x10606..0x10632`, rectangle clipper
+  `0x10b80`, span flusher `0x12714`, publication `0xff1e`, bridge
+  `0x1ed84` / `0x1edc6`, and render dispatch `0x1ef6a`.
+  Output effect is either no immediate page object, for isolated geometry
+  changes, or publication of already queued content before the new geometry
+  takes effect. The covered `! ESC &l1A` stream publishes the compact text
+  bucket before page code `6` and portrait geometry are installed; the covered
+  `! ESC &l1O` stream publishes the compact text bucket before orientation
+  `1` and landscape geometry are installed. The covered `ESC &l66P !` stream
+  writes extent `3300` and makes the following printable queue at compact
+  coordinate `0x9001`; the covered `ESC &l0P` stream selects fallback page code
+  `2`, mirrors `0x780e8f = 0x80`, signals `0x780e26 = 1`, writes text bottom
+  `3240`, and reloads extent `3300`.
+  Confidence is high for table lookups, page-size/orientation state writes,
+  publication-before-mutation ordering, nonzero and zero page-length branches,
+  and following printable placement because the cited fixtures cover both
+  handler-level state and rendered rows.
+  No unresolved ROM-local middle edge remains for the documented
+  `ESC &l#A`, `ESC &l#O`, `ESC &l66P`, or `ESC &l0P` paths. Remaining work is
+  broader geometry cross-products that expose new consumer behavior, plus
+  physical-output validation outside the ROM render buffer.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:

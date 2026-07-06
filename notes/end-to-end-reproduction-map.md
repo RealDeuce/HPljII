@@ -988,6 +988,49 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x1f264`, type-0/type-1/type-2 resource-header publications, metric
   consumers `0xd4ac` and `0xd8fc`, FF publication through `0xff1e`, and mixed
   downloaded-glyph/rule/raster composition before `0x1ef6a`.
+  Downloaded glyph row/span publication is a separate renderer-helper
+  checkpoint, not generic variant breadth. `0x16498` writes canonical glyph
+  records and bitmap bytes; `0x12f2e` consumes the current printable source
+  record and derives selector bits, bucket index, and compact object bytes;
+  `0xff1e` publishes the bucket array; `0x1ed84` / `0x1ef6a` dispatch the
+  published object to `0x1effe`; and `0x1effe` reaches short helper
+  `0x1fe76`, wide helper `0x1f0d2`, segmented helper `0x1f1f0`, or
+  segmented-wide helper `0x1f264`.
+  Canonical state for this subpath is the installed glyph table entry,
+  record byte `+5`, record row word `+6`, width word `+8`, bitmap bytes at
+  `+0x0c`, the compact object in page-root bucket `+0x1c`, and the published
+  bucket root. Derived/cache state is the selector word, low row/width bytes
+  consumed by `0x12f2e`, `0x1f414` current/fallback split counts, row-copy
+  table index, wide-mode caches `0x783a40..0x783a48`, and fallback buffer base
+  `0x7810b4 + D2`. Parser scratch is the restored `ESC )s#W` command record,
+  payload budget `0x783140`, and post-install drain through `0x12328`.
+  Firmware bookkeeping is copy status, continuation state, allocation/release
+  state, and page publication state.
+  The row-count matrix closes parser-produced rows `0x0001..0x00ff` for the
+  documented short/segmented family. Fixtures
+  `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts`, `host-fetched rows-0x20 short downloaded glyph FF
+  publication renders page record`, `host-fetched rows-0x40 short downloaded
+  glyph FF publication renders page record`, `host-fetched row-0x80 downloaded
+  character remains short compact`, `host-fetched segmented downloaded
+  character renders through 0x1f1f0`, and
+  `host-fetched rows-0x82 segmented downloaded glyph FF publication renders
+  page record` carry those rows through install, printable source capture,
+  publication, bridge, and render rows. The high-row truncation fixtures
+  preserve installed row words `0x0101..0x0103`, but prove that `0x12f2e`
+  sees only low row bytes `0x01..0x03`, queues selector `0x0003`, and reaches
+  the exact short-helper boundary where `0x1f414` fallback counts `199..201`
+  index beyond the `0x1fe76` valid maximum `128`.
+  The width side has the same source-byte classification. Fixture
+  `downloaded glyph width-byte boundary truncates page-record span` preserves
+  installed spans through `0x020d`; low source width bytes `0x00..0x10`
+  select compact mode-0 helper entries outside decoded row-copy helper heads,
+  while high source width bytes `0x11..0xff` select compact-wide `0x1f0d2`
+  and render matched rows for the sampled high-byte cases. Segmented-wide
+  high-row fixtures cover selected segment rendering through `0x1f264` for
+  sampled rows through `0x0787`, with span-31 siblings through `0x03ff`
+  bounded at fallback A2 source offset `+0xb50` and larger row/span products
+  bounded by the `0x7fff` parser payload-count cap before renderer entry.
   Concrete output evidence includes fixtures `host-fetched printable byte uses
   installed downloaded glyph page object`, `combined host-fetched font download
   stream prints installed glyph`, `combined font download FF publishes
@@ -1016,13 +1059,19 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   0x12328`, `0x16c14..0x16c68 -> 0x12328`, fixed-record current and
   continuation routes through `0x16606` and `0x15c4c`, resource-header
   allocation through `0x17026/0x1719c`, candidate insertion through `0x1bc38`,
-  and the byte-24 install-to-page handoff.
+  the byte-24 install-to-page handoff, parser-produced row counts
+  `0x0001..0x00ff`, wide span publication through sampled high spans, and
+  segmented-wide selected-segment rendering for below-cap high-row products.
   Remaining exact boundaries are variant breadth, not the covered paths:
   unmodeled fixed-record current variants inside `0x16606..0x16770`,
   unmodeled continuation variants inside `0x15c4c..0x15d08`,
-  downloaded-pointer glyph row/span/continuation shapes beyond the documented
-  short, wide, segmented, and segmented-wide families, and physical device
-  output beyond the ROM render buffer.
+  selected-font combinations that change context/map state before visible
+  output, physical device output beyond the ROM render buffer, and the exact
+  ROM-local helper failures already named as bounded edges: short compact
+  fallback indices above `0x1fe76` valid index `128`, low wrapped width bytes
+  that target non-row-copy helpers, segmented-wide span-31 fallback source
+  offset `+0xb50`, and downloaded-glyph payloads that exceed the `0x7fff`
+  parser count cap before renderer entry.
 
 ## Reproducible Byte-Stream Families
 

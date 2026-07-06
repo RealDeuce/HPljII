@@ -104,6 +104,10 @@ for state, consumers, output effect, and unresolved boundaries:
   [transparent-print-data.md](transparent-print-data.md).
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:
   [raster-graphics.md](raster-graphics.md).
+- Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including
+  the `0x12034 -> 0x122be` `33440A\r\n` producer and host-output FIFO:
+  [errors-and-status.md](errors-and-status.md) and
+  [host-byte-fetch.md](host-byte-fetch.md).
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
   [rectangle-graphics.md](rectangle-graphics.md).
 - Vertical forms control table payloads and channel jumps:

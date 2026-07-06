@@ -929,37 +929,100 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   combinations that change candidate records, map bytes, context flags,
   compact object shapes, bridge state, span metrics, or physical-device output.
 - Downloaded font payloads:
-  ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
-  `0x1719c`, with font-control writers `0x15a56`, `0x15a18`, and
-  `0x16df6`.
-  Checked-in documentation is [downloaded-fonts.md](downloaded-fonts.md) and
-  the downloaded-font checkpoints in
-  [semantic-state-model.md](semantic-state-model.md), surfaced first as
-  `Worked Path: Downloaded Glyph`, `Worked Path: Nonzero Resource Payload`,
-  and `Worked Path: Fixed-Record Resource Object` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
-  is the font descriptor, resource, and character fixtures in
-  `tools/render_fixture_harness.py`.
-  Font-control commands write canonical selection state: current font id
-  `0x782f2e`, current character `0x782f30`, parser cursor `0x78299e`, and
-  current-record pool `0x782640..0x782776`. Nonzero `ESC )s#W` schedules
-  delayed handler `0x16c14`, which loads byte budget `0x783140`, finds the
-  current record, and installs downloaded character or resource payload state.
-  Linear bitmap copies use `0x168dc`; split-plane copies use `0x16942`.
-  Resource-header payloads validate through `0x16fae`, allocate through
-  `0x17026`, initialize `0x1719c` payload headers, and install bit-30
-  candidate longwords through `0x16c14` / `0x1bc38`.
-  Printable bytes then use the installed payload through
-  `0xd04a -> 0x1393a -> 0xd824/0xd3b2 -> 0x12f2e`. The documented
-  segmented-wide stream installs glyph `%` with record bytes
-  `00 00 00 00 0c 02 00 81 00 88 00 00`, queues selector `0x3003` in buckets
-  `9` and `1`, publishes through `0xff1e`, copies through `0x1ed84` /
-  `0x1edc6`, and renders through
-  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f1f0/0x1f264`.
-  Covered variants also include short selector `0x0003` through `0x1fe76`,
+  Downloaded fonts are a parser-payload-to-selected-resource path. Font-control
+  writers `0x15a56`, `0x15a18`, and `0x16df6` set the current id/character
+  context; descriptor/payload parser routes `0x15d0a` and `0x16c14` install
+  payload records; font refresh `0x13eb8 -> 0x14c64` selects those records;
+  printable bytes then use the installed resource through
+  `0xd04a -> 0x1393a -> 0xd824/0xd3b2 -> 0x12f2e`.
+  The command does not draw by itself. Pixels appear only after the selected
+  downloaded resource has been converted into compact page objects and rendered
+  through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  Canonical parser/resource state is current font id `0x782f2e`, current
+  character `0x782f30`, parser cursor `0x78299e`, device mode byte
+  `0x782a92`, current-record pool `0x782640..0x782776`, record id `+0x00`,
+  flag byte/word `+0x02`, payload pointer `+0x06`, current-font counters
+  `0x782782/0x782786`, candidate counters/windows
+  `0x78278e/0x782790/0x782796/0x782798/0x78279e` and
+  `0x7827a0/0x7827ac/0x7827b0/0x7827b4`, selected candidate flags bit `30`
+  and bit `26`, and allocated downloaded payloads such as the `0x1719c`
+  header.
+  Canonical page/image state is the downloaded glyph table entry, record delta,
+  bitmap offset and copied bitmap bytes, compact text object, bucket root, page
+  context slots, and published page record. For the segmented-wide stream,
+  `0x16498` installs glyph `%` with record bytes
+  `00 00 00 00 0c 02 00 81 00 88 00 00`, the page queue uses selector
+  `0x3003` in buckets `9` and `1`, `0xff1e` publishes the record,
+  `0x1ed84`/`0x1edc6` bridge it, and
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f264` renders the pixels.
+  Parser scratch is payload budget `0x783140`, delayed `W` command records
+  such as `80 57 00 12 00 00`, descriptor scratch `0x7827de..0x7827e9`,
+  parsed bitmap count `0x7827be`, span `0x7827c2`, row count `0x7827c4`,
+  saved continuation block `0x7827c6..0x7827d8`, and the stream split between
+  font bytes and following page bytes. Linear bitmap payload copies use
+  `0x168dc`; split-plane copies use `0x16942`.
+  Derived/cache state is the selected font map rebuilt by
+  `0x14c64`/`0x14e24`, source objects emitted by `0x1393a`, compact objects
+  emitted by `0x12f2e`, bridged render-record context emitted by `0x1edc6`,
+  and per-band dispatch fields derived by `0x1ef86`.
+  Firmware bookkeeping is replacement/release ordering, candidate insertion
+  through `0x1bc38`, count/window shifts, copy status, stream position, return
+  drain through `0x12328`, stale-continuation cleanup, publication flag
+  `0x782996`, and current-page-root clearing after `0xff1e`.
+  Nonzero `ESC )s#W` resource headers validate through `0x16fae`, allocate
+  through `0x17026`, initialize `0x1719c` payload headers, and install bit-30
+  candidate longwords through `0x16c14` / `0x1bc38`. The integrated
+  downloaded-pointer path maps printable `!` through context `0x40000000`,
+  queues compact and span objects, and renders offset-table downloaded glyph
+  rows. Type-1 and type-2 headers are covered with candidate prefixes
+  `0x40000000` and `0x44000000`.
+  The bit-30-clear fixed-record route is a separate zero-count `0x15d0a`
+  path: `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` for current-record
+  installs, and `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` for continuation
+  records. Its visible output is still later printable text, with
+  `0x14e24`, `0x1393a`, `0x12f2e`, `0x1edc6`, and `0x1ef6a` consuming the
+  fixed-record table and bitmap bytes.
+  Covered visible variants include short selector `0x0003` through `0x1fe76`,
   wide selector `0x1003` through `0x1f0d2`, segmented selector `0x2000` /
-  `0x2003` through `0x1f1f0`, and segmented-wide selector `0x3003` through
-  `0x1f264`, including mixed rule/raster composition before `0x1ef6a`.
+  `0x2003` through `0x1f1f0`, segmented-wide selector `0x3003` through
+  `0x1f264`, type-0/type-1/type-2 resource-header publications, metric
+  consumers `0xd4ac` and `0xd8fc`, FF publication through `0xff1e`, and mixed
+  downloaded-glyph/rule/raster composition before `0x1ef6a`.
+  Concrete output evidence includes fixtures `host-fetched printable byte uses
+  installed downloaded glyph page object`, `combined host-fetched font download
+  stream prints installed glyph`, `combined font download FF publishes
+  installed glyph page record`, `host-fetched resource header plus glyph
+  payload renders offset-table downloaded glyph`, `type-1 and type-2 resource
+  glyph FF publications render page records`, `host-fetched 0x15d0a
+  current-record resource object feeds fixed-record render`, `host-fetched
+  0x15d0a continuation resource object resumes fixed-record render`,
+  `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render`, `downloaded glyph byte-24 state handoff feeds following
+  page handler`, `parser-driven downloaded glyph rule raster stream composes
+  through 0x1ef6a`, and `segmented downloaded glyph raster FF publications
+  render page records`.
+  Checked-in evidence is [downloaded-fonts.md](downloaded-fonts.md), the
+  downloaded-font checkpoints in
+  [semantic-state-model.md](semantic-state-model.md), `Downloaded Font Support`
+  in [font-context-metrics.md](font-context-metrics.md), and worked paths
+  `Downloaded Glyph`, `Nonzero Resource Payload`, and `Fixed-Record Resource
+  Object` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for descriptor dispatch, current-record state,
+  zero-drain success boundaries, resource allocation, candidate insertion,
+  selected map consumption, short/wide/segmented downloaded glyph rendering,
+  FF publication, and mixed rule/raster/downloaded-glyph composition for the
+  cited fixtures.
+  Resolved middle boundaries include `0x15dc6 -> 0x16498 -> 0x15dcc ->
+  0x12328`, `0x16c14..0x16c68 -> 0x12328`, fixed-record current and
+  continuation routes through `0x16606` and `0x15c4c`, resource-header
+  allocation through `0x17026/0x1719c`, candidate insertion through `0x1bc38`,
+  and the byte-24 install-to-page handoff.
+  Remaining exact boundaries are variant breadth, not the covered paths:
+  unmodeled fixed-record current variants inside `0x16606..0x16770`,
+  unmodeled continuation variants inside `0x15c4c..0x15d08`,
+  downloaded-pointer glyph row/span/continuation shapes beyond the documented
+  short, wide, segmented, and segmented-wide families, and physical device
+  output beyond the ROM render buffer.
 
 ## Reproducible Byte-Stream Families
 

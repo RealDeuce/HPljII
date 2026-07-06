@@ -78,10 +78,59 @@ The alternate/data table has blank mode-zero C0 rows for `0x00` and
 through `0xe002` before the same terminal reset path; they do not dispatch to
 the normal control handlers for BS, HT, LF, FF, CR, SO, or SI.
 
+## Semantic Owners
+
+Use the flat table above as the dispatch index, then switch to the owning note
+for state, consumers, output effect, and unresolved boundaries:
+
+- Host fetch, parser selection, parser records, delayed payload restore, blank
+  rows, `ESC ?`, `ESC Z`, and `ESC &lT/t`:
+  [host-byte-fetch.md](host-byte-fetch.md),
+  [pcl-parser-core.md](pcl-parser-core.md), and
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) worked paths
+  `Host Byte Source Priority`, `Command Record And Payload Dispatch`, and
+  `Explicit No-Output Parser Rows`.
+- CR, LF, FF, HT, BS, `ESC &k#G`, HMI, wrap mode, cursor position, margins,
+  dot position, cursor stack, underline/span flushing, and vertical layout
+  helpers:
+  [direct-control-codes.md](direct-control-codes.md).
+- `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append,
+  and guarded `ESC z` status signaling:
+  [display-functions.md](display-functions.md).
+- Reset, FF publication, page size, orientation, paper source, and copies:
+  [publication-commands.md](publication-commands.md) plus reset provenance in
+  [reset-default-environment.md](reset-default-environment.md).
+- Transparent print data `ESC &p#X`:
+  [transparent-print-data.md](transparent-print-data.md).
+- Raster resolution/start/end and delayed `ESC *b#W` raster rows:
+  [raster-graphics.md](raster-graphics.md).
+- Rectangle dimensions, fill selector, area-fill id, and rule publication:
+  [rectangle-graphics.md](rectangle-graphics.md).
+- Vertical forms control table payloads and channel jumps:
+  [vertical-forms-control.md](vertical-forms-control.md).
+- Font selection, symbol sets, font attributes, pitch mode, selected context,
+  metric producer/consumer behavior, and built-in resource selection:
+  [font-context-metrics.md](font-context-metrics.md) and
+  [built-in-resource-scan.md](built-in-resource-scan.md).
+- Downloaded-font descriptors, downloaded glyph payloads, fixed/current
+  resource objects, no-install exits, row/span publication, and compact
+  downloaded-glyph render boundaries:
+  [downloaded-fonts.md](downloaded-fonts.md).
+- Macro ID/control commands, macro definition, execute/call replay, overlay
+  publication, and data-chain byte replay:
+  [macro-data-chain.md](macro-data-chain.md).
+
+The end-to-end spine that joins those owners from byte stream to rendered rows
+is [firmware-dataflow-model.md](firmware-dataflow-model.md). The shorter
+coverage map and current target list are in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+
 ## High-Value Normal-Mode Handlers
 
-These command-to-handler anchors are current priorities for
-pixel-perfect rendering:
+These command-to-handler anchors are the normal-mode landmarks used by the
+semantic owners above. They are not all open tracing targets; each entry points
+from a parsed command form to the handler whose state and output effects are
+documented in the owner notes.
 
 - `ESC E`, handler `0x00cc52`: PCL reset, partial-page finalization,
   environment/parser/raster reinitialization.

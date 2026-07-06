@@ -1447,8 +1447,14 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule
   page records, and the landscape pattern remaps. Evidence:
-  `notes/rectangle-graphics.md` and parser trace fixtures for `ESC *c` rule
-  streams.
+  [rectangle-graphics.md](rectangle-graphics.md), `Rectangle Rule Producer And
+  Renderer` in [semantic-state-model.md](semantic-state-model.md),
+  `Worked Path: Rectangle Rule` and `Worked Path: Rectangle Rule Selectors And
+  Clipping` in [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  parser trace fixtures for `ESC *c` rule streams, and supporting reports
+  `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`,
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`, and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
   The primary chained stream `ESC *c12a5b0P` reaches handlers `0x10e68`,
   `0x10e22`, and `0x10898`: width field `0x78316a`, height field
   `0x783166`, and fill selector `7` for solid black. `0x10898` then calls
@@ -1466,9 +1472,74 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `+0x0c`. `0x1ef6a` renders rule lists after bucket objects: `0x1f446`
   dispatches selector `7` to solid helper `0x1f596`, while gray selectors
   `0..6` and HP pattern selectors `8..13` dispatch to `0x1f4e0`.
-  The selector matrix fixtures cover gray percent mapping, portrait pattern
-  ids, and landscape remaps `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10`,
-  including continuation across render bands.
+  Canonical command state is rectangle width `0x78316a`, rectangle height
+  `0x783166`, area-fill id `0x78316e`, cursor origin `0x782c8a` /
+  `0x782c8e`, orientation `0x782da3`, page extents `0x782db8` /
+  `0x782db6`, source record `0x782a88`, current page root `0x78297a`,
+  page-root rule list `+0x24`, published rule list, and render-record rule
+  list `+0x1c`.
+  Derived/cache state is rule bucket/key state `0x782a7c`, `0x782a7d`, and
+  `0x782a7e`, horizontal phase `0x782dc0`, bridged selector bit `0x10`,
+  render continuation word `+0x0c`, pattern table selection, and render-band
+  fields. Parser scratch is the mode state, command-record cursor `0x78299e`,
+  and the six-byte records consumed by `0x10e68`, `0x10e22`, `0x10a40`,
+  `0x10ae0`, `0x10dce`, and `0x10898`. Firmware bookkeeping is stream
+  allocator state `0x782a70/0x782a72/0x782a76`, page-root retry bit
+  `+0x15.0`, publication flag `0x782996`, scheduler cursors, and render-work
+  progress.
+  Writers are `0x10e68`/`0x10e22` for dot dimensions,
+  `0x10a40`/`0x10ae0` for decipoint dimensions, `0x10dce` for area-fill id,
+  `0x10898` for fill-selector mapping, `0x10b80` for clipped source record,
+  `0x13386`/`0x133aa` for rule-list object insertion, `0x10d22..0x10d3e`
+  for no-room retry publication, and `0x1edc6` for bridge normalization.
+  Readers/consumers are `0x10b80` for cursor/extents/orientation clipping,
+  `0x133aa` for page-root allocator and sorted rule-list insertion,
+  publication `0xff1e`, bridge `0x1ed84` / `0x1edc6`, rule dispatcher
+  `0x1f446`, solid helper `0x1f596`, and pattern helper `0x1f4e0`.
+  Fill selector mapping is part of the byte-stream contract: missing or `0P`
+  maps to selector `7`; `2P` maps area-fill percentages in `0x78316e` to gray
+  selectors `0..7`; `3P` maps portrait pattern ids `1..6` to selectors
+  `8..13`; landscape pattern ids `1..4` remap to `1 -> 9`, `2 -> 8`,
+  `3 -> 11`, and `4 -> 10`.
+  Concrete output evidence includes fixtures `rectangle command stream queues
+  chained ESC *c rule object`, `0x11774 ROM dispatch table routes chained
+  ESC *c rule stream`, `host-fetched rectangle rule stream preserves 0x1edc6
+  bridge contract`, `host-fetched rectangle rule feeds 0x1ed84 and 0x1ef6a`,
+  `0x10898 ESC *c#P maps fill selectors and queues rule object`,
+  `0x10b80 rectangle fill clips negative left edge before queueing`,
+  `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
+  fills`, `0x13386/0x133aa-modeled rectangle/rule list object and bridge
+  normalization`, `0x133aa address-aware rule-list insertion uses 0x1381c
+  storage`, `0x133aa no-room return preserves rule-list head`,
+  `0x1f446/0x1f596 renders solid black rectangle rule pixels`, `0x1f596
+  carries solid rule remainder across render bands`, `0x1f4e0 renders gray and
+  HP pattern selector matrix`, `0x1f4e0 carries patterned rule remainder
+  across render bands`, `0x1f4e0 renders sub-byte shifted HP pattern rule
+  pixels`, `host-fetched alternate rectangle selectors feed full page records`,
+  `host-fetched rectangle selector matrix feeds full page records`,
+  `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`,
+  `addressed text plus rectangle stream matches page-record output`, and
+  `rectangle parser trace feeds no-room retry path`.
+  Output effect is deferred page-image state, not an immediate draw.
+  Selector `7` renders through `0x1f596`; the solid crossing fixture starts at
+  y `78`, draws two rows in the first band, carries three rows in `+0x0c`,
+  and draws the remainder at y `0` in the next band. Non-solid selectors
+  render through `0x1f4e0`; the selector matrix covers gray percent mapping,
+  portrait pattern ids, landscape remaps, sub-byte masks, and continuation
+  across render bands. Mixed fixtures prove the same rule list composes with
+  compact text and encoded raster objects through the shared
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
+  Confidence is high for parser handler order, dimension and fill-selector
+  mapping, clipping/reject gates, rule object bytes, ordered insertion, bridge
+  normalization, solid/pattern dispatch, continuation mutation across bands,
+  no-room retry output, and mixed text/rule/raster composition.
+  No unresolved software-visible middle edge remains for the covered
+  selector-7, gray-selector, pattern-selector, landscape-remap, clipping,
+  no-room retry, addressed-storage, publication, and mixed text/rule/raster
+  streams. Remaining work is limited to byte streams that change clipping
+  output, `0x1381c` rollover/allocation state, retry publication fields, rule
+  object bytes, bridge state, render dispatch, rendered rows, or physical
+  device output beyond the ROM render buffer.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
   paths are covered through `0xff1e` for current modeled page records. VFC
   coverage includes `ESC &l#W` delayed table payloads, lowercase

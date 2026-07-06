@@ -1256,6 +1256,17 @@ a pattern longword from ROM table `0x308de`, clears bridge flag bit
 `0x10`, decrements remaining rows at object `+0x0a`, and writes the
 selected low pattern word once per row through `0x1f7b0` / `0x1f626`.
 
+The pixel-composition operation at this shared layer is order-dependent direct
+writing, not an implicit OR/XOR/AND blend with the previous destination word.
+The helpers compute a destination pointer with `0x1f3d4` or `0x1f626`, then
+store generated words, bytes, or longwords to that address. Compact row-copy
+helpers and encoded-raster modes use direct `move` stores. Segment-list and
+solid-rule helpers write full words plus trailing mask words. Patterned-rule
+helper `0x1f4e0` applies masks to the generated pattern word before storing
+the result; it does not first read the previous destination word and combine
+with it. Overlaps therefore resolve by the render order below: bucket-chain
+objects, then rule-list objects, then fixed-list objects.
+
 ### Bitmap Object Dispatch Semantic Checkpoint
 
 This checkpoint covers the first complete shared render-dispatch layer after
@@ -1365,6 +1376,11 @@ Output effect:
 - Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists
   in call order` proves the shared call order and a synthetic layer merge
   through bucket, rule, and fixed-list roots.
+- The layer merge uses direct destination stores. Compact glyph, encoded
+  raster, segment-list, rule, and fixed-list helpers write generated source
+  words into the active band or fallback buffer in the call order above; no
+  documented helper performs a destination read-modify-write blend with earlier
+  pixels.
 - Fixture `0x1ef6a page-band walk merges text raster and crossing rule` proves
   a compact text object, mode-0 raster object, and crossing patterned rule
   compose across two bands while the rule continuation field carries state.

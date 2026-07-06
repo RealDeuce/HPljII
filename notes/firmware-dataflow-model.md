@@ -4974,6 +4974,13 @@ Pixel-writing behavior:
 - Fixed-list renderer `0x1f756` runs only on five-band boundaries, consumes
   render-record `+0x20`, selects a pattern longword from table `0x308de`, and
   writes rows through `0x1f7b0` / `0x1f626`.
+- The shared pixel operation is a direct destination store in render order,
+  not an implicit logical blend against existing destination contents. Compact
+  row-copy helpers, encoded-raster modes, segment-list spans, solid rules, and
+  fixed-list helpers write generated words, bytes, or longwords to the active
+  band or fallback buffer. Patterned-rule helper `0x1f4e0` masks the generated
+  pattern word before storing it; the documented helpers do not read the
+  destination word and OR/XOR/AND it with earlier pixels.
 
 Composition effect:
 

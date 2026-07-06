@@ -10264,9 +10264,20 @@ state combinations that have not yet been tied to concrete byte streams.
   width/row matrices. Remaining work starts from selected-font combinations or
   wrapped-width streams that change source object bytes, selector class,
   helper dispatch, fallback split, or rendered rows.
-- `0x12714..0x1f812`: segment-list producer and consumer are connected for
-  portrait text spans; broader orientation/page-size work starts from streams
-  that change segment-list records or render dispatch.
+- `0x12714..0x1f812` / `0x1f756`: pending text-span output is connected for
+  both orientation branches. Portrait state `0x783184..0x78318a` is packaged
+  by `0x12714`, inserted through `0x13520` / `0x1354a` / `0x135f0` as
+  class-`0x40` segment-list objects under page-root `+0x1c`, bridged to
+  render-record `+0x18`, and consumed by `0x1f812`. Landscape state is
+  transformed by the same `0x12714` source package, inserted through
+  `0x136d2` as fixed-list objects under page-root `+0x28`, bridged to
+  render-record `+0x20`, and consumed by `0x1f756` / `0x1f7b0`. The
+  allocation-failure retry edge is explicit at `0x127ae..0x12808`: mark
+  page-root `+0x14`, publish through `0xff1e`, rebuild the local source, and
+  retry `0x13520`. Remaining work starts only from byte streams or selected
+  metric/orientation states that change the `0x12790..0x127a0` page-extent
+  gate, segment-list/fixed-list object fields, bridge roots, or render
+  dispatch.
 - `0x13070..0x1f88e`: raster producers and encoded renderers are connected for
   modes `0..3`; remaining work is byte-stream variants that change encoded
   object fields, bridge state, or rendered rows.

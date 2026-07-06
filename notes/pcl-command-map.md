@@ -78,6 +78,27 @@ The alternate/data table has blank mode-zero C0 rows for `0x00` and
 through `0xe002` before the same terminal reset path; they do not dispatch to
 the normal control handlers for BS, HT, LF, FF, CR, SO, or SI.
 
+Alternate/data mode is therefore not a blanket command ignore. It keeps parser
+state and payload boundaries while suppressing most immediate page-state
+effects:
+
+- Direct page/text controls and most uppercase family terminals have blank
+  alternate/data handlers, so their parsed command bytes do not immediately
+  mutate cursor, geometry, selected-font, rectangle, raster-control, or dot
+  position state.
+- Lowercase chaining finals mostly use helper `0x11f4c`, which rewinds the
+  six-byte parser record so the family can continue without running the normal
+  command handler.
+- Payload/record families that must be stored in macro/data streams still
+  execute: `ESC &p#X` / `x`, `ESC &l#W` / `w`, `ESC *b#W` / `w`,
+  `ESC (s#W` / `w`, `ESC )s#W` / `w`, and macro control `ESC &f#X` /
+  `x`.
+- `ESC Y` switches from normal reader `0x12536` to alternate append reader
+  `0x12120`; local Control-Z terminals switch from printable output handlers
+  to append/report handlers `0x1210c` and `0x121b2`.
+- `ESC E` remains active through reset handler `0xcc52`, so alternate/data
+  mode does not protect accumulated state from an explicit reset.
+
 ## Semantic Owners
 
 Use the parser-table notes above and the checked-in handler anchors below as

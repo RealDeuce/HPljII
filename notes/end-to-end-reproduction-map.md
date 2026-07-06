@@ -235,11 +235,10 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `Worked Path: Command Record And Payload Dispatch` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
   is `generated/analysis/ic30_ic13_pcl_command_map.md` and ROM dispatch trace
-  fixtures. The `Checked-In Semantic Anchors` section in
+  fixtures. The `Semantic Owners` section in
   [pcl-command-map.md](pcl-command-map.md) is the current command-family index:
-  it maps parser rows to the checked-in notes that already carry field groups,
-  writers, readers/consumers, output effects, fixtures, and disassembly
-  evidence.
+  it maps parser rows to checked-in notes that carry field groups, writers,
+  readers/consumers, output effects, fixtures, and disassembly evidence.
 - Direct controls and cursor state:
   ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, cursor handlers
   `0xf39e` / `0xf416` / `0xf48c` / `0xf560` / `0xf60a` / `0xf692`, page

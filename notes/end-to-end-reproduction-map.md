@@ -1682,6 +1682,45 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   at active pointer `0x782d76`, with frame `+0x00/+0x04` copied from the macro
   record, byte `+0x08 = 4`, frame kind `+0x09 = 2` for execute or `3` for call,
   and snapshot pointer `+0x0a`.
+  Canonical macro state is current macro id `0x783164`, 32 macro records at
+  `0x782a98`, selected record pointer `0x782d7a`, record payload head
+  `+0x00`, raw byte count `+0x04`, id word `+0x08`, permanence byte
+  `+0x0a`, active data-chain frame pointer `0x782d76`, frame payload head
+  `+0x00`, frame count `+0x04`, frame source byte `+0x08`, frame kind
+  `+0x09`, snapshot pointer `+0x0a`, overlay state `0x782a92`, saved overlay
+  id `0x782a94`, and call-context stack `0x782c1e..0x782c6d` with stack
+  pointer `0x782c6e`.
+  Canonical stored payload state is linked `0x100`-byte chunks written by
+  `0xe002`: a longword next pointer followed by 252 payload bytes, with raw
+  counts including four header bytes per allocated chunk. Canonical heap state
+  is allocator free count `0x780e86`, bitmap pointer `0x783972`, payload base
+  `0x783988`, bitmap limits/cursors `0x783976`, `0x78397a`, `0x78397e`,
+  `0x783982`, and tracked byte count `0x783986`.
+  Derived/cache state includes normalized macro payload count at selector `1`
+  stop, environment snapshot chains from `0xe8f0`, flat non-replay snapshots
+  under `0x7834c2`, overlay fixture coordinates and row digests, replayed
+  page-record objects, and font-context refresh results from `0xe65c`.
+  Parser scratch is normal mode-17 `ESC &f` command records, alternate/data
+  `x/X` dispatch, definition-mode bytes `0x782c18` and `0x782c19`, the
+  rewound command-record cursor `0x78299e`, and delayed payload records
+  replayed from stored macro bytes.
+  Firmware bookkeeping is host gate bit 1, frame-end cleanup through `0xe22c`,
+  heap allocation/free chains through `0x170c` / `0x1710` / `0x18b4`,
+  allocation-failure status through `0x9b5e(0x780e2e, 4)`, non-replay overlay
+  layout refresh through `0xe5e2`, page-root retry flag `+0x14.0`, and parser
+  reset/frame cleanup through `0x1240a`.
+  Writers are `0xe112` for current id, `0xe0a4` for selected record,
+  `0xdd08` and selector handlers `0xdd86..0xdf36` for macro control state,
+  `0xe002` for payload chunks, `0xe418` for execute/call frames, `0xe4f4` for
+  overlay non-replay frames, `0xe22c` for frame unwind, `0xe65c` for macro
+  context/font refresh, and allocator helpers for heap-backed payload and
+  snapshot chains.
+  Readers/consumers are `0xdd08` for selector dispatch and guard checks,
+  `0xe0a4` for record lookup, `0xe002` for definition append, `0xa904` for
+  data-chain replay bytes, parser loop `0x11774` for replay dispatch,
+  publication `0xff1e` for overlay detour, and the ordinary page/render
+  consumers `0x1387c` / `0x1381c`, `0xff1e`, `0x1ed84` / `0x1edc6`, and
+  `0x1ef6a`.
   `0xa904` gives those frame bytes priority over live host bytes, so replayed
   payloads re-enter parser loop `0x11774` and route through the ordinary
   handlers such as `0xd04a`, `0xf02c`, `0xedf8`, cursor/margin handlers,
@@ -1695,6 +1734,52 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   with kind `+0x09 = 4`, replays the stored payload before the same publication
   boundary, and `0xe22c` restores parser/page state afterward. Disabled,
   missing-record, or retry-flag skip gates preserve the base page publication.
+  Concrete output evidence includes fixtures `0xe112 stores absolute parsed
+  macro id`, `0xe0a4 macro record lookup uses head presence and first free
+  slot`, `0xe002 appends macro definition bytes into 0x100 chunks`,
+  `0xdd08 execute and call push macro data-chain frames`, `0xe418 frame
+  metadata distinguishes execute and call context`, `macro execute frame
+  payload feeds 0xa904 data-chain bytes`, `macro execute data-chain parser
+  trace feeds page-record stream`, `macro call data-chain parser trace feeds
+  page-record stream`, `host-fetched macro replay payloads preserve 0x1edc6
+  bridge contract`, `host-fetched macro replay payloads feed 0x1ed84 and
+  0x1ef6a`, `macro execute data-chain replay feeds page-record stream`,
+  `macro mixed-control data-chain parser trace feeds page-record stream`,
+  `0xe4f4/0xe22c produce and end data-chain frames`, and `macro snapshot
+  helpers copy linked and flat environment ranges`.
+  Overlay evidence includes fixtures `macro overlay finalization replays before
+  page publication`, `macro overlay replays across repeated page publications`,
+  `macro overlay skip gates preserve base page publication`, `macro overlay
+  mixed-control payload publishes with page rule`, `macro overlay
+  cursor-position payload publishes with page rule`, `macro overlay
+  vertical-decipoint payload publishes with page rule`, `macro overlay chained
+  cursor-position payload publishes with page rule`, `macro overlay chained
+  margin payload publishes with page rule`, `macro overlay transparent payload
+  publishes with page rule`, `macro overlay raster payload publishes with page
+  rule`, `macro overlay multi-row raster payload publishes with page rule`, and
+  `macro overlay span-flush payload publishes with page rule`.
+  Output effect is stored-byte replay, not a macro-specific renderer.
+  Execute/call replay of stored `!\r` queues the same compact text objects and
+  rendered rows as live host bytes. Mixed-control replay of
+  `ESC &k1G!\r!` writes line-termination state through `0xedf8` before
+  ordinary text/CR handling. Overlay replay runs during `0xff1e` publication,
+  adds replayed page objects to the page being finalized, and then publishes
+  the combined base page plus overlay text/raster/span objects through the same
+  bridge and render entry.
+  Confidence is high for selector dispatch, record lookup, payload chunk
+  format, execute/call frame metadata, data-chain byte-source priority,
+  replayed parser dispatch, bridge/render equivalence, overlay replay before
+  publication, repeated overlay publication, and overlay skip gates.
+  Medium for manual-facing names of macro context-stack bytes and overlay
+  state `0x782a92`; the ROM effects are documented even where names are
+  inferred.
+  No remaining macro execute/call replay, font-context refresh, overlay
+  publication, repeated enabled-overlay publication, mixed-control overlay,
+  cursor-position overlay, chained-margin overlay, raster overlay, multi-row
+  raster overlay, span-flush overlay, transparent-data overlay, or overlay
+  skip-gate middle edge remains for the documented streams. Remaining work is
+  broader overlay payload variants, over-deep context-stack physical failure
+  behavior, and physical device output beyond the ROM render buffer.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.

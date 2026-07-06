@@ -293,6 +293,11 @@ documented in the owner notes.
   weight.
 - `ESC (s#T` / `ESC )s#T`, handler `0x01205a`: primary/secondary
   typeface.
+- Lowercase font-selection chaining forms dispatch directly to request
+  writers while parser mode `13` remains active: `p` -> `0xc930`,
+  `h` -> `0xc89c`, `v` -> `0xc6ec`, `s` -> `0xc780`, `b` -> `0xc840`,
+  and `t` -> `0xc7e0`. The uppercase `P/H/V/S/B/T` wrappers call the same
+  writer family and then common refresh `0xc580`.
 - `ESC (s#W` / `ESC )s#W`, handler `0x011f96`: delayed
   font/downloaded-character payload selector.
 

@@ -221,6 +221,9 @@ documented in the owner notes.
 - `ESC &l#L`, handler `0x00ee64`: perforation skip; selector `0`
   clears `0x783191`, selector `1` sets it.
 - `ESC &l#H`, handler `0x00ef62`: paper source and page eject.
+- `ESC &l#X`, handler `0x00eef0`: copy count; stores absolute clamped
+  `0x782da4`, which the following FF publication copies into pool-header word
+  `+0x0c`.
 - `ESC &a#L`, handler `0x00eb58`: left margin; absolute HMI columns into
   `0x782dd6`.
 - `ESC &a#M`, handler `0x00ec0c`: right margin; `abs(parameter) + 1` HMI

@@ -144,10 +144,17 @@ Firmware bookkeeping:
   `+8/+0x0a`, environment state to `+7/+0x0c`, and root word `+0x16` to
   `+0x1a`, while preserving the bucket root at `+0x1c`.
 
+Hardware/external state:
+
+- Physical engine timing and paper output after the rendered band leaves the
+  ROM-visible render path are outside this publication-command checkpoint.
+
 Unknown:
 
-- The fixtures prove software-visible rows and page-record state, not physical
-  printer output or engine timing.
+- No ROM-local publication, bridge, or render-entry field remains unknown for
+  the covered reset, FF, page-size, orientation, paper-source, and copies
+  streams. The remaining boundary is hardware/external physical output timing,
+  not parser or page-record behavior.
 
 ## Command Streams
 

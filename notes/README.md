@@ -13,6 +13,10 @@ runtime observation of a real printer or an executing ROM. When a note states
 confidence, read it as confidence in the static disassembly interpretation, not
 as hardware-emulation validation.
 
+Fixture row comparisons are internal consistency checks against a documented
+ROM-derived model. They are not comparisons against real printer output, an
+executed ROM, or any other external pixel oracle.
+
 ## Files
 
 - [source-index.md](source-index.md) - what each PDF contains and how to

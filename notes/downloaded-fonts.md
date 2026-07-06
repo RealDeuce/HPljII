@@ -1735,7 +1735,7 @@ and `0x03xx` fixtures repeat the same success/source-boundary split, while the
 `0x04xx`, `0x05xx`, and parser-limit fixtures separate below-cap
 selected-segment rendering from the parser-count cap. This narrows the
 remaining higher-row segmented-wide gap to broader row/span combinations below
-row `0x0787`, plus physical comparison for the explicit source-boundary and
+row `0x0787`, plus byte streams that change the explicit source-boundary and
 parser-count-boundary cases.
 
 Fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
@@ -1923,8 +1923,22 @@ The visible-output boundary is now exact: `0x1ed84`/`0x1ef6a` set render word
 `0x6601` into `58` current-band rows and `200` fallback rows, and the
 span-2 row-copy helper `0x1fe76` has valid table entries only through index
 `128`. The fallback index `200` reads table target `0x329ad3c0`, so the
-fixture proves parser/install/page-record publication plus the exact invalid
+fixture checks parser/install/page-record publication plus the exact invalid
 render boundary, not pixel output for rows `0x0102`.
+
+The `0x1fe76` boundary is a ROM table-layout boundary, not a guessed fixture
+limit. Disassembly
+`generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst` shows
+`0x1fe76..0x1fe88` loading stride longword `0x783a1c`, loading table base
+`0x1fe8a`, shifting row count `D3` left by two, reading a longword from
+`(0x1fe8a,D3.w)`, and jumping to that longword without a bounds check. The
+table entries run through index `128`: entry `0` at `0x1fe8a` points to
+`0x2028e`, entry `127` at `0x20086` points to `0x20092`, and entry `128` at
+`0x2008a` points to `0x2008e`. Address `0x2008e` is then executable row-copy
+code, beginning with bytes `32 9a d3 c0` (`move.w (A2)+,(A1)` and
+`adda.l D0,A1`), so entry `129` and the high-row fallback entries
+`199..201` read row-copy opcodes as jump-table longwords. The resulting
+longword for those high-row entries is `0x329ad3c0`.
 
 Fixture `downloaded glyph high-row truncation matrix preserves installed rows`
 composes the adjacent nonzero-high-byte siblings. Rows `0x0101`, `0x0102`,
@@ -2009,8 +2023,9 @@ Output effect:
   low-byte short selector state, and split through `0x1f414` into `58`
   current rows plus fallback counts `199`, `200`, and `201`.
 - The short compact high-row fallback boundary is exact: span-2 helper
-  `0x1fe76` is valid through index `128`, while row `0x0102` would read
-  fallback target `0x329ad3c0` at index `200`.
+  `0x1fe76` is valid through index `128`, while rows `0x0101..0x0103` would
+  read fallback targets from executable row-copy code at indices `199..201`.
+  For row `0x0102`, index `200` reads target `0x329ad3c0`.
 - Segmented-wide high-row selected-segment pixels are fixture-backed at rows
   `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
   `0x0382`, and `0x03ff` for spans `17`, `18`, and `32`, and at rows
@@ -2031,7 +2046,8 @@ Confidence:
   render buckets, helper dispatch, row counts, and row digests.
 - High for the nonzero-high-byte selector truncation and short compact invalid
   boundary, because the `0x0101..0x0103` fixtures preserve installed rows while
-  proving the low-byte page source and the `0x1fe76` overflow boundary.
+  checking the low-byte page source; the `0x1fe76` overflow boundary is direct
+  ROM table evidence from `0x1fe76..0x2008e`.
 - High for the sampled segmented-wide high-row selected segment, because the
   row-`0x0281`, `0x02xx`, `0x03xx`, below-cap `0x04xx`, and below-cap
   `0x05xx` fixtures, plus the parser-limit matrix through row `0x0787`, extend
@@ -2046,7 +2062,9 @@ Unresolved middle edges:
 - None remain for parser-produced rows `0x0001..0x00ff` in the documented
   short/segmented publication family.
 - `0x1fe76` fallback table indices above `128` remain the exact unresolved
-  visible-output boundary for the short compact rows `0x0101..0x0103`.
+  visible-output boundary for the short compact rows `0x0101..0x0103`; the
+  boundary is the unchecked `0x1fe8a + 4 * D3` table read entering row-copy
+  code bytes at `0x2008e`, not a parser or page-record uncertainty.
 - No unresolved semantic middle edge remains for segmented-wide high-row
   row/span combinations in this host-fetched `ESC )s#W` shape. Unsampled
   below-cap combinations are regression cross-products of the preserved

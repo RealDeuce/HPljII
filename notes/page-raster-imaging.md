@@ -1429,10 +1429,10 @@ Confidence:
   the downloaded-font matrices now carry normal, wide, segmented,
   segmented-wide, row-count, width-byte, row-byte, high-row, no-install,
   status-2, and FF-publication streams through parser install, page-record
-  publication, `0x1ed84` / `0x1ef6a` dispatch, and matched row output where
-  the helper target is valid. Remaining selected-font combinations and
-  physical/reference page comparisons are broader validation work, not a
-  reduced-confidence statement about the documented producer contracts.
+  publication, `0x1ed84` / `0x1ef6a` dispatch, and documented row output where
+  the helper target is valid. Remaining selected-font combinations are broader
+  ROM-local coverage work, not a reduced-confidence statement about the
+  documented producer contracts.
 - Medium for physical device output timing because the bitmap bands are
   fixture-rendered before the engine-facing copy path.
 
@@ -1487,11 +1487,10 @@ Unresolved middle edges:
   current-band/fallback splitting and the downloaded width/row matrices.
   Remaining compact-glyph work starts only from selected-font combinations or
   wrapped-width streams that change source object bytes, selector class,
-  helper dispatch, fallback split, or rendered rows; physical/reference page
-  comparison remains separate.
+  helper dispatch, fallback split, or rendered rows.
 - `0x12714..0x1f812`: segment-list producer and consumer are connected for
-  portrait text spans; broader orientation/page-size cross-checks still need
-  visible page comparisons.
+  portrait text spans; broader orientation/page-size work starts from streams
+  that change segment-list records or render dispatch.
 - `0x13070..0x1f88e`: raster mode producers and encoded renderers are
   connected for modes `0..3`; dense split object-chain rules are documented for
   capped-new-chunk and current-tail allocation. Remaining work is mixed-page
@@ -1499,16 +1498,16 @@ Unresolved middle edges:
   copy-stop behavior, or rendered rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the selector fixtures above; the remaining work is a broader
-  selector/page-visible matrix and physical-device comparison.
+  selector/page-visible matrix that changes ROM-visible object or render state.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
   compact glyph row-copy checkpoint below. The downloaded row-count family now
   renders parser-produced rows `0x0001..0x00ff`; segmented-wide high-row
   below-cap cases are documented as cross-products of preserved installed row
   words, low-byte selector truncation, span-selected helper choice, and the
   parser payload-count cap. The exact ROM-local visible-output boundary is
-  short compact fallback indices above the `0x1fe76` valid table maximum
-  `128`. Remaining row-copy work is new streams that change helper dispatch
-  or rows, plus physical/full-page comparison.
+  the unchecked `0x1fe76` row-count table read above valid index `128`, where
+  `0x1fe8a + 4 * D3` enters row-copy code bytes beginning at `0x2008e`.
+  Remaining row-copy work is new streams that change helper dispatch or rows.
 
 ### Subrenderer Payloads
 
@@ -1745,6 +1744,12 @@ Field groups:
     tail. Fixture report
     `generated/analysis/ic30_ic13_render_row_copy_fixtures.md` decodes the
     representative row-count targets and final A1/A2/A3 deltas.
+  - span-2 helper `0x1fe76` is an unchecked row-count jump table over `D3`:
+    `0x1fe76..0x1fe88` loads table base `0x1fe8a`, shifts `D3` left by two,
+    reads a longword target, and jumps. The valid entries are `0..128`; entry
+    `128` at `0x2008a` points to `0x2008e`, which is the first row-copy
+    instruction rather than another pointer. Entries above `128` read
+    executable code bytes as pointer data.
   - `0x783a40`, `0x783a42`, `0x783a44`, `0x783a46`, and `0x783a48`: wide-mode
     row-skip, fallback row-skip, remainder row-skip, current 16-byte chunk
     phase, and fallback source pointer caches written by `0x1f0d2` and
@@ -1765,10 +1770,13 @@ Field groups:
     canonical glyph payload layout, but are not read by row-copy helpers.
   - invalid overlarge row-count table targets, such as the row-`0x0102`
     fallback index through helper `0x1fe76`, are firmware failure boundaries
-    rather than pixel output.
+    rather than pixel output. For row `0x0102`, fallback count `200` reads
+    bytes `32 9a d3 c0` from the row-copy code region as target
+    `0x329ad3c0`.
 - Unknown:
-  - complete physical page comparison for legal downloaded descriptor
-    metric, selected-font state, and byte-width combinations remains open.
+  - legal downloaded descriptor metric, selected-font state, and byte-width
+    combinations that have not yet been tied to concrete byte streams remain
+    open.
 
 Writers:
 
@@ -1986,9 +1994,9 @@ Confidence:
   many downloaded row-count cases are fixture-backed. The span `0x0100..0x020d`
   printable handoff is now classified as an 8-bit source-record producer
   boundary whose wrapped cases select non-helper mode-0 row-copy entries.
-  Remaining renderer risk is broader physical/pixel comparison past that
-  invalid helper boundary and selected-font state combinations not represented
-  in current visible fixtures.
+  Remaining renderer risk is selected-font state combinations not represented
+  in current visible fixtures and byte streams that change helper dispatch or
+  object shape.
 
 Fixture evidence:
 
@@ -2065,15 +2073,14 @@ Unresolved middle edges:
   built-in and inline/downloaded success, final-`X` non-selected exits, and
   `0x13eb8` no-dispatch exits are page-visible through compact rendering.
   Remaining ROM-internal work is broader command combinations only where they
-  expose new selected-context, map, or page-root slot states; physical or
-  reference-output comparison remains separate.
+  expose new selected-context, map, or page-root slot states.
 - `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
   partial, no-install, row-count boundary, main width-span, and compact-wide
   remainder cases are documented; the segmented-wide matrix now covers spans
   `17..32` at rows `0x81`. High-span probes now carry compact-wide spans
   `33`, `48`, `49`, `64`, and `255` plus segmented-wide spans `33`, `48`,
   `49`, and `64` through parser/install/publication/dispatch metadata and
-  matched rendered rows. Fixture `downloaded segmented-wide row-span
+  documented rendered rows. Fixture `downloaded segmented-wide row-span
   cross-products render selected segment` covers segmented-wide rows `0x0082`
   and `0x0083` crossed with spans `17`, `18`, `31`, and `32` through selected
   segment rows. Fixture `downloaded glyph width-byte boundary
@@ -2104,28 +2111,30 @@ Unresolved middle edges:
   bitmap. The span-31 siblings through `0x03ff` are explicit A2 source
   boundaries at `+0xb50`; higher oversized siblings stop at the parser
   payload-count cap before renderer entry, including `0x0788*17`.
-  Remaining gaps are broader physical/full-row comparison for boundary cases
-  and selected-font state combinations not represented in current visible
-  fixtures.
+  Remaining gaps are byte-stream variants that change boundary object fields,
+  helper dispatch, or selected-font state combinations not represented in
+  current visible fixtures.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
   plus segmented-wide spans `17..32` now cover selectors `0x1003` and
   `0x3003`, `0x2f27c`, remainders `1..15`, and their no-remainder two-chunk
   siblings. High-span probes now cover additional full-chunk counts through
-  `0x2f27c`, A2/A3 source-walk rows, and matched row output above span `32`.
+  `0x2f27c`, A2/A3 source-walk rows, and documented row output above span
+  `32`.
   The downloaded-glyph row-count checkpoint now narrows helper risk further:
   rows `0x0001..0x00ff` are published and rendered for the documented
   short/segmented family, and segmented-wide high-row below-cap cases are
   semantic cross-products of preserved 16-bit row words, low-byte selector
   truncation, span-selected helper choice, and parser payload-count cap. The
-  exact ROM-local visible-output boundary is short compact fallback indices
-  above the `0x1fe76` valid table maximum `128`, as shown by the
-  row-`0x0101..0x0103` fixtures. Remaining comparison work is broader
-  physical/full-page validation and new streams that change helper dispatch or
-  rows, not the main helper aliases or sampled matched wide paths.
-- `0x1f414..0x7810b4`: current-band/fallback splitting is fixture-backed,
-  including the row-`0x0102` invalid fallback boundary; device-level behavior
-  after such invalid table targets is intentionally not claimed.
+  exact ROM-local visible-output boundary is the unchecked `0x1fe76`
+  row-count table read above valid index `128`, where `0x1fe8a + 4 * D3`
+  enters row-copy code bytes beginning at `0x2008e`. Remaining ROM-local work
+  is new streams that change helper dispatch or rows, not the main helper
+  aliases or sampled matched wide paths.
+- `0x1f414..0x7810b4`: current-band/fallback splitting is documented with
+  fixture checks, including the row-`0x0102` invalid fallback boundary;
+  device-level behavior after such invalid table targets is intentionally not
+  claimed.
 
 The executable harness `tools/render_fixture_harness.py` combines the
 host-byte fetch, tokenizer/delayed-payload, page-geometry,
@@ -2420,9 +2429,8 @@ through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule, and
 mode-0 raster row in one parser-driven page stream. Remaining work should
 target byte streams or ROM paths that expose different output state; repeating
 the same addressed fixture with a different proof source is not an unresolved
-raster/imaging semantic edge. External evidence is only needed for final
-physical/reference comparison, or for the separate resource-window decode gap
-at `0x0c0000..0x0c0321`; it is not a blocker for the ROM-local
+raster/imaging semantic edge. The separate resource-window decode gap at
+`0x0c0000..0x0c0321` is not a blocker for the ROM-local
 host-fetch-to-page-image path covered here. The reset,
 FF, page-size, orientation, paper-source, and copies publication fixtures
 now start without a current page root and mark the first printable queue
@@ -2488,7 +2496,7 @@ through `0x1ed84` / `0x1ef6a`. The dense text/rule/raster stream already has
 addressed `0x1381c` page/control storage for the raster object and published
 record fields, so the documented raster edge is now closed for those
 software-visible fields. Further work belongs on new byte-stream variants,
-resource-window data, or physical output comparison.
+or resource-window data.
 The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the selected inline/downloaded
 page-record object now crosses `0x1edc6` with context slot `3` intact
@@ -2585,9 +2593,11 @@ are `7`, `8`, `10`, `14`, `64`, `64`, `9`, `10`, `11`, `16`, `16`, `16`, and
 rows-`0x0102` sibling `ESC )s516W` +
 printable `3` + FF also crosses `0xff1e`, but the page-record source exposes
 row byte `0x02`; it publishes selector `0x0003` bucket `1` only, then
-`0x1f414` splits rows `0x0102` into `58` current rows and `200` fallback rows.
-The fallback exceeds `0x1fe76`'s valid table maximum index `128` and reads
-target `0x329ad3c0`. The fetched
+  `0x1f414` splits rows `0x0102` into `58` current rows and `200` fallback rows.
+  The fallback exceeds `0x1fe76`'s valid table maximum index `128`: entry
+  `128` at `0x2008a` is the last valid pointer, entry `129` begins reading
+  row-copy code at `0x2008e`, and fallback index `200` reads target
+  `0x329ad3c0`. The fetched
 font-control
 state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,

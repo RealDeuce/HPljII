@@ -3797,6 +3797,13 @@ Producer and consumer behavior:
 - Short compact helper `0x1fe76` has valid row-count table entries only
   through index `128`. Row `0x0102` would read fallback index `200`, whose
   table target is `0x329ad3c0`.
+- This is direct ROM table layout, not a parser uncertainty:
+  `0x1fe76..0x1fe88` loads row-count table base `0x1fe8a`, shifts `D3` left
+  by two, reads an unchecked longword pointer, and jumps to it. Entries
+  `0..128` are valid; entry `128` at `0x2008a` points to `0x2008e`. Address
+  `0x2008e` is executable row-copy code beginning with bytes `32 9a d3 c0`,
+  so entries above `128`, including fallback counts `199..201`, interpret code
+  bytes as pointers and yield `0x329ad3c0`.
 
 State classification:
 
@@ -3821,9 +3828,10 @@ State classification:
 - Unknown:
   the unresolved item is only the short compact fallback helper target for
   table indices above `128`, specifically indices `199..201` for the covered
-  high-row matrix. The parser, installed glyph state, low-byte selector
-  truncation, publication bucket, render bucket, and row-split counts are
-  documented.
+  high-row matrix. The exact boundary is the unchecked `0x1fe8a + 4 * D3`
+  table read entering row-copy code bytes at `0x2008e`. The parser, installed
+  glyph state, low-byte selector truncation, publication bucket, render bucket,
+  and row-split counts are documented.
 
 Output effect:
 
@@ -4005,7 +4013,7 @@ State classification:
 - Hardware/external state:
   none for the ROM-local renderer source-boundary classification.
 - Unknown:
-  physical/full-row comparison for the explicit span-31 source-boundary cases.
+  byte-stream variants that change the explicit span-31 source-boundary cases.
   The parser/install/publication/bridge path, selected segment, renderer
   target, row split, and exact source offset are documented.
 
@@ -5033,7 +5041,7 @@ State classification:
   no unresolved shared render-dispatch edge remains for the documented object
   classes. Remaining work is new byte-stream variants that create different
   object fields, selected-font contexts, helper targets, continuation state,
-  or rendered rows, plus physical full-page comparison.
+  or rendered rows.
 
 Evidence:
 
@@ -6443,11 +6451,12 @@ Current top-level boundaries include:
 - ROM-local visible-output helper boundary:
   `Boundary: Short Compact Downloaded-Glyph High Rows` documents the exact
   short compact downloaded-glyph fallback edge in helper `0x1fe76`. Rows
-  `0x0101..0x0103` preserve installed row state and prove low-byte selector
+  `0x0101..0x0103` preserve installed row state and document low-byte selector
   truncation through `0x12f2e`, bucket `1` publication, render bucket word
-  `1`, and `0x1f414` fallback counts `199..201`; helper table indices above
-  the documented valid maximum `128` remain the unresolved renderer-helper
-  edge.
+  `1`, and `0x1f414` fallback counts `199..201`. The unresolved
+  renderer-helper edge is the unchecked `0x1fe8a + 4 * D3` row-copy table
+  read in `0x1fe76`; entry `128` is the last valid pointer and entries above
+  it read executable code bytes beginning at `0x2008e` as pointer data.
 - ROM-local visible-output helper boundary:
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes` documents the exact
   width-byte sibling. Installed width words for spans `0x0100..0x0111`,

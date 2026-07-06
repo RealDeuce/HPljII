@@ -6053,16 +6053,17 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
   matrix publishes and renders compact chunks` carries accepted spans `17..32` through
   the same install and zero-drain return boundary before selector `0x1003` renders
   through `0x1f0d2`; the same fixture now probes accepted spans `33`, `48`, `49`, `64`,
-  and `255` through the install/publication/dispatch boundary and compares rendered rows
-  with the installed bitmap rows. Fixture `downloaded glyph segmented-wide matrix
-  publishes and renders compact chunks` carries accepted spans `17..32` with rows `0x81`
-  through the same install and zero-drain return boundary before selector `0x3003`
-  renders segment `1` through `0x1f264`; the same fixture probes accepted spans `33`,
-  `48`, `49`, and `64` through the upstream boundary and compares segment-1 rendered
-  rows with the installed bitmap rows. Fixture `downloaded segmented-wide row-span
-  cross-products render selected segment` extends the same path to row words `0x0082`
-  and `0x0083` crossed with spans `17`, `18`, `31`, and `32`, preserving the zero-drain
-  return boundary and matching selected segment rows against the installed bitmap.
+  and `255` through the install/publication/dispatch boundary and documents rendered
+  rows derived from the installed bitmap rows. Fixture `downloaded glyph segmented-wide
+  matrix publishes and renders compact chunks` carries accepted spans `17..32` with rows
+  `0x81` through the same install and zero-drain return boundary before selector
+  `0x3003` renders segment `1` through `0x1f264`; the same fixture probes accepted spans
+  `33`, `48`, `49`, and `64` through the upstream boundary and documents segment-1
+  rendered rows derived from the installed bitmap rows. Fixture `downloaded
+  segmented-wide row-span cross-products render selected segment` extends the same path
+  to row words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`,
+  preserving the zero-drain return boundary and matching selected segment rows against
+  the installed bitmap.
 
 ### Readers And Consumers
 
@@ -6226,51 +6227,47 @@ installed bitmap. Fixtures `downloaded segmented-wide high-row fallback renders 
 segment`, `downloaded segmented-wide high-row even-span fallback renders selected
 segment`, and `downloaded segmented-wide high-row span-32 fallback renders selected
 segment` add high-row word `0x0181` at spans `17`, `18`, and `32`; the same
-parser/install/publication path dispatches bucket `8` segment `1` through `0x1f264`,
-and the `0x1f414` split produces `32` current rows plus `96` fallback rows that both
-match the installed bitmap. Fixture `downloaded segmented-wide high-row span-31
-fallback hits source boundary` pins the neighboring large-remainder boundary at
+parser/install/publication path dispatches bucket `8` segment `1` through `0x1f264`, and
+the `0x1f414` split produces `32` current rows plus `96` fallback rows that both match
+the installed bitmap. Fixture `downloaded segmented-wide high-row span-31 fallback hits
+source boundary` pins the neighboring large-remainder boundary at
 `validate_wide_compact_row_copy`, where fallback A2 source offset `+0xb50` exceeds the
 modeled bitmap. Fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
 segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits source
-boundary` repeat that success/boundary split for row word `0x0182`. Fixtures
-`downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
-`downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` repeat the
-same split for row word `0x01ff`.
-Fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected segment`
-and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
-repeat that selected-segment success/source-boundary split for row words `0x0282` and
-`0x02ff`.
-Fixtures `downloaded segmented-wide high-row 0x03xx matrix renders selected segment`
-and `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary`
-repeat it for row words `0x0381`, `0x0382`, and `0x03ff`, proving the same low-byte
-source-row truncation, selected segment `1`, and span-31 source boundary in the next
-high-byte range.
-Fixtures `downloaded segmented-wide high-row 0x04xx matrix renders selected segment`
-and `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
-renderer` split row words `0x0481`, `0x0482`, and `0x04ff`: spans `17`, `18`, and
-`24` prove the same low-byte source-row truncation, selected segment `1`, and
-`32/96` rendered row split, while spans `31` and `32` exceed the parser's `0x7fff`
-payload-count cap and stop before `0x16498`.
-Fixtures `downloaded segmented-wide high-row 0x05xx matrix renders selected segment`
-and `downloaded segmented-wide high-row parser-limit matrix renders selected segment`
-extend the same selected-segment proof through sampled rows up to `0x0787`; their
-oversized siblings prove that adjacent rows/spans stop at the parser payload-count cap
-before renderer entry, including `0x0788*17`.
-Fixture `downloaded glyph
-row-count matrix publishes and renders additional short/segmented counts` adds two
-hundred fifty row-count siblings through the same fetched install, printable,
-FF-publication, and render-entry chain. Short rows `0x0001..0x001f`, `0x0021..0x003f`,
-and `0x0041..0x007f` are canonical installed record fields that derive selector
-`0x0003`, bucket `1`, object byte `0x00`, and compact target `0x1effe`; rows
-`0x0083..0x00ff` derive selector `0x2003`, buckets `1` and `9`, object byte `0x20`, and
-compact target `0x1effe` for render bucket word `9`. Parser scratch is limited to the
-fetched `ESC )s#W` restored record and payload byte count; derived/cache state is the
-`0xff1e` bucket array plus `0x1ed84`/`0x1ef6a` dispatch. The short rows publish visible
-row counts `rows + 6` through row `0x0039`, then cap at `64` for rows `0x003a`,
-`0x003b`, `0x003c`, `0x003d`, `0x003e`, `0x003f`, and `0x0041..0x007f`; segmented rows
-publish visible row counts `rows - 0x007a` through row `0x0089`, then cap at `16` for
-rows `0x008a..0x00ff`. Rows `0x0006` and `0x0007` render `12` and `13` rows with digests
+boundary` repeat that success/boundary split for row word `0x0182`. Fixtures `downloaded
+segmented-wide row-0x01ff fallbacks render selected segment` and `downloaded
+segmented-wide row-0x01ff span-31 fallback hits source boundary` repeat the same split
+for row word `0x01ff`. Fixtures `downloaded segmented-wide high-row 0x02xx matrix
+renders selected segment` and `downloaded segmented-wide high-row 0x02xx span-31 matrix
+hits source boundary` repeat that selected-segment success/source-boundary split for row
+words `0x0282` and `0x02ff`. Fixtures `downloaded segmented-wide high-row 0x03xx matrix
+renders selected segment` and `downloaded segmented-wide high-row 0x03xx span-31 matrix
+hits source boundary` repeat it for row words `0x0381`, `0x0382`, and `0x03ff`, proving
+the same low-byte source-row truncation, selected segment `1`, and span-31 source
+boundary in the next high-byte range. Fixtures `downloaded segmented-wide high-row
+0x04xx matrix renders selected segment` and `downloaded segmented-wide high-row 0x04xx
+oversized payload counts stop before renderer` split row words `0x0481`, `0x0482`, and
+`0x04ff`: spans `17`, `18`, and `24` prove the same low-byte source-row truncation,
+selected segment `1`, and `32/96` rendered row split, while spans `31` and `32` exceed
+the parser's `0x7fff` payload-count cap and stop before `0x16498`. Fixtures `downloaded
+segmented-wide high-row 0x05xx matrix renders selected segment` and `downloaded
+segmented-wide high-row parser-limit matrix renders selected segment` extend the same
+selected-segment proof through sampled rows up to `0x0787`; their oversized siblings
+prove that adjacent rows/spans stop at the parser payload-count cap before renderer
+entry, including `0x0788*17`. Fixture `downloaded glyph row-count matrix publishes and
+renders additional short/segmented counts` adds two hundred fifty row-count siblings
+through the same fetched install, printable, FF-publication, and render-entry chain.
+Short rows `0x0001..0x001f`, `0x0021..0x003f`, and `0x0041..0x007f` are canonical
+installed record fields that derive selector `0x0003`, bucket `1`, object byte `0x00`,
+and compact target `0x1effe`; rows `0x0083..0x00ff` derive selector `0x2003`, buckets
+`1` and `9`, object byte `0x20`, and compact target `0x1effe` for render bucket word
+`9`. Parser scratch is limited to the fetched `ESC )s#W` restored record and payload
+byte count; derived/cache state is the `0xff1e` bucket array plus `0x1ed84`/`0x1ef6a`
+dispatch. The short rows publish visible row counts `rows + 6` through row `0x0039`,
+then cap at `64` for rows `0x003a`, `0x003b`, `0x003c`, `0x003d`, `0x003e`, `0x003f`,
+and `0x0041..0x007f`; segmented rows publish visible row counts `rows - 0x007a` through
+row `0x0089`, then cap at `16` for rows `0x008a..0x00ff`. Rows `0x0006` and `0x0007`
+render `12` and `13` rows with digests
 `b791b24072d4758b9a4e40ae7600cd7e0b2bbbe3757dd001f8819dc6d94a5b7a` and
 `d2beea9dbf9a604abeb5fe8cc87636002405da8f46d6cbbf585af7e7481cd088`; rows `0x000a`
 through `0x000f` render `16` through `21` rows with digests
@@ -6310,65 +6307,68 @@ and `17` absent. This fixture does not claim rendered pixels: `0x1ef86` computes
 `0x783a20 = 0x0040` and `0x783a28 = 0x00100800`, `0x1f414` splits coord `0x6601` and
 rows `0x0102` into `58` current-band rows plus `200` fallback rows, and span-2 row-copy
 helper `0x1fe76` has valid table entries only through index `128`; fallback index `200`
-reads target `0x329ad3c0`. Fixture `downloaded glyph high-row truncation matrix
-preserves installed rows` adds rows `0x0101`, `0x0102`, and `0x0103` as adjacent
-nonzero-high-byte siblings. The installed row words remain canonical downloaded-glyph
-state, while the printable source record is parser/page scratch carrying low row bytes
-`0x01`, `0x02`, and `0x03`. `0x12f2e` derives selector `0x0003` and bucket `1` for all
-three; `0xff1e` publishes only bucket `1`; `0x1ef86` keeps render bucket word `1` and
-band height `0x0040`; and `0x1f414` splits the full installed row words into `58`
-current-band rows plus fallback rows `199`, `200`, and `201`. All three fallback counts
-exceed the span-2 `0x1fe76` helper table's valid maximum index `128`, so their pixel
-rows remain unresolved at the same render-helper boundary. Fixture `split-plane
-segmented downloaded glyph FF publication renders page record` adds the odd-span
-sibling: host-fetched `ESC )s387W` plus printable `(` and FF restores record `80 57 01
-83 00 00`, publishes bucket `9` and segment-0 bucket `1` objects, clears the current
-root, copies empty rule/fixed lists and context prefix `0,0,0,0`, and renders bucket
-word `9` through `0x1ed84`/`0x1ef6a` to compact target `0x1effe` / renderer `0x1f1f0`
-with A2 source offset `0x0100` and A3 trailing offset `0x0080`. Fixture `host-fetched
-linear downloaded character stream renders through 0x168dc` drives `ESC )s6W` through
-the same parser-delayed `0x16c14` boundary, installs glyph `0x26` at table entry
-`0x00e2` with even span `2`, copies bitmap bytes through the linear `0x168dc` reader,
-queues normal compact selector `0x0003`, preserves the object through `0x1edc6`, and
-renders three mode-0 rows through `0x1ed84` / `0x1ef6a`. Fixture `host-fetched 0x15d0a
-current-record resource object feeds fixed-record render` also proves a host-fetched
-`ESC )s0W` descriptor can route bit-30-clear current-record payload `0x000100` through
-`0x16606`, install fixed-record glyph `0x21` at payload table entry `+0x48`, queue
-selector `0x0003`, preserve context slot `3` through `0x1edc6`, and render three mode-0
-rows. The same fixture pins return boundary `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328`
-with copy status `1`, copy stream position `6`, remaining `0x783140 = 0`, zero drained
-bytes, and next parser handler `0xd04a`. Fixture `0x16606 no-install exits clear stale
-continuation without payload writes` proves the sibling no-install exits at
-`0x16612..0x16770`: char `0xa0` with type byte `+0x0e = 0`, short two-byte record
-prefix, byte budget `0x0d`, zero span `00 01 04 00`, and copy failure after only byte
-`aa` all clear stale continuation state and leave payload memory unchanged. Canonical
-table/object state is unchanged, parser scratch is the cleared continuation block,
-firmware bookkeeping is the reject reason, and output effect is no installed glyph.
-Fixture `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
-proves the sibling status-`2` descriptor route through `0x15c4c`: a partial `0x16606`
-copy saves payload `0x000100`, glyph/table index `0x21`, destination `0x000302`, and
-remaining count `4`; `0x15c4c` copies bytes `f0 0f c3 3c`, clears the continuation
-fields, renders the same fixed record and rows, and pins `0x15e64 -> 0x15c4c -> 0x15dcc
--> 0x12328` with copy status `1`, copy stream position `4`, remaining `0x783140 = 0`,
-zero drained bytes, and next handler `0xd04a`. Fixture `host-fetched 0x15d0a split-plane
-continuation resource object resumes fixed-record render` proves the odd-width sibling:
-a partial `0x16606` copy of record `03 02 04 00 00 00 02 00` saves payload `0x000100`,
-glyph/table index `0x21`, prefix destination `0x000303`, trailing destination
-`0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears
-continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix `00
-00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from `a0 a1 b0` and `c0
-c1 d0`. It also pins the split-plane `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` return
-with copy status `1`, copy stream position `2`, remaining `0x783140 = 0`, zero drained
-bytes, and next handler `0xd04a`. Fixture `0x15c4c partial resource resumes update
-continuation state` proves the status-`2` sibling: a linear resume copies byte `f0`,
-advances destination `0x000302 -> 0x000303`, and resaves remaining count `3`; a
-split-plane resume copies prefix byte `c1`, advances prefix destination `0x000303 ->
-0x000304`, keeps trailing destination `0x000305`, and resaves D4/D3 counters `1/0`.
-Fixture `0x15c4c failed resource resume releases fixed-record object` proves the
-status-`0` sibling: a partial `0x16606` copy saves the same payload and glyph/table
-index, a short resume copies only bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The
-release helper rewrites payload `+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa
-00 00 00 00`, writes side-table bytes `fa 00` at payload `+0x340`, records
+reads target `0x329ad3c0`. The ROM table boundary is explicit: `0x1fe76..0x1fe88` loads
+table base `0x1fe8a`, shifts row count `D3` left by two, reads an unchecked longword
+pointer, and jumps. Entry `128` at `0x2008a` points to `0x2008e`; address `0x2008e` is
+row-copy code beginning with bytes `32 9a d3 c0`, so entries above `128` read code as
+pointer data. Fixture `downloaded glyph high-row truncation matrix preserves installed
+rows` adds rows `0x0101`, `0x0102`, and `0x0103` as adjacent nonzero-high-byte siblings.
+The installed row words remain canonical downloaded-glyph state, while the printable
+source record is parser/page scratch carrying low row bytes `0x01`, `0x02`, and `0x03`.
+`0x12f2e` derives selector `0x0003` and bucket `1` for all three; `0xff1e` publishes
+only bucket `1`; `0x1ef86` keeps render bucket word `1` and band height `0x0040`; and
+`0x1f414` splits the full installed row words into `58` current-band rows plus fallback
+rows `199`, `200`, and `201`. All three fallback counts exceed the span-2 `0x1fe76`
+helper table's valid maximum index `128`, so their pixel rows remain unresolved at the
+same render-helper boundary. Fixture `split-plane segmented downloaded glyph FF
+publication renders page record` adds the odd-span sibling: host-fetched `ESC )s387W`
+plus printable `(` and FF restores record `80 57 01 83 00 00`, publishes bucket `9` and
+segment-0 bucket `1` objects, clears the current root, copies empty rule/fixed lists and
+context prefix `0,0,0,0`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to
+compact target `0x1effe` / renderer `0x1f1f0` with A2 source offset `0x0100` and A3
+trailing offset `0x0080`. Fixture `host-fetched linear downloaded character stream
+renders through 0x168dc` drives `ESC )s6W` through the same parser-delayed `0x16c14`
+boundary, installs glyph `0x26` at table entry `0x00e2` with even span `2`, copies
+bitmap bytes through the linear `0x168dc` reader, queues normal compact selector
+`0x0003`, preserves the object through `0x1edc6`, and renders three mode-0 rows through
+`0x1ed84` / `0x1ef6a`. Fixture `host-fetched 0x15d0a current-record resource object
+feeds fixed-record render` also proves a host-fetched `ESC )s0W` descriptor can route
+bit-30-clear current-record payload `0x000100` through `0x16606`, install fixed-record
+glyph `0x21` at payload table entry `+0x48`, queue selector `0x0003`, preserve context
+slot `3` through `0x1edc6`, and render three mode-0 rows. The same fixture pins return
+boundary `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` with copy status `1`, copy stream
+position `6`, remaining `0x783140 = 0`, zero drained bytes, and next parser handler
+`0xd04a`. Fixture `0x16606 no-install exits clear stale continuation without payload
+writes` proves the sibling no-install exits at `0x16612..0x16770`: char `0xa0` with type
+byte `+0x0e = 0`, short two-byte record prefix, byte budget `0x0d`, zero span `00 01 04
+00`, and copy failure after only byte `aa` all clear stale continuation state and leave
+payload memory unchanged. Canonical table/object state is unchanged, parser scratch is
+the cleared continuation block, firmware bookkeeping is the reject reason, and output
+effect is no installed glyph. Fixture `host-fetched 0x15d0a continuation resource object
+resumes fixed-record render` proves the sibling status-`2` descriptor route through
+`0x15c4c`: a partial `0x16606` copy saves payload `0x000100`, glyph/table index `0x21`,
+destination `0x000302`, and remaining count `4`; `0x15c4c` copies bytes `f0 0f c3 3c`,
+clears the continuation fields, renders the same fixed record and rows, and pins
+`0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` with copy status `1`, copy stream position
+`4`, remaining `0x783140 = 0`, zero drained bytes, and next handler `0xd04a`. Fixture
+`host-fetched 0x15d0a split-plane continuation resource object resumes fixed-record
+render` proves the odd-width sibling: a partial `0x16606` copy of record `03 02 04 00 00
+00 02 00` saves payload `0x000100`, glyph/table index `0x21`, prefix destination
+`0x000303`, trailing destination `0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies
+bytes `c1 d0`, clears continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`,
+queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed
+from `a0 a1 b0` and `c0 c1 d0`. It also pins the split-plane `0x15e64 -> 0x15c4c ->
+0x15dcc -> 0x12328` return with copy status `1`, copy stream position `2`, remaining
+`0x783140 = 0`, zero drained bytes, and next handler `0xd04a`. Fixture `0x15c4c partial
+resource resumes update continuation state` proves the status-`2` sibling: a linear
+resume copies byte `f0`, advances destination `0x000302 -> 0x000303`, and resaves
+remaining count `3`; a split-plane resume copies prefix byte `c1`, advances prefix
+destination `0x000303 -> 0x000304`, keeps trailing destination `0x000305`, and resaves
+D4/D3 counters `1/0`. Fixture `0x15c4c failed resource resume releases fixed-record
+object` proves the status-`0` sibling: a partial `0x16606` copy saves the same payload
+and glyph/table index, a short resume copies only bytes `f0 0f`, then `0x15c4c` calls
+`0x17d7c`. The release helper rewrites payload `+0x48` from `02 03 04 00 00 00 02 00` to
+`01 02 00 fa 00 00 00 00`, writes side-table bytes `fa 00` at payload `+0x340`, records
 active-primary refresh `0x7828de = 0`, and clears the matching continuation fields.
 
 Fixture `0x15d0a descriptor grammar exits and handler matrix` composes the route front
@@ -7438,7 +7438,8 @@ ROM-effect names and failure behavior of every `0x16fae` validation-table entry,
 including the host-fetched invalid-type, first-code overflow, zero/high line-count,
 reversed/high range-count, and invalid-class no-install boundaries. Medium for the
 complete soft-font grammar because exact HP manual labels for pass-through descriptor
-fields and broader selected-font state combinations have not been page-compared.
+fields and broader selected-font state combinations still need ROM-local byte-stream
+coverage.
 
 ### Fixtures
 
@@ -7693,9 +7694,9 @@ fields and broader selected-font state combinations have not been page-compared.
   renders additional short/segmented counts` covers short ranges `0x0001..0x001f`,
   `0x0021..0x003f`, and `0x0041..0x007f`, and segmented range `0x0083..0x00ff`;
   separate fixtures cover `0x0020`, `0x0040`, `0x0080`, `0x0081`, and `0x0082`.
-  Still-open comparisons are bounded cross-products: physical/pixel behavior after
-  printable downloaded spans wrap in the current one-byte page source span field into
-  fully classified compact mode-0 invalid helper-table targets; publication
+  Still-open cross-products are ROM-local variants after printable downloaded spans
+  wrap in the current one-byte page source span field into fully classified compact
+  mode-0 invalid helper-table targets; publication
   combinations beyond the documented normal,
   non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
   row-count-matrix short/segmented, rows-`0x0102` low-byte-truncated table-limit
@@ -7804,9 +7805,11 @@ fields and broader selected-font state combinations have not been page-compared.
   `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source row byte as
   `0x02`, so `0x12f2e` writes selector `0x0003` object `00 00 00 00 00 03 00 01 33 66
   01`; `0x1f414` then splits rows `0x0102` into `58` current rows and `200` fallback
-  rows, exceeding the `0x1fe76` row-copy table's valid maximum index `128` at fallback
-  target `0x329ad3c0`. Fixture `downloaded glyph high-row truncation matrix preserves
-  installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: installed
+rows, exceeding the `0x1fe76` row-copy table's valid maximum index `128`: entry
+`128` at `0x2008a` is the last valid pointer, entry `129` starts reading row-copy
+code at `0x2008e`, and fallback index `200` reads target `0x329ad3c0`. Fixture
+`downloaded glyph high-row truncation matrix preserves
+installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: installed
   row words are canonical, printable/page source rows are low bytes `0x01`, `0x02`, and
   `0x03`, `0x12f2e` publishes only selector `0x0003` bucket `1`, and `0x1f414` splits
   full installed rows into `58` current rows plus fallback rows `199`, `200`, and `201`,
@@ -10176,7 +10179,7 @@ compact subdispatch, segment-list layout, encoded raster mode split,
 rule-list selector dispatch, fixed-list consumption, destination pointer
 arithmetic, row-copy table targets, raster expansion tables, and row-level
 output for the cited fixtures. Medium for broader compact downloaded-glyph
-state combinations and physical/reference page comparisons.
+state combinations that have not yet been tied to concrete byte streams.
 
 ### Fixtures
 
@@ -10260,18 +10263,16 @@ state combinations and physical/reference page comparisons.
   `0x3003`, including current-band/fallback splitting and the downloaded
   width/row matrices. Remaining work starts from selected-font combinations or
   wrapped-width streams that change source object bytes, selector class,
-  helper dispatch, fallback split, or rendered rows; physical/reference page
-  comparison remains separate.
+  helper dispatch, fallback split, or rendered rows.
 - `0x12714..0x1f812`: segment-list producer and consumer are connected for
-  portrait text spans; broader orientation/page-size cross-checks still need
-  visible page comparisons.
+  portrait text spans; broader orientation/page-size work starts from streams
+  that change segment-list records or render dispatch.
 - `0x13070..0x1f88e`: raster producers and encoded renderers are connected for
   modes `0..3`; remaining work is byte-stream variants that change encoded
-  object fields, bridge state, or rendered rows, plus physical/reference page
-  comparison.
+  object fields, bridge state, or rendered rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the cited selectors. Remaining work is broader selector/page
-  combinations and physical-device comparison.
+  combinations that change ROM-visible object or render state.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
   compact glyph row-copy checkpoint. Rows `0x0001..0x00ff` in the
   parser-produced downloaded row-count family are now page-visible, and
@@ -10280,7 +10281,7 @@ state combinations and physical/reference page comparisons.
   choice, and parser payload-count limits. The exact ROM-local visible-output
   boundary is short compact fallback indices above the `0x1fe76` valid table
   maximum `128`; remaining work is new byte streams that change helper
-  dispatch or rows, plus broader physical/full-page comparison.
+  dispatch or rows.
 
 ## Default Environment Record Producers
 

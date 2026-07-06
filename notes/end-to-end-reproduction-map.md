@@ -1091,13 +1091,16 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   preserve installed row words `0x0101..0x0103`, but show that `0x12f2e`
   sees only low row bytes `0x01..0x03`, queues selector `0x0003`, and reaches
   the exact short-helper boundary where `0x1f414` fallback counts `199..201`
-  index beyond the `0x1fe76` valid maximum `128`.
+  index beyond the `0x1fe76` valid maximum `128`. That boundary is the
+  unchecked `0x1fe8a + 4 * D3` row-count table read in `0x1fe76`: entry `128`
+  at `0x2008a` is the last valid pointer, and entries above it read row-copy
+  code bytes beginning at `0x2008e` as pointer data.
   The width side has the same source-byte classification. Fixture
   `downloaded glyph width-byte boundary truncates page-record span` preserves
   installed spans through `0x020d`; low source width bytes `0x00..0x10`
   select compact mode-0 helper entries outside decoded row-copy helper heads,
   while high source width bytes `0x11..0xff` select compact-wide `0x1f0d2`
-  and render matched rows for the sampled high-byte cases. Segmented-wide
+  and render documented rows for the sampled high-byte cases. Segmented-wide
   high-row fixtures cover selected segment rendering through `0x1f264` for
   sampled rows through `0x0787`, with span-31 siblings through `0x03ff`
   bounded at fallback A2 source offset `+0xb50` and larger row/span products
@@ -1139,10 +1142,11 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   selected-font combinations that change context/map state before visible
   output, physical device output beyond the ROM render buffer, and the exact
   ROM-local helper failures already named as bounded edges: short compact
-  fallback indices above `0x1fe76` valid index `128`, low wrapped width bytes
-  that target non-row-copy helpers, segmented-wide span-31 fallback source
-  offset `+0xb50`, and downloaded-glyph payloads that exceed the `0x7fff`
-  parser count cap before renderer entry.
+  fallback indices above `0x1fe76` valid index `128` where the unchecked table
+  read enters code bytes at `0x2008e`, low wrapped width bytes that target
+  non-row-copy helpers, segmented-wide span-31 fallback source offset
+  `+0xb50`, and downloaded-glyph payloads that exceed the `0x7fff` parser
+  count cap before renderer entry.
 
 ## Reproducible Byte-Stream Families
 

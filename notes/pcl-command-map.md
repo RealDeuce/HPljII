@@ -179,6 +179,83 @@ exceptions: `ESC Y` append reader `0x12120`, Control-Z append/report handlers
 `0xdd08`, and reset `0xcc52`. Blank alternate/data rows are meaningful:
 they preserve syntax or bytes without running the normal page-state handler.
 
+## Supported Stream Dispatch Matrix
+
+Use this matrix with
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#supported-stream-entry-points).
+It names the parser route for the concrete supported stream families before the owner
+notes take over field writes, page objects, and pixels. The generated table files remain
+supporting evidence; the checked-in owner notes are the semantic source of truth.
+
+- Printable text and direct C0 controls:
+  mode-zero printable bytes go from `0x11774` to `0xd04a` in normal mode.
+  Direct controls use normal mode-zero rows: BS `0xf2a8`, HT `0xf1cc`,
+  LF `0xf08c`, FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, and SI `0xc68a`.
+  Explicit blank rows `0x00`, `0x07`, and `0x0b` take the zero-handler reset
+  path through `0x12218` without page output. Owner notes:
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [direct-control-codes.md](direct-control-codes.md), and
+  [font-context-metrics.md](font-context-metrics.md).
+- Cursor, margins, and text-motion commands:
+  `ESC &` enters mode `5` through `0x11eb6` / `0x11ec8`; `&a` enters mode
+  `12` through `0x11eda`. Terminals route to `0xf39e` (`C/c`), `0xf416`
+  (`H/h`), `0xeb58` (`L/l`), `0xec0c` (`M/m`), `0xf560` (`R/r`), and
+  `0xf60a` (`V/v`). Lowercase finals keep mode `12`; uppercase finals return
+  to mode zero. Text-motion `&k` enters mode `11` and reaches `0xedf8`
+  (`G/g`), `0xca8c` (`H/h`), and `0xc390` (`S/s`). Owner note:
+  [direct-control-codes.md](direct-control-codes.md).
+- Page layout, VFC, and publication commands:
+  `&l` enters mode `10` through `0x11eda`. Page-size, VMI/LPI, margin, paper,
+  orientation, copies, and VFC terminals route to `0xfc74`, `0xcb00`,
+  `0xc992`, `0xece2`, `0xea9e`, `0xef62`, `0xee64`, `0x10220`,
+  `0xf9e8`, `0x1280a`, `0x11f6e`, and `0xeef0`. `ESC &l#W` is delayed:
+  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`. FF and reset use direct
+  terminals `0xf0f0` and `0xcc52`. Owner notes:
+  [publication-commands.md](publication-commands.md) and
+  [vertical-forms-control.md](vertical-forms-control.md).
+- Transparent/display payload readers:
+  `ESC &p#X` enters modes `5 -> 9`, reaches `0x11f5a`, and restores delayed
+  handler `0x12452` through `0x121cc` / `0x12218`. `ESC Y ... ESC Z` enters
+  mode `1` and dispatches normal reader `0x12536`; alternate/data mode uses
+  `0x12120`. Control-Z mode `2` terminals use normal handlers `0x120d2` /
+  `0x1219e` or alternate handlers `0x1210c` / `0x121b2`. Owner notes:
+  [transparent-print-data.md](transparent-print-data.md) and
+  [display-functions.md](display-functions.md).
+- Rectangle and raster imaging:
+  `ESC *` enters mode `3`. Rectangle `*c` enters mode `16`, with
+  `A/a -> 0x10e68`, `B/b -> 0x10e22`, `G/g -> 0x10dce`, and
+  `P/p -> 0x10898`; the covered `ESC *c12a5b0P` route is
+  `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0`. Raster resolution `*t#R` uses
+  mode `15` and handler `0x10808`; raster start/end `*r#A/#B` use mode `7`
+  and handlers `0x1075a` / `0x107fa`; raster payload `*b#W` uses mode `14`,
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Owner notes:
+  [rectangle-graphics.md](rectangle-graphics.md) and
+  [raster-graphics.md](raster-graphics.md).
+- Font selection and downloaded-font payloads:
+  primary `ESC (` reaches prefix handler `0x1201e`; secondary `ESC )`
+  reaches `0x12008`; designation terminals in mode `4` share `0x120be`.
+  `(s` / `)s` enters mode `13` through `0x11ff6`. Lowercase attribute finals
+  write request fields directly through `0xc930`, `0xc89c`, `0xc6ec`,
+  `0xc780`, `0xc840`, and `0xc7e0`; uppercase wrappers reach `0x12082`,
+  `0x12096`, `0x12046`, `0x1206e`, `0x120aa`, and `0x1205a`. Font/download
+  `W/w` reaches `0x11f96`, which schedules `0x15d0a` for count `0` and
+  `0x16c14` for nonzero counts. Owner notes:
+  [font-context-metrics.md](font-context-metrics.md) and
+  [downloaded-fonts.md](downloaded-fonts.md).
+- Macro definition, replay, and overlay:
+  `ESC &f` enters mode `17`. `Y/y` reaches macro-id handler `0xe112`;
+  `X/x` reaches macro-control handler `0xdd08`; `S/s` reaches cursor-stack
+  handler `0xf75e`. Normal and alternate/data tables both keep `X/x` active
+  so selector `1` can stop macro definition while payload controls are
+  appended rather than executed. Replay re-enters host byte fetch through the
+  data-chain source consumed by `0xa904`. Owner note:
+  [macro-data-chain.md](macro-data-chain.md).
+- Status and model-response side channels:
+  `ESC *r#K` enters mode `7` and `ESC *s#^` enters mode `6`; both dispatch
+  wrapper `0x12034`, which appends setup record `0x11efe` and calls
+  `0x122be` to emit `33440A\r\n` under the documented predicates. Owner note:
+  [errors-and-status.md](errors-and-status.md).
+
 ## High-Value Normal-Mode Handlers
 
 These command-to-handler anchors are the normal-mode landmarks used by the

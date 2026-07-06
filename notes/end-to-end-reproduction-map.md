@@ -265,14 +265,52 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), plus compact text
   bucket render fixtures.
 - Pending text span flushing:
-  ROM evidence is `0xd4ac`, `0xd8fc`, `0x126e2`, `0x12714`, and
-  `0x13520`.
-  Reproduction evidence is `Text Span Flush And Fixed-Width Spans` in both
-  `notes/semantic-state-model.md` and `Worked Path: Text Span Flush And
-  Fixed-Width Spans` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus CR,
-  left-margin parser, vertical-cursor parser, low-water, split, nonempty, and
-  retry fixtures.
+  Pending text span state is the canonical RAM block
+  `0x783184..0x78318a`: enable byte `0x783184`, low-x watermark
+  `0x783186`, high-x watermark `0x783188`, and high-y watermark
+  `0x78318a`.
+  Helper `0x126e2` opens or re-arms that block from current x `0x782c8a`.
+  Printable consumers `0xd4ac` and `0xd8fc` extend it from selected font
+  context metrics, and shared flush helper `0xf34a` plus low-water branches in
+  those consumers materialize it through `0x12714`.
+  `0xd4ac` reads unflagged context bytes `+0x2b`, `+0x2c`, and `+0x2d`;
+  `0xd8fc` reads flagged context words `+0x16`, `+0x18`, and `+0x1a`.
+  The parser-facing writers that prove the same pending block can become
+  visible output are CR `0xf02c`, left-margin command handler `0xeb58`, and
+  vertical-cursor command handler `0xf560`.
+  Flush output is orientation-dependent: portrait `0x12714` calls
+  `0x13520` / `0x1354a` / `0x135f0` to write selector-`0x4000`
+  segment-list objects under page-root `+0x1c`, consumed by renderer
+  `0x1f812`; landscape reaches `0x136d2` to write fixed-width objects under
+  page-root `+0x28`, bridged by `0x1edc6` to render root `+0x20` and consumed
+  by `0x1f756` / `0x1f7b0`.
+  Derived/cache fields are the local 8-byte `0x12714` source and producer key
+  fields `0x782a7c..0x782a7e`; parser scratch is limited to the command
+  records that cause `0xf34a` or `0x12622` to flush; firmware bookkeeping is
+  the root ensure path `0x10084`, allocation cursors, and the
+  allocation-failure publish/retry bit in page-root `+0x14`.
+  Concrete output evidence includes the fixtures `0x12714 portrait text span
+  flush queues segment-list span`, `0x12714 landscape text span flush queues
+  fixed-width span`, `live CR span flush materializes 0x12714 page object`,
+  `left-margin parser span flush materializes 0x12714 page object`,
+  `vertical-cursor parser span flush materializes 0x12714 page object`,
+  `flagged printable d8fc low-watermark flush renders span`, `unflagged
+  printable d4ac low-watermark flush renders span`,
+  `0x1354a portrait text span split queues adjacent buckets`,
+  `0x12714 landscape span inserts into nonempty fixed list`, and
+  `0x12714 allocation failure publishes page and retries span`.
+  Checked-in evidence is `Text Span Flush And Fixed-Width Spans` in
+  [semantic-state-model.md](semantic-state-model.md), `Worked Path: Text Span
+  Flush And Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [page-record-storage.md](page-record-storage.md).
+  Confidence is high for the pending state writers, metric gates, object byte
+  shapes, orientation split, bridge shape, and rendered rows because each has
+  disassembly plus fixture evidence.
+  No unresolved ROM-local middle edge remains for this pending-span-to-page
+  object handoff; remaining work is broader selected-font combinations and
+  physical-device comparison outside this cluster.
 - Page-root storage:
   ROM evidence is `0x10084`, `0x10110`, `0x1381c`, and `0x1387c`.
   Reproduction evidence is `Shared Page-Record Storage And Allocator`,

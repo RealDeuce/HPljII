@@ -24,7 +24,11 @@ compatibility boundary.
   environment, command syntax, command quick reference.
 - [pcl-to-pdf-rom-goals.md](pcl-to-pdf-rom-goals.md) - revised goal:
   stream-to-PDF renderer, and what ROMs are expected to contribute.
-- [firmware-dataflow-model.md](firmware-dataflow-model.md) - primary
+- [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
+  primary host-byte-to-rendered-pixel coverage/evidence map for supported
+  streams, state groups, and open reproduction boundaries. Start here when
+  following a concrete byte stream.
+- [firmware-dataflow-model.md](firmware-dataflow-model.md) - detailed
   checked-in dataflow spine from host bytes through parser, commands,
   page/image objects, render scheduling, and pixel generation.
 - [errors-and-status.md](errors-and-status.md) - status, attendance,
@@ -94,9 +98,6 @@ compatibility boundary.
 - [active-render-scheduler.md](active-render-scheduler.md) - documented
   published-record selection, render-work alternation, wait-object state, and
   band-render scheduler contracts.
-- [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
-  host-byte-to-rendered-pixel coverage/evidence map and open reproduction
-  boundaries, subordinate to the dataflow model.
 - [semantic-state-model.md](semantic-state-model.md) - composed
   renderer-facing state blocks with field groups, evidence, and
   unresolved middle edges.

@@ -5,6 +5,14 @@ references. They focus on the HP 33440 / LaserJet Series II unless a
 LaserJet III detail is explicitly called out as shared hardware or a
 compatibility boundary.
 
+Evidence policy: firmware claims in this directory are grounded first in ROM
+bytes, disassembly, decoded tables, static cross-references, and RAM fields
+read or written by those instructions. Fixture scripts and generated reports
+are supporting checks for the documented interpretation; they do not represent
+runtime observation of a real printer or an executing ROM. When a note states
+confidence, read it as confidence in the static disassembly interpretation, not
+as hardware-emulation validation.
+
 ## Files
 
 - [source-index.md](source-index.md) - what each PDF contains and how to

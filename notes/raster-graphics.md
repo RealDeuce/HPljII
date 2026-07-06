@@ -121,7 +121,7 @@ ESC *b4W payload boundary`, `modeled raster command stream queues and renders
 ESC *b4W payload`, and `raster stream ties parser dispatch to queued page
 object` bind this boundary to the queued object and rendered row for the same
 byte stream. `host-fetched raster stream preserves 0x1edc6 bridge contract`
-then proves that the object still crosses the page-record-to-render-record
+then checks that the object still crosses the page-record-to-render-record
 copy before `0x1ef6a` dispatch.
 
 The delayed handoff is now pinned at the instruction level rather than only by
@@ -200,7 +200,7 @@ Fixture `0x10808 ESC *t#R selects raster mode and scale thresholds` pins the
 threshold table at the handler boundary. The lower-resolution parser fixtures
 `modeled raster command stream selects 150-dpi mode-1 state`, `modeled raster
 command stream selects 100-dpi mode-2 state`, and `modeled raster command
-stream selects 75-dpi mode-3 state` prove those same handler writes are the
+stream selects 75-dpi mode-3 state` check those same handler writes as the
 state consumed by later `ESC *b#W` transfers.
 
 ## Start And End Raster
@@ -410,10 +410,10 @@ Fields:
 
 The row-object fixtures extend this layout beyond the primary byte-aligned
 mode-0 row. `0x13070/0x13250 raster row queues non-byte-aligned encoded-span
-object` proves the packed coordinate and payload capacity still describe a
+object` checks that the packed coordinate and payload capacity still describe a
 shifted row. `0x13070/0x13250 raster mode-1 row queues encoded-span object`,
 `0x13070/0x13250 raster mode-2 row queues encoded-span object`, and
-`0x13070/0x13250 raster mode-3 row queues encoded-span object` prove that
+`0x13070/0x13250 raster mode-3 row queues encoded-span object` check that
 object byte `+0x05` carries the encoded mode selected earlier by `0x10808`.
 The mode-2 clipped fixture,
 `0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span object`,
@@ -460,8 +460,8 @@ Field grouping for this dense-row split:
   `0x782a76`, plus copy-stop/publication flag `0x782996`;
 - unknown: no instruction-level split branch remains unlocated at `0x132b6`.
   The remaining validation boundary is a parser-fed byte stream that forces
-  the current-tail or capped-new-chunk split and proves the resulting multiple
-  encoded objects and rendered rows.
+  the current-tail or capped-new-chunk split and documents the resulting
+  multiple encoded objects and rendered rows.
 
 ### Dense-Row Split Composition Checkpoint
 
@@ -525,8 +525,8 @@ Field classification:
 - Unknown: no branch target or state field is unknown inside
   `0x13070..0x13382`, but the checked-in fixtures do not yet contain a
   host/parser stream whose raster payload is large enough to force the
-  current-tail or capped-new-chunk split and then render the resulting
-  multi-object row.
+  current-tail or capped-new-chunk split and then carry the resulting
+  multi-object row through the documented render routines.
 
 Evidence and confidence:
 
@@ -542,9 +542,11 @@ Evidence and confidence:
   0x1381c across chunk rollover`.
 - Confidence is high for the ROM-local split algorithm and object fields
   because the branch boundaries and field writes are direct disassembly. It is
-  medium for pixel output of a forced dense split until a parser-fed fixture
-  drives a large `ESC *b#W` payload through the current-tail or capped-new-chunk
-  branch and compares the rendered rows.
+  medium for the full byte-stream-to-row derivation of a forced dense split
+  until a parser-fed static walkthrough carries a large `ESC *b#W` payload
+  through the current-tail or capped-new-chunk branch, the resulting
+  multi-object bucket chain, the `0x1edc6` bridge, and the `0x1f88e` row
+  construction.
 
 ## Render Dispatch
 
@@ -574,14 +576,14 @@ For the primary mode-0 object above, the rendered row is:
 ................####........#####.#.#.#..#.#.#.#
 ```
 
-Fixture `0x1f88e mode-0 raster object renders sub-byte shifted literal row`
-proves mode 0 still uses literal payload bytes when the packed x coordinate is
-not byte-aligned. Fixtures `0x1f88e mode-1 raster object expands queued bytes
-into two rows`, `0x1f88e mode-2 raster object expands queued byte pair into
-three rows`, `0x1f88e mode-2 raster object renders sub-byte shifted expanded
-rows`, `0x1f88e mode-2 raster object clips current-band rows and continues in
-fallback buffer`, and `0x1f88e mode-3 raster object expands queued bytes into
-four rows` bind each expansion helper to visible output rows.
+Fixture `0x1f88e mode-0 raster object renders sub-byte shifted literal row` checks that
+mode 0 still uses literal payload bytes when the packed x coordinate is not
+byte-aligned. Fixtures `0x1f88e mode-1 raster object expands queued bytes into two
+rows`, `0x1f88e mode-2 raster object expands queued byte pair into three rows`, `0x1f88e
+mode-2 raster object renders sub-byte shifted expanded rows`, `0x1f88e mode-2 raster
+object clips current-band rows and continues in fallback buffer`, and `0x1f88e mode-3
+raster object expands queued bytes into four rows` bind each expansion helper to visible
+output rows.
 
 ## Mixed Page-Record Composition
 
@@ -648,10 +650,10 @@ addressed storage model and page-record renderer agree for this composition.
 
 ## Additional Command-Family Coverage
 
-The same raster command/data model is fixture-backed beyond the primary
-300-dpi mode-0 stream.
+The same raster command/data model is checked beyond the primary 300-dpi
+mode-0 stream by fixture scripts that exercise the static interpretation.
 
-Lower-resolution streams prove the resolution thresholds through visible rows:
+Lower-resolution streams check the resolution thresholds through visible rows:
 
 - `ESC *t150R ESC *r0A ESC *b#W` selects encoded mode `1`;
 - `ESC *t100R ESC *r0A ESC *b#W` selects encoded mode `2`;
@@ -664,7 +666,7 @@ renders 75-dpi mode-3 payload`.
 
 Fixtures `raster mode streams tie ROM parser dispatch to modeled queued
 objects`, `host-fetched raster mode streams reach parser and rendered rows`,
-and `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a` prove each
+and `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a` check each
 stream drains from the modeled `0xa904` ring source, routes through
 `0x10808`, `0x1075a`, and `0x11f82`, restores the delayed transfer record,
 queues the expected encoded object, and renders through the page-record bridge.
@@ -674,7 +676,7 @@ untraced raster variants.
 Multi-row and chained-transfer fixtures cover repeated use of the same state
 block. Fixtures `modeled raster command stream queues consecutive ESC *b#W
 rows` and `modeled raster command stream renders consecutive queued rows`
-prove that two uppercase `ESC *b2W` commands restore independent
+check that two uppercase `ESC *b2W` commands restore independent
 `80 57 00 02 00 00` records, consume payloads at offsets `17` and `24`,
 advance modeled `row_y` to `2`, and queue objects at coords `0x0000` and
 `0x1000`. Fixture `modeled raster command stream accepts lowercase same-group
@@ -685,13 +687,13 @@ payload only after the uppercase terminator at offset `19`. Fixture `modeled
 raster command stream defers lowercase ESC *b w payload until uppercase
 terminator` covers that delayed payload boundary. Fixtures
 `host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
-contract` and `host-fetched raster streams feed 0x1ed84 and 0x1ef6a` prove both
+contract` and `host-fetched raster streams feed 0x1ed84 and 0x1ef6a` check both
 bucket chains survive render-record copying and dispatch through `0x1ef6a`.
 
 The active-state fixtures separate two resolution effects. `ESC *rB` clears
 only active byte `+0x12`, so a later `ESC *t150R` can update mode and scale
 again. While the active byte is still set, `ESC *t75R` is ignored, and the
-following `ESC *b2W` queues a mode-0 object. The fixture evidence is
+following `ESC *b2W` queues a mode-0 object. The fixture checks are
 `raster end parser trace feeds active-clear and resolution re-enable`,
 `host-fetched raster end stream clears active state and re-enables resolution`,
 `raster active resolution parser trace preserves current mode`, and
@@ -757,6 +759,6 @@ A byte-stream reproduction must preserve these behaviors:
   isolated: checked-in fixtures now include mixed text/rule/raster publication,
   geometry-changing publication streams, font-selection streams, downloaded
   glyph FF publication, and a parser-driven downloaded-glyph/rule/raster page.
-  The remaining page-image gap is broader physical/device comparison and new
-  byte-stream variants that expose different ROM state, not the
+  The remaining page-image gap is new byte-stream variants that expose
+  different ROM state, not the
   software-visible raster object layout or render dispatch.

@@ -22,17 +22,28 @@ host bytes
 ```
 
 Every reproduction claim below requires a checked-in note that names the ROM
-address boundary and cites either executable fixture evidence, focused
-disassembly, or a generated analysis report used as supporting material. The
-checked-in note is the deliverable; ignored generated reports are supporting
-evidence, not the only documentation.
+address boundary and cites focused disassembly, ROM bytes/tables, static
+cross-reference analysis, or generated table extracts used as supporting
+material. Fixture scripts may be cited as model-consistency checks, but they
+are not primary evidence. The checked-in note is the deliverable; ignored
+generated reports are supporting material, not the only documentation.
+
+Evidence in these notes is disassembly-centered. Primary evidence is ROM bytes,
+decoded tables, instruction listings, static cross-references, and RAM fields
+read or written by those instructions. Semantic names and output effects are
+interpretations derived from that static evidence. Fixture scripts and generated
+checks are model-consistency aids: they exercise the documented interpretation
+against selected byte streams, but they are not evidence from a running printer
+or an executing ROM. "Confidence" therefore means how directly the disassembly
+supports a claim, with fixtures cited only as reproducible checks of the
+interpretation.
 
 Coverage means a checked-in note names the ROM address range, field
 writers, field readers/consumers, visible or state output, fixtures, and
 disassembly evidence for that edge. For example, host byte-source coverage
-means `0xa904..0xabf0` and its fixtures define which firmware byte source
-feeds parser `0xda9a` / `0xdaf0` / `0xdb74`; it does not mean every
-physical bus signal has been named. Render coverage means
+means `0xa904..0xabf0` and the cited disassembly/model checks define which
+firmware byte source feeds parser `0xda9a` / `0xdaf0` / `0xdb74`; it does not
+mean every physical bus signal has been named. Render coverage means
 `0x1ed84` / `0x1edc6` / `0x1ef6a` plus the compact, segment-list, rule,
 fixed-list, and raster helpers define the byte-to-bitmap state for the cited
 fixtures; it does not require formatter/DC timing proof.
@@ -41,12 +52,12 @@ The physical timing boundary is separate from ROM-local reproduction
 coverage. Timing-sensitive surfaces are host fetch/polling
 (`0xa904..0xab8a`), scan/status interrupt and wait-object dispatch
 (`0x0f84..0x1282`), and active render scheduling
-(`0x1eb2a..0x1ed84`). The current fixtures prove the state effects after
-those events are observed: pending bytes `0x78399e/0x78399f`, shadow byte
+(`0x1eb2a..0x1ed84`). The disassembly-backed model records the state effects
+after those events are observed: pending bytes `0x78399e/0x78399f`, shadow byte
 `0x7828f9`, wait-object state, active source `0x780eae`, active work pointer
-`0x783a18`, and band words. Board evidence is only needed when a claim
-depends on mapping physical formatter/DC connector signals or MMIO bits that
-the ROM treats as external events. The named physical formatter/DC edge is
+`0x783a18`, and band words. Board evidence is only needed when a claim depends
+on mapping physical formatter/DC connector signals or MMIO bits that the ROM
+treats as external events. The named physical formatter/DC edge is
 connector `J205`: `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, command/status
 strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
@@ -153,7 +164,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   contents for the changed optional-window scheduler sequence now modeled by
   fixture
   `0x19dd2 optional-window change composes refresh helpers`. That fixture drives
-  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` and proves candidate-list,
+  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` and checks candidate-list,
   current-record, canonical-window, and active-context effects for synthetic
   inputs; fixture `0x19dd2 modeled unchanged and status branch exits` pins the
   both-zero and `0x72a2 == 0` status-return contracts for modeled predicates.
@@ -330,7 +341,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   those consumers materialize it through `0x12714`.
   `0xd4ac` reads unflagged context bytes `+0x2b`, `+0x2c`, and `+0x2d`;
   `0xd8fc` reads flagged context words `+0x16`, `+0x18`, and `+0x1a`.
-  The parser-facing writers that prove the same pending block can become
+  The parser-facing writers that show the same pending block can become
   visible output are CR `0xf02c`, left-margin command handler `0xeb58`, and
   vertical-cursor command handler `0xf560`.
   Flush output is orientation-dependent: portrait `0x12714` calls
@@ -362,10 +373,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   [page-record-storage.md](page-record-storage.md).
   Confidence is high for the pending state writers, metric gates, object byte
   shapes, orientation split, bridge shape, and rendered rows because each has
-  disassembly plus fixture evidence.
+  disassembly support plus fixture checks.
   No unresolved ROM-local middle edge remains for this pending-span-to-page
   object handoff; remaining work is broader selected-font combinations and
-  physical-device comparison outside this cluster.
+  byte streams that expose different ROM-local state.
 - Page-root storage:
   The shared page-object state starts at current root pointer `0x78297a`.
   Canonical root fields are bucket heads `+0x1c` for compact text,
@@ -514,7 +525,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `host-fetched text rectangle raster FF publishes rendered page record`
   drives `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF` from the
   modeled `0xa904` host source through parser handlers, delayed `0x105d0`,
-  `0xff1e`, `0x1ed84`/`0x1edc6`, and final row comparison. Fixture
+  `0xff1e`, `0x1ed84`/`0x1edc6`, and ROM-derived row construction. Fixture
   `addressed text/rule/raster field groups reach publication and render entry`
   names the same materialized objects: text object `0x00d0c004`, rule object
   `0x00d0c02a`, raster object `0x00d0c038`, restored raster record
@@ -597,9 +608,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   defaults and copy-count field, current-root clearing, bridge preservation,
   and rendered rows.
   The unresolved boundary is not ROM-local publication state: final rows are
-  fixture-backed through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
-  Remaining work is physical-device comparison and byte streams that expose a
-  new pool-header field, source-record choice, bridge value, or rendered row.
+  documented through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, with
+  fixtures serving as model-consistency checks for those interpreted rows.
+  Remaining work is byte streams that expose a new pool-header field,
+  source-record choice, bridge value, or rendered row.
 - Macro/data-chain replay:
   ROM evidence is `0xe112`, `0xdd08`, `0xe0a4`, `0xe002`, `0xe418`,
   `0xe4f4`, `0xe22c`, `0xe65c`, byte-source multiplexer `0xa904`, parser loop
@@ -805,12 +817,11 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   No unresolved shared render-dispatch edge remains for the documented object
   classes. Remaining ROM-local work starts from byte streams that create
   different object fields, selected-font contexts, helper targets,
-  continuation state, fallback split, or rendered rows; physical engine
-  consumption and full-page device comparison remain external boundaries.
+  continuation state, fallback split, or rendered rows.
 - Mixed page-image stream:
   The primary heterogeneous page-image stream is
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.
-  It proves that no single command draws the final image: parser handlers
+  It documents that no single command draws the final image: parser handlers
   first queue compact text, rectangle/rule, and encoded-raster objects under
   one page root; `0xff1e` publishes the root; `0x1ed84` / `0x1edc6` bridge it
   into a render record; and `0x1ef6a` composes the visible rows.
@@ -847,7 +858,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0x1effe`, rule dispatcher `0x1f446`, and solid rule helper `0x1f596`.
   The consecutive-raster sibling
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0 FF`
-  proves bucket-chain ordering for repeated delayed raster transfers:
+  documents bucket-chain ordering for repeated delayed raster transfers:
   addressed raster objects at `0x00d0d038` and `0x00d0d044` publish as chain
   `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, allocator state ends at
   `0x782a70 = 0x00b0`, `0x782a72 = 0x00d0d000`,
@@ -880,7 +891,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Remaining ROM-local work starts from byte streams that change text source
   fields, rectangle clipping or selectors, raster gate outcomes,
   `0x1381c` allocation/rollover state, bridge roots, continuation state, or
-  rendered rows; physical/reference page comparison remains external.
+  rendered rows.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
   Checked-in documentation is [resource-rom.md](resource-rom.md),
@@ -1077,7 +1088,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `host-fetched rows-0x82 segmented downloaded glyph FF publication renders
   page record` carry those rows through install, printable source capture,
   publication, bridge, and render rows. The high-row truncation fixtures
-  preserve installed row words `0x0101..0x0103`, but prove that `0x12f2e`
+  preserve installed row words `0x0101..0x0103`, but show that `0x12f2e`
   sees only low row bytes `0x01..0x03`, queues selector `0x0003`, and reaches
   the exact short-helper boundary where `0x1f414` fallback counts `199..201`
   index beyond the `0x1fe76` valid maximum `128`.
@@ -1284,8 +1295,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   font-ID success/non-selected, common-refresh, and SI/SO handoff streams.
   Remaining font-selection work starts only from command combinations that
   change selected contexts, map bytes, page-root slot behavior, compact object
-  shape, bridge state, or rendered rows; physical page comparison remains
-  separate.
+  shape, bridge state, or rendered rows.
 - Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
   alternate/data blank C0 append-preserving rows. Evidence:
   `Worked Path: Explicit No-Output Parser Rows` in
@@ -1386,7 +1396,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   compact entries, and renders digest
   `1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`.
   Alternate/data fixture `0x12120 ESC Y alternate append stores normalized
-  display bytes` proves append-only output `1b 59 21 7f 1b 5a` through
+  display bytes` checks append-only output `1b 59 21 7f 1b 5a` through
   `0xe002` without text imaging.
   The command-family contract is [display-functions.md](display-functions.md).
   Initial bytes enter through `0xa904 -> 0xda9a -> 0x11774`, but after the
@@ -1564,7 +1574,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   mode streams feed 0x1ed84 and 0x1ef6a`.
   Mixed composition evidence `host-fetched text rectangle and raster page
   record feeds 0x1ed84 and 0x1ef6a` and `addressed text/rule/raster field
-  groups reach publication and render entry` proves encoded raster objects
+  groups reach publication and render entry` checks that encoded raster objects
   share the same page-root, publication, bridge, and band-render path as
   compact text and rule objects.
   Confidence is high for delayed-record restore, `0x105d0` gate outcomes,
@@ -1658,8 +1668,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   and draws the remainder at y `0` in the next band. Non-solid selectors
   render through `0x1f4e0`; the selector matrix covers gray percent mapping,
   portrait pattern ids, landscape remaps, sub-byte masks, and continuation
-  across render bands. Mixed fixtures prove the same rule list composes with
-  compact text and encoded raster objects through the shared
+  across render bands. Mixed fixture checks exercise the interpretation that
+  the same rule list composes with compact text and encoded raster objects
+  through the shared
   `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
   Confidence is high for parser handler order, dimension and fill-selector
   mapping, clipping/reject gates, rule object bytes, ordered insertion, bridge
@@ -1707,7 +1718,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Derived/cache state includes render-band words `0x783a20`, `0x783a22`, and
   `0x783a28`, page-size/orientation active extents, VFC line-start and target
   calculations, default VFC table bytes from `0x12b96`, and row digests used
-  only as fixture evidence. Parser scratch is the six-byte command record at
+  only as fixture-check outputs. Parser scratch is the six-byte command record at
   `0x78299e`, delayed payload state from `0x121cc` / `0x12218`, and the
   `ESC &l#W` payload bytes consumed through `0xdace`.
   Firmware bookkeeping is page-record stream allocator state
@@ -1919,7 +1930,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   parser handlers above, queues compact text, a selector-7 rectangle
   rule, and a mode-0 raster object into addressed page-record storage,
   publishes through `0xff1e`, crosses the `0x1ed84` / `0x1edc6`
-  render bridge, and compares the final composed rows. Evidence:
+  render bridge, and derives the final composed rows from the documented
+  render routines. Evidence:
   `Mixed Text/Rule/Raster Page Record` in `notes/semantic-state-model.md`.
   The representative page root has compact/raster bucket array `+0x1c`, rule
   list `+0x24`, and context slots `+0x2c`. Addressed fixtures place the text
@@ -1932,7 +1944,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   and payload `c3 3c`. Firmware allocator bookkeeping ends at
   `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`, and
   `0x782a76 = 0x00d0c044`.
-  The multi-row sibling proves bucket ordering for consecutive raster objects:
+  The multi-row sibling documents bucket ordering for consecutive raster objects:
   bucket `+0x1c` chains `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, so render
   dispatch sees the second raster row, first raster row, then compact text,
   with raster `row_y = 2`. Writers are the parser handlers
@@ -1948,8 +1960,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   dispatches bucket-array compact/raster objects, carries the mutated
   rule node from band `0`, renders the remaining rule rows in band `5`,
   and leaves no rule/fixed-list residue. This closes the modeled
-  per-band merge for that heterogeneous case; remaining render risk is
-  live engine pacing and physical output comparison.
+  per-band merge for that heterogeneous case.
   Derived render fields for the fixture include band/cursor state
   `0x783a20 = 0x0050`, `0x783a22 = 0`, and `0x783a28 = 0x00100000`.
   When `0x1f446` / `0x1f4e0` cannot finish the patterned rule in the current
@@ -1966,9 +1977,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   source, preserves the control/payload/printable/publication byte
   boundaries, installs glyph `0x25`, publishes segmented buckets `1` and
   `9` through `0xff1e`, walks those published bucket words through
-  `0x1ed84`/`0x1ef6a` band rendering, proves `0x1eba4` scheduler progression
-  through band words `0..9`, and compares the published rendered rows with
-  bucket `9` producing the visible downloaded row. Evidence: fixtures
+  `0x1ed84`/`0x1ef6a` band rendering, checks `0x1eba4` scheduler progression
+  through band words `0..9`, and derives the published rows with bucket `9`
+  producing the visible downloaded row. Evidence: fixtures
   `combined font download FF publishes installed glyph page record`,
   `published downloaded glyph segmented buckets render across bands`, and
   `0x1eba4 scheduler band words render published downloaded glyph`, plus
@@ -2041,7 +2052,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry uses call order
   `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`: `0x1ef6a` dispatches the
   raster object to `0x1f88e`, the glyph object to `0x1effe` / `0x1f0d2`, and
-  the rule to solid helper `0x1f596`. The compared rows are row `0` with
+  the rule to solid helper `0x1f596`. The derived rows are row `0` with
   raster payload `c3 3c`, downloaded glyph at x `22`, and rule from x `24`
   through x `35`, followed by rows `1` and `2` containing the rule only.
   Remaining variant work starts only when a byte stream changes the final
@@ -2078,9 +2089,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   write positioned source fields `+0x12`, `+0x14`, and `+0x16`, set live font
   flag `0x78297f + 0x78297e`, call `0x12f2e`, and share the same no-room
   retry through page-root flag `+0x14.0`, `0xff1e`, and `0x10084`.
-  Concrete source examples are fixture-backed: `0xd824-modeled positioned
-  text source fields` maps built-in `LINE_PRINTER` host byte `0x21` to glyph
-  `0x20`, glyph entry `0x015330`, flag `1`, source x `16`, y `0`, slot `0`;
+  Concrete source examples are checked by fixtures:
+  `0xd824-modeled positioned text source fields` maps built-in
+  `LINE_PRINTER` host byte `0x21` to glyph `0x20`, glyph entry `0x015330`,
+  flag `1`, source x `16`, y `0`, slot `0`;
   `0xd3b2-modeled unflagged source fields` maps host `0x21` to glyph `0x01`,
   fixed record `02 03 04 00 00 00 00 80`, source x `22`, y `22`, slot `3`.
   `0xd04a printable entry normalizes over-0xff and high-bit values` and
@@ -2135,9 +2147,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Confidence is high for source field meanings, paired writer behavior,
   `0x12f2e` short/segmented object shapes, selector bits, queue no-room retry,
   compact subdispatch, and row output for the cited fixtures. It remains
-  medium for broader source-class cross-products and full-page physical sample
-  comparison. The exact unresolved ROM boundary is not between parser and
-  compact renderer for the documented cases; it starts at new byte-stream
+  medium for broader source-class cross-products. The exact unresolved ROM
+  boundary is not between parser and compact renderer for the documented
+  cases; it starts at new byte-stream
   variants through `0xd04a..0x12f2e` or compact helper variants through
   `0x1f034..0x1f264` that alter the object bytes or rendered rows.
 
@@ -2216,10 +2228,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0x0bfe22..0x0bffff`. Evidence:
   [transparent-print-data.md](transparent-print-data.md),
   [resource-rom.md](resource-rom.md), and
-  [built-in-resource-scan.md](built-in-resource-scan.md). The other broad
-  unknown is final device-output validation: current fixtures prove
-  ROM-derived rows internally, while physical LaserJet II sample comparison
-  remains a validation boundary, not a hidden parser/page/render field.
+  [built-in-resource-scan.md](built-in-resource-scan.md).
 
 ## Pixel-Perfect Coverage And Residual Risks
 
@@ -2267,7 +2276,7 @@ than open middle edges.
    changes d4ac gate and d8fc rows`, `host-fetched clamped metric variant
    changes d4ac gate and d8fc rows`, `host-fetched lower-bound metric variant
    suppresses d4ac and d8fc spans`, and `host-fetched upper-bound metric
-   variant keeps d4ac span but suppresses d8fc` prove fetched descriptors can
+   variant keeps d4ac span but suppresses d8fc` check that fetched descriptors can
    flip each consumer gate while compact glyph objects still queue and render.
    The legal value matrices then classify the remaining formula space:
    `legal descriptor metric value matrix drives d4ac and d8fc consumers`,
@@ -2287,8 +2296,8 @@ than open middle edges.
    and the mixed case `0x0008/0x0030/0x002a/0x02`, which suppresses `d4ac` as
    beyond page extent while rendering `d8fc`.
    Seven validation no-install forms plus the short-budget `ESC )s8W` entry-5
-   failure prove parser-to-validation rejection, allocation skip, no candidate
-   install, resumed default-font printable output, and matching rows. Therefore
+   failure document parser-to-validation rejection, allocation skip, no candidate
+   install, resumed default-font printable output, and derived rows. Therefore
    the remaining metric work is not an unresolved ROM-local producer-to-consumer
    edge. It is regression expansion or selected-font cross-products only when a
    new byte stream changes copied fields, consumer branch, page-record span
@@ -2304,13 +2313,12 @@ than open middle edges.
    payload consumption before printable text, cursor-only channel jumps,
    top-of-form no-op, selector-zero publication, wrap-hit publication,
    wrap-no-hit publication, target-after-text publication, and
-   non-publishing recovery. The remaining VFC risk is broader final-device
-   image comparison and HP/manual names for the derived line-count fields,
-   not an unresolved middle edge in the documented `ESC &l#W` / `ESC &l#V`
-   path.
+   non-publishing recovery. The remaining VFC risk is HP/manual names for the
+   derived line-count fields, not an unresolved middle edge in the documented
+   `ESC &l#W` / `ESC &l#V` path.
    The adjacent perforation-skip command is also no longer only a parser-state
    toggle: `ESC &l#L` writes `0x783191` through handler `0xee64`, and fixture
-   `0xf36c perforation skip gates vertical overflow page eject` proves the
+   `0xf36c perforation skip gates vertical overflow page eject` checks the
    visible consumer at `0xf36c`. Page ejection through `0xf124` occurs only
    when `0x782c8e > 0x782dc2`, `0x782dc2` is nonzero, and `0x783191` is
    nonzero; below-limit, zero-limit, and disabled-skip cases return `D7 = 1`
@@ -2342,7 +2350,7 @@ than open middle edges.
    `0xe4f4` builds a non-replay frame with `+0x08 = 4` and `+0x09 = 4`
    before publication proceeds. Disabled overlay mode, missing selected
    record, and retry-flag cases skip replay and publish the base page.
-   The documented overlay matrix proves one end-to-end path for each covered
+   The documented overlay matrix covers one end-to-end path for each covered
    command family: mixed controls `ESC &k1G!\r!`, cursor `ESC &a2C!`,
    vertical decipoints `ESC &a72V!`, chained cursor `ESC &a2c+1R!`, chained
    margins `ESC &a6l9M!`, transparent data `ESC &p2X!!`, one-row raster
@@ -2366,21 +2374,22 @@ than open middle edges.
    overlay re-entry at `0xff1e`, repeated enabled-overlay publication, the
    documented overlay payload families, or overlay skip gates. Remaining macro
    work starts only from broader payload variants that change parser dispatch,
-   page-object fields, delayed payload state, replay frame state, rendered
-   rows, or from physical output comparison.
+   page-object fields, delayed payload state, replay frame state, or rendered
+   rows.
 4. Active-record selection and render-band scheduling are documented as a
    ROM-internal reproduction boundary, rather than a page-object gap. Fixture
-   `0x1eb2a/0x1ecd6 selects published record for render entry` proves
+   `0x1eb2a/0x1ecd6 selects published record for render entry` checks
    `0x780eaa -> 0x780eae`, work-record alternation through `0x7820bc`, active render
    pointer `0x783a18`, and `0x1ed84`/`0x1ef6a` output for a published page/control
    record. Fixture `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
-   proves candidate staging, `0x1fd4` slot insertion, state-4 release, candidate
+   checks candidate staging, `0x1fd4` slot insertion, state-4 release, candidate
    promotion through `0x7ec6..0x7f90`, and the same rendered rows. Fixture
    `0x1eba4/0x1ef6a active render loop advances or yields bands` covers cleanup,
    throttle, capacity-wait, and render-call branches, while fixture `0x1eba4 scheduler
-   band words render published downloaded glyph` proves scheduler-produced band words
-   `0..9` against a published downloaded-glyph record. The remaining scheduler risk is
-   not a ROM object/rendering middle edge: it is board-level timing for `$8000.4`
+   band words render published downloaded glyph` checks the interpretation of
+   scheduler-produced band words `0..9` against a published downloaded-glyph record.
+   The remaining scheduler risk is not a ROM object/rendering middle edge: it is
+   board-level timing for `$8000.4`
    selection at `0x0f84..0x0fa0` and `0x1020..0x102e`, MMIO effects around `$a601 =
    0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003`, and the physical event
    timing that drives modeled wait-object/trap states through `0x10bc..0x11f8` and
@@ -2393,32 +2402,33 @@ than open middle edges.
    status-0 fixed-record release, bit-30 offset-table release delegate, release reject
    no-rewrite exits, split-plane character-object, linear character-object, and
    downloaded-glyph render paths in `notes/downloaded-fonts.md`. The `0x16c14`
-   existing-record allocation-failure teardown through `0x1887a` is fixture-backed for
-   the bit-30-clear extended fixed-record case, and the direct `0x1887a` release variant
-   matrix now covers bit-30-set class-one, bit-30-set class-zero, and bit-30-clear
-   class-zero cleanup branches. The `0x16fae` validation table now has ROM-effect names
-   for all 32 entries plus concrete success and failure fixtures, and host-fetched
-   invalid-resource-type, first-code overflow, zero line/count, high line/count,
-   reversed-range, high range/count, and invalid-class paths prove parser-to-validation
-   no-install boundaries plus following-printable default output. The nonzero `ESC )s#W`
-   resource-payload path is composed in `notes/semantic-state-model.md` under `Nonzero
-   Resource Payload Checkpoint`: the documented state now spans ROM parser restore,
-   `0x16fae` validation, `0x17026`/`0x1719c` allocation, `0x16c14`/`0x1bc38` candidate
-   insertion, `0x14c64` consumption, integrated `ESC )s3W` downloaded-pointer glyph
-   install, and page-visible `d4ac`/`d8fc` metric consumers. Fixture `host-fetched
-   resource header plus glyph payload renders offset-table downloaded glyph` closes the
-   basic type-0 `ESC )s80W` plus linear three-row glyph boundary without fixture-side
-   mutation. Fixture `type-1 and type-2 resource headers accept downloaded glyph payload
-   stream` closes the same fetched-glyph boundary for legal type-1 and type-2 headers.
-   Fixture `type-1 and type-2 resource glyph FF publications render page records` now
-   adds the legal type-1/type-2 publication sibling: `ESC )s3W` plus printable `!` and
-   FF publishes bucket `1`, preserves candidate contexts `0x40000000` and `0x44000000`,
-   dispatches the span through `0x1f812` and the glyph through `0x1effe`, and renders
-   the same rows. Fixture `type-1 and type-2 resource wide glyph FF publications render
-   page records` adds the legal wide sibling: `ESC )s18W` plus printable `!` and FF
-   publishes bucket `1`, preserves the same candidate contexts, dispatches the span
-   through `0x1f812`, dispatches compact-wide object byte `0x10` through `0x1effe` to
-   `0x1f0d2`, and renders digest
+   existing-record allocation-failure teardown through `0x1887a` is documented for the
+   bit-30-clear extended fixed-record case with fixture checks, and the direct `0x1887a`
+   release variant matrix now covers bit-30-set class-one, bit-30-set class-zero, and
+   bit-30-clear class-zero cleanup branches. The `0x16fae` validation table now has
+   ROM-effect names for all 32 entries plus concrete success and failure fixtures, and
+   host-fetched invalid-resource-type, first-code overflow, zero line/count, high
+   line/count, reversed-range, high range/count, and invalid-class paths document
+   parser-to-validation no-install boundaries plus following-printable default output.
+   The nonzero `ESC )s#W` resource-payload path is composed in
+   `notes/semantic-state-model.md` under `Nonzero Resource Payload Checkpoint`: the
+   documented state now spans ROM parser restore, `0x16fae` validation,
+   `0x17026`/`0x1719c` allocation, `0x16c14`/`0x1bc38` candidate insertion, `0x14c64`
+   consumption, integrated `ESC )s3W` downloaded-pointer glyph install, and page-visible
+   `d4ac`/`d8fc` metric consumers. Fixture `host-fetched resource header plus glyph
+   payload renders offset-table downloaded glyph` closes the basic type-0 `ESC )s80W`
+   plus linear three-row glyph boundary without fixture-side mutation. Fixture `type-1
+   and type-2 resource headers accept downloaded glyph payload stream` closes the same
+   fetched-glyph boundary for legal type-1 and type-2 headers. Fixture `type-1 and
+   type-2 resource glyph FF publications render page records` now adds the legal
+   type-1/type-2 publication sibling: `ESC )s3W` plus printable `!` and FF publishes
+   bucket `1`, preserves candidate contexts `0x40000000` and `0x44000000`, dispatches
+   the span through `0x1f812` and the glyph through `0x1effe`, and renders the same
+   rows. Fixture `type-1 and type-2 resource wide glyph FF publications render page
+   records` adds the legal wide sibling: `ESC )s18W` plus printable `!` and FF publishes
+   bucket `1`, preserves the same candidate contexts, dispatches the span through
+   `0x1f812`, dispatches compact-wide object byte `0x10` through `0x1effe` to `0x1f0d2`,
+   and renders digest
    `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`. Fixture `type-1
    and type-2 resource segmented glyph FF publications render page records` adds the
    legal segmented sibling: `ESC )s258W` plus printable `!` and FF publishes bucket `9`,
@@ -2481,16 +2491,17 @@ than open middle edges.
    descriptor-validation gap is external HP/manual naming for consumed-but-not-staged
    fields. The mode-byte-`0` no-install boundary is documented separately: fixture
    `0x16498 replacement allocation failure partial and rejected downloaded character
-   exits preserve state` proves the unchanged table/header at object boundary `0x16498`,
-   and fixture `0x16498 no-install exits preserve following printable output` proves the
-   following printable and FF publication stay on the unchanged default-font page path.
-   The even-span downloaded-glyph plus rule/raster composition now has an exact modeled
-   install-to-page handoff: host-fetched `ESC )s18W` produces the resource image
-   consumed by the parser-driven page stream, including glyph `0x29`, table entry
-   `0x00ee`, record delta `0x0780`, bitmap offset `0x078c`, and the 18 copied bitmap
-   bytes. The same fixture proves the byte source is one 54-byte `0xa904` ring fetch:
-   font bytes `0..24`, page bytes `24..54`, and no remaining ring bytes. ROM control
-   flow now narrows the post-install return boundary: disassembly
+   exits preserve state` checks the unchanged table/header interpretation at object
+   boundary `0x16498`, and fixture `0x16498 no-install exits preserve following
+   printable output` checks that the following printable and FF publication stay on the
+   unchanged default-font page path. The even-span downloaded-glyph plus rule/raster
+   composition now has an exact modeled install-to-page handoff: host-fetched `ESC
+   )s18W` produces the resource image consumed by the parser-driven page stream,
+   including glyph `0x29`, table entry `0x00ee`, record delta `0x0780`, bitmap offset
+   `0x078c`, and the 18 copied bitmap bytes. The same fixture checks the byte-source
+   interpretation as one 54-byte `0xa904` ring fetch: font bytes `0..24`, page bytes
+   `24..54`, and no remaining ring bytes. ROM control flow now narrows the post-install
+   return boundary: disassembly
    `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` shows `0x15dc6 -> 0x16498
    -> 0x15dcc -> 0x12328`, where `0x15dcc` passes the remaining `0x783140` count to
    `0x12328`; the fixture pins this instance with copy status `1`, copy stream position
@@ -2511,14 +2522,11 @@ than open middle edges.
    it only blocks hardware-level emulation claims. Evidence:
    [host-byte-fetch.md](host-byte-fetch.md) and supporting report
    `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
-7. Final device-output validation is not yet a real printer comparison. The
-   harness proves ROM-derived rows internally, but pixel-perfect confidence
-   ultimately needs rendered page images compared against known LaserJet II
-   output for representative byte streams. That is a validation boundary, not
-   a reason to defer ROM-local host, parser, page-record, or imaging
-   documentation. The initial mixed page-image stream above is a ROM-derived
-   internal reproduction contract, not a physical-device comparison. The
-   font-sample printout now has its own
+7. Final device-output correlation is outside the ROM evidence model. The
+   checked-in model derives rows from disassembly and ROM data. The initial
+   mixed page-image stream above is a ROM-derived internal reproduction
+   contract, not a physical-device validation artifact. The font-sample
+   printout now has its own
    internal rendered-surface checkpoint: fixture `font sample full printout
    segments render through 0x1ed84 and 0x1ef6a` renders all eight source/class
    page-record segments with aggregate digest
@@ -2542,8 +2550,9 @@ than open middle edges.
    It emits `I01COURIER101210U` after pre-row y advance
    `0x00520000 -> 0x00900000` and pins bucket digest
    `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
-   Broader row-overrun cross-products and physical baseline/cell placement
-   comparison against a known font/self-test page remain separate gaps.
+   Broader row-overrun cross-products remain static-model expansion work.
+   Physical baseline/cell placement names, if needed, are external correlation
+   rather than ROM execution evidence.
 
 ## Next Disassembly Targets
 
@@ -2558,8 +2567,8 @@ boundaries only when new evidence changes the documented state or pixel output.
    data for firmware range `0x0c0000..0x0c0321`, after verified resource-pair
    suffix `0x0bfe22..0x0bffff`. Useful next evidence is board/emulator decode
    for that range, startup candidate counters after `0x1a2e4`, direct bus reads
-   around `0x0c0000`, or physical output matching the recorded
-   mirror/code-pair/zero-fill fallback digests. Do not re-trace `0x12452`,
+   around `0x0c0000`, or a board-level memory-map explanation for which
+   continuation policy the ROM address bus actually sees. Do not re-trace `0x12452`,
    transparent filtering, secondary buckets through `448`, or compact renderer
    arithmetic unless new decode evidence contradicts the current boundary.
 2. Reset/default provenance is no longer a ROM-local parser/page/render gap.
@@ -2586,7 +2595,7 @@ boundaries only when new evidence changes the documented state or pixel output.
    row output. Do not re-run already-composed text/rule/raster, downloaded-font,
    font-selection, VFC, macro, or publication streams only to produce another
    digest.
-5. Final physical validation remains separate from ROM-local documentation. The
-   current harness proves ROM-derived rows internally. Pixel-perfect confidence
-   still needs representative rendered pages compared with known LaserJet II
-   output, including mixed pages, downloaded glyphs, and the font sample page.
+5. Final physical correlation remains separate from ROM-local documentation.
+   The current model derives rows from ROM disassembly and resource bytes. A
+   representative physical print, if one is ever used, can only correlate that
+   model with a device; it is not a substitute for static ROM evidence.

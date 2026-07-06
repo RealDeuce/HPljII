@@ -3090,7 +3090,8 @@ State classification for this path:
   no unresolved ROM-local middle edge remains for the documented underline
   stream, CR/margin/vertical-cursor span flushes, portrait split, landscape
   fixed-list insertion, or allocation-failure retry. Remaining span work is
-  broader selected-font combinations or physical-device comparison, not the
+  broader selected-font combinations or byte streams that change source-object
+  fields, fixed-list objects, bridge roots, or rendered rows, not the
   pending-span-to-page-object handoff.
 
 Evidence for this path is in
@@ -5629,8 +5630,8 @@ State classification for this path:
   no unresolved ROM-local middle edge remains for this covered execute replay
   path from stored `!\r` to compact text rendering. Remaining macro work is
   broader payload variants, overlay variants outside the documented matrix,
-  external/manual names for macro context bytes, and final physical output
-  comparison.
+  external/manual names for macro context bytes, and byte streams that change
+  parser dispatch, page-object fields, bridge roots, or rendered rows.
 
 Evidence for this path is in
 [macro-data-chain.md](macro-data-chain.md),
@@ -5744,7 +5745,7 @@ State classification:
   no unresolved ROM-local middle edge remains for the documented overlay
   payload families. Remaining macro work is broader payload variants that
   change parser dispatch, page-object fields, delayed payload state, or
-  rendered rows, plus physical output comparison.
+  rendered rows.
 
 Output effect:
 

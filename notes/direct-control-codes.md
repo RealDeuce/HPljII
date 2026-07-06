@@ -459,7 +459,7 @@ renderer contract for the byte-stream cases listed above.
 
 - No ROM parser-to-page-record middle edge remains for the documented
   CR/LF/FF/HT/BS plus `ESC &k#G` control family.
-- Remaining work is broader full-page physical/reference-output validation
-  plus byte-stream cases that create new `0xd04a` source-object fields or
-  `0x12f2e` bucket shapes, not re-proving already documented direct-control
-  fields from another execution source.
+- Remaining work is byte-stream cases that create new `0xd04a` source-object
+  fields, `0x12f2e` bucket shapes, span-flush state, or render-dispatch
+  effects, not re-proving already documented direct-control fields from
+  another execution source.

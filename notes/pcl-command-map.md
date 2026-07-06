@@ -1354,8 +1354,9 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   0x13250 -> 0x1f88e`. Existing fixtures cover parser dispatch, delayed record
   restore, capped/drained rows, lower-resolution modes, consecutive rows,
   same-family lowercase `*b` chaining, bridge fields, and final rows. Continue
-  raster work only for new byte-stream variants or physical/page comparison
-  that changes the documented output state.
+  raster work only for byte streams that change the ROM-visible gate result,
+  encoded-row object fields, allocator chain, bridge bucket roots, or
+  `0x1f88e` mode-specific row construction.
 - Treat the downloaded-font install-to-page byte-24 handoff as documented for
   the covered rule/raster stream.
   `Downloaded Glyph
@@ -1399,8 +1400,9 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   is broader selected-font state combinations plus manual-facing names for
   consumed-but-not-staged validation fields, not the already pinned rounding,
   range, offset, inline/resource, `d4ac`, or `d8fc` behavior.
-- Compare the built-in font sample printout against observed device output.
-  [resource-rom.md](resource-rom.md) documents the candidate sequence and
+- Treat the built-in font sample printout as ROM-local documented through the
+  covered source/page-record forms. [resource-rom.md](resource-rom.md)
+  documents the candidate sequence and
   [semantic-state-model.md](semantic-state-model.md) composes the sample-page
   source placement, sample-run reuse, and `0x1ed84` / `0x1ef6a` rendered
   segments. Fixtures `font sample heading continuation emits fresh source
@@ -1423,19 +1425,19 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
   Additional row-overrun byte streams are regression cross-products unless
   they expose a page-record object form outside the covered heading-preflight,
-  class-zero `I01`, class-one `I16`, and alternate-row `I01` forms. Physical
-  baseline/cell/page placement against a known self-test or font sample remains
-  separate validation. The record fields consumed by `0x1519a` and `0x1428c`
-  are documented as decoded-height inputs and same-class chooser tie-breakers;
-  only their external/manual names remain unknown.
+  class-zero `I01`, class-one `I16`, and alternate-row `I01` forms. The record
+  fields consumed by `0x1519a` and `0x1428c` are documented as decoded-height
+  inputs and same-class chooser tie-breakers; only their external/manual names
+  remain unknown.
 - Keep resource-window work focused on the exact physical decode gap.
   [resource-rom.md](resource-rom.md) now composes the
   `0x1a2e4 -> 0x1a616 -> 0x1a9be` candidate windows and selection state. The
   remaining resource-ROM boundary is the firmware address window
   `0x0c0000..0x0c0321` used by the transparent secondary segment-57 fallback
   rows. Startup checksum evidence covers only `0x080000..0x0bffff`, so this
-  boundary still needs board/emulator memory-map evidence or physical output
-  that selects one of the documented fallback-row digests.
+  boundary still needs board/emulator memory-map evidence for the actual
+  decode source. The ROM-local choices remain the documented mirror,
+  code-pair continuation, and zero-fill fallback-row digests.
 - Continue active-render scheduler work only at the external device boundary.
   The software-visible scheduler, wait-object, trap, render-work, per-band
   merge, and page-record bridge states are already modeled. Remaining work is

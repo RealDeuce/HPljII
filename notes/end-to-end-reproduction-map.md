@@ -1976,7 +1976,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   software-visible middle edge remains for the documented text/rule/raster
   page-record fields, publication, bridge, bucket order, or per-band merge;
   future work belongs to byte streams that change object bytes, allocator
-  state, bridge roots, render dispatch, or physical output.
+  state, bridge roots, render dispatch, or rendered rows.
 - A downloaded-glyph page-image stream is covered for
   `ESC *c4660d37e5F`, `ESC )s2193W <0x0891 payload bytes>`, printable
   `%`, and FF publication. The fixture drains the same modeled `0xa904`

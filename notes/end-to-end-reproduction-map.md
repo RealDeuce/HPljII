@@ -675,34 +675,78 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x1cf8..0x1ea8` are modeled as firmware-visible scheduler and wait-object
   state, but not yet mapped one-to-one to formatter/DC connector signals.
 - Render dispatch:
-  ROM evidence is `0x1ef6a`, `0x1ef86`, `0x1efc2`, `0x1f446`,
-  `0x1f756`, `0x1f812`, and `0x1f88e`, plus destination helpers
-  `0x1f3d4` and `0x1f626`.
-  Checked-in documentation is the `Bitmap Object Dispatch Semantic Checkpoint`
-  in [page-raster-imaging.md](page-raster-imaging.md) and
+  Render dispatch starts after the scheduler has selected active render record
+  pointer `0x783a18` and the bridge has copied page roots into render roots.
+  The fixed call order is `0x1ef6a -> 0x1ef86 -> 0x1efc2 -> 0x1f446 ->
+  0x1f756`: band-cache setup, bucket-chain dispatch, rule-list dispatch, and
+  fixed-list dispatch.
+  Canonical render roots are render `+0x18` for compact, segment-list, and
+  encoded-raster bucket chains; render `+0x1c` for rule-list objects; render
+  `+0x20` for fixed-list objects; and render `+0x24..+0x60` for context or
+  resource slots.
+  Canonical bucket object fields are next pointer `+0`, class byte `+0x04`,
+  context/mode byte `+0x05`, count/capacity word `+0x06`, packed coordinate
+  word `+0x08`, and payload `+0x0a..`.
+  Class byte `+0x04` selects compact glyph/text objects `0x00..0x3f` through
+  `0x1effe`, segment-list objects `0x40..0x7f` through `0x1f812`, and encoded
+  raster objects `0x80..0xff` through `0x1f88e`.
+  Compact subdispatch uses `+0x04` bits `0x10` and `0x20` to select
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`; compact payload entries
+  start with a glyph/resource byte consumed by `0x1f354`.
+  Encoded raster mode byte `+0x05 & 3` selects literal mode `0`, byte-to-word
+  expansion mode `1`, byte-to-long expansion mode `2`, or cascaded expansion
+  mode `3`.
+  Canonical rule/fixed fields are bridged rule selector `+0x05`, packed key
+  `+0x06`, width `+0x08`, original height `+0x0a`, continuation height
+  `+0x0c`, and fixed-list fields `+0x04..+0x0d`; `0x1f446` sends selector
+  `7` to solid helper `0x1f596` and selectors `0..6` / `8..13` to pattern
+  helper `0x1f4e0`, while `0x1f756` consumes fixed-list rows through
+  `0x1f7b0`.
+  Derived/cache render state is band split count `0x783a20`, band remainder
+  `0x783a22`, destination base `0x783a28`, stride `0x783a1c`, offset table
+  `0x7839f8..`, phase byte `$a001`, compact context cache `0x783a2c`,
+  compact row-copy phase `0x783a46`, and fallback buffer base `0x7810b4 + D2`.
+  Destination helpers `0x1f3d4`, `0x1f414`, and `0x1f626` decode packed
+  coordinates into row index, subbyte phase, byte-pair offset, current-band
+  rows, and fallback rows.
+  Parser scratch is none at this layer; upstream producers have already
+  reduced parser records and payload bytes to page-record objects.
+  Firmware bookkeeping is continuation/count mutation in rule `+0x0c`,
+  fixed-list `+0x0a`, bucket object counters, object next pointers, and
+  scheduler-maintained active-band progress.
+  Writers are page producers `0x12f2e` / `0x1387c`, `0x12714` /
+  `0x13520` / `0x135f0`, `0x13070` / `0x13250`, `0x13386` / `0x133aa`, and
+  `0x136d2`; bridge writer `0x1edc6`; band-cache writer `0x1ef86`; and row
+  writers `0x1f034`, `0x1f0d2`, `0x1f1f0`, `0x1f264`, `0x1f4e0`,
+  `0x1f596`, `0x1f756`, `0x1f812`, and `0x1f88e`.
+  Concrete output evidence includes fixtures `0x1ef86 render band setup
+  computes remainder and destination base`, `0x1efc2 bucket-chain dispatcher
+  selects bucket and object classes`, `0x1ef6a render entry composes bucket,
+  rule, and fixed-width lists in call order`, `0x1ef6a page-band walk merges
+  text raster and crossing rule`, `bridged text, rule, and raster layers
+  compose into one page band`, `parser-driven downloaded glyph rule raster
+  stream composes through 0x1ef6a`, `0x1f812 segment-list object renders
+  counted mask spans`, `0x1f756 fixed-width list renders bridged +0x20
+  object`, `0x1f446/0x1f596 renders solid black rectangle rule pixels`,
+  `0x1f4e0 renders gray and HP pattern selector matrix`, encoded raster
+  fixtures `0x1f88e mode-0` through `mode-3`, and compact fixtures for
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`.
+  Checked-in evidence is the `Bitmap Object Dispatch Semantic Checkpoint` and
+  `Compact Glyph Row-Copy Semantic Checkpoint` in
+  [page-raster-imaging.md](page-raster-imaging.md),
   `Bitmap Render Dispatch Contract` in
-  [semantic-state-model.md](semantic-state-model.md), surfaced first as
-  `Worked Path: Render Dispatch And Pixel Composition` in
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Render
+  Dispatch And Pixel Composition` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  The shared render contract starts from active render pointer `0x783a18`.
-  `0x1ef6a` calls `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`: band-cache
-  setup, bucket-chain dispatch from render `+0x18`, rule-list dispatch from
-  render `+0x1c`, and fixed-list dispatch from render `+0x20`.
-  Bucket object byte `+0x04` splits compact `0x00..0x3f` objects through
-  `0x1effe` and compact helpers `0x1f034/0x1f0d2/0x1f1f0/0x1f264`,
-  segment-list `0x40..0x7f` objects through `0x1f812`, and encoded raster
-  `0x80..0xff` objects through `0x1f88e` modes `0..3`.
-  Pixel writers compute destinations from packed coordinates, band state
-  `0x783a20`, destination base `0x783a28`, stride `0x783a1c`, offset table
-  `0x7839f8..`, fallback base `0x7810b4`, and phase byte `$a001`.
-  Rule selectors dispatch through `0x1f446` to solid writer `0x1f596` or
-  pattern writer `0x1f4e0`; fixed-list rows use `0x1f756/0x1f7b0`.
-  Supporting evidence is
-  `generated/analysis/ic30_ic13_render_dispatch_tables.md`, fixtures for
-  `0x1ef6a` render entry and page-band composition, segment-list object
-  rendering through `0x1f812`, fixed-list object rendering through `0x1f756`,
-  solid and patterned rule rendering through `0x1f596` and `0x1f4e0`, and
-  encoded raster modes through `0x1f88e`.
+  Confidence is high for render-root ownership, call order, bucket class split,
+  compact subdispatch, segment-list layout, encoded raster modes, rule/fixed
+  selectors, destination arithmetic, row-copy table targets, and row-level
+  output for the cited fixtures.
+  No unresolved shared render-dispatch edge remains for the documented object
+  classes. Remaining ROM-local work starts from byte streams that create
+  different object fields, selected-font contexts, helper targets,
+  continuation state, fallback split, or rendered rows; physical engine
+  consumption and full-page device comparison remain external boundaries.
 - Mixed page-image stream:
   ROM evidence crosses parser handlers `0xd04a`, `0x10e68`,
   `0x10e22`, `0x10898`, `0x10808`, `0x1075a`, `0x11f82`, and

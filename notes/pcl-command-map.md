@@ -114,8 +114,9 @@ boundaries:
   [rectangle-graphics.md](rectangle-graphics.md).
 - Vertical forms control table payloads and channel jumps:
   [vertical-forms-control.md](vertical-forms-control.md).
-- Font selection, symbol sets, font attributes, pitch mode, selected context,
-  metric producer/consumer behavior, and built-in resource selection:
+- Font selection, symbol sets, font attributes, pitch mode, SO/SI selected
+  context switches, metric producer/consumer behavior, and built-in resource
+  selection:
   [font-context-metrics.md](font-context-metrics.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md).
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current
@@ -151,6 +152,21 @@ documented in the owner notes.
 - FF `0x0c`, handler `0x00f0f0`: page eject and page-buffer boundary.
 - HT `0x09`, handler `0x00f1cc`: tab and horizontal cursor positioning.
 - BS `0x08`, handler `0x00f2a8`: backspace cursor behavior.
+- SO `0x0e`, handler `0x00c6b8`: selected text context switch to slot `1`;
+  calls `0xc428(1)` / `0xc4fc`, sets `0x782f06 = 1` when the secondary
+  context installs, and makes later printable bytes consume the secondary
+  map/context documented in
+  [font-context-metrics.md](font-context-metrics.md).
+- SI `0x0f`, handler `0x00c68a`: selected text context switch to slot `0`;
+  calls `0xc428(0)` / `0xc4fc`, clears `0x782f06` when the primary context
+  installs, and makes later printable bytes consume the primary map/context
+  documented in [font-context-metrics.md](font-context-metrics.md).
+- Control-Z prefix `0x1a`, handler `0x011ea4`, with terminals `0x1a 0x1a`
+  and `0x1a X`: normal handlers `0x120d2` / `0x1219e` conditionally feed
+  printable text through `0xd04a`, while alternate/data handlers `0x1210c` /
+  `0x121b2` append through `0xe002`; parser and display-function ownership is
+  documented in [pcl-parser-core.md](pcl-parser-core.md) and
+  [display-functions.md](display-functions.md).
 - `ESC 9`, handler `0x00e9ba`: clear horizontal margins; clears left
   margin, copies page width to right margin, and clears the right-margin
   fractional companion.

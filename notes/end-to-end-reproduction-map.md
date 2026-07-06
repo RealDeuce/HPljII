@@ -374,13 +374,70 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   new object shape, root field, bridge value, continuation state, or rendered
   row.
 - Rule/rectangle producers:
-  ROM evidence is `0x10898`, `0x10b80`, `0x13386`, and `0x133aa`.
-  Reproduction evidence is `notes/rectangle-graphics.md` and
-  parser-to-rule fixtures, surfaced first as `Worked Path: Rectangle Rule` and
-  `Worked Path: Rectangle Rule Selectors And Clipping` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), including
-  `host-fetched alternate rectangle selectors feed full page records` and
+  Rectangle commands enter from `ESC *c` parser records and converge at
+  `0x10898` for `ESC *c#P`.
+  Canonical command fields are rectangle width `0x78316a`, rectangle height
+  `0x783166`, and area-fill id `0x78316e`; writers are dot-size handlers
+  `0x10e68` / `0x10e22`, decipoint handlers `0x10a40` / `0x10ae0`, and
+  area-fill handler `0x10dce`.
+  `0x10898` maps fill parameters to selector `7` for solid black,
+  gray-percent selectors `0..7`, and pattern selectors `8..13`, with
+  landscape pattern remaps `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10`.
+  `0x10b80` consumes cursor `0x782c8a` / `0x782c8e`, orientation
+  `0x782da3`, extents `0x782db8` / `0x782db6`, and the stored dimensions to
+  reject off-page rectangles, clip negative or overrun edges, and write source
+  record `0x782a88`: x, y, width, height, and fill selector.
+  `0x13386` derives rule keys through `0x134d6`; `0x133aa` allocates a
+  14-byte object through `0x1381c` and inserts it under page-root `+0x24` in
+  ordered bucket/key position.
+  Canonical rule object fields are next pointer `+0`, bucket byte `+4`,
+  selector byte `+5`, packed key `+6`, width `+8`, height `+0x0a`, and
+  continuation height `+0x0c`.
+  Derived/cache state is producer key state `0x782a7c`, `0x782a7d`, and
+  `0x782a7e`; parser scratch is only the six-byte command record cursor
+  `0x78299e` that the handlers rewind before reading the parsed record.
+  Firmware bookkeeping is shared stream allocator state
+  `0x782a70/0x782a72/0x782a76` and retry flag bit page-root `+0x15.0`: if
+  `0x13386` returns zero, `0x10d22..0x10d3e` marks the root, publishes through
+  `0xff1e`, ensures a fresh root through `0x10084`, and retries the same
+  source record.
+  Bridge `0x1edc6` copies page-root `+0x24` to render-record `+0x1c`, ORs
+  object byte `+5` with `0x10`, and copies height `+0x0a` into continuation
+  field `+0x0c`.
+  Renderer `0x1ef6a` calls rule-list dispatcher `0x1f446` after bucket
+  dispatch `0x1efc2`; selector `7` reaches solid helper `0x1f596`, while
+  selectors `0..6` and `8..13` reach pattern helper `0x1f4e0`.
+  Those helpers consume packed key, width, and continuation height and mutate
+  continuation state across render bands.
+  Concrete output evidence includes fixtures `rectangle command stream queues
+  chained ESC *c rule object`, `0x11774 ROM dispatch table routes chained
+  ESC *c rule stream`, `0x10898 ESC *c#P maps fill selectors and queues rule
+  object`, `0x10b80 rectangle fill clips negative left edge before queueing`,
+  `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
+  fills`, `0x13386/0x133aa-modeled rectangle/rule list object and bridge
+  normalization`, `0x133aa address-aware rule-list insertion uses 0x1381c
+  storage`, `0x133aa no-room return preserves rule-list head`, `0x1f446/0x1f596
+  renders solid black rectangle rule pixels`, `0x1f596 carries solid rule
+  remainder across render bands`, `0x1f4e0 renders gray and HP pattern
+  selector matrix`, `0x1f4e0 carries patterned rule remainder across render
+  bands`, `0x1f4e0 renders sub-byte shifted HP pattern rule pixels`,
+  `host-fetched alternate rectangle selectors feed full page records`, and
   `host-fetched rectangle selector matrix feeds full page records`.
+  Checked-in evidence is [rectangle-graphics.md](rectangle-graphics.md),
+  `Rectangle Rule Producer And Renderer` in
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
+  Rectangle Rule` plus `Worked Path: Rectangle Rule Selectors And Clipping` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for parser handler order, selector mapping, clipping and
+  reject gates, source-record bytes, rule object bytes, ordered insertion,
+  bridge normalization, solid/pattern dispatch, band continuation, and no-room
+  retry output.
+  No unresolved software-visible middle edge remains for the covered
+  selector-7, gray, pattern, landscape-remap, clipping, no-room, addressed
+  storage, publication, and mixed text/rule/raster streams.
+  Remaining work is limited to byte streams that change clipping output,
+  `0x1381c` rollover/allocation state, retry publication fields, rule object
+  bytes, bridge state, render dispatch, or rendered rows.
 - Raster producers:
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.

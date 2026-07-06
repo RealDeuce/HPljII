@@ -2096,100 +2096,71 @@ change rendered pixels, byte-stream compatibility, or final confidence. Most
 entries below are composed ROM contracts with bounded remaining variants rather
 than open middle edges.
 
-1. Font/context span metric producer ownership is documented, and the
-   parser-produced legal value space is now represented by ROM formulas plus
-   fixture-backed partitions rather than isolated per-value tracing. The
-   consumers are known: unflagged `0xd4ac` reads context `+0x2b`, `+0x2c`,
-   `+0x2d`; flagged `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`. The selected-context
-   bridge and current metric evidence boundary are documented in
-   `notes/font-context-metrics.md`, and the downloaded descriptor/payload producer side
-   is documented in
-   `notes/downloaded-fonts.md`. Host-fetched `0x1719c` type-0, type-1, and type-2
-   payloads now prove copied descriptor bytes feeding both `0xd4ac` and `0xd8fc`
-   visible span rows. Fixture `d4ac and d8fc span consumer branch family controls flush
-   output`
-   covers disabled, lower-bound, page-extent, and high-x consumer outcomes for both
-   source forms. Fixture `host-fetched metric variant changes d4ac gate and d8fc rows`
-   proves one parser-produced metric-value variant: copied `+0x2c/+0x2d` flips a tight
-   `0xd4ac` page-extent gate, and copied `+0x1a` moves `0xd8fc` visible rows. Fixture
-   `host-fetched clamped metric variant changes d4ac gate and d8fc rows` proves a second
-   parser-produced variant: range/count `+0x14 = 5` clamps an oversized rounded metric
-   input into `+0x2c/+0x2d = 0x0014`, leaves `+0x2b = 0`, flips another tight `0xd4ac`
-   gate, and moves `0xd8fc` rows through copied `+0x18 = 0` and `+0x1a = 3`. Fixture
-   `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans` proves a
-   third parser-produced variant: first code `+0x16 = 0x0018`, range/count `+0x14 =
-   0x0600`, derived count `+0x18 = 0x05e7`, and rounded word `+0x2c = 0x1800` make both
-   consumers exit `before-context-lower` at cursor y `21` while the compact glyph
-   objects remain queued and render. Fixture `host-fetched upper-bound metric variant
-   keeps d4ac span but suppresses d8fc` proves a fourth parser-produced variant:
-   range/count `+0x14 = 0x0040` derives/cache `+0x18 = 0x003b`, leaves unflagged
-   `+0x2c/+0x2d = 0/0x20`, keeps `0xd4ac` span output, and makes `0xd8fc` exit
-   `beyond-page-extent` at cursor y `21`. Seven bounded validation no-install forms plus
-   the short-budget `ESC )s8W` entry-5 failure now prove parser-to-validation failure,
-   allocation skip, no candidate install, resumed default-font printable output, and
-   matching rows. Fixture `descriptor metric fields match across inline and resource
-   contexts` now proves inline/unflagged `d4ac`, resource/flagged `d8fc`, and the two
-   invalid swapped forms. Fixture `legal descriptor metric value matrix drives d4ac and
-   d8fc consumers` composes the legal small-rounded, clamped-rounded, midpoint-rounded,
-   zero-rounded-offset, negative-offset, lower-bound, and upper-bound values; the zero
-   case copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0000/0x0000`, preserves the
-   `d4ac` span digest
-   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, and makes `d8fc`
-   publish high-y `21` / row digest
-   `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`. The midpoint case
-   copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0007/0x0018` and makes `d8fc`
-   update high-y `14` while leaving compact-only digest
-   `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`. The
-   negative-offset case copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0xfffe/0x0008`;
-   `d8fc` consumes the copied offset word as `65534`, computes high-y `-65513`, and
-   renders digest `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
-   Fixture `legal descriptor metric boundary values drive d4ac and d8fc consumers` adds
-   max positive and max negative copied offset words `0x007f` and `0xffff`, lower-bound
-   equality, exact page-extent equality, rounded input `0x0013` copying `+0x2c =
-   0x0014`, and high-byte rounded inputs `0x1500`, `0x1508`, and `0x15ff` all copying
-   `+0x2c = 0x0060` before `d4ac` exits `beyond-page-extent`. Fixture `legal descriptor
-   metric low-nibble rounding drives d4ac and d8fc consumers` proves rounded inputs
-   `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` copy to `+0x2c =
-   0x0000/0x0004/0x0004/0x0004/0x0010`, keep the standard `d4ac` span digest, and keep
-   `d8fc` high-y `20` / digest
-   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. Fixture `legal
-   descriptor metric byte-boundary rounding drives d4ac and d8fc consumers` proves
-   rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and `0x0102` copy to `+0x2c =
-   0x00fc/0x0100/0x0100/0x0104`, with a range-cap sibling forcing `0x0102` back to
-   `0x0100` when `+0x14 = 0x0040`. The copied `0x00fc` case leaves `d4ac` on
-   compact-only digest
-   `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`, while the
-   `0x0100` boundary copy restores the standard `d4ac` span digest
-   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`; the same
-   large-range cases keep `d8fc` at `beyond-page-extent`. Fixture `legal descriptor
-   metric mixed values drive d4ac and d8fc consumers` now covers multi-field legal
-   descriptors where the first code, range/count, rounded word, and signed offset all
-   vary together. The middle-range `0x0008/0x0030/0x002a/0x02` case copies
-   `+0x18/+0x1a/+0x2c = 0x0027/0x0002/0x002c`, suppresses `d4ac` as
-   `beyond-page-extent`, and renders `d8fc` digest
-   `00c97b69bc50326e442dd060c88b710b8f00217d40809bed276d8ba48581fdc7`. Its
-   rounded-`0x00ff` sibling caps copied `+0x2c` to `0x00c0`; its offset byte `0x80`
-   sibling sign-extends to `+0x1a = 0xff80` and computes `d8fc` high-y `-65387`; its
-   late-first-code sibling derives `+0x18 = 0`, keeps `d4ac` visible, and makes `d8fc`
-   exit `before-context-lower`. Fixture `legal descriptor metric tight range values
-   drive d4ac and d8fc consumers` covers range-one zero/clamped rounded outputs and
-   range-two max positive/negative offset words at derived height zero. The producer
-   formula is documented from disassembly: `0x17430` derives `+0x18 = +0x14 - +0x16 -
-   1`, `0x1757a` writes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a`
-   writes signed offset word `+0x1a`, and `0x1719c` copies those staged fields into the
-   allocated payload. The remaining metric work is no longer an unresolved middle edge
-   for the copied-field formulas: `notes/font-context-metrics.md` classifies additional
-   legal metric values as cross-products, and `notes/downloaded-fonts.md` names the
-   consumed-but-not-staged validation entries by ROM effect. The remaining validation
-   work is external HP/manual field naming, not hidden firmware state. Future metric
-   work should therefore be regression expansion or selected-font
-   cross-products only when they expose a new state boundary. It is not the tested
-   type-0/type-1/type-2 payloads, metric-variant, clamped-variant, lower-bound-variant,
-   upper-bound-variant, legal-value-matrix, low-nibble rounding submatrix,
-   byte-boundary rounding submatrix, extent-fence matrix, validation no-install, legal
-   producer-form boundary, mixed-value matrix, tight-range matrix, or shared consumer
-   branch family. Evidence: `notes/semantic-state-model.md` under `Text Span Flush And
-   Fixed-Width Spans`.
+1. Font/context span metrics are composed from downloaded descriptor bytes to
+   visible span output. The producer side is documented in
+   [downloaded-fonts.md](downloaded-fonts.md); the selected-context and
+   consumer side is documented in
+   [font-context-metrics.md](font-context-metrics.md) and
+   `Text Span Flush And Fixed-Width Spans` in
+   [semantic-state-model.md](semantic-state-model.md).
+   `0x1719c` copies accepted type-0, type-1, and type-2 descriptor fields into
+   the allocated font payload. The metric producers are now concrete formulas:
+   `0x17430` derives flagged height/count field `+0x18 = +0x14 - +0x16 - 1`,
+   `0x1757a` writes rounded/clamped unflagged field
+   `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, and `0x1762a` writes the
+   signed flagged offset word `+0x1a`.
+   The consumers are paired with the text source class. Unflagged span helper
+   `0xd4ac` reads context bytes `+0x2b`, `+0x2c`, and `+0x2d`; flagged helper
+   `0xd8fc` reads words `+0x16`, `+0x18`, and `+0x1a`. Both consume current y
+   `0x782c8e`, page extent `0x782db6`, pending-span flag `0x783184`,
+   alternate-y flag `0x783185`, and x/y watermarks `0x783186..0x78318a`.
+   Their output is either no span update, a threshold/high-water update, or a
+   flush through `0x12714` / `0x126e2` into page-record span objects, followed
+   by the ordinary page publication, bridge, and render path.
+   State classification for this cluster is explicit. Canonical state is the
+   selected font context, copied descriptor payload fields, source object
+   `0x782d7e +0x00` context pointer, current cursor, page extent, and pending
+   span state `0x783184..0x78318a`. Derived/cache state is the formula output
+   fields `+0x18`, `+0x1a`, and `+0x2c`, rounded/clamped metric values, and
+   the page-record span object written after a low-x flush. Parser scratch is
+   the `ESC )s#W` payload counter and validation scratch consumed before
+   `0x1719c`. Firmware bookkeeping is allocation/install state and candidate
+   refresh state around the downloaded font resource. Unknown/manual state is
+   limited to HP-facing names for validation entries that the ROM consumes but
+   does not copy into the staged metric fields.
+   Fixtures cover the branch family and parser-produced value classes rather
+   than single isolated constants. `d4ac and d8fc span consumer branch family
+   controls flush output` covers disabled, lower-bound, page-extent, and high-x
+   consumer outcomes for both source forms. `host-fetched metric variant
+   changes d4ac gate and d8fc rows`, `host-fetched clamped metric variant
+   changes d4ac gate and d8fc rows`, `host-fetched lower-bound metric variant
+   suppresses d4ac and d8fc spans`, and `host-fetched upper-bound metric
+   variant keeps d4ac span but suppresses d8fc` prove fetched descriptors can
+   flip each consumer gate while compact glyph objects still queue and render.
+   The legal value matrices then classify the remaining formula space:
+   `legal descriptor metric value matrix drives d4ac and d8fc consumers`,
+   `legal descriptor metric boundary values drive d4ac and d8fc consumers`,
+   `legal descriptor metric low-nibble rounding drives d4ac and d8fc
+   consumers`, `legal descriptor metric byte-boundary rounding drives d4ac and
+   d8fc consumers`, `legal descriptor metric mixed values drive d4ac and d8fc
+   consumers`, and `legal descriptor metric tight range values drive d4ac and
+   d8fc consumers`.
+   Concrete checked examples include the zero-offset legal case copying
+   `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0000/0x0000`, preserving the
+   standard `d4ac` span digest and making `d8fc` publish high-y `21`; the
+   midpoint case copying `0x0018/0x0013/0x0007/0x0018` and moving `d8fc`
+   high-y to `14`; the negative-offset case copying
+   `0x0018/0x0013/0xfffe/0x0008` and making `d8fc` compute high-y `-65513`;
+   the byte-boundary rounded cases `0x00fd`, `0x00fe`, `0x0101`, and `0x0102`;
+   and the mixed case `0x0008/0x0030/0x002a/0x02`, which suppresses `d4ac` as
+   beyond page extent while rendering `d8fc`.
+   Seven validation no-install forms plus the short-budget `ESC )s8W` entry-5
+   failure prove parser-to-validation rejection, allocation skip, no candidate
+   install, resumed default-font printable output, and matching rows. Therefore
+   the remaining metric work is not an unresolved ROM-local producer-to-consumer
+   edge. It is regression expansion or selected-font cross-products only when a
+   new byte stream changes copied fields, consumer branch, page-record span
+   object, or rendered rows; HP/manual field naming remains external.
 2. VFC table definition and channel jumps now have a tracked command-family
    contract in `notes/vertical-forms-control.md`. That contract groups
    canonical VFC state `0x782dde..0x782edd`, canonical layout inputs

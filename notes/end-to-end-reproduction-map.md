@@ -1560,6 +1560,29 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x782996`, copies compact bucket root `+0x1c` and context slot `+0x2c`, and
   clears the current root before `0x1ed84` / `0x1edc6` bridge the published
   record into `0x1ef6a`.
+  Canonical publication state is current page root `0x78297a`, published pool
+  pointer `0x780ea6`, publication flag `0x782996`, compact/raster bucket root
+  `+0x1c`, rule list `+0x24`, fixed list `+0x28`, context slots `+0x2c..`,
+  pool-header state byte `+4`, copy-count word `+0x0c`, and command-side
+  fields such as line-termination mode `0x78318f`, copy count `0x782da4`,
+  paper-source byte `0x782da6`, pending refresh byte `0x782998`, and
+  output/control bytes `0x780e8f` / `0x780e26`.
+  Canonical VFC state is table `0x782dde..0x782edd`, VMI `0x783160`, top
+  offset `0x782dce`, current y/x `0x782c8e` / `0x782c8a`, text margins
+  `0x782dd6` / `0x782dda`, text-bottom cache `0x782dd2`, VFC limit
+  `0x782dc2`, line caches `0x782ede` / `0x782edf` / `0x782ee0`, and modified
+  layout flag `0x782ee1`.
+  Derived/cache state includes render-band words `0x783a20`, `0x783a22`, and
+  `0x783a28`, page-size/orientation active extents, VFC line-start and target
+  calculations, default VFC table bytes from `0x12b96`, and row digests used
+  only as fixture evidence. Parser scratch is the six-byte command record at
+  `0x78299e`, delayed payload state from `0x121cc` / `0x12218`, and the
+  `ESC &l#W` payload bytes consumed through `0xdace`.
+  Firmware bookkeeping is page-record stream allocator state
+  `0x782a70/0x782a72/0x782a76`, current-root clearing, pending text/span
+  latches `0x782a58`, `0x782a6d`, and `0x783184`, `0x9ac2` wait/status
+  servicing, `0xf124` page-eject state, and synthetic/nondefault `0xff1e`
+  pool-header copies.
   Covered parser-to-publication streams are `! ESC E` through reset handler
   `0xcc52`, `ESC &k2G ! FF` through `0xedf8` and `0xf0f0`, `! ESC &l1A`
   through page-size handler `0xfc74`, `! ESC &l1O` through orientation handler
@@ -1575,9 +1598,60 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   layout flag `0x782ee1`. VFC channel jumps through `0x1280a` consume that
   table, VMI `0x783160`, top offset `0x782dce`, current y `0x782c8e`, and
   line caches `0x782ede` / `0x782edf` / `0x782ee0`.
+  Writers are `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
+  `0xeef0` for publication-triggering command state; `0xff1e` for published
+  pool records; `0x11f6e` / `0x121cc` for delayed VFC payload scheduling;
+  `0x12cfe` for explicit VFC table load; `0x12b96` and `0xe5e2` for default
+  VFC/layout refresh; `0xfe54` for line-count caches; and `0x1280a`,
+  `0xf06e`, `0xf34a`, and `0xf124` for cursor reset, pending-text flush, and
+  page-boundary effects.
+  Readers/consumers are parser loop `0x11774`, publication `0xff1e`, bridge
+  `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`, VFC consumer `0x1280a`,
+  perforation overflow helper `0xf36c`, and later printable text through
+  `0xd04a -> 0x12f2e`.
   Non-publishing VFC paths only reset x/y before the next `0xd04a` printable;
   publishing VFC paths call `0xf124 -> 0xff1e` so the pre-VFC printable renders
   from the old page and the following printable queues on a fresh page.
+  Concrete publication evidence includes fixtures `publication streams tie
+  parser handlers to page-record publication boundary`, `host-fetched
+  publication streams reach parser and published rows`, `addressed printable
+  reset publishes rendered page record`, `addressed printable FF publishes
+  rendered page record`, `addressed page geometry publications render page
+  records`, `addressed paper-source and copies publications render page
+  records`, `host-fetched FF geometry and paper-source publications preserve
+  0xff1e pool header defaults`, `host-fetched copies publication preserves
+  0xeef0 pool header word`, and `host-fetched ESC E clears missing page root
+  without publication`.
+  Concrete VFC evidence includes fixtures `0x12cfe ESC &l#W loads vertical
+  forms control state`, `mixed VFC definition stream consumes payload before
+  printable page-record queue`, `mixed VFC lowercase delayed record survives
+  until uppercase W`, `mixed VFC channel jump stream moves cursor before
+  printable page-record queue`, `mixed VFC before-top channel jump normalizes
+  start line before printable`, `mixed VFC selector-zero top-of-form no-op
+  reaches printable page-record queue`, `mixed VFC selector-zero page-eject
+  publishes old page before fresh printable`, `mixed VFC wrap-hit publishes old
+  page before fresh printable`, `mixed VFC wrap-no-hit publishes old page and
+  returns to top`, `mixed VFC target-after-text recovers near top before fresh
+  printable`, `0x1280a VFC alternate high-start recovery entries`, and
+  `0x12b96 default VFC table channel convention`.
+  Output effect is page-boundary and cursor state, not direct drawing.
+  Publication commands render already queued objects before side effects such
+  as reset, page-size/orientation change, or paper-source output mutate the
+  environment. VFC table definition changes later cursor/page behavior, and
+  VFC channel jumps either move the following printable coordinate on the same
+  page or publish the old page before the following printable queues on a fresh
+  page.
+  Confidence is high for parser handler order, host-byte draining, `0xff1e`
+  pool headers, command side effects, VFC table bytes, delayed payload
+  restoration, lowercase delayed-record preservation, cursor-only VFC paths,
+  page-publishing VFC paths, render bridge fields, and final rows for the
+  cited streams. Medium only for manual-facing names of derived line-count
+  fields `0x782ede`, `0x782edf`, and `0x782ee0`.
+  No ROM-local parser-to-publication, publication-to-render, VFC table-load,
+  or VFC channel-jump middle edge remains for the documented streams.
+  Remaining work is new byte streams that change page-record bucket shape,
+  pool-header fields, bridge state, VFC line/cache state, rendered rows, or
+  physical device output beyond the ROM render buffer.
 - Macro replay streams are covered for definition, execute/call replay,
   mixed-control replay, overlay publication, repeated overlay publication,
   overlay skip gates, and overlay payloads that cross cursor, margin,

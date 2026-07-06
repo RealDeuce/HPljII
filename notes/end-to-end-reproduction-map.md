@@ -748,22 +748,79 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   continuation state, fallback split, or rendered rows; physical engine
   consumption and full-page device comparison remain external boundaries.
 - Mixed page-image stream:
-  ROM evidence crosses parser handlers `0xd04a`, `0x10e68`,
-  `0x10e22`, `0x10898`, `0x10808`, `0x1075a`, `0x11f82`, and
-  `0xf0f0`, then publication and render handlers `0xff1e`,
-  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
-  Reproduction evidence is `Mixed Text/Rule/Raster Page Record` in
-  `notes/semantic-state-model.md`, surfaced first as
-  `Worked Path: Mixed Text/Rule/Raster Page Record` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), plus fixtures
-  `host-fetched text rectangle raster FF publishes rendered page record`,
-  `addressed text rectangle raster FF publishes rendered page record`,
-  `addressed text/rule/raster field groups reach publication and render
-  entry`,
-  `host-fetched text rectangle multi-row raster FF publishes rendered page
-  record`, and
-  `addressed text/rule/multi-row raster publication preserves bucket
-  chain`.
+  The primary heterogeneous page-image stream is
+  `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.
+  It proves that no single command draws the final image: parser handlers
+  first queue compact text, rectangle/rule, and encoded-raster objects under
+  one page root; `0xff1e` publishes the root; `0x1ed84` / `0x1edc6` bridge it
+  into a render record; and `0x1ef6a` composes the visible rows.
+  Host bytes enter through `0xa904` and parser loop `0x11774`.
+  Printable `!` reaches `0xd04a`, source helper `0x1393a`, positioning
+  `0xd824`, root ensure `0x10084`, and compact queue
+  `0x12f2e -> 0x1387c`.
+  `ESC *c12a5b0P` reaches `0x10e68`, `0x10e22`, and final fill handler
+  `0x10898`, which queues selector-7 rule data through `0x10b80`,
+  `0x13386`, and `0x133aa`.
+  `ESC *t300R` reaches `0x10808`, `ESC *r0A` reaches `0x1075a`, and
+  `ESC *b2W` reaches `0x11f82`, which schedules delayed transfer handler
+  `0x105d0` through `0x121cc`; terminal restore `0x12218` reinstalls record
+  `80 57 00 02 00 00`, then `0x105d0` consumes payload `c3 3c` and queues a
+  mode-0 encoded raster object through `0x13070` / `0x13250`.
+  Canonical page-record state in the addressed fixture is text object
+  `0x00d0c004`, rule object `0x00d0c02a`, raster object `0x00d0c038`,
+  bucket root `+0x1c`, rule-list root `+0x24`, and context slot `+0x2c =
+  0x440946b4`.
+  Published bucket bytes include encoded object
+  `00 d0 c0 04 80 00 00 02 00 00 c3 3c`; published rule bytes are
+  `00 00 00 00 01 07 5c 01 00 0c 00 05 00 00`.
+  Parser scratch is the delayed raster snapshot
+  `01 00 01 05 d0 80 57 00 02 00 00`, restored transfer record
+  `80 57 00 02 00 00`, payload offset `28`, and payload bytes `c3 3c`.
+  Firmware bookkeeping is stream allocator state
+  `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
+  `0x782a76 = 0x00d0c044`, one stream allocation, one page-root allocation,
+  one publication, one current-root clear, and publication flag `0x782996`.
+  Derived/cache render state includes `0x783a20 = 0x0050`,
+  `0x783a22 = 0`, and `0x783a28 = 0x00100000`.
+  Downstream consumers are `0xff1e`, bridge `0x1ed84` / `0x1edc6`, bucket
+  dispatch `0x1efc2`, raster renderer `0x1f88e`, compact renderer
+  `0x1effe`, rule dispatcher `0x1f446`, and solid rule helper `0x1f596`.
+  The consecutive-raster sibling
+  `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0 FF`
+  proves bucket-chain ordering for repeated delayed raster transfers:
+  addressed raster objects at `0x00d0d038` and `0x00d0d044` publish as chain
+  `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, allocator state ends at
+  `0x782a70 = 0x00b0`, `0x782a72 = 0x00d0d000`,
+  `0x782a76 = 0x00d0d050`, and final raster `row_y = 2`.
+  The page-band walker fixture extends the same render-entry contract across
+  bands `0` and `5`: compact text and mode-0 raster dispatch from render
+  bucket root `+0x18`, a patterned rule mutates and carries via rule root
+  `+0x1c`, and the second band renders the remaining rule rows with no
+  leftover rule or fixed-list state.
+  Concrete output evidence includes fixtures `host-fetched text rectangle
+  raster FF publishes rendered page record`, `addressed text rectangle raster
+  FF publishes rendered page record`, `addressed text/rule/raster field groups
+  reach publication and render entry`, `host-fetched text rectangle multi-row
+  raster FF publishes rendered page record`, `addressed text/rule/multi-row
+  raster publication preserves bucket chain`, and `0x1ef6a page-band walk
+  merges text raster and crossing rule`.
+  Checked-in evidence is `Mixed Text/Rule/Raster Page Record` in
+  [semantic-state-model.md](semantic-state-model.md), `Worked Path: Mixed
+  Text/Rule/Raster Page Record` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [rectangle-graphics.md](rectangle-graphics.md).
+  Confidence is high for parser handler order, delayed raster scratch,
+  addressed object addresses, published page-record fields, bridge state,
+  render call order, bucket-chain order, rule carry, and visible rows.
+  No unresolved middle edge remains for this exact stream's text source, rule
+  selector, delayed raster restore, page-root storage, publication, bridge, or
+  per-band bitmap merge.
+  Remaining ROM-local work starts from byte streams that change text source
+  fields, rectangle clipping or selectors, raster gate outcomes,
+  `0x1381c` allocation/rollover state, bridge roots, continuation state, or
+  rendered rows; physical/reference page comparison remains external.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
   Checked-in documentation is [resource-rom.md](resource-rom.md),

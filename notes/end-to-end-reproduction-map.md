@@ -714,6 +714,11 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   Firmware bookkeeping is continuation/count mutation in rule `+0x0c`,
   fixed-list `+0x0a`, bucket object counters, object next pointers, and
   scheduler-maintained active-band progress.
+  Pixel composition at this layer is order-dependent direct destination
+  writing: compact, raster, segment-list, rule, and fixed-list helpers store
+  generated source words into the active band or fallback buffer; the
+  documented helpers do not OR/XOR/AND new pixels with prior destination
+  contents.
   Writers are page producers `0x12f2e` / `0x1387c`, `0x12714` /
   `0x13520` / `0x135f0`, `0x13070` / `0x13250`, `0x13386` / `0x133aa`, and
   `0x136d2`; bridge writer `0x1edc6`; band-cache writer `0x1ef86`; and row

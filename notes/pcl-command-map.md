@@ -158,6 +158,27 @@ is [firmware-dataflow-model.md](firmware-dataflow-model.md). The shorter
 coverage map and current target list are in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 
+## Table Coverage Note
+
+The generated flat table in
+`generated/analysis/ic30_ic13_pcl_command_map.md` is the audit source for the
+two parser tables. The checked-in command map covers every normal-mode
+terminal handler from that table either as a direct handler anchor below or as
+one of these family entries:
+
+- parser setup/prefix wrappers `0x11ea4`, `0x11eb6`, `0x11ec8`,
+  `0x11eda`, `0x11eec`, `0x11ff6`, `0x12008`, and `0x1201e`;
+- lowercase font-selection writers `0xc930`, `0xc89c`, `0xc6ec`,
+  `0xc780`, `0xc840`, and `0xc7e0`;
+- font-designation terminals collapsed under `0x120be`;
+- local Control-Z terminal siblings collapsed under the Control-Z anchor.
+
+The alternate/data table is covered by the policy above plus its active
+exceptions: `ESC Y` append reader `0x12120`, Control-Z append/report handlers
+`0x1210c` / `0x121b2`, delayed payload/storage handlers, macro control
+`0xdd08`, and reset `0xcc52`. Blank alternate/data rows are meaningful:
+they preserve syntax or bytes without running the normal page-state handler.
+
 ## High-Value Normal-Mode Handlers
 
 These command-to-handler anchors are the normal-mode landmarks used by the

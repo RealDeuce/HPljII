@@ -208,8 +208,20 @@ classification and the macro/data-chain frame layout:
 - `0x782d76`: active data-chain frame pointer.
 - frame `+0x00`: payload or chunk pointer.
 - frame `+0x04`: remaining byte count, or `-1` end marker.
-- frame `+0x09`: observed replay/finalization class.
-- frame `+0x0a`: snapshot pointer or zero.
+- frame `+0x08`: stride/offset byte, observed as `4` for covered frames.
+- frame `+0x09`: covered frame kind: execute `2` from `0xe418`, call `3`
+  from `0xe418`, or non-replay page-finalization/overlay frame `4` from
+  `0xe4f4`.
+- frame `+0x0a`: execute/call environment snapshot pointer, or zero for the
+  non-replay frame.
+
+The data-chain byte-source handoff is therefore a parser input mechanism, not
+a separate command interpreter. Execute and call frames replay stored bytes
+through the same parser and page-object paths as live host bytes; the
+non-replay frame is consumed by the page-finalization/overlay machinery
+documented in [macro-data-chain.md](macro-data-chain.md). The only open frame
+layout edge at this layer is whether any ROM producer writes a frame kind
+outside observed `+0x09` values `2`, `3`, and `4`.
 
 Host-interface timing and physical MMIO naming are outside this ROM-local byte
 contract. They matter only when a claim depends on the physical producer of a
@@ -790,8 +802,11 @@ State classification:
   `0x780e2e`.
 - Unknown or external state: the board-level names for direct hardware
   registers `0x8e01`, `0x8801`, `0x8c01`, `0xa601`, `0xaa01`,
-  `0xfffee001`, `0xfffee005`, and `0xfffee009`, and any data-chain frame
-  class outside observed `+0x09` values `2`, `3`, and `4`.
+  `0xfffee001`, `0xfffee005`, and `0xfffee009`. The only ROM-local
+  data-chain layout uncertainty in this byte-source checkpoint is an
+  unlocated producer for a frame kind outside observed `+0x09` values `2`,
+  `3`, and `4`; the covered execute, call, and non-replay frame producers
+  and consumers are owned by [macro-data-chain.md](macro-data-chain.md).
 
 Writers, readers, and evidence:
 

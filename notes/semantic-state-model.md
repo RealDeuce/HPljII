@@ -312,10 +312,11 @@ data.
   - active data-chain source: `0x782d76` points to the current frame;
     frame `+0x00` is the payload/chunk pointer consumed by `0x9f6a`;
     frame `+0x04` is the byte count, with `-1` triggering end transition
-    through `0xe22c`; byte `+0x08` is `4`; byte `+0x09` selects the
-    frame-end path; longword `+0x0a` is the environment-snapshot pointer
-    for execute/call frames and zero for the non-replay page-finalization
-    frame.
+    through `0xe22c`; byte `+0x08` is `4`; byte `+0x09` is the frame kind:
+    execute `2` and call `3` are produced by `0xe418`, while non-replay
+    page-finalization/overlay frame `4` is produced by `0xe4f4`; longword
+    `+0x0a` is the environment-snapshot pointer for execute/call frames and
+    zero for the non-replay frame.
   - second pushback stack: `0x783e76` count and `0x783e78` pointer.
   - ring buffer: `0x783e54` count, `0x783e56` read pointer, and
     `0x783e5a` write pointer, wrapped between `0x783a4c` and
@@ -411,8 +412,10 @@ data.
   - physical names, connector mapping, and timing for the
     `0x8e01`/`0x8801`/`0x8c01` bank and the
     `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
-  - data-chain frame byte `+0x09` values outside the observed execute `2`,
-    call `3`, and non-replay page-finalization `4` producers, if any.
+  - an unlocated ROM producer for data-chain frame byte `+0x09` values
+    outside observed execute `2`, call `3`, and non-replay
+    page-finalization/overlay `4`, if any. The covered frame kinds are
+    documented as macro/data-chain state, not host-fetch unknowns.
 
 ### Writers
 

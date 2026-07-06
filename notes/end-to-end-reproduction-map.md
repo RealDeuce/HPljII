@@ -856,24 +856,78 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `[1, 6, 6, 65, 1, 5, 5, 50]`, and aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
 - Font selection to visible glyphs:
-  ROM evidence is parser terminal handler `0x120be`, symbol/default helper
-  `0x1be22`, common refresh `0xc580`, candidate filter/selection path
-  `0x13eb8 -> 0x156de`, font-ID helper `0x17708`, map rebuild `0x14c64`,
-  printable source path `0xd04a -> 0x1393a -> 0x12f2e`, and render dispatch
-  through `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354`. Checked-in
-  documentation is [font-context-metrics.md](font-context-metrics.md) and
+  Font selection is a parser-state-to-rendered-glyph path, not an immediate
+  drawing command. Parser terminal handler `0x120be` and helper `0x1be22`
+  write requested symbol/default/font-ID state, common refresh `0xc580`
+  decides which primary or secondary slot needs work, candidate path
+  `0x13eb8 -> 0x156de -> 0x153c6 -> 0x1519a -> 0x14398` selects a font
+  candidate, `0x144d2` writes the selected context, and `0x14c64` rebuilds
+  the host-character-to-glyph map.
+  Canonical state is selected text slot `0x782f06`, primary context record
+  `0x782ee6`, secondary context record `0x782ef6`, primary glyph map
+  `0x782f32`, secondary glyph map `0x783032`, active symbol words
+  `0x783144/0x783146`, remembered symbol words `0x782f08/0x782f0a`,
+  selected page-root font slot `0x78297e`, page-root context slots
+  `+0x2c..`, and later compact text objects.
+  `0xc428(slot)` reads the selected longword from `0x782ee6` or `0x782ef6`;
+  `0xc4fc` finds or installs that longword in one of 16 page-root font slots,
+  and later `0x1edc6` copies those slots into render-record contexts.
+  Printable source helper `0x1393a` consumes the selected context and
+  `0x782f32` or `0x783032` to map the original host byte to a glyph byte
+  before `0xd04a -> 0x12f2e -> 0x1387c` queues compact objects.
+  Compact render dispatch `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` then
+  resolves glyph bitmaps from the copied render-record context slot, so the
+  renderer identity is selected context longword plus mapped glyph byte, not
+  the raw PCL request plus original host byte.
+  Derived/cache state includes candidate survivor lists, selected candidate
+  `0x7828a8`, target `0x7828de`, snapshots `0x783148/0x783152`, HMI
+  `0x78315c`, transient context `0x782992`, current font id `0x782f2e`,
+  selected-font flags `0x783132/0x783133`, compact coordinates, glyph-entry
+  pointers, and render-band fields.
+  Parser scratch includes setup records from `0x1201e` / `0x12008`, mode-13
+  font-selection command records, dirty flags `0x782f2c/0x782f2d` while
+  refresh is pending, final-`X` parameter records consumed by `0x17708`, and
+  the following printable bytes.
+  Firmware bookkeeping includes page-root live-font flags, `0xc4fc` slot-scan
+  state, symbol-map snapshot provenance byte `+0x09`, publication flag
+  `0x782996`, scheduler cursors, and render-work progress words.
+  Covered visible streams select primary context `0xc008004c` and secondary
+  context `0xc00ae122`, rebuild maps `0x782f32` / `0x783032`, install
+  page-root context slots through `0xc428` / `0xc4fc`, and render later
+  printable bytes from those contexts. SO and SI controls use the same bridge:
+  `0xc6b8` installs/selects secondary slot `1`, while `0xc68a`
+  installs/selects primary slot `0`.
+  Covered variants include primary and secondary inline selection, symbol-miss
+  fallback through `0x156de`, remembered-symbol recovery, non-Roman symbols,
+  final-`@` defaults, final-`X` font-ID success through `0x17708`, direct
+  font-ID non-selected exits that preserve prior output, and bit-30-clear
+  inline/downloaded context selection.
+  Concrete output evidence includes fixtures `inline primary font selection
+  stream renders visible rows`, `inline secondary font selection stream renders
+  SO visible rows`, `primary symbol miss falls back before visible page-record
+  rows`, `secondary symbol miss falls back before visible SO page-record rows`,
+  `live primary current-font RAM install feeds SI page-record rows`,
+  `live secondary current-font RAM install feeds SO page-record rows`,
+  `font-ID built-in selection feeds visible page-record rows`,
+  `font-ID secondary built-in selection feeds visible SO page-record rows`,
+  `font-ID primary inline/downloaded selection feeds visible page-record
+  rows`, `font-ID inline/downloaded selection feeds visible page-record rows`,
+  `font-ID non-selected exits keep prior visible rows`,
+  `font-ID secondary non-selected exits keep prior SO visible rows`, and
+  `0x13eb8 no-dispatch exits keep prior visible rows`.
+  Checked-in evidence is [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
   `Built-In Font Selection To Visible Text` in
-  [semantic-state-model.md](semantic-state-model.md), surfaced first as
-  `Worked Path: Font Selection To Visible Glyphs` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md). The covered
-  primary and secondary streams update request fields, select contexts
-  `0xc008004c` and `0xc00ae122`, rebuild maps `0x782f32` and `0x783032`,
-  install page-root context slots through `0xc428` / `0xc4fc`, and make later
-  printable bytes render from those selected contexts. Symbol-miss fallback,
-  remembered-symbol recovery, non-Roman symbols, final-`@` defaults, final-`X`
-  font-ID success, final-`X` no-selection exits, and bit-30-clear
-  inline/downloaded context selection are all documented as visible-output
-  variants.
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Font
+  Selection To Visible Glyphs` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for primary/secondary selection, symbol fallback,
+  final-`X` success and non-selected exits, page-root slot install/reuse,
+  glyph-map consumption, bridge preservation, and rendered rows.
+  No unresolved ROM-local middle edge remains for the documented primary and
+  secondary built-in selection streams. Remaining work is broader command
+  combinations that change candidate records, map bytes, context flags,
+  compact object shapes, bridge state, span metrics, or physical-device output.
 - Downloaded font payloads:
   ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
   `0x1719c`, with font-control writers `0x15a56`, `0x15a18`, and

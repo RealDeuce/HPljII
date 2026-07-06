@@ -80,8 +80,10 @@ the normal control handlers for BS, HT, LF, FF, CR, SO, or SI.
 
 ## Semantic Owners
 
-Use the flat table above as the dispatch index, then switch to the owning note
-for state, consumers, output effect, and unresolved boundaries:
+Use the parser-table notes above and the checked-in handler anchors below as
+the command index. The generated flat table is supporting evidence; the
+owning notes below carry state, consumers, output effect, and unresolved
+boundaries:
 
 - Host fetch, parser selection, parser records, delayed payload restore, blank
   rows, `ESC ?`, `ESC Z`, and `ESC &lT/t`:

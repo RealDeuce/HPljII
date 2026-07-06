@@ -30,7 +30,8 @@ compatibility boundary.
   following a concrete byte stream.
 - [firmware-dataflow-model.md](firmware-dataflow-model.md) - detailed
   checked-in dataflow spine from host bytes through parser, commands,
-  page/image objects, render scheduling, and pixel generation.
+  page/image objects, render scheduling, pixel generation, and exact
+  unresolved-boundary index.
 - [errors-and-status.md](errors-and-status.md) - status, attendance,
   error, and service codes useful during ROM tracing.
 - [external-ready-service.md](external-ready-service.md) - documented

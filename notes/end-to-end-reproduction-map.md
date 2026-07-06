@@ -485,16 +485,66 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   raster-object fields, bridge state, render dispatch, or reproduction
   contract.
 - Page publication:
-  ROM evidence is `0xff1e..0x10080`.
-  Checked-in documentation is
-  [publication-commands.md](publication-commands.md) and
+  Publication is the page-object-to-page/control-record boundary at
+  `0xff1e..0x10080`.
+  The canonical input is current page root `0x78297a`, including compact bucket
+  root `+0x1c`, rule-list root `+0x24`, fixed-list root `+0x28`, context slots
+  `+0x2c..+0x68`, state byte `+4`, copy-count/environment header fields, and
+  retry/finalization flags.
+  `0xff1e` writes page/control pool state byte `+4 = 2`, copies the current
+  root into the published pool, writes pool-head pointer `0x780ea6`, sets
+  publication flag `0x782996`, and clears current-root pointer `0x78297a`.
+  The checked command-family streams are `! ESC E`, `ESC &k2G! FF`,
+  `! ESC &l1A`, `! ESC &l1O`, `! ESC &l2H`, and `! ESC &l2X FF`.
+  Their writers are reset handler `0xcc52` / `0xcc70`, FF handler `0xf0f0`,
+  page-size handler `0xfc74`, orientation handler `0x10220`, paper-source
+  handler `0xef62`, and copies handler `0xeef0`.
+  The semantic ordering is byte-stream visible: reset, page-size,
+  orientation, and paper-source publish already queued page objects before
+  they mutate the default environment, geometry, orientation, or paper-source
+  state; FF publishes after the `ESC &k2G` line-termination mode applies its
+  CR-style x reset; copies stores `0x782da4` before the following FF
+  publication copies it into pool-header word `+0x0c`.
+  Parser scratch is temporary command records and the modeled `0xa904` host
+  ring bytes; after the handlers queue page objects, publication consumes
+  page-root fields rather than parser records.
+  Derived/cache state includes render-band caches `0x783a20`, `0x783a22`, and
+  `0x783a28`, which appear only after `0x1ed84` / `0x1edc6` bridge the
+  published record.
+  Firmware bookkeeping includes stream allocator state
+  `0x782a70/0x782a72/0x782a76`, publication flag `0x782996`, transient byte
+  `0x782990`, pool header defaults, and command-specific header copies such
+  as copy count `+0x0c`.
+  Downstream consumers are active-record bridge `0x1ed84`, page-record bridge
+  `0x1edc6`, and render entry `0x1ef6a`; the covered streams dispatch the
+  preserved compact Line Printer `!` object through compact renderer
+  `0x1effe`.
+  Concrete output evidence includes fixtures `publication streams tie parser
+  handlers to page-record publication boundary`, `host-fetched publication
+  streams reach parser and published rows`, `host-fetched publication streams
+  preserve 0x1edc6 bridge contract`, `published page records feed 0x1ed84 and
+  0x1ef6a render entry`, `mixed printable/reset stream keeps pre-reset text
+  rows renderable`, `mixed printable/FF page-record stream publishes queued
+  text`, `addressed printable reset publishes rendered page record`,
+  `addressed printable FF publishes rendered page record`, `addressed page
+  geometry publications render page records`, `addressed paper-source and
+  copies publications render page records`, `host-fetched ESC E clears
+  missing page root without publication`, and `host-fetched copies publication
+  preserves 0xeef0 pool header word`.
+  Checked-in evidence is [publication-commands.md](publication-commands.md),
   `Publication Commands To Rendered Page Records` in
-  [semantic-state-model.md](semantic-state-model.md), surfaced first as
-  `Worked Path: Reset And Default Environment`, `Worked Path: FF Publication`,
-  and `Worked Path: Publication Commands To Rendered Page Records` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
-  is `generated/analysis/ic30_ic13_page_root_finalization.md` plus reset, FF,
-  geometry, and retry publication fixtures.
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Reset
+  And Default Environment`, `Worked Path: FF Publication`, and `Worked Path:
+  Publication Commands To Rendered Page Records` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Confidence is high for parser handler order, pre-command object preservation,
+  reset/FF/geometry/paper-source/copies side-effect ordering, pool-header
+  defaults and copy-count field, current-root clearing, bridge preservation,
+  and rendered rows.
+  The unresolved boundary is not ROM-local publication state: final rows are
+  fixture-backed through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  Remaining work is physical-device comparison and byte streams that expose a
+  new pool-header field, source-record choice, bridge value, or rendered row.
 - Macro/data-chain replay:
   ROM evidence is `0xe112`, `0xdd08`, `0xe0a4`, `0xe002`, `0xe418`,
   `0xe4f4`, `0xe22c`, `0xe65c`, byte-source multiplexer `0xa904`, parser loop

@@ -6961,7 +6961,7 @@ continuation siblings are pinned by the `0x16606`/`0x15c4c` fixtures above.
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
 `0x1f88e` and the glyph object to `0x1effe`; `0x1f446` renders the rule through
-solid helper `0x1f596`. The fixture compares three final composed rows: row 0
+solid helper `0x1f596`. The fixture records three ROM-derived composed rows: row 0
 contains raster payload `c3 3c`, the downloaded glyph row at x `22`, and the
 rule from x `24` through x `35`; rows 1 and 2 contain the rule only.
 The FF-publication fixture keeps the same bucket `5` chain and selector-7 rule,
@@ -6970,7 +6970,7 @@ then renders the published pool record to the same three rows with digest
 Fixture `segmented downloaded glyph composes with raster through 0x1ef6a`
 uses the same call order for bucket word `9`, dispatches the bucket-9 raster
 object to `0x1f88e`, dispatches the selector-`0x2003` segment-1 glyph object to
-compact target `0x1effe` / renderer `0x1f1f0`, and compares seven composed rows
+compact target `0x1effe` / renderer `0x1f1f0`, and records seven composed rows
 with digest
 `0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`.
 Fixture `split-plane segmented downloaded glyph composes with raster through
@@ -7360,74 +7360,72 @@ matrix publishes and renders compact chunks` asserts spans `17..32`, mode-byte p
 split-plane copies for odd spans, selector `0x1003`, object byte `0x10`, full-chunk
 helper `0x2f27c`, `0x1f1ac` remainders `1..15`, the no-remainder span-`32` sibling,
 zero-drain return boundaries, bucket-0 FF publication, `0x1ed84`/`0x1ef6a` dispatch, and
-rows matching the installed bitmap; the same fixture makes high-span probes `33`, `48`,
-`49`, `64`, and `255` high-confidence for upstream metadata and row equivalence.
-High for the width-byte producer boundary because fixture `downloaded glyph
-width-byte boundary truncates page-record span` asserts spans `0x00ff`, every span
-`0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`, the canonical
-installed width words, the one-byte
-source records, the resulting `0x12f2e` selectors, and the render split.
-Source width bytes `0x11..0xff` select compact-wide `0x1f0d2` and now render
-rows matching the installed bitmap; source width bytes `0x00..0x10` select
-compact mode-0 helper entries outside the decoded row-copy helper heads, with exact
-target classes recorded by fixture field `helper_target_class`.
-High for segmented-wide downloaded rendering because
-fixture `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
-asserts spans `17..32`, rows `0x81`, mode-byte parity, split-plane copies for odd spans,
-selector `0x3003`, object byte `0x30`, segment row skip `0x80`, A2/A3 source offsets,
-full-chunk helper `0x2f27c`, `0x1f1ac` remainders `1..15`, the no-remainder span-`32`
-sibling, zero-drain return boundaries, bucket-0/bucket-8 FF publication,
-`0x1ed84`/`0x1ef6a` dispatch, and segment-1 rows matching the installed bitmap; the same
-fixture makes high-span probes `33`, `48`, `49`, and `64` high-confidence for upstream
-metadata and row equivalence. High for segmented-wide row/span cross-products because
-fixture `downloaded segmented-wide row-span cross-products render selected segment`
-asserts row words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`,
-selected segment `1`, zero-drain returns, bucket-8 publication, `0x1f264` dispatch, and
-selected segment rows matching the installed bitmap. High for high-row segmented-wide
+ROM-derived row construction from installed bitmap bytes; the same fixture keeps
+high-span probes `33`, `48`, `49`, `64`, and `255` useful for upstream metadata and
+renderer source-walk documentation. High for the width-byte producer boundary because
+fixture `downloaded glyph width-byte boundary truncates page-record span` asserts spans
+`0x00ff`, every span `0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`, the
+canonical installed width words, the one-byte source records, the resulting `0x12f2e`
+selectors, and the render split. Source width bytes `0x11..0xff` select compact-wide
+`0x1f0d2` and now render rows derived from installed bitmap bytes; source width bytes
+`0x00..0x10` select compact mode-0 helper entries outside the decoded row-copy helper
+heads, with exact target classes recorded by fixture field `helper_target_class`. High
+for segmented-wide downloaded rendering because fixture `downloaded glyph segmented-wide
+matrix publishes and renders compact chunks` asserts spans `17..32`, rows `0x81`,
+mode-byte parity, split-plane copies for odd spans, selector `0x3003`, object byte
+`0x30`, segment row skip `0x80`, A2/A3 source offsets, full-chunk helper `0x2f27c`,
+`0x1f1ac` remainders `1..15`, the no-remainder span-`32` sibling, zero-drain return
+boundaries, bucket-0/bucket-8 FF publication, `0x1ed84`/`0x1ef6a` dispatch, and
+segment-1 rows derived from installed bitmap bytes; the same fixture keeps high-span
+probes `33`, `48`, `49`, and `64` useful for upstream metadata and renderer source-walk
+documentation. High for segmented-wide row/span cross-products because fixture
+`downloaded segmented-wide row-span cross-products render selected segment` asserts row
+words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`, selected
+segment `1`, zero-drain returns, bucket-8 publication, `0x1f264` dispatch, and selected
+segment rows derived from installed bitmap bytes. High for high-row segmented-wide
 fallback at the sampled split-plane, linear, and no-remainder boundaries because
 fixtures `downloaded segmented-wide high-row fallback renders selected segment`,
 `downloaded segmented-wide high-row even-span fallback renders selected segment`, and
 `downloaded segmented-wide high-row span-32 fallback renders selected segment` assert
 row word `0x0181`, spans `17`, `18`, and `32`, selected segment `1`, `0x1f414` split
-`32/96`, and current plus fallback rows matching the installed bitmap. High for the
-neighboring failure boundary because `downloaded segmented-wide high-row span-31
+`32/96`, and current plus fallback rows derived from installed bitmap bytes. High for
+the neighboring failure boundary because `downloaded segmented-wide high-row span-31
 fallback hits source boundary` reaches the same renderer and reports the exact fallback
 A2 source read at `+0xb50`. High for the row-`0x0182` sibling because fixtures
-`downloaded segmented-wide row-0x0182 fallbacks render selected segment` and
-`downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary` assert the
-same selected-segment success/boundary split. High for the row-`0x01ff` sibling because
+`downloaded segmented-wide row-0x0182 fallbacks render selected segment` and `downloaded
+segmented-wide row-0x0182 span-31 fallback hits source boundary` assert the same
+selected-segment success/boundary split. High for the row-`0x01ff` sibling because
 fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
 `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` assert the
-same selected-segment success/boundary split. High for the row-`0x0282`/`0x02ff`
-matrix because fixtures `downloaded segmented-wide high-row 0x02xx matrix renders
-selected segment` and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits
-source boundary` assert the same selected-segment success/boundary split across both row
-words. High for the row-`0x0381`/`0x0382`/`0x03ff` matrix because fixtures
-`downloaded segmented-wide high-row 0x03xx matrix renders selected segment` and
-`downloaded segmented-wide high-row 0x03xx span-31 matrix hits source boundary` assert
-the same success/source-boundary split for the next high-byte range. High for
-the row-`0x0481`/`0x0482`/`0x04ff` matrix below the payload-count cap because fixture
+same selected-segment success/boundary split. High for the row-`0x0282`/`0x02ff` matrix
+because fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected
+segment` and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source
+boundary` assert the same selected-segment success/boundary split across both row words.
+High for the row-`0x0381`/`0x0382`/`0x03ff` matrix because fixtures `downloaded
+segmented-wide high-row 0x03xx matrix renders selected segment` and `downloaded
+segmented-wide high-row 0x03xx span-31 matrix hits source boundary` assert the same
+success/source-boundary split for the next high-byte range. High for the
+row-`0x0481`/`0x0482`/`0x04ff` matrix below the payload-count cap because fixture
 `downloaded segmented-wide high-row 0x04xx matrix renders selected segment` asserts
 selected-segment rendering at spans `17`, `18`, and `24`; high for the oversized
 parser-count boundary because fixture `downloaded segmented-wide high-row 0x04xx
 oversized payload counts stop before renderer` records `parser_stop_offset` and
 `full_payload_end_offset` for spans `31` and `32` before renderer entry. High for the
 row-`0x05xx` and parser-limit matrices because fixtures `downloaded segmented-wide
-high-row 0x05xx matrix renders selected segment` and `downloaded segmented-wide
-high-row parser-limit matrix renders selected segment` assert the same
-selected-segment renderer model through row `0x0787`, while their oversized siblings
-prove the adjacent parser-count cap including `0x0788*17`. High for
-publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
-clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
-`0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
-band words `0..9` through `0x1ef6a` and preserves the same visible row. High for
-the segmented-wide row-byte producer boundary because fixture `downloaded
-segmented-wide row-byte boundary truncates page-record segments` asserts row
-words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`, `0x00ff`,
-`0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201`, the
-one-byte source records, the resulting `0x12f2e` selectors/segments, the
-`0x1f0d2` render boundary for low row bytes `0x00..0x80`, and the produced
-`0x1f264` segment-boundary records for low row bytes above `0x80`. High for
+high-row 0x05xx matrix renders selected segment` and `downloaded segmented-wide high-row
+parser-limit matrix renders selected segment` assert the same selected-segment renderer
+model through row `0x0787`, while their oversized siblings prove the adjacent
+parser-count cap including `0x0788*17`. High for publication-to-scheduler band
+progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`, `0x1ed84`
+copies that word into render `+0x10/+0x16`, and fixture `0x1eba4 scheduler band words
+render published downloaded glyph` proves `0x1eba4` emits band words `0..9` through
+`0x1ef6a` and preserves the same visible row. High for the segmented-wide row-byte
+producer boundary because fixture `downloaded segmented-wide row-byte boundary truncates
+page-record segments` asserts row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
+`0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`,
+`0x0200`, and `0x0201`, the one-byte source records, the resulting `0x12f2e`
+selectors/segments, the `0x1f0d2` render boundary for low row bytes `0x00..0x80`, and
+the produced `0x1f264` segment-boundary records for low row bytes above `0x80`. High for
 downloaded-glyph/rule/raster render composition because fixture `host-fetched downloaded
 glyph composes with rule and raster through 0x1ef6a` asserts the `ESC )s18W` install
 fields, bucket-5 glyph/raster objects, bridged selector-7 rule object, `0x1ef6a` call

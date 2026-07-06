@@ -1340,7 +1340,7 @@ reuses the host-fetched `ESC )s258W` install for glyph `0x27`: table entry
 mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c` in bucket `9`.
 Render entry `0x1ed84`/`0x1ef6a` for bucket word `9` dispatches the raster
 object to `0x1f88e`, then dispatches the segment-1 downloaded glyph object to
-`0x1effe` / `0x1f1f0`, and compares the seven composed rows with digest
+`0x1effe` / `0x1f1f0`, and records the seven ROM-derived composed rows with digest
 `0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`. This
 closes the segmented-glyph plus raster composition edge; selector-7 rule
 composition remains covered by the even-span wide fixture and by separate
@@ -1357,7 +1357,7 @@ byte `aa`. `0x12f2e` queues selector `0x2003` segment objects in bucket `9`
 mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c` in bucket `9`.
 Render entry `0x1ed84`/`0x1ef6a` for bucket word `9` dispatches the raster
 object to `0x1f88e`, then dispatches the split-plane segment-1 glyph object to
-`0x1effe` / `0x1f1f0`, and compares the seven composed rows with digest
+`0x1effe` / `0x1f1f0`, and records the seven ROM-derived composed rows with digest
 `a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
 
 Fixture `segmented downloaded glyph raster FF publications render page records`
@@ -2637,7 +2637,7 @@ final `0x1fe76`/`0x1f1f0` rows. High for the modeled
 published-record multi-bucket render because fixture
 `published downloaded glyph segmented buckets render across bands` walks
 bucket words `1` and `9`, proves the `0x1effe` dispatch for both compact
-objects, and compares the page rows. High for publication-to-scheduler band
+objects, and records the ROM-derived page rows. High for publication-to-scheduler band
 progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`,
 `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves
@@ -2872,23 +2872,23 @@ A byte-stream renderer must preserve:
   `host-fetched even-span downloaded glyph FF publishes
   rendered page record` renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a`
   and compact target `0x1effe`/`0x1f0d2`. Fixture `downloaded glyph segmented-wide
-  matrix publishes and renders compact chunks` publishes bucket-array entries `0` and
-  `8` for matched spans `17..32` with rows `0x81`, renders bucket word `8`, dispatches
-  object byte `0x30` to compact target `0x1effe`/`0x1f264`, and compares segment-1 rows
-  against the installed bitmap; the same fixture probes spans `33`, `48`, `49`, and
-  `64` with matching row comparisons. Fixture `host-fetched payload-control
-  downloaded glyph FF publishes page record` covers the odd-span wide sibling:
-  host-fetched `ESC )s18W` normalizes one `1a 58` payload escape through the font
-  payload reader, stores mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`,
-  leaves `0x783140 = 1`, drains following byte `&` through `0x12328`, and leaves FF for
-  handler `0xf0f0`. Its modeled page-record publication publishes bucket `1` and
-  renders the installed object through `0x1ed84`/`0x1ef6a` and compact target
-  `0x1effe`/`0x1f0d2`. Fixture `published downloaded glyph segmented buckets render
-  across bands` renders published bucket words `1` and `9` from the copied record.
-  Fixture `0x1eba4 scheduler band words render published downloaded glyph` proves
-  `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16` from cleared source `+0x18 = 0`,
-  then `0x1eba4` advances through band words `0..9` until the published bucket-9 row is
-  visible. The earlier first-band seed edge is now closed for this published record.
+matrix publishes and renders compact chunks` publishes bucket-array entries `0` and `8`
+for matched spans `17..32` with rows `0x81`, renders bucket word `8`, dispatches object
+byte `0x30` to compact target `0x1effe`/`0x1f264`, and records segment-1 rows derived
+from installed bitmap bytes; the same fixture probes spans `33`, `48`, `49`, and `64`
+with the same ROM-derived row construction. Fixture `host-fetched payload-control
+downloaded glyph FF publishes page record` covers the odd-span wide sibling:
+host-fetched `ESC )s18W` normalizes one `1a 58` payload escape through the font payload
+reader, stores mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, leaves
+`0x783140 = 1`, drains following byte `&` through `0x12328`, and leaves FF for handler
+`0xf0f0`. Its modeled page-record publication publishes bucket `1` and renders the
+installed object through `0x1ed84`/`0x1ef6a` and compact target `0x1effe`/`0x1f0d2`.
+Fixture `published downloaded glyph segmented buckets render across bands` renders
+published bucket words `1` and `9` from the copied record. Fixture `0x1eba4 scheduler
+band words render published downloaded glyph` proves `0xff1e`/`0x1ed84` seed render work
+`+0x10/+0x16` from cleared source `+0x18 = 0`, then `0x1eba4` advances through band
+words `0..9` until the published bucket-9 row is visible. The earlier first-band seed
+edge is now closed for this published record.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

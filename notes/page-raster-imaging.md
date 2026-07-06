@@ -2540,7 +2540,7 @@ installs glyph `0x29` from `ESC )s18W`, queues it at x `22`, y `80` as bucket
 `00 00 00 00 80 00 00 02 00 00 c3 3c`. The `0x1ed84`/`0x1ef6a` render entry
 dispatches the raster chain item to `0x1f88e`, the downloaded glyph chain item
 to `0x1effe`/`0x1f0d2`, renders the bridged rule through selector helper
-`0x1f596`, and compares the final three composed rows. The remaining
+`0x1f596`, and records the final three ROM-derived composed rows. The remaining
 middle edge has now been narrowed by fixture `parser-driven downloaded glyph
 rule raster stream composes through 0x1ef6a`: after the same fetched
 `ESC )s18W` font-install bytes, page bytes

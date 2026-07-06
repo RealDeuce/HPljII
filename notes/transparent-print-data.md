@@ -83,6 +83,16 @@ Firmware bookkeeping:
 - local stack word at `A6-2`: the control-byte filtering word selected before
   the payload loop.
 
+Hardware/external state:
+
+- Secondary segmented high-control fallback rows can require firmware reads
+  beyond the verified resource-pair image. The exact boundary is
+  `0x0c0000..0x0c0321`, reached by the `SO ESC &p3X ! 80 !` path after the
+  compact renderer resolves glyph `0x5f`, segment `0x39`, and firmware source
+  range `0x0bfe22..0x0c0321`. Bytes `0x0bfe22..0x0bffff` are verified in the
+  `IC32,IC15` pair; bytes from `0x0c0000` onward require board/emulator
+  memory-map evidence.
+
 Unknown:
 
 - Manual-facing names for the context byte at `0x782eea + 0x10 * slot`, the
@@ -520,8 +530,12 @@ Field groups:
 - Parser scratch: delayed fields `0x782a1a`, `0x782a1c`, and
   `0x782a20..0x782a25`.
 - Firmware bookkeeping: local filtering word at `A6-2`.
+- Hardware/external state: secondary segment-57 fallback rows require
+  resource-window bytes from `0x0c0000..0x0c0321` after the verified resource
+  suffix `0x0bfe22..0x0bffff`.
 - Unknown: manual-facing names for the filtering/context bytes remain
-  provisional.
+  provisional; no ROM-local parser, payload, page-record, bridge, or compact
+  renderer edge is unknown for the covered primary transparent-data streams.
 
 Writers:
 

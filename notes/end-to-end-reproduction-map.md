@@ -1187,6 +1187,27 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   path. Publication and rendering are unchanged:
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe -> 0x1f354`, with
   `0x1edc6` copying page-root context slots into render-record context slots.
+  Common refresh `0xc580` is the branch gate between parsed request state and
+  page-root context state. Its checked-in fixture cluster covers dirty-1
+  primary and secondary installs, full live-slot reuse of a matching context,
+  full live-slot no-match skip when `0xc4fc` returns `0x11`,
+  selector-mismatch refresh without context install, dirty-2 selector-match
+  install through `0xc428`, and dirty-2 selector-mismatch remembered-word-only
+  behavior. Those cases classify the state roles: canonical current contexts
+  `0x782ee6` / `0x782ef6`, active symbol words `0x783144` / `0x783146`,
+  remembered words `0x782f08` / `0x782f0a`, page-root context slots, and
+  selected slot `0x78297e`; derived/cache selected candidate and map state
+  from `0x13eb8` / `0x14c64`; parser scratch dirty flags
+  `0x782f2c` / `0x782f2d`; and firmware bookkeeping in the `0xc4fc` slot scan
+  and live-font flags. Evidence fixtures are `0xc580 dirty primary branch
+  installs page-root font context`, `0xc580 dirty secondary branch installs
+  page-root font context`, `0xc580 full live-slot branch reuses matching
+  page-root font context`, `0xc580 full live-slot branch skips install when
+  c4fc reports full`, `0xc580 selector-mismatch branch refreshes candidate
+  without context install`, `0xc580 dirty-2 selector-match branch installs
+  current context only`, `0xc580 dirty-2 secondary selector-match branch
+  installs current context only`, and `0xc580 dirty-2 selector-mismatch branch
+  only copies remembered word`.
   Canonical state is selected slot `0x782f06`, primary/secondary contexts
   `0x782ee6` / `0x782ef6`, maps `0x782f32` / `0x783032`, active and remembered
   symbol words `0x783144` / `0x783146` and `0x782f08` / `0x782f0a`,
@@ -1198,11 +1219,13 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   `0x782f2e`, default-symbol tables, compact coordinates, and glyph-entry
   pointers. Parser scratch is the setup records from `0x1201e` / `0x12008`,
   mode-13 command records, dirty flags while refresh is pending, and following
-  printable bytes. Remaining font-selection work is variant breadth that
-  changes selected contexts, map bytes, compact object shape, bridge state, or
-  physical output; no ROM-local middle edge remains for the listed primary,
-  secondary, symbol fallback, default-symbol, font-ID, and SI/SO handoff
-  streams.
+  printable bytes. No ROM-local middle edge remains for the listed primary,
+  secondary, symbol fallback, remembered-symbol, non-Roman, default-symbol,
+  font-ID success/non-selected, common-refresh, and SI/SO handoff streams.
+  Remaining font-selection work starts only from command combinations that
+  change selected contexts, map bytes, page-root slot behavior, compact object
+  shape, bridge state, or rendered rows; physical page comparison remains
+  separate.
 - Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
   alternate/data blank C0 append-preserving rows. Evidence:
   `Worked Path: Explicit No-Output Parser Rows` in

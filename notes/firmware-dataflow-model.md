@@ -888,6 +888,17 @@ Alternate/data-mode contrast:
 - The alternate pointer table at `0x116f6` keeps enough syntax to collect
   command records and stop macro definitions, but many normal side effects
   are suppressed.
+- Immediate page-state commands mostly have blank alternate/data handlers:
+  cursor/layout controls, selected-font update terminals, rectangle setters,
+  raster-control setters, and dot-position commands parse without mutating
+  their normal canonical fields. Lowercase chaining finals mostly reach
+  `0x11f4c`, which rewinds `0x78299e` so command-family syntax can continue.
+- Payload/storage commands remain active where stored input needs exact bytes:
+  `ESC &p#X` / `x`, `ESC &l#W` / `w`, `ESC *b#W` / `w`,
+  `ESC (s#W` / `w`, `ESC )s#W` / `w`, and macro control
+  `ESC &f#X` / `x`.
+- `ESC E` still reaches reset handler `0xcc52`; alternate/data mode does not
+  shield parser or page state from an explicit reset command.
 - `0x12218` still restores delayed state in alternate/data mode. When the
   saved handler reaches alternate payload wrapper `0x12358`, positive counts
   are consumed through `0xdace` and appended through `0xe002` instead of

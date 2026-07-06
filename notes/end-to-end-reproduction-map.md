@@ -166,10 +166,15 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
   and do not allocate a page root, queue a page object, publish a record, or
   schedule render work. Alternate/data blank C0 rows `0x00` and `0x07..0x0f`
   append through `0xe002` before the same terminal reset path instead of
-  running normal BS/HT/LF/FF/CR/SO/SI handlers. Related parser artifacts are
-  bounded separately: `ESC ?` is consumed in wrapper `0xda9a`, `ESC Z`
-  terminates the direct display-functions reader, and `ESC &lT/t` has no
-  standalone page-output effect.
+  running normal BS/HT/LF/FF/CR/SO/SI handlers. The alternate/data table is
+  not a blanket ignore: most immediate page-state commands have blank
+  handlers or lowercase `0x11f4c` rewind entries, while payload/storage
+  families such as transparent data, VFC table payloads, raster rows,
+  downloaded-font payloads, and macro control still execute so macro/data
+  bytes remain reproducible. `ESC E` still reaches reset handler `0xcc52`.
+  Related parser artifacts are bounded separately: `ESC ?` is consumed in
+  wrapper `0xda9a`, `ESC Z` terminates the direct display-functions reader,
+  and `ESC &lT/t` has no standalone page-output effect.
 - Transparent print data:
   ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
   plus disassembly

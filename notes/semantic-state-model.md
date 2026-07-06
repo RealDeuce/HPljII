@@ -1220,6 +1220,16 @@ payload consumption.
   `0x11930..0x11ab8` stores the byte in scratch, flushes command and numeric
   scratch through `0x123ae` and `0x123de`, appends the matched byte through
   `0xe002`, then rejoins the `0x12218` terminal reset boundary.
+- In alternate/data mode, most direct page/text controls and uppercase family
+  terminals have blank handlers in table `0x116f6`; they preserve parser
+  syntax but do not run the normal cursor, geometry, selected-font, rectangle,
+  raster-control, or dot-position handlers. The exceptions that still execute
+  are payload/storage families whose bytes must be retained:
+  `ESC &p#X` / `x`, `ESC &l#W` / `w`, `ESC *b#W` / `w`,
+  `ESC (s#W` / `w`, `ESC )s#W` / `w`, and macro control `ESC &f#X` / `x`.
+  Lowercase chaining finals mostly route to rewind helper `0x11f4c` instead
+  of the normal command handler, while `ESC E` still reaches reset handler
+  `0xcc52`.
 - `0x11ba6` consumes one extra host byte through `0xda9a` for incoming
   `0x21..0x2f` punctuation-prefixed commands, echoes it through `0x9ec0`,
   then tokenizes at `0x11bdc` unless it is space.
@@ -1261,6 +1271,11 @@ that reset: the current byte is emitted through `0xe002` after scratch helpers
 `0x123ae` and `0x123de`. A reimplementation must therefore preserve those
 bytes in macro/data-chain collection while still suppressing the normal
 mode-zero control handlers.
+The same policy applies to parsed command families in table `0x116f6`:
+blank alternate/data rows suppress immediate page-state changes, `0x11f4c`
+preserves lowercase family continuation by rewinding `0x78299e`, and the
+storage/payload exceptions above keep macro/data-chain contents reproducible
+without drawing pixels at parse time.
 
 Fixture `0x11774 ROM dispatch table routes raster stream to delayed transfer`
 proves the parser reaches `0x11f82` and stores the delayed raster transfer

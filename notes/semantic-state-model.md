@@ -11721,9 +11721,29 @@ ownership, not a separate renderer.
   - none newly assigned in this allocator cluster. Parser scratch enters
     through upstream command records such as the raster delayed record
     documented in the mixed text/rule/raster section.
+- Firmware bookkeeping:
+  - `0x780eaa`: scheduler cursor for the published page/control record
+    selected for active rendering. The active-render scheduler checkpoint
+    documents its pool-base initialization, candidate selection, and cursor
+    advancement through `0x3144`, `0x7ec6`, and `0x7722`.
+  - `0x780eae`: active source record copied from `0x780eaa` at `0x1eb46`
+    and consumed by `0x1ed84`.
+  - `0x7820bc` and `0x7820c0`: render-work selectors used by
+    `0x1ecd6` and `0x1eba4` to choose the active and paired work records.
+  - `0x783a18`: active render-work pointer stored by `0x1ecd6` and read
+    by `0x1ef6a`.
+  Evidence: fixtures `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler
+  cursor`, `0x1eb2a/0x1ecd6 selects published record for render entry`,
+  `0x1ecd6 same-geometry render work reuse reaches render entry`, and
+  `0x1eba4/0x1ef6a active render loop advances or yields bands`, plus
+  disassembly
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`.
 - Unknown:
-  - exact live scheduler handoff from a published pool record to the active
-    render record.
+  - no remaining unknown page-object field is assigned in this allocator
+    cluster. The published-record-to-active-render handoff is scheduler
+    bookkeeping, not page-object state, and is documented in `Published Record
+    To Active Render Scheduler`. The remaining boundary is physical
+    engine/MMIO pacing that wakes or stalls the modeled scheduler branches.
 
 ### Writers
 

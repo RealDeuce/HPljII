@@ -241,6 +241,123 @@ that belongs to the next page or environment:
   `0x782da4`. It does not publish by itself; the following FF publication
   copies that word into root `+0x0c` at `0x10052`.
 
+### Page Size Handler Details
+
+`ESC &l#A` enters `0xfc74` with the parsed six-byte parameter record still in
+the parser buffer. The handler does not interpret the host stream directly; it
+rewinds `0x78299e` by six bytes at `0xfc82..0xfc8a`, reads parameter word
+`+2`, sign-extends it, and converts negative values to their absolute value at
+`0xfc90..0xfc9e`.
+
+The command record byte at `(A4)` selects the default-page branch. When it is
+zero, `0xfca0..0xfce6` flushes pending text through `0xf34a`, publishes the
+current root through `0xff1e`, services status with `0x9ac2`, then compares
+current environment byte `0x782da6` with output byte `0x780e8e`. If they differ,
+it copies `0x782da6` to `0x780e8f` and signals control byte `0x780e26` through
+`0x9b5e(0x780e26, 1)`. The default page code then comes from `0x780e97`; zero
+falls back to page code `2` at `0xfcf4..0xfd02`.
+
+The explicit selector ladder at `0xfce8..0xfd68` accepts these parameter to
+page-code mappings:
+
+- `1 -> 6`
+- `2 -> 2`
+- `3 -> 5`
+- `0x1a -> 1`
+- `0x50 -> 0x88`
+- `0x51 -> 0x87`
+- `0x5a -> 0x89`
+- `0x5b -> 0x8a`
+
+Any other explicit selector branches to the common return at `0xfe4c` without
+rewriting geometry. Accepted explicit selectors call `0xf34a` and `0xff1e` at
+`0xfd68..0xfd6e` before changing the page-size state for following output.
+
+The geometry commit starts at `0xfd74`. It sets pending layout byte
+`0x782997 = 1`, brackets a clear of `0x780e99` with `0x15a6` / `0x15ac`,
+writes active page code `0x782da2 = D5`, then calls `0xf9ac` to refresh the
+default page length. `0xfd98..0xfdf4` derives geometry words through ROM table
+helpers: `0x9d4e` writes `0x782db2`, `0x9d16` writes `0x782db4`, the raster
+origin fields rooted at `0x783170` are cleared, the row-byte limit at
+`0x783180` is recomputed with `0x3324a`, `0x9e56` writes `0x782dc0`, and
+`0xf87e` refreshes related layout state.
+
+The final layout refresh at `0xfdfe..0xfe32` writes top offset
+`0x782dce = 0x96 - 0x782dbe`, clears `0x782dd0`, and calls `0xea16`,
+`0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`. The return path at
+`0xfe38..0xfe52` clears macro/page state byte `0x782a92` unless it already
+equals `2`.
+
+### Orientation Handler Details
+
+`ESC &l#O` enters `0x10220`. `0x10228..0x10244` rewinds the parser record by
+six bytes, reads word `+2`, sign-extends it, and converts negative values to
+their absolute value. `0x10246..0x1025a` rejects selectors `>= 2` and rejects
+the command if the selector equals current orientation byte `0x782da3`.
+
+For an accepted change, `0x1025c..0x10266` flushes pending text, publishes the
+current page root, and writes the new orientation to `0x782da3`. The first
+geometry pass at `0x1026c..0x10296` calls `0xf9ac` and `0xf87e`, recomputes
+`0x782dce = 0x96 - 0x782dbe`, clears `0x782dd0`, and calls `0xea16` and
+`0xe9ba`.
+
+`0x1029c..0x10314` rebuilds VMI fixed-point state in `0x783160` from line-count
+word `0x78219e`. The handler calls `0xcfea` to convert the word into a working
+value. Values below `5` are clamped by calling `0xcf52(5)`, values above
+`0x80` are clamped by calling `0xcf52(0x80)`, and in-range values use
+`0x78219e` directly. All three paths pass the chosen value through `0x104d8`
+before writing `0x783160`.
+
+`0x10314..0x10330` refreshes cursor and form state through `0xf8fc`, `0xfe54`,
+`0x12b96`, and threshold helper `0x103ea`, then calls `0x13eb8` for font
+contexts `0` and `1`. The threshold helper at `0x103ea..0x10488` writes
+`0x782daa`, `0x782dae`, `0x782dac`, and `0x782db0`, using portrait lookup
+helper `0x9dbe` when `0x782da3 == 0` and landscape lookup helper `0x9d86`
+otherwise.
+
+The active font-context refresh starts at `0x1033c`. The selected context is
+`0x782ee6 + 16 * 0x782f06`. If context byte `+4` is zero, `0x10360..0x1038a`
+uses the fixed-record form: it copies font byte `+0x19` to `0x78318e` and
+computes HMI `0x78315c` from `0x57e40 / word(+0x1a)` through `0x3324a` and
+`0x104d8`. If context byte `+4` is nonzero, `0x1038c..0x103a2` uses the
+offset-table form: it copies byte `+0x21` to `0x78318e`, reads pointer `+0x24`,
+calls `0x10550`, and writes the resulting HMI to `0x78315c`.
+
+`0x103a8..0x103e6` copies current font metric words `0x783144` and `0x783146`
+to `0x782f08` and `0x782f0a`. If span byte `0x783184` is set, it clears that
+byte and calls `0x126e2`. Like the page-size handler, the final return path
+clears `0x782a92` unless it already equals `2`.
+
+### Paper Source And Copies Details
+
+`ESC &l#H` enters `0xef62`. `0xef6a..0xef8e` saves current source byte
+`0x782da6` in `D5`, rewinds the parser record by six bytes, reads word `+2`,
+sign-extends it, and converts negative selectors to absolute values.
+`0xef90..0xefa8` flushes text, publishes the current root, refreshes cursor
+state through `0xf8fc`, then dispatches through the ROM table at `0xef3a` with
+helper `0x33298`.
+
+The table routes selector `0` to `0xefae`, selector `1` to `0xefb6`, selector
+`2` to `0xefe8`, selector `3` to `0xeff0`, and all other values to `0xeff8`.
+The selector-zero path only services status through `0x9ac2` and returns.
+Selector `1` sets `D5 = 0` and `0x782990 = 1`; selector `2` sets `D5 = 0x80`;
+selector `3` sets `D5 = 0x90`; the default path loads `D5` from default source
+byte `0x7821a2` and sets `0x782990 = 1`.
+
+The common paper-source output path starts at `0xefc0`. It calls `0x9b1e`; if
+that helper returns `D7 == 1`, `0xefce..0xefe4` copies `D5` to output byte
+`0x780e8f` and signals control byte `0x780e26` through
+`0x9b5e(0x780e26, 1)`. `0xf00a..0xf01c` protects the canonical write with
+`0x15a6` / `0x15ac`, writes `0x782da6 = D5`, and sets pending publication byte
+`0x782998 = 1`.
+
+`ESC &l#X` enters `0xeef0`. `0xeef8..0xef14` rewinds the parser record by six
+bytes, reads word `+2`, sign-extends it, and converts negative counts to their
+absolute value. `0xef16..0xef32` clamps counts above `99` to `99`, ignores
+zero, and writes nonzero in-range counts to `0x782da4`. The handler returns at
+`0xef32..0xef38` without publishing; `0xff1e` later copies `0x782da4` into the
+published page-root header word `+0x0c`.
+
 ## Writers
 
 - `0xd04a` queues the printable `!` compact text object before each

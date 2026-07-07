@@ -404,8 +404,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
 - Direct controls and cursor state:
   ROM evidence includes `0xf02c`, `0xf06e`, `0xf34a`, cursor handlers
   `0xf39e` / `0xf416` / `0xf48c` / `0xf560` / `0xf60a` / `0xf692`, page
-  length handler `0xf9e8`, wrap handler `0xedb0`, and perforation-skip handler
-  `0xee64`.
+  length handler `0xf9e8`, VMI/LPI handlers `0xcb00` / `0xc992`,
+  top-margin/text-length handlers `0xece2` / `0xea9e`, wrap handler
+  `0xedb0`, and perforation-skip handler `0xee64`.
   Reproduction evidence is `Text Cursor And Direct Controls` in
   `notes/semantic-state-model.md`, surfaced first as
   `Worked Path: Mixed Direct Controls` and
@@ -413,11 +414,14 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   [firmware-dataflow-model.md](firmware-dataflow-model.md), plus host-fetched
   direct-control fixtures. Layout-control evidence is surfaced first as
   `Worked Path: Page Length, Wrap, And Perforation Controls`: `ESC &l#P`
-  writes page extent `0x782dba`, `ESC &s#C` writes end-of-line wrap flag
+  writes page extent `0x782dba`, `ESC &l#C/#D` writes line advance
+  `0x783160`, `ESC &l#E` writes top offset `0x782dce`, `ESC &l#F` writes
+  bottom/text-length state, `ESC &s#C` writes end-of-line wrap flag
   `0x783190`, and `ESC &l#L` writes perforation-skip byte `0x783191`.
   Those commands normally do not draw immediately; their visible effect is
-  through later printable prechecks `0xd28a` / `0xd6bc`, vertical overflow
-  helper `0xf36c`, or the following printable path `0xd04a -> 0x12f2e`.
+  through later LF/FF and cursor helpers, printable prechecks `0xd28a` /
+  `0xd6bc`, VFC, vertical overflow helper `0xf36c`, or the following
+  printable path `0xd04a -> 0x12f2e`.
 - Text source object creation:
   ROM evidence is `0xd3b2`, `0xd824`, `0x12f2e`, and `0x1387c`.
   Reproduction evidence is `Text Source Objects And Compact Buckets` in
@@ -1287,18 +1291,26 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0xff1e`, crosses `0x1ed84` / `0x1edc6`, and renders through `0x1ef6a`.
   Direct-control variants share the same canonical placement fields:
   horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, margins
-  `0x782dd6` / `0x782dda`, HMI `0x78315c`, VMI `0x783160`, wrap byte
-  `0x783190`, and perforation-skip byte `0x783191`. `ESC 9` handler `0xe9ba`
-  clears margins before later CR/text consumes them; `ESC =` handler `0xf176`
-  advances by half VMI before later text; `ESC &d` handler `0x12622` writes
-  underline selector `0x783185` and can flush selector-`0x4000` span objects
-  through `0x12714`, which later render through segment-list path `0x1f812`.
+  `0x782dd6` / `0x782dda`, HMI `0x78315c`, VMI `0x783160`, top offset
+  `0x782dce`, bottom/text-length state `0x782dd2`,
+  wrap byte `0x783190`, and perforation-skip byte `0x783191`. `ESC 9`
+  handler `0xe9ba` clears margins before later CR/text consumes them;
+  `ESC =` handler `0xf176` advances by half VMI before later text;
+  `ESC &d` handler `0x12622` writes underline selector `0x783185` and can
+  flush selector-`0x4000` span objects through `0x12714`, which later render
+  through segment-list path `0x1f812`.
 - Layout-control streams are covered where command bytes alter later visible
   output without drawing immediately. Evidence:
   `Worked Path: Page Length, Wrap, And Perforation Controls` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md),
   [direct-control-codes.md](direct-control-codes.md), fixtures
   `0xf9e8 ESC &l#P stream reaches page-length handler`,
+  `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical
+  cursor`, `0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified`,
+  `0xea9e ESC &l#F sets text length bottom or restores default`,
+  `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`,
+  `0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
+  handlers`, `vertical layout parser trace feeds page-record queue`,
   `mixed page-length stream refreshes cursor before printable page-record
   queue`, `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1
   only`, `0xd28a and 0xd6bc prechecks share continue reject and wrap
@@ -1618,12 +1630,12 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Confidence is high for table lookups, page-size/orientation state writes,
   publication-before-mutation ordering, nonzero and zero page-length branches,
   and following printable placement because the cited fixtures cover both
-  handler-level state and rendered rows.
+  handler-level state and ROM-derived row construction.
   No unresolved ROM-local middle edge remains for the documented
-  `ESC &l#A`, `ESC &l#O`, `ESC &l66P`, or `ESC &l0P` paths. Remaining work is
-  broader geometry cross-products that expose new consumer behavior; physical
-  output, if captured, would be optional correlation outside the ROM render
-  buffer.
+  `ESC &l#A`, `ESC &l#O`, `ESC &l66P`, `ESC &l0P`, `ESC &l#C/#D`,
+  `ESC &l#E`, or `ESC &l#F` paths. Remaining work is broader geometry
+  cross-products that expose new consumer behavior; physical output, if
+  captured, would be optional correlation outside the ROM render buffer.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:

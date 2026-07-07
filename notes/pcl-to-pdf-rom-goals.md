@@ -273,9 +273,12 @@ Current milestone status:
   end-to-end map remains an evidence/coverage companion rather than the
   controlling explanation.
 - Behavioral fixtures now cover the major parser-to-render command families
-  named above. Remaining fixture work should target new byte-stream variants
-  that expose different ROM state or broader cross-product validation, not
-  first discovery of the main byte-to-pixel path.
+  named above as regression checks for ROM-derived interpretations. Remaining
+  work is documentation first: trace the disassembly edges, field writes,
+  page-object forms, bridge state, and row-construction helpers for any new
+  byte-stream variant that changes ROM state. Fixtures may drive those variants
+  or check internal consistency, but they are not a rendered-row oracle and do
+  not replace the explanatory trace.
 
 ## Documentation Status
 

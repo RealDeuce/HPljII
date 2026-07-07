@@ -568,7 +568,7 @@ Field classification:
   accepted count or drain result at `0x105d0`, allocator pre-state
   `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, copy-stop byte
   `0x782996`, packed-key advance through `0x332ee`, bridge bucket roots, or
-  mode-specific `0x1f88e` row construction beyond the static split cases
+  mode-specific `0x1f88e` row-construction paths beyond the static split cases
   above.
 
 Evidence and confidence:
@@ -591,7 +591,7 @@ Evidence and confidence:
   branch reachability. Broader dense-row documentation remains open only where
   tracing a new byte stream changes accepted count or drain result, allocator
   pre-state, split capacity, copy-stop behavior, packed-key advance, bridge
-  bucket root, or `0x1f88e` mode-specific row construction.
+  bucket root, or the `0x1f88e` mode-specific row-construction path.
 
 ## Render Dispatch
 
@@ -789,12 +789,13 @@ A byte-stream reproduction must preserve these behaviors:
 - Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
   `0x132b6` should target new byte streams that change the raster chain,
   encoded object bytes, allocator state, bridge bucket roots, copy-stop byte
-  `0x782996`, packed-key advance, or mode-specific `0x1f88e` rows. Canonical
-  output state is documented as the page-root `+0x1c` raster chain and object
-  bytes written by `0x13070`/`0x13250`; derived/cache state is the bucket/key and
-  render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed
-  `80 57 ...` command record, snapshot, payload offset, and drained payload
-  bytes; firmware bookkeeping is the modeled allocation result and
+  `0x782996`, packed-key advance, or mode-specific `0x1f88e`
+  row-construction paths. Canonical output state is documented as the page-root
+  `+0x1c` raster chain and object bytes written by `0x13070`/`0x13250`;
+  derived/cache state is the bucket/key and render-record copy used by
+  `0x1ed84`/`0x1ef6a`; parser scratch is the delayed `80 57 ...` command
+  record, snapshot, payload offset, and drained payload bytes; firmware
+  bookkeeping is the modeled allocation result and
   stream-storage cursor.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
   text/rule/raster publication fixture. The allocator result is a modeled

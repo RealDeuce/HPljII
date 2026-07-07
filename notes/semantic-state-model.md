@@ -9242,7 +9242,7 @@ encoded object fields, bridge fields, or rendered rows.
   `0x782a72` / `0x782a76` / `0x782a80`, encoded object bytes
   `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte
   `0x782996`, packed-key advance through `0x332ee`, or mode-specific
-  `0x1f88e` rows.
+  `0x1f88e` row-construction paths.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as
@@ -9250,7 +9250,7 @@ encoded object fields, bridge fields, or rendered rows.
   layout, addressed storage, or the dense split branch rules; it is
   parser-produced stream variants that change chunk rollover pre-state, early
   payload stop when `0x782996` flips during `0x138de`, packed-key advance, or
-  rendered rows.
+  the ROM-derived row-construction path.
 
 ## Rectangle Rule Producer And Renderer
 

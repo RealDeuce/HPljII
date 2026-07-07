@@ -1732,15 +1732,15 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   root boundary, encoded object layout, bridge preservation, mode helpers,
   active-resolution behavior, lowercase `*b` chaining, dense
   capped-new-chunk/current-tail allocation through `0x132b6..0x13382`, and
-  rendered rows for the cited streams. No unresolved ROM-local raster object,
-  bridge, or render edge remains for the documented paths. Remaining work is
-  new byte streams that expose different `0x105d8..0x10752`,
+  ROM-derived row construction for the cited streams. No unresolved ROM-local
+  raster object, bridge, or render edge remains for the documented paths.
+  Remaining work is new byte streams that expose different `0x105d8..0x10752`,
   `0x10084..0x10218`, `0x13070..0x13250`, or `0x132b6..0x13382` gate outcomes,
   accepted counts or drains, allocator state `0x782a70/0x782a72/0x782a76`,
   split capacity `0x782a80`, encoded object bytes
   `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte
   `0x782996`, packed-key advance through `0x332ee`, or mode-specific
-  `0x1f88e` rows.
+  `0x1f88e` row-construction paths.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule

@@ -7145,7 +7145,7 @@ Current top-level boundaries include:
   `0x0788*17` require `0x7ff8` bytes and stop at the recorded parser payload
   offset before installed glyph publication or render dispatch.
 - ROM-local variant boundaries rather than generic gaps:
-  parser-fed raster streams that change the documented `0x132b6..0x13382`
+  raster byte streams that change the documented `0x132b6..0x13382`
   current-tail or capped-new-chunk object-chain derivation; dense page/object
   streams that change `0x1381c` rollover, `0x133aa` / `0x136d2` list ordering,
   or bridge fields; macro overlay payloads that change replay-frame fields,

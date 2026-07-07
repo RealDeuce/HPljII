@@ -608,26 +608,36 @@ record bucket object. The bridge and renderer consume it later:
 6. `0x1f88e` selects an expansion helper from table `0x1f8ca` using
    `object[5] & 0x03`.
 
-Encoded raster modes:
+The disassembly contract for `0x1f88e..0x1fa5a` is:
 
-- Mode `0`, target `0x1f8da`:
-  copy literal payload words.
-- Mode `1`, target `0x1f8e6`:
-  expand each byte through word table `0x30914` into two current/fallback
-  rows.
-- Mode `2`, targets `0x1f920` and shared loop `0x1f9a0`:
-  expand even and odd payload bytes through long table `0x30b14` into three
-  current/fallback rows.
-- Mode `3`, target `0x1f9c6`:
-  expand each byte through two levels of `0x30914` into four current/fallback
-  rows.
+- Shared entry `0x1f88e` receives `A1` at object byte `+4`, advances `A2` to
+  byte `+5`, masks `object[5] & 3` into mode `D4`, reads object word `+6` as
+  byte count `D5`, sets scaled row count `D3 = mode + 1`, reads object word
+  `+8` as packed coordinate `D1`, calls `0x1f3d4`, preserves the byte-pair
+  fallback offset in `A3`, calls split helper `0x1f414`, then dispatches
+  through table `0x1f8ca`.
+- Mode `0`, target `0x1f8da`, copies literal words from payload cursor `A2` to
+  destination `A1`, subtracting two from the remaining count. There is no
+  separate odd-byte tail in this helper.
+- Mode `1`, target `0x1f8e6`, expands each payload byte through word table
+  `0x30914` and stores the same word to the current row and one adjacent row.
+  The adjacent row is `A1 + 0x783a1c` when both rows fit the current band, or
+  `0x7810b4 + A3` when `0x1f414` reports a fallback row.
+- Mode `2`, target `0x1f920` with shared loop `0x1f9a0`, expands even and odd
+  payload bytes through longword table `0x30b14`. The high word of split `D3`
+  selects which of three row pointers stay in the current band and which start
+  at `0x7810b4 + A3`. The second pass rewrites `$a001` with adjusted phase
+  before processing odd-indexed payload bytes.
+- Mode `3`, target `0x1f9c6`, expands each payload byte through `0x30914`
+  twice to form one longword, then writes that longword to four row pointers.
+  The split high word again selects current-band rows versus fallback rows
+  rooted at `0x7810b4 + A3`.
 
-The exact row-pointer and payload-consumption contract for these helpers is in
-[page-raster-imaging.md](page-raster-imaging.md#encoded-raster-span-mode-behavior):
-`0x1f88e` parses object byte `+5`, word `+6`, word `+8`, and payload
-`+0x0a..`; `0x1f3d4` preserves the fallback byte-pair offset in `A3`; and
-modes `1..3` choose current-band versus `0x7810b4 + byte_pair_offset` row
-pointers from the `0x1f414` split word.
+The detailed row-pointer cases and field grouping for these helpers are in
+[page-raster-imaging.md](page-raster-imaging.md#encoded-raster-span-mode-behavior).
+The controlling evidence is
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, not an
+external rendered-row comparison.
 
 For the primary mode-0 object above, the rendered row is:
 
@@ -635,14 +645,16 @@ For the primary mode-0 object above, the rendered row is:
 ................####........#####.#.#.#..#.#.#.#
 ```
 
-Fixture `0x1f88e mode-0 raster object renders sub-byte shifted literal row` checks that
-mode 0 still uses literal payload bytes when the packed x coordinate is not
-byte-aligned. Fixtures `0x1f88e mode-1 raster object expands queued bytes into two
-rows`, `0x1f88e mode-2 raster object expands queued byte pair into three rows`, `0x1f88e
-mode-2 raster object renders sub-byte shifted expanded rows`, `0x1f88e mode-2 raster
-object clips current-band rows and continues in fallback buffer`, and `0x1f88e mode-3
-raster object expands queued bytes into four rows` bind each expansion helper to visible
-output rows.
+This row is the ROM-derived result for the documented mode-0 object fields and
+payload bytes. Fixtures named `0x1f88e mode-0 raster object renders queued
+literal row`, `0x1f88e mode-0 raster object renders sub-byte shifted literal
+row`, `0x1f88e mode-1 raster object expands queued bytes into two rows`,
+`0x1f88e mode-2 raster object expands queued byte pair into three rows`,
+`0x1f88e mode-2 raster object renders sub-byte shifted expanded rows`,
+`0x1f88e mode-2 raster object clips current-band rows and continues in
+fallback buffer`, and `0x1f88e mode-3 raster object expands queued bytes into
+four rows` are path and transcription checks for the static helper contract
+above.
 
 ## Mixed Page-Record Composition
 
@@ -797,9 +809,10 @@ A byte-stream reproduction must preserve these behaviors:
   `+0x06`, stored row `+0x02`, root pointer `0x78297a`, bucket/key fields
   `0x782a7c` / `0x782a7e`, stream allocator fields `0x782a70` /
   `0x782a76` / `0x782a80`, and payload copy through `0x138de`.
-- The dense-row split rule through `0x132b6` is documented in `Allocation Capacity And
-  Dense Rows`. The composed semantic ledger is in
-  [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
+- The dense-row split rule through `0x132b6` is documented in
+  `Allocation Capacity And Dense Rows`. The composed semantic ledger is in
+  [semantic-state-model.md](semantic-state-model.md), section
+  `Raster Transfer Gate And Encoded Rows`.
 - Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
   `0x132b6` should target new byte streams that change the raster chain,
   encoded object bytes, allocator state, bridge bucket roots, copy-stop byte

@@ -4842,6 +4842,33 @@ Command-specific state effects:
   rules where `0` leaves the old count unchanged, `-3` stores `3`, and `150`
   clamps to `99`.
 
+Publication command-to-output matrix:
+
+- `ESC E` reset:
+  handler `0xcc52` reaches `0xcc70`, which flushes pending text, publishes a
+  valid current root through `0xff1e`, and only then rebuilds parser,
+  page-environment, raster, and default state. If no current root exists, reset
+  clears missing-root state without synthesizing a publication.
+- `FF` / form feed:
+  handler `0xf0f0` publishes the current root through `0xff1e` after
+  line-termination side effects such as CR-style x reset. Its visible pixels
+  are the objects queued before FF.
+- `ESC &l#A` page size:
+  handler `0xfc74` publishes queued objects before writing the new page code
+  and recomputing page geometry. The rendered page uses the old root; the new
+  geometry affects following objects.
+- `ESC &l#O` orientation:
+  handler `0x10220` publishes queued objects before changing orientation byte
+  `0x782da3` and active extents. The published pixels are therefore still from
+  the pre-orientation page root.
+- `ESC &l#H` paper source:
+  handler `0xef62` flushes/publishes queued text, refreshes cursor state, and
+  then writes paper-source/output state such as `0x782da6`, `0x782998`,
+  `0x780e8f`, and `0x780e26`.
+- `ESC &l#X` copies:
+  handler `0xeef0` stores copy count `0x782da4` but does not publish. The
+  later FF publication copies that count into pool-header word `+0x0c`.
+
 Render path:
 
 - The scheduler later selects the published record into active source

@@ -459,11 +459,21 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `ESC &p#X` enters modes `5 -> 9`, reaches `0x11f5a`, and restores delayed
   handler `0x12452` through `0x121cc` / `0x12218`. `ESC Y ... ESC Z` enters
   mode `1` and dispatches normal reader `0x12536`; alternate/data mode uses
-  `0x12120`. Control-Z mode `2` terminals use normal handlers `0x120d2` /
-  `0x1219e` or alternate handlers `0x1210c` / `0x121b2`. `ESC z` enters
-  mode `1` and dispatches normal handler `0xcd86`; it tests active data-chain
-  frame byte `0x782d76 + 9`, calls status helper `0x9c2c` only when that byte
-  is zero, and creates no page object. Owner notes:
+  `0x12120`. The normal reader fetches loop bytes directly through `0xa904`,
+  normalizes local `0x1a 0x58` to `0x7f`, routes C0/high-control values
+  through `0xd0f0` or `0xd04a` according to selected-context filter state, and
+  consumes the terminating `ESC Z` bytes as routed values before returning.
+  The alternate/data reader appends literal `ESC Y` plus each normalized loop
+  value through `0xe002` and stops on appended `ESC Z`. Control-Z mode `2`
+  terminals are table-dependent: normal `0x1a 0x1a` reaches `0x120d2`, reads
+  selected slot `0x782f06`, tests context byte `0x782eeb + 0x10 * slot`, and
+  calls `0xd04a(0x1a)` only when that byte is `1`; normal `0x1a X` reaches
+  `0x1219e` and calls `0xd04a(0x100)`. Alternate/data siblings `0x1210c` and
+  `0x121b2` append literal `0x1a` or normalized `0x7f` through `0xe002`
+  instead. `ESC z` enters mode `1` and dispatches normal handler `0xcd86`; it
+  tests active data-chain frame byte `0x782d76 + 9`, calls status helper
+  `0x9c2c` only when that byte is zero, and creates no page object. Owner
+  notes:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).
 - Rectangle and raster imaging:

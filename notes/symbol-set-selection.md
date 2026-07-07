@@ -19,6 +19,7 @@ Primary evidence:
 - `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
 - `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
+- `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - [font-context-metrics.md](font-context-metrics.md)
@@ -129,11 +130,45 @@ names only `3@` as the default-font command.
 
 The requested symbol word is not the glyph map by itself.
 
-`0xc580` reads the parser slot and dirty flag, then decides whether to run
-candidate refresh `0x13eb8`, current-context install `0xc428`, or only
-remembered-word bookkeeping. The branch behavior is documented in
-[font-context-metrics.md](font-context-metrics.md) and
-[firmware-dataflow-model.md](firmware-dataflow-model.md).
+`0xc580` is the command-family bridge from the parsed terminal record to
+active font state. `0x120be` calls it immediately after `0x1be22`, so the
+same host byte sequence that writes the requested symbol word also decides
+whether later printable bytes see a refreshed selected context and map.
+
+The exact refresh gate in
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst` is:
+
+- `0xc588..0xc590` rewinds parser cursor `0x78299e` by six bytes to the
+  terminal record that `0x1be22` just consumed.
+- `0xc596..0xc5c8` returns immediately when dirty flag `0x782f2c` is zero.
+- `0xc59e..0xc5c0` reads the setup slot word from record `+2`. Slots other
+  than `0` or `1` report `0xe3,0x34` through `0x1284`, but the routine still
+  continues to the refresh decision.
+- `0xc5ca..0xc5d6` splits dirty flag `1` from all other dirty values. Normal
+  symbol-set finals and final-`@` enter with dirty `1`; final `X` enters with
+  dirty `2`.
+- `0xc5d8..0xc618` handles dirty `1` when the parsed slot differs from
+  selected slot `0x782f06`: it calls candidate refresh `0x13eb8(slot)` and
+  then skips page-root context installation.
+- `0xc5e4..0xc666` handles dirty `1` when the parsed slot is selected. It
+  scans live page-root flags `0x78297f..0x78298e`; when all 16 flags are set,
+  it can set transient flag `0x78298f`, call `0x13eb8(slot)`, clear
+  `0x78298f`, probe context availability through `0xc4fc(0x782992)`, and
+  either call `0x13eb8(slot)` plus `0xc428(slot)` or skip both that second
+  refresh and the install when `0xc4fc` returns full status `0x11`.
+- `0xc5fc..0xc60e` handles dirty `2`. It skips `0x13eb8`; if the parsed slot
+  is currently selected, it calls only `0xc428(slot)`. If the parsed slot is
+  not selected, it installs no page-root context.
+- `0xc666..0xc686` is the common exit for non-returning refresh branches. It
+  copies active word `0x783144 + 2*slot` into remembered word
+  `0x782f08 + 2*slot`, clears `0x782f2c`, and returns.
+
+For this command family, `0x13eb8` is the consumer that resolves the requested
+symbol word against candidate font records and rebuilds the selected map.
+`0xc428` is the consumer that makes the selected current-font context visible
+through the current page root. These branches do not mark a page-root slot
+live and do not draw; the printable producer marks the live flag later when
+text is queued.
 
 The symbol-specific consumer chain is:
 
@@ -257,6 +292,11 @@ Derived/cache state:
   count/cursor state derived by the resource scanner before selection.
 - `0x78287c` / `0x7827b8`: active candidate-window pointer/count derived by
   `0x1569c` and narrowed by `0x156de`.
+- `0x78297e`: selected page-root font-context slot written by `0xc428`.
+- `0x78297f..0x78298e`: page-root font-context live flags read by `0xc580`
+  before it decides whether to take the transient full-root branch.
+- `0x782992`: transient selected context record passed to `0xc4fc` by
+  `0xc580`.
 
 Parser scratch:
 
@@ -267,6 +307,8 @@ Parser scratch:
 Firmware bookkeeping:
 
 - `0x782f2c` / `0x782f2d`: dirty and refresh-in-progress flags.
+- `0x78298f`: transient full-page-root refresh flag set and cleared inside
+  `0xc580`.
 - `0x78287b`: font-id/default-symbol side-effect marker set by final `X` and
   default-font paths.
 - `0x7828de` / `0x7828a8`: selected slot and selected candidate pointer used
@@ -292,15 +334,22 @@ Writers:
   the provisional `X` symbol word.
 - `0x1be22 -> 0x1bec8` handles final-`@` table/default-font variants.
 - `0x156de` writes active symbol words `0x783144` / `0x783146`.
+- `0xc580` copies active symbol words into remembered words and clears
+  `0x782f2c` at the common refresh exit.
 - `0x1a9be` writes the candidate pointer-list count/cursor state consumed by
   symbol refresh over built-in resources.
 - `0x1569c` writes the active candidate-window pointer/count.
 - `0x144d2` writes current-font context records.
 - `0x14c64` rebuilds maps `0x782f32` / `0x783032`.
+- `0xc4fc` and `0xc428` write or select the page-root context slot used by
+  later printable text.
 
 Readers and consumers:
 
 - `0xc580` consumes the dirty flags and parser slot after `0x120be`.
+- `0xc580` also consumes selected slot `0x782f06` and page-root live flags
+  `0x78297f..0x78298e` before choosing refresh-only, install, full-root, or
+  remembered-word-only exits.
 - `0x1569c` consumes candidate-list cursors and counts to select a class
   window.
 - `0x156de` consumes requested/remembered/fallback words.
@@ -333,6 +382,8 @@ Disassembly evidence:
   `0x1bde2`.
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`:
   common refresh gate after terminal wrappers.
+- `generated/disasm/ic30_ic13_font_context_install_00c428.lst`:
+  page-root context slot scan, install, and selected-slot write.
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`:
   requested/remembered/fallback symbol filtering and active-word writes.
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`:

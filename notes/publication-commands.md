@@ -286,14 +286,14 @@ entry call order, and final rows because each is fixture-pinned.
 
 Medium only for byte-stream variants that create a new publication-side field,
 bucket shape, bridge state, or rendered row outside the six command streams
-listed above. Physical printer comparison and engine timing remain outside
+listed above. Physical printer correlation and engine timing remain outside
 this ROM-internal publication contract.
 
 ## Remaining Edges
 
 - `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
-  commands, but physical-device comparison remains outside the ROM-internal
-  reproduction contract.
+  commands. Physical-device comparison is optional correlation outside the
+  ROM-internal reproduction contract, not a required oracle.
 - No parser-to-publication or publication-to-render ROM middle edge remains for
   the covered reset, FF, page-size, orientation, paper-source, and copies
   streams. Additional ROM work should target streams that change page-record

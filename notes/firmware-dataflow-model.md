@@ -2078,7 +2078,7 @@ State classification for this path:
   no unresolved ROM-local middle edge remains for the primary and secondary
   built-in selection streams documented here. Remaining font work is limited
   to variants that choose different candidate records, map bytes, context
-  flags, compact object shapes, bridge state, or physical-device output.
+  flags, compact object shapes, bridge state, or ROM-derived rows.
 
 Evidence for this path is in
 [font-context-metrics.md](font-context-metrics.md),
@@ -2278,10 +2278,10 @@ State classification:
 - Hardware/external state:
   none for the ROM-local generated-page contract.
 - Unknown:
-  physical comparison against a known printed font/self-test page remains
-  external. Record fields `+0x28/+0x2a` are consumed as decoded-height inputs
-  by `0x1519a`; fields `+0x2f..+0x31` are consumed as same-class
-  chooser tie-breakers by `0x1428c`. Manual-facing names remain open.
+  record fields `+0x28/+0x2a` are consumed as decoded-height inputs by
+  `0x1519a`; fields `+0x2f..+0x31` are consumed as same-class chooser
+  tie-breakers by `0x1428c`. Manual-facing baseline/cell names remain open;
+  physical output is optional correlation, not a ROM-local evidence source.
 
 Evidence:
 
@@ -4236,7 +4236,8 @@ State classification:
 - Hardware/external state:
   none for the software row-copy contract.
 - Unknown:
-  physical page comparison remains open for some legal command cross-products.
+  remaining legal command cross-products are only useful when they expose a
+  new ROM-derived row-copy object form, helper target, or continuation field.
   ROM-local invalid-index edges remain exact boundaries rather than modeled
   pixels: short compact `0x1fe76` fallback row indexes above `128`, and
   wrapped low-byte width cases that select non-helper mode-0 table targets.
@@ -6466,13 +6467,14 @@ Current top-level boundaries include:
   verified IC32/IC15 resource-pair image. Mirror, code-pair, and zero-fill
   policies are fixture-bounded, but the physical decode after `0x0c0000`
   remains unproven.
-- Unverified physical output behavior: full internal-font sample and
-  self-test/page-placement comparison against a real LaserJet II output.
-  The ROM-local path is documented through sample traversal
+- Optional physical correlation: full internal-font sample and
+  self-test/page-placement comparison against a real LaserJet II output would
+  only correlate the ROM-derived model with a device. The ROM-local path is
+  documented through sample traversal
   `0x1c334..0x1c5e4`, page-object production `0x1c5e8..0x1ed84`, bridge
-  `0x1ed84` / `0x1edc6`, and render entry `0x1ef6a`; the remaining boundary
-  is physical baseline/header/cell placement on paper, not parser, resource,
-  page-record, or bitmap-renderer state.
+  `0x1ed84` / `0x1edc6`, and render entry `0x1ef6a`; no external rendered-row
+  oracle is required for parser, resource, page-record, or bitmap-renderer
+  documentation.
 - ROM-local visible-output helper boundary:
   `Boundary: Short Compact Downloaded-Glyph High Rows` documents the exact
   short compact downloaded-glyph fallback edge in helper `0x1fe76`. Rows

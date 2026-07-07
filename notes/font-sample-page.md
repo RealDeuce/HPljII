@@ -122,7 +122,9 @@ Derived/cache state:
 
 Unknown:
 
-- Full physical comparison against a known printed/self-test sample.
+- Manual-facing baseline/cell names remain open; a known printed/self-test
+  sample would be optional correlation, not evidence required for the
+  ROM-derived page-image model.
 - Forced continuation variants remain future regression work unless they
   expose a page-object form different from the covered heading-preflight,
   cartridge heading, class-zero/class-one row-overrun, and alternate-row
@@ -311,9 +313,9 @@ pages must preserve:
 High for helper roles, loop order, candidate-row traversal, current-font setup,
 printable byte emission, source `0..3` behavior, page-record placement,
 rendered segment surfaces, and the major forced-continuation object forms
-because each is backed by named fixtures and disassembly. Medium for physical
-baseline/cell interpretation because comparison against a known printed/self-test
-sample remains open.
+because each is backed by named fixtures and disassembly. Medium for
+manual-facing baseline/cell terminology because the ROM documents field roles
+but not HP's external names for those measurements.
 
 ## Remaining Edges
 
@@ -325,8 +327,8 @@ sample remains open.
   alternate-row cases.
 - `0x1c5e8..0x1ef6a`: selected resource setup, row formatting,
   printable-byte emission, page-record queueing, bridge, and render dispatch
-  are documented for the composed segments. Remaining work is external
-  comparison against a known physical/self-test page.
+  are documented for the composed segments. Remaining work is manual-facing
+  naming of baseline/cell fields, not external row comparison.
 - Record `+0x28/+0x2a`: consumed by `0x1519a` through `0x13bca` as decoded
   height inputs; manual-facing baseline/cell naming remains open.
 - Record `+0x2f..+0x31`: consumed by `0x1428c` after `0x14398` / `0x13c06`

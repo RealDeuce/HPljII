@@ -2460,7 +2460,8 @@ publication paths now also have addressed variants:
 `0x1387c`/`0x1381c`, materialize the page record, publish through the same
 `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same
 rows. That closes the software-visible compact-text publication contract while
-leaving only provenance/physical-output validation outside the ROM contract.
+leaving only provenance and optional physical-output correlation outside the
+ROM contract.
 The host-fetched text/rule/raster fixture now also
 publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
@@ -2769,6 +2770,7 @@ Other checked leads:
   record` and
   `addressed text/rule/multi-row raster publication preserves bucket
   chain`. Remaining rectangle work is cross-feature full-page combinations
-  plus physical/reference placement checks.
-- Compare physical engine/self-test placement against the now-matched
-  ROM/manual logical page and printable-area dimensions.
+  only when they expose new ROM-derived page-object or row behavior.
+- Physical engine/self-test placement, if available, is optional correlation
+  against the documented ROM/manual logical page and printable-area dimensions;
+  it is not an oracle for rendered rows.

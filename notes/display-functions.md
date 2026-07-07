@@ -199,5 +199,5 @@ of the status bits.
   loop, the `0x12120..0x1219c` alternate/data append loop, the local
   Control-Z sibling handlers, or the `0xcd86 -> 0x9c2c` display-functions-off
   status boundary.
-- Remaining display-functions work is broader physical/reference output and
-  external status-consumer naming, not parser or renderer discovery.
+- Remaining display-functions work is optional physical/reference correlation
+  and external status-consumer naming, not parser or renderer discovery.

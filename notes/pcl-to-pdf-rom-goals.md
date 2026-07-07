@@ -314,10 +314,11 @@ Expected remaining validation and boundary work:
   `0x400000..0x5ffffe`. The ROM scanner and scheduler behavior are documented,
   but cartridge/external resource images are not part of the verified local ROM
   set.
-- Physical/manual correlation: manual-facing baseline/cell terminology and
-  physical paper comparison for the full internal-font printout, after the
-  ROM-side sample page and rendered-surface digest already documented in
-  [resource-rom.md](resource-rom.md).
+- Manual-facing correlation: baseline/cell terminology for fields whose ROM
+  roles are already documented by the sample-page path and rendered-surface
+  digest in [resource-rom.md](resource-rom.md). A physical paper sample may
+  be used only as optional correlation, not as an oracle for the ROM-derived
+  pixel model.
 - Physical interface correlation: identity and pin mapping for
   retained-storage, panel/service, optional-resource, and formatter/DC MMIO
   registers. Host-interface
@@ -336,8 +337,7 @@ Expected remaining validation and boundary work:
   fallback indices above `128` after rows `0x0101..0x0103` publish low-byte
   short compact objects. This is an exact unresolved renderer-helper edge, not
   a parser/install/publication gap. Continue only with streams that change the
-  selected helper, fallback index, or rows, or with physical behavior after the
-  invalid table target.
+  selected helper, fallback index, or ROM-derived rows.
 - Documented ROM-local visible-output helper boundary:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes` for wrapped downloaded

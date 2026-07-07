@@ -1537,8 +1537,9 @@ ROM work needed:
   Additional row-overrun streams are regression cross-products unless they
   expose a page-record object form outside the covered heading-preflight,
   class-zero `I01`, class-one `I16`, and alternate-row `I01` forms. The next
-  non-regression boundary is physical baseline/cell comparison against a known
-  printed/self-test sample.
+  non-regression boundary is manual-facing baseline/cell naming; a known
+  printed/self-test sample would be optional correlation, not a rendered-row
+  oracle.
 - Fixture `live parser symbol-set streams select non-Roman built-ins` now
   broadens the named `0N` / `10U` / `11U` samples from static map evidence
   into primary parser/font-selection evidence. Streams `ESC (0N`,
@@ -1668,8 +1669,9 @@ ROM work needed:
 - Continue parser-to-render documentation only where a page-object family
   exposes new ROM state: wide/segmented text cross-products, dense raster byte
   streams that change the already bounded producer handoff
-  `0x105d0 -> 0x10084 -> 0x13070`, and final physical-device comparison as a
-  validation step rather than a ROM tracing prerequisite. The covered ROM-side
+  `0x105d0 -> 0x10084 -> 0x13070`, or render helpers that expose new
+  ROM-derived rows. Optional physical-device correlation is not a ROM tracing
+  prerequisite. The covered ROM-side
   bitmap behavior is no longer an open generic clipping question: rectangle
   fill clipping, compact current-band/fallback row splitting, synthetic
   wide/segmented fallback splitting, raster mode `1..3` expansion, and the

@@ -1009,7 +1009,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   No unresolved ROM-local middle edge remains for the documented primary and
   secondary built-in selection streams. Remaining work is broader command
   combinations that change candidate records, map bytes, context flags,
-  compact object shapes, bridge state, span metrics, or physical-device output.
+  compact object shapes, bridge state, span metrics, or ROM-derived rows.
 - Downloaded font payloads:
   Downloaded fonts are a parser-payload-to-selected-resource path. Font-control
   writers `0x15a56`, `0x15a18`, and `0x16df6` set the current id/character
@@ -1151,8 +1151,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   unmodeled fixed-record current variants inside `0x16606..0x16770`,
   unmodeled continuation variants inside `0x15c4c..0x15d08`,
   selected-font combinations that change context/map state before visible
-  output, physical device output beyond the ROM render buffer, and the exact
-  ROM-local helper failures already named as bounded edges: short compact
+  output, and the exact ROM-local helper failures already named as bounded
+  edges: short compact
   fallback indices above `0x1fe76` valid index `128` where the unchecked table
   read enters code bytes at `0x2008e`, low wrapped width bytes that target
   non-row-copy helpers, segmented-wide span-31 fallback source offset
@@ -1513,8 +1513,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   handler-level state and rendered rows.
   No unresolved ROM-local middle edge remains for the documented
   `ESC &l#A`, `ESC &l#O`, `ESC &l66P`, or `ESC &l0P` paths. Remaining work is
-  broader geometry cross-products that expose new consumer behavior, plus
-  physical-output validation outside the ROM render buffer.
+  broader geometry cross-products that expose new consumer behavior; physical
+  output, if captured, would be optional correlation outside the ROM render
+  buffer.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:

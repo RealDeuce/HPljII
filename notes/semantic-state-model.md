@@ -3456,8 +3456,9 @@ for how resource records become ordinary page-record text.
     internal class-zero `I01` and class-one `I16` row-overrun forms, and the
     alternate-row caller form. Additional row-overrun streams are regression
     cross-products unless they expose a page-record object form outside those
-    covered forms; the remaining output gap is physical baseline/cell
-    comparison against a known printed sample. The internal-font class-zero
+    covered forms; the remaining naming gap is HP/manual-facing baseline/cell
+    terminology. A known printed sample would be optional correlation, not a
+    rendered-row oracle. The internal-font class-zero
     source group is fixture-backed from
     request indexes `0..14`: `0x1b8ea`
     fast-probes class-zero row `I00`, `0x1b50e` scans later rows, `0x1c746`
@@ -3531,8 +3532,7 @@ for how resource records become ordinary page-record text.
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
     `0x1428c` consumes `+0x2f..+0x31` as same-class chooser tie-breakers
     after `0x14398` / `0x13c06`. What remains open here is only the
-    HP/manual-facing baseline/cell terminology and comparison against a
-    known printed sample.
+    HP/manual-facing baseline/cell terminology.
 
 ### Writers
 
@@ -3815,8 +3815,9 @@ Fixture `font sample full printout segments render through 0x1ed84 and
 band renderer, preserving render-bucket counts `[1, 6, 6, 65, 1, 5, 5, 50]`,
 rendered bucket-row totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`, and
 surface digest `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-It does not yet prove physical baseline/cell agreement against a known
-printed/self-test sample.
+It documents the ROM-derived rendered surface; a known printed/self-test
+sample would only be optional physical correlation and is not an oracle for
+the rendered rows.
 
 ### Confidence
 
@@ -3834,8 +3835,9 @@ page-record object placement, carried run-2 bucket rendering through
 placement skeleton, and per-row reuse of sample byte tables `0x1c1cf` /
 `0x1c1e9`, plus all-source rendered surface digests through `0x1ed84` /
 `0x1ef6a`, because they are anchored by generated disassembly analysis and
-`tools/render_fixture_harness.py`. Medium for baseline/cell interpretation
-because physical/self-test comparison is still open.
+`tools/render_fixture_harness.py`. Medium for manual-facing baseline/cell
+terminology because the ROM documents field roles but not HP's external names
+for those measurements.
 
 ### Fixtures And Reports
 
@@ -3917,8 +3919,8 @@ because physical/self-test comparison is still open.
   cover the internal/cartridge heading-preflight, internal class-zero/class-one
   row-overrun, and alternate-row forced page-record objects. Additional
   row-overrun streams are regression cross-products unless they expose a new
-  page-record object form; physical baseline/cell comparison against a known
-  printed/self-test sample remains separate.
+  page-record object form; physical baseline/cell samples, if available, are
+  optional correlation rather than required ROM-local evidence.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
@@ -3947,10 +3949,10 @@ because physical/self-test comparison is still open.
   unless they produce a page-record object form beyond the covered
   heading-preflight, internal/cartridge headings, class-zero row-overrun
   `I01`, class-one row-overrun `I16`, and alternate-row `I01` cases;
-  comparison against a known printed/self-test page remains a separate external
-  validation boundary.
+  comparison against a known printed/self-test page is optional device
+  correlation, not a required row oracle.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
-  `0x13bca`; physical baseline/cell correlation remains open.
+  `0x13bca`; manual-facing baseline/cell naming remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by
   `0x1428c` after `0x14398` / `0x13c06`; manual-facing names remain open.
 
@@ -8739,8 +8741,8 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
   disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk is
   broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, `ESC &a2C!`,
   `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered raster
-  payloads, and `ESC &a6L!`, plus final-device comparison, not the `0xdd08`
-  selector-4 to `0xff1e` visible-output path or its skip gates.
+  payloads, and `ESC &a6L!`, plus optional final-device correlation, not the
+  `0xdd08` selector-4 to `0xff1e` visible-output path or its skip gates.
 
 ## Raster Transfer Gate And Encoded Rows
 
@@ -9984,8 +9986,8 @@ because each is fixture-pinned.
 ### Unresolved Middle Edges
 
 - `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
-  commands, but physical-device comparison remains outside the ROM-internal
-  reproduction contract.
+  commands. Physical-device comparison is optional correlation outside the
+  ROM-internal reproduction contract, not a required oracle.
 
 ## Bitmap Render Dispatch Contract
 
@@ -11525,7 +11527,7 @@ checkpoint only consumes their canonical outputs.
     `0x5a16 -> 0x97e4`, and invalid active-record state reaches
     `0x56c2 -> 0x1284` (`67 SERVICE`); the remaining gap is reconciling that
     ROM behavior with manual NVRAM-failure fallback wording.
-  - exact physical page output after reset still needs device comparison;
+  - physical page output after reset is optional device correlation;
     ROM-internal reset publication rows are fixture-backed.
 
 ### Writers
@@ -11632,8 +11634,8 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
   ROM edge has been found from a failed startup load into the factory-default
   ROM-table writers.
 - `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
-  for compact text, but physical-device page comparison remains outside this
-  checkpoint.
+  for compact text. Physical-device page comparison is optional correlation
+  outside this checkpoint, not a required row oracle.
 
 ## Shared Page-Record Storage And Allocator
 

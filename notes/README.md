@@ -42,8 +42,9 @@ handlers, and render helpers that produce those rows.
   stream-to-PDF renderer, and what ROMs are expected to contribute.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
   primary host-byte-to-rendered-pixel coverage/evidence map for supported
-  streams, state groups, and open reproduction boundaries. Start here when
-  following a concrete byte stream.
+  streams, state groups, objective coverage, and open reproduction boundaries.
+  Start here when following a concrete byte stream or checking what part of the
+  ROM-disassembly objective is covered by checked-in documentation.
 - [firmware-dataflow-model.md](firmware-dataflow-model.md) - detailed
   checked-in dataflow spine from host bytes through parser, commands,
   page/image objects, render scheduling, pixel generation, and exact

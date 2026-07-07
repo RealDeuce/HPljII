@@ -73,6 +73,100 @@ strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
+## Objective Coverage Matrix
+
+Use this section to map the current checked-in documentation back to the
+ROM-disassembly objective. A requirement is only counted here when the linked
+checked-in notes describe behavior, state fields, evidence, and any remaining
+boundary; generated reports and fixture names are supporting evidence, not the
+controlling artifact.
+
+- Host input handling and parser state transitions:
+  covered by [host-byte-fetch.md](host-byte-fetch.md),
+  [pcl-parser-core.md](pcl-parser-core.md), the `Minimal Host Input
+  Walkthrough`, and `Worked Path: Host Byte Source Priority` / `Worked Path:
+  Command Record And Payload Dispatch` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). The ROM-local
+  contract is `0xa904` normalized byte output into `0xda9a` / `0xdaf0` /
+  `0xdb74`, parser mode `0x782999`, and six-byte records at `0x78299e..`.
+  Residuals are physical bus/MMIO naming unless a new source changes the
+  normalized byte sequence.
+- Normal bytes, control codes, ESC entry, parameterized commands, binary
+  payloads, macro/replay, and ignored/error cases:
+  indexed by [pcl-command-map.md](pcl-command-map.md) and its
+  [Inbound Byte Outcome Classes](pcl-command-map.md#inbound-byte-outcome-classes).
+  Checked-in owners are [direct-control-codes.md](direct-control-codes.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md),
+  [macro-data-chain.md](macro-data-chain.md),
+  [raster-graphics.md](raster-graphics.md),
+  [downloaded-fonts.md](downloaded-fonts.md), and
+  [vertical-forms-control.md](vertical-forms-control.md). The minimal
+  walkthroughs for parser dispatch, ignored/no-output rows, transparent data,
+  display functions, macro replay, overlay replay, VFC, raster, and downloaded
+  glyphs give byte-stream examples.
+- Command dispatch tables and parsed forms to handlers:
+  covered by [pcl-command-map.md](pcl-command-map.md), generated table extracts
+  cited there, and `Worked Path: Command Record And Payload Dispatch`.
+  Normal table `0x112a4`, alternate/data table `0x116f6`, parser loop
+  `0x11774`, delayed arming helpers `0x11f5a` / `0x11f6e` / `0x11f82` /
+  `0x11f96`, restore path `0x121cc -> 0x12218`, and owner notes form the
+  current dispatch contract.
+- Detailed command-family behavior:
+  documented by the owner notes listed in the `Supported Stream Entry Points`
+  section below. Each owner records parsed inputs, RAM writers, consumers,
+  side effects, output/page effects, field classification, confidence, and
+  exact residual boundaries. High-volume families include font selection in
+  [font-context-metrics.md](font-context-metrics.md), downloaded fonts in
+  [downloaded-fonts.md](downloaded-fonts.md), rectangles in
+  [rectangle-graphics.md](rectangle-graphics.md), raster in
+  [raster-graphics.md](raster-graphics.md), publication in
+  [publication-commands.md](publication-commands.md), and reset provenance in
+  [reset-default-environment.md](reset-default-environment.md).
+- Page/image assembly model:
+  covered by [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md),
+  `Worked Path: Shared Page-Record Storage And Allocator`, `Page Image
+  Assembly` in [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  the `Minimal Page Assembly Walkthrough`. The canonical model is current root
+  `0x78297a`, stream allocator state `0x782a70/0x782a72/0x782a76`, compact and
+  raster buckets under root `+0x1c`, rules under `+0x24`, fixed objects under
+  `+0x28`, context slots `+0x2c..+0x68`, publication `0xff1e`, and bridge
+  `0x1ed84` / `0x1edc6`.
+- Output/render engine:
+  covered by [active-render-scheduler.md](active-render-scheduler.md),
+  [page-raster-imaging.md](page-raster-imaging.md), `Published Record To Active
+  Render Scheduler` and `Bitmap Render Dispatch Contract` in
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Render
+  Dispatch And Pixel Composition`. The current ROM-local render path is
+  published pool state `0x780ea6/0x780eaa/0x780eae`, active render pointer
+  `0x783a18`, bridge roots `+0x18/+0x1c/+0x20`, render entry `0x1ef6a`, bucket
+  dispatch `0x1efc2`, compact helpers `0x1f034..0x1f264`, segment-list helper
+  `0x1f812`, rule helpers `0x1f4e0` / `0x1f596`, fixed-list helper `0x1f756`,
+  and raster helper `0x1f88e`.
+- Field/state classification:
+  defined by the `State Classification Guide`, summarized in `Canonical State
+  Groups`, and repeated in the minimal walkthroughs and owner notes. The
+  categories are canonical state, derived/cache state, parser scratch,
+  firmware bookkeeping, hardware/external state, and unknown or unresolved
+  state.
+- Concrete evidence for semantic claims:
+  required by the `Pipeline Contract`, attached to each minimal walkthrough in
+  `Checked-in explanations` and `Focused listings` subsections, and indexed by
+  the owner notes. Evidence can be handler addresses, ROM fields, disassembly
+  files under `generated/disasm/`, generated table extracts, ROM resource
+  bytes, or named model-consistency fixtures. Fixture output is never the
+  primary semantic claim.
+- Explicit unresolved boundaries:
+  maintained in `Current Residual Edge Index`, `Pixel-Perfect Coverage And
+  Residual Risks`, `Next Disassembly Targets`, and `Unresolved Boundaries` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Current bounded
+  residual classes are secondary segment-57 resource decode
+  `0x0c0000..0x0c0321`, ROM-local downloaded-glyph helper boundaries, host
+  physical interface naming/timing, formatter/DC physical timing, and new
+  ROM-local command variants only when they change named state or
+  row-construction inputs.
+
 ## Stream Trace Procedure
 
 Use this procedure when starting from a concrete supported host byte stream.

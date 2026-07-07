@@ -3878,6 +3878,26 @@ Output effect:
   span/row combinations: they reach `0x1f264` or parser payload-count caps,
   not this short compact helper boundary.
 
+Reproduction rule:
+
+- A byte-stream reproducer must keep the installed glyph row word and the
+  printable page-source low row byte as separate state. The installed object is
+  canonical downloaded-glyph state written by `0x16498`; the low row byte is
+  parser/page scratch consumed by `0x12f2e` when it chooses selector
+  `0x0003`, `0x2003`, or `0x3003`.
+- The supported short compact path is the continuous low-byte row family
+  `0x0001..0x00ff`: it can be reproduced through publication bucket selection,
+  `0x1ed84` / `0x1ef6a`, compact target `0x1effe`, and row-copy helper
+  `0x1fe76`.
+- A nonzero high byte does not by itself make the short compact path
+  reproducible. If the low byte still selects selector `0x0003`, `0x1f414`
+  can feed a fallback row count above `128` to `0x1fe76`; that crosses the
+  unchecked jump-table boundary and has no documented pixel contract.
+- High-row reproduction remains defined only when the byte stream selects a
+  documented segmented-wide path, where `0x12f2e` queues selector `0x3003`
+  and render dispatch reaches `0x1f264`, or when the parser payload-count cap
+  stops the stream before renderer entry.
+
 Evidence:
 
 - Detail note: [downloaded-fonts.md](downloaded-fonts.md), especially

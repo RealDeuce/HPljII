@@ -2046,6 +2046,26 @@ Output effect:
   higher rows/spans beyond those limits stop earlier at the parser
   payload-count cap before renderer entry.
 
+Reproduction contract for row counts:
+
+- Treat the installed downloaded-character record and the printable page-source
+  record as different state. `0x16498` preserves the 16-bit installed row word
+  in the downloaded glyph object; `0x12f2e` consumes only the page-source row
+  byte when choosing the compact selector and bucket list.
+- For low-byte rows `0x0001..0x00ff`, reproduce the published object through
+  the documented path `0x12f2e -> 0xff1e -> 0x1ed84 -> 0x1ef6a -> 0x1effe`
+  and the selected helper (`0x1fe76` for short compact, `0x1f1f0` for
+  segmented compact).
+- For high-row short compact cases such as installed rows `0x0101..0x0103`,
+  stop the pixel contract at the `0x1fe76` fallback table boundary. The
+  documented state is still useful: selector `0x0003`, bucket `1`, render word
+  `1`, `0x1f414` current/fallback split, and the invalid unchecked table index
+  are all ROM-derived.
+- For high-row segmented-wide cases, use the row-low-byte selector rule plus
+  span-selected helper dispatch. Documented below-cap cases reach `0x1f264`;
+  over-cap products stop at the restored `ESC )s#W` payload-count boundary
+  before installed glyph publication or render dispatch.
+
 Confidence:
 
 - High for rows `0x0001..0x00ff`, because the row-count matrix and threshold

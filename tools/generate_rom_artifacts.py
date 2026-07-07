@@ -211,7 +211,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_perforation_skip_handler_00ee64.lst", "0xee40", "0xee40", "0x70"),
         ("ic30_ic13_copies_handler_00eef0.lst", "0xeec0", "0xeec0", "0x80"),
         ("ic30_ic13_paper_source_handler_00ef62.lst", "0xef40", "0xef40", "0xf0"),
-        ("ic30_ic13_dot_position_handlers_00f48c.lst", "0xf48c", "0xf48c", "0x280"),
+        ("ic30_ic13_dot_position_handlers_00f48c.lst", "0xf48c", "0xf48c", "0x340"),
         ("ic30_ic13_page_root_finalize_00ff1e.lst", "0xff1e", "0xff1e", "0x170"),
         ("ic30_ic13_page_geometry_tables_009d16.lst", "0x9d16", "0x9d16", "0x190"),
         ("ic30_ic13_page_length_handler_00f9e8.lst", "0xf9e8", "0xf9e8", "0x290"),

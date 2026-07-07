@@ -428,6 +428,48 @@ lowercase chaining across horizontal and vertical handlers. Fixture
 dot-position siblings. The parser-to-page-record fixtures named above then
 carry each converted cursor state through the following printable byte.
 
+Cursor commit helper boundaries:
+
+- `0xf39e..0xf414`: `ESC &a#C` rewinds the parsed record, converts the integer
+  and fractional parameter through current HMI `0x78315c`, reads record bit `0`
+  as the relative flag, and calls horizontal commit helper `0xf4ca`.
+- `0xf416..0xf48a`: `ESC &a#H` converts decipoints with multiplier `5` and
+  denominator `10000`, reads record bit `0` as the relative flag, and calls
+  `0xf4ca`.
+- `0xf48c..0xf4c8`: `ESC *p#X` sign-extends the parsed word, shifts it left
+  by 16 into a whole-dot packed x coordinate, reads record bit `0`, and calls
+  `0xf4ca`.
+- `0xf4ca..0xf55e`: horizontal commit. If the relative flag is set,
+  `0xf4dc..0xf4ec` adds the candidate to current x `0x782c8a`. The helper then
+  clamps negative values to zero, clamps values above page width `0x782db8`,
+  writes `0x782c8a`, sets right-limit latch `0x782a57` only when the committed
+  x equals right margin `0x782dda`, clears pending latch `0x782a6d`, and
+  refreshes span metrics through `0xd8fc` or `0xd4ac` according to selected
+  context byte `+4`.
+- `0xf560..0xf608`: `ESC &a#R` ensures a page root, adds firmware absolute-row
+  bias `0x1c20` when record bit `0` is clear, converts the integer and
+  fractional parameter through VMI `0x783160`, calls vertical commit helper
+  `0xf6e2`, then applies relative overflow recovery or absolute upper clamp
+  against `0x782dc6`.
+- `0xf60a..0xf690`: `ESC &a#V` converts decipoints with multiplier `5` and
+  denominator `10000`, calls `0xf6e2`, and clamps committed y to `0x782dc6`.
+- `0xf692..0xf6e0`: `ESC *p#Y` sign-extends the parsed word, shifts it left
+  by 16 into a whole-dot packed y coordinate, calls `0xf6e2`, and clamps to
+  `0x782dc6`.
+- `0xf6e2..0xf75c`: vertical commit. The helper ensures a page root, clears
+  pending latch `0x782a6d`, flushes pending spans through `0xf34a`, adds the
+  candidate to current y `0x782c8e` for relative moves or to top offset
+  `0x782dce` for absolute moves, clamps below lower bound `0x782dca`, writes
+  `0x782c8e`, optionally materializes span output through `0x12714` /
+  `0x126e2` when `0x783184` is set, and returns the committed y in `D7`.
+
+The output effect of this cluster is delayed until a later printable byte,
+raster start, rectangle, VFC jump, or page publication consumes the committed
+cursor fields. For text streams, the following printable byte reaches
+`0xd04a`, derives compact coordinates from `0x782c8a` / `0x782c8e`, queues
+through `0x12f2e` / `0x1387c`, and renders through the normal page-record
+bridge.
+
 Margin helper fixtures similarly separate helper semantics from visible
 output. `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`
 and `0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at

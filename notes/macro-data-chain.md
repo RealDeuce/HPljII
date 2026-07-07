@@ -365,6 +365,42 @@ frames:
   `0xf124`, restore cursor/layout state, call `0xe65c(0)`, and for non-replay
   frames write `0x782a92 = 0x63`.
 
+Macro font-context refresh at `0xe65c` is the bridge from replay bookkeeping
+back to the normal selected-font and printable-glyph model:
+
+- `0xe65c..0xe6aa`: mode `0` pops one 10-byte context record. It subtracts
+  `10` from stack pointer `0x782c6e`, reads popped flags `+8/+9`, and for
+  primary flag `+8 == 1` calls `0x13eb8(0)`, copies `0x783144` to `0x782f08`,
+  and sets dirty byte `0x782f2d` only when selected slot `0x782f06` is primary.
+- `0xe6dc..0xe714`: the same popped-record path handles secondary flag
+  `+9 == 1`: it calls `0x13eb8(1)`, copies `0x783146` to `0x782f0a`, and sets
+  `0x782f2d` only when selected slot `0x782f06` is secondary.
+- `0xe6ac..0xe6d8`, `0xe7d0..0xe7f2`, and `0xe7f2..0xe848`: mode `1` uses
+  static record `0x782c64`. Flag byte `+8` forces primary refresh; otherwise
+  helper `0xe860(0)` compares the selected primary context's stored orientation
+  byte against current orientation `0x782da3` and refreshes on mismatch. Flag
+  byte `+9` or `0xe860(1)` mismatch does the same for secondary refresh.
+- `0xe714..0xe722`: after the slot-specific refresh decisions, the consumed
+  record is cleared: longwords `+0/+4` and flag bytes `+8/+9` become zero.
+- `0xe722..0xe84c`: selected-slot reinstall. The helper calls `0xc428` for
+  current selected slot `0x782f06`. If that call returns zero, it restores
+  context pointer `0x782c80` and metric word `0x782c84` into the selected
+  `0x782ee6 + 0x10 * slot` and `0x783144 + 2 * slot`, writes `0x7828de`,
+  resolves the active object through `0x1b4c0`, then calls `0x144d2`,
+  `0x14c64`, and `0xc428` again.
+- `0xe84c..0xe85e`: common exit calls `0x1b04c`, clears dirty byte
+  `0x782f2d`, restores registers, and returns.
+- `0xe860..0xe8a0`: orientation helper. It selects `0x782ee6 + 0x10 * slot`,
+  reads byte `+0x16` from fixed-record contexts or byte `+0x20` from
+  offset-table contexts, and returns that byte in `D7`.
+
+The output effect is delayed: `0xe65c` creates no page object itself. It
+refreshes selected-font state consumed by the next printable byte through
+`0xd04a`, `0xd3b2` / `0xd824`, and the compact object path. Canonical state is
+the selected context and metric fields; derived/cache state is the active object
+lookup at `0x7828a8`; firmware bookkeeping is the macro context record and dirty
+byte `0x782f2d`.
+
 ## Readers And Consumers
 
 - `0xdd08` consumes `0x783164`, `0x782d7a`, `0x782d76`, frame byte `+9`, and

@@ -1433,8 +1433,9 @@ Confidence:
   the helper target is valid. Remaining selected-font combinations are broader
   ROM-local coverage work, not a reduced-confidence statement about the
   documented producer contracts.
-- Medium for physical device output timing because the bitmap bands are
-  fixture-rendered before the engine-facing copy path.
+- Medium for hardware-facing timing because the bitmap bands are ROM-derived
+  before the engine-facing copy path. That timing is outside the pixel model
+  unless it changes ROM-visible scheduler, wait-object, or publication state.
 
 Fixture evidence:
 
@@ -2415,7 +2416,7 @@ the pool header
 after `0xff1e`: state byte `+4 = 2`, status/environment fields including
 copies word `+0x0c`, published pointer `0x780ea6`, bucket-root prefix,
 and context-slot prefix all match the modeled publication records before
-the bridged rows are compared. Macro coverage now has the same ROM-table
+the bridge/render path derives ROM-local rows. Macro coverage now has the same ROM-table
 proof for
 `ESC &f-123y0x1X`, walking modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0` to
 handlers `0xe112`, `0xdd08`, and `0xdd08` before applying the modeled

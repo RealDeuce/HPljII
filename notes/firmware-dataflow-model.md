@@ -3526,8 +3526,8 @@ State classification for this path:
   siblings, descriptor validation no-install exits, character-object
   no-install exits, or status-`2` partial-install visible-output exits.
   Remaining downloaded-glyph work is broader row/span cross-products, exact
-  HP manual labels for some descriptor fields, and physical/pixel behavior
-  after documented wrapped source-byte invalid-helper boundaries.
+  HP manual labels for some descriptor fields, and ROM-local behavior after
+  documented wrapped source-byte invalid-helper boundaries.
 
 Evidence for this path is in
 [downloaded-fonts.md](downloaded-fonts.md),

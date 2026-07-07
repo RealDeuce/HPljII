@@ -277,18 +277,18 @@ A renderer that wants byte-for-byte agreement with these ROM paths must:
 Confidence is high for the verified built-in scan, counters/windows,
 activation, filters, chooser, primary/secondary visible output streams, and
 the modeled scanner consequences of the three tested `0x0c0000` continuation
-policies. Confidence is medium for the actual physical decode source at
+policies. Confidence is medium for the actual hardware decode source at
 `0x0c0000..0x0c0321` and for external cartridge/resource windows because the
 decoded handlers are known, but no matching board decode, cartridge image, or
-physical output evidence has been captured for those ranges.
+ROM image evidence has been captured for those ranges.
 
 ## Remaining Edges
 
 - `0x1a616..0x1a9be`: verified `IC32,IC15` scan behavior is fixture-backed
   through `0x0bffff`. The exact remaining built-in continuation boundary is
-  firmware address `0x0c0000..0x0c0321`, where board/emulator decode or
-  physical-output evidence must choose among the recorded mirror, code-pair,
-  and zero-fill fallback-row candidates.
+  firmware address `0x0c0000..0x0c0321`, where board/emulator decode or a
+  matching ROM/cartridge image must choose among the recorded mirror,
+  code-pair, and zero-fill fallback-row candidates.
 - `0x14398..0x156de`: many visible output streams are covered, but
   broader fallback/error combinations should only be added when they
   produce a different selected context, map, object prefix, or rendered

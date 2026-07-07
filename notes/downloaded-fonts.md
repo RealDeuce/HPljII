@@ -353,8 +353,8 @@ Published page-record state:
   fixtures extend selected-segment rendering through sampled rows up to
   `0x0787`, the last span-17 row below the parser payload-count cap.
   Remaining row-count risk is now broader row/span cross-products below that
-  cap and physical/pixel behavior after the fully classified wrapped
-  source-byte invalid-helper targets. Full-success return siblings outside the
+  cap and ROM-local behavior after the fully classified wrapped source-byte
+  invalid-helper targets. Full-success return siblings outside the
   pinned normal even-span, no-install, status-`2`, bit-30-clear fixed-record
   current-record, bit-30-clear fixed-record continuation, row-count-matrix,
   wide-remainder matrix, segmented-wide matrix, high-row segmented-wide
@@ -2748,7 +2748,7 @@ A byte-stream renderer must preserve:
   segmented-wide high-row parser-limit matrix renders selected segment` extend it
   through sampled rows up to `0x0787`; their oversized siblings classify adjacent
   payloads as parser-count-cap boundaries before `0x16498` renderer entry. Remaining
-  parser-produced comparisons are bounded cross-products: physical/pixel behavior after
+  parser-produced comparisons are bounded cross-products: ROM-local behavior after
   the fully documented wrapped source-byte mode-0 invalid-helper boundaries, publication
   combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`

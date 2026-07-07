@@ -541,7 +541,7 @@ start/recovery predicates away from the normal Letter page bottom:
 `0x12a02..0x12afc` no-hit recovery, `0x12a7a..0x12afc` wrapped line-70
 recovery, and selector-zero `0x12b5e..0x12b92` recovery. The composed
 field groups, writers, readers, output effects, confidence, and
-remaining physical-output risk for this command family are tracked in
+remaining ROM-local/external-boundary risk for this command family are tracked in
 `notes/vertical-forms-control.md`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values

@@ -464,7 +464,8 @@ The fixture-backed render contract for that matrix is:
 All covered overlay payloads publish through `0xff1e`, bridge through
 `0x1edc6`, and render through `0x1ed84` / `0x1ef6a`. Remaining edges are no
 longer inside the listed payload paths; they are broader overlay payload
-variants outside this matrix and final device-output comparison.
+variants outside this matrix that would need to expose different ROM-local
+output fields or rendered rows.
 
 ## Reproduction Contract
 
@@ -513,5 +514,5 @@ failure case is validated.
   multi-row raster overlay payloads, span-flush overlay payloads, or the
   disabled/missing-record/retry-flag overlay skip gates.
 - Remaining macro work is broader overlay payload variants beyond the listed
-  command-family matrix, external/manual naming, and final physical/reference
-  output comparison.
+  command-family matrix, external/manual naming, and ROM-local output fields
+  or rendered rows that differ from the covered matrix.

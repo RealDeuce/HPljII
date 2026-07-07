@@ -3948,8 +3948,8 @@ for those measurements.
   unless they produce a page-record object form beyond the covered
   heading-preflight, internal/cartridge headings, class-zero row-overrun
   `I01`, class-one row-overrun `I16`, and alternate-row `I01` cases;
-  comparison against a known printed/self-test page is optional device
-  correlation, not a required row oracle.
+  a known printed/self-test page would be optional device correlation, not a
+  required row oracle.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
   `0x13bca`; manual-facing baseline/cell naming remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by
@@ -11633,7 +11633,7 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
   ROM edge has been found from a failed startup load into the factory-default
   ROM-table writers.
 - `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
-  for compact text. Physical-device page comparison is optional correlation
+  for compact text. Physical-device page capture is optional correlation
   outside this checkpoint, not a required row oracle.
 
 ## Shared Page-Record Storage And Allocator

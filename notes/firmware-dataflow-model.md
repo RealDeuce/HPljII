@@ -5628,6 +5628,33 @@ Channel jump behavior:
   `0x128ae..0x128f4` normalizes the start line to `0` before the same line-1
   search and printable coordinate `0xb001`.
 
+VFC command-to-output matrix:
+
+- `ESC &l#W` table definition:
+  delayed path `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`. It writes VFC
+  table `0x782dde..0x782edd`, derived bottom `0x782dc2`, text-bottom cache
+  `0x782dd2`, and modified-layout flag `0x782ee1`. It consumes payload bytes
+  but queues no page object; visible output changes only when later cursor,
+  wrap, printable, or page-boundary paths consume the new table/cache state.
+- Default table/layout refresh:
+  `0xe5e2 -> 0x12b96` rebuilds top offset, margins, text-bottom cache,
+  line-count caches, and default VFC channel bits. It is shared layout state,
+  not a direct page-object producer, and later `0x1280a`, printable placement,
+  and overflow logic consume it.
+- `ESC &l#V` cursor-only jump:
+  `0x1280a` finds a target that does not require page publication, resets x
+  through `0xf06e`, flushes pending text through `0xf34a`, writes cursor y,
+  and leaves the following printable on the current root `0x78297a`.
+- `ESC &l#V` page-boundary jump:
+  `0x1280a` takes a selector-zero, wrap, or recovery path that calls
+  `0xf124 -> 0xff1e`. The old page root is published before the following
+  printable byte allocates or reuses a fresh current root.
+- `ESC &l#V` recovery without publication:
+  `0x1280a` writes the same recovered cursor state as a publishing sibling
+  but skips `0xf124`. The following printable stays on the current page, so
+  reproduction must not synthesize a page break merely because recovery logic
+  ran.
+
 Page-boundary behavior:
 
 - VFC does not render pixels directly. Its visible effect is the cursor and

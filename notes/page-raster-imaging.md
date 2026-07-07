@@ -650,7 +650,7 @@ Unresolved middle edges:
   encoded object fields `+0x04/+0x05/+0x06/+0x08/+0x0a..`, split allocator
   state `0x782a70/0x782a72/0x782a76/0x782a80`, bridge bucket roots,
   copy-stop byte `0x782996`, packed-key advance through `0x332ee`, or
-  mode-specific `0x1f88e` rows.
+  mode-specific `0x1f88e` row construction.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes, and local no-room returns are
   fixture-backed for both root `+0x24` and root `+0x28`. The parser-produced
@@ -661,7 +661,7 @@ Unresolved middle edges:
   publication, and mixed text/rule/raster streams. Remaining ROM-local work
   starts only from byte streams that change list ordering, `0x1381c`
   rollover/allocation state, retry publication fields, bridge state, render
-  dispatch, or rows.
+  dispatch, or ROM-derived row construction.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, and the
   scheduler-produced multi-band render loop are modeled. Fixture
   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers render,

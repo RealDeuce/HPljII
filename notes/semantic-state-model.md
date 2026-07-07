@@ -3614,8 +3614,9 @@ proves ROM strings and sample bytes enter the same printable path as host
 bytes. Direct payload rendering of the two sample byte runs through first
 `COURIER` and first `LINE_PRINTER` produces stable row-hash pairs
 documented in `generated/analysis/ic30_ic13_font_sample_page.md`; those
-hashes are the current comparison targets for the later page-object
-model. Fixture `font sample built-in row fields format through 0x1cabe`
+hashes are reference digests for the ROM-derived page-object path, not an
+external output oracle. Fixture `font sample built-in row fields format through
+0x1cabe`
 now covers the row-field cluster before the sample bytes for concrete
 resource records: first `COURIER` record `0x000418` / context
 `0x44080418` emits prefix `I01`, name `COURIER`, pitch `10`, height

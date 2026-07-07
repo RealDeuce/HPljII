@@ -4515,13 +4515,14 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   [font-context-metrics.md](font-context-metrics.md), and
   [page-record-storage.md](page-record-storage.md).
   Confidence is high for the pending state writers, metric gates, object byte
-  shapes, orientation split, bridge shape, and rendered rows because each has
-  disassembly support plus fixture checks.
+  shapes, orientation split, bridge shape, and ROM-derived row construction
+  because each cited edge has handler, field, or render-helper evidence; fixtures
+  only exercise the documented path and state shape.
   No unresolved ROM-local middle edge remains for this pending-span-to-page
   object handoff; remaining work is selected-font or byte-stream variants that
   change source-object fields, unflagged/flagged metric fields, pending span
   bounds, `0x12714` page-extent acceptance, orientation branch, page-object
-  fields, bridge roots, or rendered rows.
+  fields, bridge roots, or ROM row-construction inputs.
 - Page-root storage:
   The shared page-object state starts at current root pointer `0x78297a`.
   Canonical root fields are bucket heads `+0x1c` for compact text,
@@ -4648,7 +4649,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   storage, publication, and mixed text/rule/raster streams.
   Remaining work is limited to byte streams that change clipping output,
   `0x1381c` rollover/allocation state, retry publication fields, rule object
-  bytes, bridge state, render dispatch, or rendered rows.
+  bytes, bridge state, render dispatch, or ROM-derived row construction.
 - Raster producers:
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
@@ -4663,7 +4664,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   raster stream fixtures. The checkpoint covers lower-resolution modes `1..3`,
   consecutive uppercase `ESC *b#W` transfers, lowercase `ESC *b#w` same-family
   chaining, `ESC *rB` active-byte clear, active-resolution ignore, `0x105d0`
-  cap/drain gates, page-record object bytes, bridge dispatch, and rendered rows.
+  cap/drain gates, page-record object bytes, bridge dispatch, and ROM-derived row
+  construction.
 
   The mixed page-image cluster is now composed in `Mixed Text/Rule/Raster Page
   Record`: fixture
@@ -4963,18 +4965,19 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Confidence is high for render-root ownership, call order, bucket class split,
   compact subdispatch, segment-list layout, encoded raster modes, rule/fixed
   selectors, destination arithmetic, row-copy table targets, and row-level
-  output for the cited fixtures.
+  output derived from the cited object and render-helper paths.
   No unresolved shared render-dispatch edge remains for the documented object
   classes. Remaining ROM-local work starts from byte streams that create
   different object fields, selected-font contexts, helper targets,
-  continuation state, fallback split, or rendered rows.
+  continuation state, fallback split, or ROM-derived row construction.
 - Mixed page-image stream:
   The primary heterogeneous page-image stream is
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.
   It documents that no single command draws the final image: parser handlers
   first queue compact text, rectangle/rule, and encoded-raster objects under
   one page root; `0xff1e` publishes the root; `0x1ed84` / `0x1edc6` bridge it
-  into a render record; and `0x1ef6a` composes the visible rows.
+  into a render record; and `0x1ef6a` runs the ROM helpers that write the
+  resulting row bytes.
   Host bytes enter through `0xa904` and parser loop `0x11774`.
   Printable `!` reaches `0xd04a`, source helper `0x1393a`, positioning
   `0xd824`, root ensure `0x10084`, and compact queue
@@ -5034,14 +5037,15 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   [rectangle-graphics.md](rectangle-graphics.md).
   Confidence is high for parser handler order, delayed raster scratch,
   addressed object addresses, published page-record fields, bridge state,
-  render call order, bucket-chain order, rule carry, and visible rows.
+  render call order, bucket-chain order, rule carry, and ROM-derived row
+  construction.
   No unresolved middle edge remains for this exact stream's text source, rule
   selector, delayed raster restore, page-root storage, publication, bridge, or
   per-band bitmap merge.
   Remaining ROM-local work starts from byte streams that change text source
   fields, rectangle clipping or selectors, raster gate outcomes,
   `0x1381c` allocation/rollover state, bridge roots, continuation state, or
-  rendered rows.
+  row-construction inputs.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
   Checked-in documentation is [resource-rom.md](resource-rom.md),

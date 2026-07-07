@@ -444,6 +444,150 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
   `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
 
+## Minimal Macro Replay Walkthrough
+
+This is the smallest top-level stored-byte replay spine. It shows how bytes
+that were first received as host input can be stored in a macro record, replay
+through `0xa904` as parser input, and then use the same page-object and render
+pipeline as live host bytes.
+
+Input stream:
+
+```text
+ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X
+```
+
+Input bytes:
+
+```text
+1b 26 66 31 32 33 59 1b 26 66 30 58 21 0d
+1b 26 66 31 58 1b 26 66 32 58
+```
+
+Parser and macro command dispatch:
+
+- Live bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- Normal parser mode `17` routes `ESC &f#Y` to `0xe112` and `ESC &f#X` to
+  `0xdd08`.
+- `0xe112` rewinds the six-byte command record and writes absolute parsed id
+  `123` to current macro id field `0x783164`.
+- `0xdd08` rewinds command-record cursor `0x78299e`, calls `0xe0a4`, and
+  dispatches selector `0`, `1`, or `2` from the parsed `ESC &f#X` parameter.
+- `0xe0a4` selects or allocates a 12-byte record in macro pool `0x782a98`,
+  writes current record pointer `0x782d7a`, and treats a record as selectable
+  only when record head pointer `+0x00` is nonzero and id word `+0x08`
+  matches the requested id.
+
+Definition storage:
+
+- Selector `0` reaches `0xdd86` and starts definition mode. Following payload
+  bytes append to the selected macro record through `0xe002` instead of
+  dispatching as normal text/control bytes.
+- Alternate/data parser table `0x116f6` still routes `x/X` to `0xdd08`, so
+  the later `ESC &f1X` can stop the definition while ordinary payload bytes
+  are stored.
+- `0xe002` appends stored bytes into linked `0x100`-byte chunks rooted by
+  macro record `+0x00`; each chunk has a four-byte next pointer followed by
+  252 payload bytes.
+- For this stream, stored payload bytes are `21 0d`. During definition, the
+  printable handler `0xd04a` and CR handler `0xf02c` do not run for those
+  bytes.
+- Selector `1` reaches `0xddfc`, normalizes record `+0x04` from raw chunk
+  count to payload count, clears empty or auto-prefix-only records, and leaves
+  the nonempty `21 0d` record selectable.
+
+Execute frame and replay:
+
+- Selector `2` reaches `0xde7c -> 0xe418`. `0xe418` advances data-chain frame
+  pointer `0x782d76` by `0x0e` and writes an execute replay frame.
+- Frame `+0x00/+0x04` copy the macro payload-chain head and raw byte count,
+  frame `+0x08 = 4`, frame `+0x09 = 2`, and frame `+0x0a` points at the
+  execute environment snapshot chain.
+- On the next parser byte request, `0xa904` gives the active data-chain frame
+  priority over outer live input. Replayed bytes `21 0d` return to
+  `0x11774` as ordinary parser bytes.
+- Replayed byte `0x21` falls through the normal printable fallback to
+  `0xd04a`. Replayed byte `0x0d` reaches CR handler `0xf02c`.
+- At the frame-end marker, `0xa904` calls `0xe22c`. For execute frame kind
+  `2`, `0xe22c` restores the environment snapshot, frees the snapshot chain
+  through `0x18b4`, rewinds `0x782d76`, and resumes the outer byte source.
+
+Page-object and render effect:
+
+- Replayed `0xd04a` uses the same printable source path as live byte `0x21`.
+  In the documented `LINE_PRINTER` case it maps to compact glyph byte `0x20`,
+  source flag `1`, and source object `0x782d7e`.
+- The flagged built-in path `0xd550 -> 0xd824 -> 0x12f2e -> 0x1387c` queues a
+  compact text object under current page-root bucket `+0x1c`.
+- The covered replayed glyph object prefix is the same as the direct
+  printable path:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+- Replayed CR updates cursor/control state through `0xf02c`; in this `!\r`
+  path it does not create a separate page object.
+- Publication `0xff1e` later snapshots the current page root, clears
+  `0x78297a`, and exposes the compact object to render entry.
+- `0x1ed84` seeds the active render record, `0x1edc6` copies bucket/context
+  roots, and `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches the replay-produced
+  compact object to the same compact text renderer used by live host bytes.
+  Macro execute replay has no macro-specific renderer.
+
+State classification:
+
+- Canonical:
+  current macro id `0x783164`, macro record pool `0x782a98`, selected record
+  pointer `0x782d7a`, macro payload chunks, active data-chain frame pointer
+  `0x782d76`, execute frame fields `+0x00/+0x04/+0x08/+0x09/+0x0a`, replayed
+  byte values, current page root `0x78297a`, compact text object, published
+  source record, and render-record bucket/context roots.
+- Derived/cache:
+  normalized payload count from selector `1`, execute snapshot chain,
+  compact bucket/key fields `0x782a7c..0x782a7e`, glyph offsets from the
+  selected font record, and render-band fields `0x783a20`, `0x783a22`, and
+  `0x783a28`.
+- Parser scratch:
+  mode-17 macro command tokenizer state, alternate/data parser table
+  selection at `0x116f6`, definition-mode byte `0x782c18`, append-error byte
+  `0x782c19`, command-record cursor `0x78299e`, and replayed bytes `21 0d`.
+- Firmware bookkeeping:
+  macro chunk allocator state rooted at `0x783988`, record raw count `+0x04`,
+  host gate bit 1 in `0x780e66`, frame-end cleanup through `0xe22c`, stream
+  allocator fields `0x782a70/0x782a72/0x782a76`, publication flag
+  `0x782996`, and scheduler/render progress words.
+- Hardware/external:
+  the original physical source that supplied the macro-definition and execute
+  command bytes to `0xa904`, plus later formatter/DC timing events that cause
+  publication and active-band rendering. Replayed payload bytes themselves are
+  ROM-local data-chain bytes once the macro record exists.
+- Unknown:
+  no ROM-local middle edge is unresolved for this stored `!\r` execute path
+  to compact text rendering. Remaining macro work must change replay-frame
+  fields, skip-gate state, parser/delayed-payload dispatch, page-object
+  fields, bridge roots, continuation fields, or ROM-derived row construction.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Macro Execute Replay` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [macro-data-chain.md](macro-data-chain.md),
+  [host-byte-fetch.md](host-byte-fetch.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

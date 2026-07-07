@@ -390,7 +390,12 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xf60a` (`V/v`). Lowercase finals keep mode `12`; uppercase finals return
   to mode zero. Text-motion `&k` enters mode `11` and reaches `0xedf8`
   (`G/g`), `0xca8c` (`H/h`), and `0xc390` (`S/s`). Wrap mode `&s` enters
-  mode `8` and reaches `0xedb0` (`C/c`). `0xedf8` writes
+  mode `8` and reaches `0xedb0` (`C/c`). Pitch-mode `0xc390` accepts
+  selectors `0`, `2`, and `4`, rewrites synthetic pitch records as
+  `10.0000`, `16.6600`, or `12.0000`, and rejoins
+  `0xc89c -> 0xc580`; later printable bytes see the effect through refreshed
+  selected-font context, HMI, glyph maps, and compact text objects. `0xedf8`
+  writes
   line-termination byte `0x78318f`: CR `0xf02c` tests bit `7` before applying
   LF movement, LF `0xf08c` tests bit `6` before applying CR-style x reset,
   and FF `0xf0f0` tests bit `5` before applying CR-style x reset and page

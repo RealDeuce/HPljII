@@ -3283,8 +3283,10 @@ resources because no image is available in this repo.
   default-table/copy/default-font streams, and the final-`X` primary built-in,
   secondary built-in, and inline/downloaded font-ID streams. The `0x13eb8`
   transient/cache-hit exits are state-covered as preserved-output paths, while
-  broader font-selection fallback/error combinations still need the same
-  page-visible treatment when they change output.
+  font-selection fallback/error combinations still need the same page-visible
+  treatment only when they change selected slot `0x7828a8`, active symbol
+  words, selected context records, active maps, page-root font slots,
+  source-object fields, bridge context slots, or rendered rows.
 - Record `+0x28/+0x2a` is pinned as the decoded-height input consumed by
   `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
   same-class `0x1428c` chooser tie-breaker tuple. Final
@@ -4592,12 +4594,16 @@ selector mismatch only copies the remembered word and installs no context.
     fixtures start without a root; it is `0` in the live secondary handoff
     fixture because the root already exists before SO.
 - Unknown:
-  - broader `0x13eb8` refresh variants that change selected context, map
-    rebuild, page-root slot install, object bytes, or rendered rows beyond the
-    covered primary and secondary parser-to-printable state edges.
-  - broader non-Roman command combinations remain open only if they expose
-    different state boundaries; the primary and secondary visible-output paths
-    for `0N`, `10U`, and `11U` are fixture-backed.
+  - `0x13eb8` refresh variants remain open only when they change a concrete
+    selected-font boundary: candidate windows `0x7827a0..0x7827b8`, selected
+    slot `0x7828a8`, active symbol words `0x783144/0x783146`, selected
+    context records `0x782ee6/0x782ef6`, maps `0x782f32/0x783032`, snapshot
+    keys `0x783148/0x783152`, page-root font slot/context fields,
+    source-object fields, HMI/cursor advance, compact object bytes, bridge
+    context slots, or rendered rows.
+  - Non-Roman command combinations remain open only if they expose one of
+    those different state boundaries; the primary and secondary visible-output
+    paths for `0N`, `10U`, and `11U` are fixture-backed.
 
 ### Writers
 
@@ -4910,8 +4916,10 @@ no-dispatch refresh variants because
 `0x13eb8 no-dispatch exits keep prior visible rows` carries both the
 transient-context and cache-hit exits through printable/SO tails, prior
 contexts, bridged context slots, object prefixes, and row digests. Remaining
-refresh work is broader `0x13eb8` / `0x156de` / `0x14c64` state combinations
-that expose new selected-context, map, or page-root slot behavior.
+refresh work is `0x13eb8` / `0x156de` / `0x14c64` state combinations that
+change candidate windows, active symbol words, selected context records,
+active maps, snapshot keys, page-root font slot/context fields, source-object
+fields, HMI/cursor advance, bridge context slots, or rendered rows.
 High for primary and secondary visible-output handling of `0N`, `10U`, and
 `11U` because fixture `non-Roman symbol streams select visible built-ins`
 preserves symbol-set parsing, font-selection refresh, SO for secondary,
@@ -5065,8 +5073,12 @@ install events.
   cache-hit no-dispatch exits are now carried through preserved visible tails:
   the transient path ends at prior primary context `0xc0089fb0`, and the
   cache-hit path ends at prior secondary context `0xc40ad87a`. Remaining risk
-  is broader font-selection variants that expose new selected contexts, map
-  rebuilds, page-root slot installs, object bytes, or rendered rows.
+  is font-selection variants that change candidate windows `0x7827a0..0x7827b8`,
+  selected slot `0x7828a8`, active symbol words `0x783144/0x783146`, selected
+  context records `0x782ee6/0x782ef6`, map arrays `0x782f32/0x783032`,
+  snapshot keys `0x783148/0x783152`, page-root font slot/context fields,
+  source-object fields, HMI/cursor advance, bridge context slots, or rendered
+  rows.
 - `0xc580..0xc428`: the common-refresh branch cluster is now modeled for
   dirty-1 install/reuse/full/selector-mismatch paths and dirty-2
   selector-match/mismatch paths. The remaining risk is not which branch writes
@@ -7476,8 +7488,10 @@ ROM-effect names and failure behavior of every `0x16fae` validation-table entry,
 including the host-fetched invalid-type, first-code overflow, zero/high line-count,
 reversed/high range-count, and invalid-class no-install boundaries. Medium for the
 complete soft-font grammar because exact HP manual labels for pass-through descriptor
-fields and broader selected-font state combinations still need ROM-local byte-stream
-coverage.
+fields remain external, and selected-font state combinations still need ROM-local
+byte-stream coverage only when they change selected context records, active maps,
+source-object fields, copied metric fields, pending span fields, page-object fields,
+bridge context slots, or rendered rows.
 
 ### Fixtures
 
@@ -7958,9 +7972,11 @@ installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: insta
   `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; additional legal metric
   values are cross-products of those formulas and the covered matrix,
   boundary, range-endpoint, extent-fence, mixed-value, tight-range,
-  low-nibble, and byte-boundary fixtures. Remaining descriptor work is broader
-  selected-font state combinations plus external naming for
-  consumed-but-not-staged validation fields.
+  low-nibble, and byte-boundary fixtures. Remaining descriptor work is
+  selected-font state combinations that change selected context records,
+  active maps, source-object fields, copied metric fields, pending span
+  fields, page-object fields, bridge context slots, or rendered rows, plus
+  external naming for consumed-but-not-staged validation fields.
 
 ## Macro Definition And Data-Chain Replay
 

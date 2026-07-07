@@ -1009,9 +1009,14 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   final-`X` success and non-selected exits, page-root slot install/reuse,
   glyph-map consumption, bridge preservation, and rendered rows.
   No unresolved ROM-local middle edge remains for the documented primary and
-  secondary built-in selection streams. Remaining work is broader command
-  combinations that change candidate records, map bytes, context flags,
-  compact object shapes, bridge state, span metrics, or ROM-derived rows.
+  secondary built-in selection streams. Remaining work must change a concrete
+  selected-font boundary: candidate windows `0x7827a0..0x7827b8`, selected
+  slot `0x7828a8`, active symbol words `0x783144/0x783146`, selected context
+  records `0x782ee6/0x782ef6`, primary/secondary maps `0x782f32/0x783032`,
+  snapshot keys `0x783148/0x783152`, page-root font slot/context fields,
+  source-object fields `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, HMI/cursor
+  advance, span metrics, compact object shape, bridge context slots, or
+  ROM-derived rows.
 - Downloaded font payloads:
   Downloaded fonts are a parser-payload-to-selected-resource path. Font-control
   writers `0x15a56`, `0x15a18`, and `0x16df6` set the current id/character

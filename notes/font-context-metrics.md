@@ -1143,8 +1143,13 @@ only `d8fc` through descriptor-owned upper-bound fields while preserving
 the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
 inline/flagged are invalid cross-forms. The remaining producer-side work is
-broader selected-font state combinations that feed those legal forms, plus
-external/manual naming for consumed-but-not-staged validation fields.
+selected-font state combinations that change selected context records
+`0x782ee6/0x782ef6`, active maps `0x782f32/0x783032`, source-object fields
+`0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, unflagged metric bytes
+`+0x2b/+0x2c/+0x2d`, flagged metric words `+0x16/+0x18/+0x1a`, pending span
+fields `0x783184..0x78318a`, page-object fields, bridge context slots, or
+rendered rows. External/manual naming for consumed-but-not-staged validation
+fields remains open.
 
 ## Descriptor Metric Semantic Checkpoint
 
@@ -1300,10 +1305,12 @@ Confidence:
   branch behavior, and visible span effects for the cited cases because each
   claim is backed by host-fetched descriptor fixtures, disassembly, and
   rendered row digests.
-- Medium for full descriptor compatibility because broader selected-font state
-  combinations and exact HP manual labels for non-staged fields remain open;
-  additional legal metric values are cross-products of the documented producer
-  formulas and consumer gates.
+- Medium for full descriptor compatibility only where selected-font state
+  combinations change selected context records, active maps, source-object
+  fields, copied metric fields, pending span fields, page-object fields,
+  bridge context slots, or rendered rows. Exact HP manual labels for
+  non-staged fields remain open; additional legal metric values are
+  cross-products of the documented producer formulas and consumer gates.
 
 Fixture evidence:
 
@@ -1484,5 +1491,7 @@ A byte-stream reproduction must preserve these behaviors:
   inside the inline/unflagged and resource/flagged forms are cross-products of
   the pinned matrix, boundary, extent-fence, range-endpoint, mixed-value,
   tight-range, low-nibble, and byte-boundary fixtures. The remaining gap is
-  broader selected-font state combinations plus external/manual naming for
-  consumed-but-not-staged fields.
+  selected-font state combinations that change selected context records,
+  active maps, source-object fields, copied metric fields, pending span
+  fields, page-object fields, bridge context slots, or rendered rows, plus
+  external/manual naming for consumed-but-not-staged fields.

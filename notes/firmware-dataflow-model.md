@@ -1547,6 +1547,12 @@ Activation, filtering, and selection consumers:
   byte `+0x31`.
 - `0x13eb8`, `0x144d2`, and `0x14c64` consume the selected candidate to write
   current context records and rebuild active glyph maps for printable text.
+  Remaining font-selection work must change a concrete boundary in that chain:
+  candidate windows `0x7827a0..0x7827b8`, selected slot `0x7828a8`, active
+  symbol words `0x783144/0x783146`, selected context records
+  `0x782ee6/0x782ef6`, active maps `0x782f32/0x783032`, snapshot keys
+  `0x783148/0x783152`, page-root font slot/context fields, source-object
+  fields, HMI/cursor advance, bridge context slots, or rendered rows.
 
 Output effect:
 

@@ -101,6 +101,44 @@ Canonical object fields:
 - Rule/fixed object `+6`: ordered key.
 - Rule/fixed dimensions and extent fields begin at `+8`.
 
+Renderer-facing object class map:
+
+- Compact text and downloaded-glyph objects:
+  producers `0xd04a -> 0x12f2e -> 0x1387c` write root `+0x1c` bucket
+  objects with selector/class byte `+4` in `0x00..0x3f`. Bridge `0x1edc6`
+  copies root `+0x1c` to render `+0x18`; renderer `0x1efc2 -> 0x1effe`
+  dispatches compact helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
+  `0x1f264` by object selector bits. Context slots copied from root
+  `+0x2c..+0x68` to render `+0x24..+0x60` supply glyph/resource pointers.
+- Text-span segment-list objects:
+  producer `0x12714` reaches `0x13520` / `0x1354a` / `0x135f0` in portrait
+  orientation and writes class-`0x40` objects under root `+0x1c` through
+  `0x1387c`. Bridge `0x1edc6` again exposes them at render `+0x18`;
+  renderer `0x1efc2` selects segment-list consumer `0x1f812`.
+- Encoded raster objects:
+  delayed raster handler `0x105d0` calls `0x13070 -> 0x13250`, writing
+  class-`0x80` bucket objects under root `+0x1c`; dense rows may split through
+  `0x132b6` and multiple `0x13070` loop iterations. Bridge `0x1edc6` copies
+  the bucket root to render `+0x18`; renderer `0x1efc2 -> 0x1f88e` selects
+  mode helpers `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6` from object byte
+  `+5 & 3`.
+- Rectangle/rule objects:
+  rectangle fill `0x10898` reaches `0x13386 -> 0x133aa`, writing ordered
+  nodes under root `+0x24`. Bridge `0x1edc6` copies and normalizes that list
+  into render `+0x1c`; renderer `0x1f446` consumes it and dispatches pattern
+  helper `0x1f4e0` or solid helper `0x1f596` by the bridged selector byte.
+- Landscape text-span fixed-list objects:
+  producer `0x12714` reaches `0x136d2` in landscape orientation, writing
+  fixed-width objects under root `+0x28`. Bridge `0x1edc6` copies and
+  normalizes that list into render `+0x20`; renderer `0x1f756` consumes it on
+  five-band boundaries.
+
+This map is the storage-side join between command-family output and bitmap
+dispatch. It does not replace the detailed renderer contracts in
+[page-raster-imaging.md](page-raster-imaging.md); it identifies the canonical
+page-root field a command writes and the exact render-root field and consumer
+that later derives pixels from it.
+
 Canonical publication and bridge state:
 
 - `0xff1e` publishes a valid current root into a page/control pool record and

@@ -297,10 +297,12 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `Worked Path: Command Record And Payload Dispatch` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Supporting evidence
   is `generated/analysis/ic30_ic13_parser_xrefs.md` plus tokenizer and
-  delayed-payload fixtures. Command finals and payload bytes are separate
-  events, six-byte records are saved through `0x121cc`, restored through
-  `0x12218`, and then consumed by raster, transparent text, downloaded-font,
-  generic payload, macro, and alternate/data handlers.
+  delayed-payload fixtures. The delayed-payload family matrix in that worked
+  path maps command forms to arming stubs, restored handlers, state writes,
+  and downstream owners. Command finals and payload bytes are separate events:
+  six-byte records are saved through `0x121cc`, restored through `0x12218`,
+  and then consumed by raster, transparent text, downloaded-font, generic
+  payload, macro, and alternate/data handlers.
 - Ignored and no-output parser rows:
   ROM evidence is parser loop `0x11774`, terminal reset path
   `0x11912..0x119bc`, delayed restore helper `0x12218`, normal parser table

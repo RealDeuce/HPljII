@@ -186,7 +186,9 @@ these ROM-defined boundaries before jumping to command-family notes:
 5. Delayed binary payload commands are two-stage. The table handler records a
    pending transfer (`0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`), then
    restore path `0x121cc -> 0x12218` calls the payload consumer such as
-   `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`.
+   `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`. The family
+   matrix in `Worked Path: Command Record And Payload Dispatch` maps those
+   consumers to their state writes and page/output owners.
 
 This contract is intentionally ROM-local. It documents what the firmware does
 with admitted bytes and where those bytes become page/render state. Physical

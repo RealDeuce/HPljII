@@ -928,6 +928,47 @@ Delayed payload scheduling:
   same scheduler fields are used by transparent text, vertical forms control,
   downloaded-font payloads, and generic counted payload wrapper `0x1228a`.
 
+Delayed-payload family matrix:
+
+- `ESC *b#W` / `w` raster row:
+  arming path `0x11f82 -> 0x121cc`, restored handler `0x105d0`.
+  The handler reads absolute count from record `+2`, consumes payload bytes
+  through the payload reader, updates raster block `0x783170`, and queues
+  encoded-span objects through `0x10084 -> 0x13070 -> 0x13250`. Render
+  ownership is `Worked Path: Raster Row` and `Worked Path: Raster Transfer
+  Gates And Modes`.
+- `ESC &p#X` / `x` transparent print data:
+  arming path `0x11f5a -> 0x121cc`, restored handler `0x12452`.
+  The handler reads absolute count from record `+2`, routes payload bytes
+  through transparent filtering, and either feeds fixed-space/control handling
+  or ordinary printable text object production. Owner is
+  `Worked Path: Transparent Print Data`.
+- `ESC &l#W` / `w` VFC table load:
+  arming path `0x11f6e -> 0x121cc`, restored handler `0x12cfe`.
+  The handler reads table byte count from record `+2`, copies channel rows
+  into `0x782dde..0x782edd`, derives channel presence/cache fields, and is
+  later consumed by `ESC &l#V`. Owners are `Worked Path: Vertical Forms
+  Control` and `Worked Path: VFC Table And Channel Branch Matrix`.
+- `ESC (s#W` / `ESC )s#W`, count `0`:
+  arming path `0x11f96 -> 0x121cc`, restored handler `0x15d0a`.
+  The handler interprets the following descriptor/current-record grammar,
+  writes descriptor budget `0x783140`, fixed-record/current resource state,
+  and later source records consumed by printable glyph output. Owner is
+  `Worked Path: Fixed-Record Resource Object`.
+- `ESC (s#W` / `ESC )s#W`, nonzero count:
+  arming path `0x11f96 -> 0x121cc`, restored handler `0x16c14`.
+  The handler stores payload budget in `0x783140`, validates/downloads
+  descriptor or glyph bytes, installs resource candidates or
+  downloaded-character records, and leaves printable bytes to create page
+  objects through `0xd04a -> 0x12f2e`. Owners are
+  `Worked Path: Downloaded Glyph` and `Worked Path: Nonzero Resource Payload`.
+- Generic stateful-helper `W/w` payload:
+  arming path helper-specific `0x121cc(0x1228a)`, restored handler
+  `0x1228a`. The handler rewinds to the restored record, drains the absolute
+  byte count through `0x12328` / `0xdace`, and does not echo bytes as printable
+  input. In alternate/data mode `0x12358` either delegates here or appends
+  payload bytes to the data chain.
+
 Alternate/data-mode contrast:
 
 - Alternate/data mode is selected by byte `0x782c18`.

@@ -647,6 +647,26 @@ The bridge contract is documented in
 [page-record-storage.md](page-record-storage.md) and
 `generated/analysis/ic30_ic13_page_record_bridge.md`.
 
+Reproduction rule:
+
+- Treat the current page root as a per-page display list, not a bitmap. Host
+  bytes and command handlers append or mutate page objects under root
+  `+0x1c`, `+0x24`, and `+0x28`; they do not allocate a full-page raster
+  surface while parsing.
+- Treat `0xff1e` as the page snapshot boundary. After publication the
+  authoritative page image is the page/control pool record selected through
+  `0x780ea6` / `0x780eaa`, not the cleared current-root pointer
+  `0x78297a`.
+- Treat `0x1ed84` / `0x1edc6` as the render-record bridge. A renderer must
+  copy bucket roots, rule/fixed roots, and context slots before deriving
+  pixels; compact glyph bytes alone are not enough because `0x1effe` resolves
+  resources through the copied context slots.
+- Treat `0x1eba4` and `0x1ef6a` as band selection and band rendering. The ROM
+  renders selected band words from the published display list into the current
+  band/fallback buffers using `0x783a20`, `0x783a22`, and `0x783a28`; vertical
+  coordinates choose buckets, segments, and fallback splits rather than causing
+  a parser-time full-page bitmap allocation.
+
 ## Render Scheduling
 
 The active render scheduler is documented in

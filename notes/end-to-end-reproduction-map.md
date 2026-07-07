@@ -21,6 +21,15 @@ host bytes
   -> compact text, segment-list, rule, fixed-width, and raster renderers
 ```
 
+Page assembly is display-list based. Command handlers build one current page
+root at `0x78297a`; compact/raster bucket objects live under root `+0x1c`,
+rules under `+0x24`, fixed-list objects under `+0x28`, and context slots under
+`+0x2c..+0x68`. Publication `0xff1e` snapshots that root into a page/control
+pool record and clears `0x78297a`. Render entry then copies those roots through
+`0x1ed84` / `0x1edc6` and renders scheduler-selected band words through
+`0x1eba4` / `0x1ef6a`; the ROM-local model does not require or imply a
+parser-time full-page bitmap.
+
 Every reproduction claim below requires a checked-in note that names the ROM
 address boundary and cites focused disassembly, ROM bytes/tables, static
 cross-reference analysis, or generated table extracts used as supporting

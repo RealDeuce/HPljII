@@ -380,6 +380,15 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   to mode zero. Text-motion `&k` enters mode `11` and reaches `0xedf8`
   (`G/g`), `0xca8c` (`H/h`), and `0xc390` (`S/s`). Owner note:
   [direct-control-codes.md](direct-control-codes.md).
+- Underline/text-attribute commands:
+  `ESC &d` dispatches terminal handler `0x12622` directly from the `ESC &`
+  family. It tokenizes the local `&d` form, writes underline/span selector
+  state `0x783185` for covered selectors such as `3D`, and can flush pending
+  text span state through the same `0xf34a -> 0x12714` path used by cursor
+  moves. Its visible effect is delayed until the span machinery or following
+  printable text consumes the updated selector; it creates no standalone page
+  object without that downstream consumer. Owner note:
+  [direct-control-codes.md](direct-control-codes.md).
 - Page layout, VFC, and publication commands:
   `&l` enters mode `10` through `0x11eda`. Page-size, VMI/LPI, margin, paper,
   orientation, copies, and VFC terminals route to `0xfc74`, `0xcb00`,

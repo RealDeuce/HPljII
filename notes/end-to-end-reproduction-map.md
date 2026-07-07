@@ -301,6 +301,140 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+## Minimal Parser Dispatch Walkthrough
+
+This is the smallest top-level parser spine. It explains how normalized bytes
+become printable fallback calls, six-byte command records, table handlers,
+delayed payload calls, stored alternate/data bytes, or explicit no-output
+parser decisions before command-family notes take over.
+
+Representative byte classes:
+
+```text
+21
+00 07 0b
+ESC &l66P
+ESC *b2W c3 3c
+```
+
+Parser entry and record format:
+
+- Parser loop `0x11774` starts from bytes returned by wrapper `0xda9a`.
+- `0xda9a` calls normalized byte source `0xa904`. Non-`ESC` bytes return
+  unchanged. `ESC` causes one extra wrapper fetch so `ESC ?` forms can be
+  swallowed or reported before the main loop sees the next parser byte.
+- Parser mode byte `0x782999` selects the current table range. Normal mode
+  uses table roots `0x112a4` / `0x112a8`; alternate/data mode selected by
+  `0x782c18` uses table roots `0x116f6` / `0x116fa`.
+- Each parser-table row is six bytes: matched byte, next mode, and handler
+  longword.
+- Parameterized ESC commands are tokenized by `0xdaf0` and `0xdb74` into
+  six-byte records rooted at cursor `0x78299e`:
+
+```text
++0  flags
++1  final byte
++2  signed integer parameter
++4  signed fractional parameter
+```
+
+Normal printable and direct table dispatch:
+
+- In mode zero with alternate/data clear, bytes whose low seven bits are
+  `>= 0x20` normally take the fast printable path to `0xd04a`.
+- Nonprintable bytes and nonzero parser modes scan the current table. A
+  matching row with a handler longword calls that handler.
+- A matching row with no handler writes the row's next mode and may take the
+  terminal reset path. It is still a real parser decision, not an unknown
+  command.
+- Prefix handlers such as `0x11eb6`, `0x11ec8`, `0x11eda`, and `0x11eec`
+  update parser mode and callback helper state. Terminal handlers such as
+  `0xf9e8`, `0xedb0`, `0x10898`, or `0x11f82` are the handoff from syntax to
+  semantic command-family documentation.
+
+Command-record and delayed-payload behavior:
+
+- `0xdb74` fills one six-byte record, including optional sign, capped integer
+  digits, up to four fractional digits, and final byte `+1`.
+- `0xdaf0` combines lowercase-final command-family records with later
+  uppercase finals in the same ESC family. Lowercase finals can leave a record
+  pending instead of immediately running a terminal command.
+- Delayed payload setup `0x121cc` rewinds record cursor `0x78299e`, writes
+  pending byte `0x782a1a`, stores handler pointer `0x782a1c`, and saves the
+  six-byte record at `0x782a20..0x782a25`.
+- Terminal restore `0x12218` later copies the saved record back to the active
+  cursor and calls the saved handler. This is why a stream such as
+  `ESC *b2W c3 3c` is two-stage: parser syntax records byte count `2`, then
+  raster handler `0x105d0` consumes payload bytes after restore.
+- Other delayed consumers use the same restore boundary: transparent data
+  `0x12452`, VFC table load `0x12cfe`, downloaded descriptor path `0x15d0a`,
+  downloaded payload path `0x16c14`, and generic counted wrapper `0x1228a`.
+
+No-output and alternate/data cases:
+
+- Normal mode-zero C0 bytes `0x00`, `0x07`, and `0x0b` are explicit blank
+  rows in the normal table. They write mode `0`, call `0x12218`, reset parser
+  scratch, and do not call printable or control handlers.
+- Alternate/data mode handles blank C0 rows differently. Mode-zero
+  alternate/data rows for `0x00` and `0x07..0x0f` append the matched byte
+  through `0xe002` before the same terminal reset path, preserving input for
+  macro/data-chain replay while suppressing normal BS/HT/LF/FF/CR/SO/SI
+  effects.
+- `ESC ?` is handled by wrapper `0xda9a`, not by a page-output handler.
+- `ESC Z` is local terminator input for display-functions readers
+  `0x12536` and `0x12120`, not a standalone drawing command.
+- `ESC &lT/t` has no standalone page-output effect in the documented parser
+  table; lowercase `t` only participates in command-family chaining through
+  rewind helper `0x11f4c`.
+
+State classification:
+
+- Canonical:
+  parser mode `0x782999`, command-record cursor `0x78299e`, normal versus
+  alternate/data selector `0x782c18`, active command records, and terminal
+  handler ownership chosen from the parser tables.
+- Derived/cache:
+  table scan bounds, callback helper pointer `0x78299a`, and local lookahead
+  decisions from `0xdaf0` / `0xda9a`.
+- Parser scratch:
+  digit and nonnumeric scratch cursors `0x782a3e` and `0x782a26`, scratch
+  buffers `0x782a42..` and `0x782a2a..`, matched-byte buffer
+  `0x783196..0x783199`, and temporary tokenizer accumulators.
+- Firmware bookkeeping:
+  delayed-payload pending byte `0x782a1a`, delayed handler pointer
+  `0x782a1c`, saved record `0x782a20..0x782a25`, alternate echo latch
+  `0x782a56`, and append sink `0xe002`.
+- Hardware/external:
+  none beyond the byte source that supplied `0xa904`; physical bus timing does
+  not change parser classification after the same byte has been admitted.
+- Unknown:
+  no unresolved ROM-local middle edge remains for parser-table dispatch,
+  command-record construction, delayed-payload snapshot/restore, or the cited
+  no-output rows. Remaining parser work starts only from byte streams that
+  expose a different terminal handler, delayed consumer, append path, or
+  command-family state transition.
+
+Evidence:
+
+- Checked-in explanations:
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md),
+  `Worked Path: Command Record And Payload Dispatch` and
+  `Worked Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `Parser Record And Delayed Payload State` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`,
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`,
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+  `generated/analysis/ic30_ic13_pcl_command_map.md`, and
+  `generated/analysis/ic30_ic13_parser_xrefs.md`.
+
 ## Minimal Direct-Control Walkthrough
 
 This is the smallest top-level control/cursor spine. The control bytes and

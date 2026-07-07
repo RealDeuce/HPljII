@@ -130,6 +130,60 @@ command-family and page-image structure:
    physical correlation. Name the exact address range and the state or byte
    whose value is not proven.
 
+## State Classification Guide
+
+Use these categories consistently when documenting a command family or
+end-to-end stream:
+
+- Canonical state:
+  persistent firmware state that later handlers or renderers consume as the
+  source of truth. Examples include parser mode `0x782999`, selected text
+  slot `0x782f06`, current page root `0x78297a`, page-root bucket/rule/fixed
+  roots `+0x1c/+0x24/+0x28`, downloaded glyph records installed by
+  `0x16498`, VFC table `0x782dde..0x782edd`, published pool head
+  `0x780ea6`, active source `0x780eae`, and render roots copied by
+  `0x1edc6`.
+- Derived/cache state:
+  values recomputed from canonical inputs or object fields and safe to derive
+  when replaying the ROM model. Examples include bucket/key caches
+  `0x782a7c..0x782a7e`, raster split capacity `0x782a80`, render-band caches
+  `0x783a20`, `0x783a22`, `0x783a28`, stride `0x783a1c`, compact glyph cache
+  `0x783a2c`, and destination phase/cache fields used by `0x1f3d4` /
+  `0x1f626`.
+- Parser scratch:
+  transient tokenizer, command-record, and delayed-payload storage whose
+  contents matter only until dispatch restores or consumes them. Examples
+  include six-byte records at `0x78299e..`, digit scratch
+  `0x782a42..`, matched-byte scratch `0x783196..0x783199`, delayed flag and
+  saved record `0x782a1a/0x782a1c/0x782a20..0x782a25`, and payload-reader
+  local stack words.
+- Firmware bookkeeping:
+  allocator, scheduler, retry, append, and frame state that controls firmware
+  progress but is not itself a page/image semantic value. Examples include
+  stream allocator fields `0x782a70/0x782a72/0x782a76`, publication flag
+  `0x782996`, data-chain frame pointer `0x782d76`, append sink `0xe002`,
+  render work selectors `0x7820bc/0x7820c0`, active render pointer
+  `0x783a18`, wait-object records, and status/service counters.
+- Hardware/external state:
+  ROM-visible MMIO registers, physical bus signals, optional resource windows,
+  retained storage, and formatter/DC timing inputs. Examples include direct
+  host/device registers around `0x8e01`, `$8000.w`, `$a200`, `$a400`,
+  `$fffee00b..$fffee013`, optional resource windows
+  `0x200000..0x5ffffe`, and formatter/DC connector signals documented in
+  [dc-controller-engine.md](dc-controller-engine.md).
+- Unknown or unresolved state:
+  use only when a concrete address range or field has observed reads/writes
+  but its source, consumer, physical identity, or legal values are not proven.
+  The boundary entry must say whether it is ROM-local unknown,
+  hardware/MMIO, missing external resource data, or optional physical
+  correlation. Current examples are the physical decode for
+  `0x0c0000..0x0c0321`, exact MMIO-to-formatter signal mapping, and bounded
+  downloaded-glyph helper table/source-read edges.
+
+Do not use fixtures as a separate state class. A fixture can exercise a
+documented interpretation, but the documented field must still be classified
+as one of the categories above.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

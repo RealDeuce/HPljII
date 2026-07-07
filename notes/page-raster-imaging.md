@@ -1169,6 +1169,53 @@ Key current anchors:
   bucket-chain objects
 - `0x1f88e`: encoded-span writer selected from bucket-chain objects
 
+### Pixel Writer And Buffer Map
+
+The ROM renderers write into one of two software-visible destinations before
+any physical engine handoff:
+
+- Current band buffer:
+  destination base `0x783a28`, line stride `0x783a1c`, and row-offset table
+  `0x7839f8..` are derived by `0x1ee9e` / `0x1ef86`. Destination helpers
+  `0x1f3d4` and `0x1f626` combine those fields with packed object
+  coordinates. Subbyte phase is written to MMIO byte `0xa001`; nonzero phases
+  are stored with bit `0x10` set.
+- Fallback/continuation buffer:
+  helpers use `0x7810b4 + D2` when a compact glyph or encoded raster span
+  crosses the active band boundary. The split count comes from `0x1f414`,
+  which returns rows-in-current-band in the low word and remaining-after-band
+  in the high word.
+
+Writer families:
+
+- Compact text and downloaded glyphs:
+  `0x1effe` selects `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+  Row-copy helpers under `0x1fa5c..0x207ac` and wide helper `0x2f27c` perform
+  direct word/byte stores from decoded glyph rows into the selected current or
+  fallback destination.
+- Segment-list spans:
+  `0x1f812 -> 0x1f862` writes full `0xffff` words plus a trailing mask from
+  table `0x308f2` for each counted span row. It writes generated mask words;
+  it does not read and blend the previous destination word.
+- Rule and fixed-list objects:
+  `0x1f446` dispatches selector `7` to solid helper `0x1f596` and non-solid
+  selectors to pattern helper `0x1f4e0`; fixed-list helper `0x1f756` writes
+  pattern words through `0x1f7b0` / `0x1f626`. Solid and segment writers
+  write full words plus edge masks; patterned helpers mask the generated
+  pattern word before storing it.
+- Encoded raster:
+  `0x1f88e` selects `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`.
+  Mode `0` stores literal payload words; modes `1`, `2`, and `3` expand
+  payload bytes through ROM tables `0x30914` or `0x30b14` before direct
+  stores to current-band or fallback destinations.
+
+Composition is therefore ordered overwrite within the ROM-defined call order:
+bucket-chain objects first, then rule-list objects, then fixed-list objects.
+No documented helper performs destination read-modify-write blending against
+previous pixels. Physical video output starts after these software buffers are
+rendered and is tracked as the formatter/DC boundary, not as a parser or
+bitmap-helper requirement.
+
 ### Object Class Dispatch
 
 The bucket-chain dispatcher at `0x1efc2` walks render-record `+0x18`,

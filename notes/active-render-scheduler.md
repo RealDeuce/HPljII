@@ -196,12 +196,12 @@ the copied page roots, and which band words reach `0x1ef6a`.
 
 Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
 published source record `0x00d0eaa0` is copied to active source `0x780eae`,
-assigned render work record `0x782128` through `0x783a18`, and rendered to the
-same rows as the direct `0x1ed84` / `0x1ef6a` fixture.
+assigned render work record `0x782128` through `0x783a18`, and reaches the
+same ROM-local render-entry path as a direct `0x1ed84` / `0x1ef6a` setup.
 
 Fixture `0x1ecd6 same-geometry render work reuse reaches render entry` proves
 the sibling branch reuses prior geometry, computes destination word `+8`
-through `0x33238`, and still reaches the same composed rows.
+through `0x33238`, and still reaches the documented render-entry path.
 
 Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` proves
 the render, capacity-wait, cleanup, and throttle outcomes. In the render case,
@@ -211,7 +211,7 @@ throttle word `+0x0e`.
 Fixture `0x1eba4 scheduler band words render published downloaded glyph`
 proves scheduler-produced band words `0..9` drive a published downloaded-glyph
 record through `0x1ef6a`: only buckets `1` and `9` dispatch compact objects,
-and bucket `9` produces visible row `86`.
+and bucket `9` reaches the ROM-derived row-write path for page row `86`.
 
 ### Active Loop Branches
 
@@ -242,8 +242,8 @@ Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` pins
 these branch effects against the render-work fields. Fixture
 `0x1eba4 scheduler band words render published downloaded glyph` composes the
 render branch with a published page record: ten successive render calls use
-band words `0..9`, and the visible output remains tied to the buckets selected
-by `0x1ef6a`, not to any external timing source.
+band words `0..9`, and the row-write path remains tied to the buckets selected
+by `0x1ef6a`, not to any external image or timing source.
 
 The fixture-backed active-loop contract is:
 
@@ -257,7 +257,7 @@ The fixture-backed active-loop contract is:
   source `+0x18` and render words `+0x10/+0x16` at zero. Ten scheduler render
   calls enter `0x1ef6a` with `word_10_before = 0..9`, leave the work record at
   `+0x10 = 10`, and dispatch only published buckets `1` and `9`; bucket `9`
-  produces visible page row `86`.
+  reaches the ROM-derived row-write path for page row `86`.
 - Capacity-wait path: active `+6 = 10`, active remaining `4`, and paired
   remaining `1` produce capacity `5`. The loop clears active word `+0e` from
   `6` to `0`, signals wait object `0x780182` through `0x10c8`, and waits

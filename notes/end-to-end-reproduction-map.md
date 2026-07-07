@@ -1203,6 +1203,136 @@ Evidence:
   `generated/analysis/ic30_ic13_page_root_finalization.md`, and
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md`.
 
+## Minimal Render Scheduler Walkthrough
+
+This is the smallest top-level spine from a published page/control record to
+active band rendering. It starts after `0xff1e` publication and before object
+render dispatch. Parser records, command parameters, and delayed payload
+cursors are no longer direct inputs here; the scheduler consumes published
+page/control records and render work records.
+
+Representative input:
+
+```text
+any stream that reaches `0xff1e`, such as `! FF` or the mixed text/rule/raster
+stream in the render-dispatch walkthrough below
+```
+
+Source record selection:
+
+- `0xff1e` writes the source root longword to protected published pool-head
+  pointer `0x780ea6`, sets publication flag `0x782996`, and clears current
+  root pointer `0x78297a`.
+- Pool initialization `0x3144..0x3162` seeds `0x780ea6`, scheduler cursor
+  `0x780eaa`, active source `0x780eae`, and release cursor `0x780eb2` to the
+  pool base.
+- Candidate selection `0x7ec6..0x7f90` promotes a selectable candidate from
+  `0x780e6e[]` into `0x780eaa` and `0x780eb2`.
+- Cursor path `0x7722..0x779a` advances or releases scheduler cursors while
+  protecting `0x780ea6`.
+- Active scheduler entry `0x1eb32..0x1eb50` copies selected cursor
+  `0x780eaa` into active source pointer `0x780eae`.
+
+Render work selection and bridge:
+
+- Startup `0x2feb6` initializes two-work-record selector bytes `0x7820bc`
+  and `0x7820c0`, then clears paired work-record header words.
+- `0x1ecd6..0x1ed76` alternates render work records `0x7820c4` and
+  `0x782128`, writes active render pointer `0x783a18`, initializes geometry
+  through `0x1ee9e` when required, or reuses same-geometry fields through
+  helper `0x33238`.
+- `0x1ed84` copies active source header fields from `0x780eae` into the
+  selected render work record and calls `0x1edc6`.
+- `0x1edc6` copies source bucket root `+0x1c` to render root `+0x18`, source
+  rule-list root `+0x24` to render root `+0x1c`, source fixed-list root
+  `+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to render
+  slots `+0x24..+0x60`.
+
+Active band loop:
+
+- Active loop `0x1eba4..0x1ecd2` reads active render pointer `0x783a18`,
+  selector bytes `0x7820bc` / `0x7820c0`, and work-record fields `+0x06`,
+  `+0x0c`, `+0x0e`, `+0x10`, and `+0x16`.
+- Cleanup branches call `0x1ef38`, clear active-render flag `0x780ea4`, and
+  signal wait object `0x780182` when `0x780ea5 == 1` or active work
+  `+0x0c < +0x10`.
+- The throttle branch clears `+0x0e`, signals `0x780182`, and yields through
+  `0x10d8(2)` when `+0x0e > 0x28`.
+- The capacity branch computes available capacity from active and paired
+  remaining rows. If capacity is less than `9`, it clears `+0x0e`, signals
+  `0x780182`, and waits through `0x10d0(2)`.
+- The render branch calls `0x1ef6a`, then increments active band word
+  `+0x10` and throttle word `+0x0e`.
+- `0x1ef86` derives per-band caches `0x783a20`, `0x783a22`, `0x783a28`, and
+  stride `0x783a1c` before object dispatch starts.
+
+Output effect:
+
+- The scheduler does not create page objects or pixels from host bytes. It
+  chooses the active source record, chooses the render work record, copies
+  roots into that record, and decides which band words reach `0x1ef6a`.
+- ROM-local pixel provenance begins when `0x1ef6a` dispatches render roots in
+  fixed order. The scheduler evidence establishes the address and field path
+  that gets published objects to those dispatch calls; it does not depend on
+  comparing rendered rows against an external image.
+- Physical formatter/DC timing can wake, stall, or pace the scheduler through
+  wait-object and MMIO-facing state, but that timing does not add another
+  parser-to-page-object or page-object-to-render-root transformation in this
+  ROM-local model.
+
+State classification:
+
+- Canonical:
+  protected published pool head `0x780ea6`, scheduler cursor `0x780eaa`,
+  active source pointer `0x780eae`, release cursor `0x780eb2`, active render
+  pointer `0x783a18`, render work records `0x7820c4` / `0x782128`, render
+  roots `+0x18`, `+0x1c`, `+0x20`, context slots `+0x24..+0x60`, and active
+  band word `+0x10`.
+- Derived/cache:
+  render-band rows `0x783a20`, remainder `0x783a22`, destination base
+  `0x783a28`, stride `0x783a1c`, same-geometry destination word `+8`, and
+  candidate-slot ordering in `0x780e6e[]`.
+- Parser scratch:
+  none. Parser and command-family state has already been consumed by
+  page-record producers before `0xff1e`.
+- Firmware bookkeeping:
+  selector bytes `0x7820bc` / `0x7820c0`, active flags `0x780ea4` /
+  `0x780ea5`, throttle word `+0x0e`, wait object `0x780182`, timer/status
+  latches, scheduler trap state, and pool-record state byte `+4`.
+- Hardware/external:
+  MMIO-facing fields and strobes around `$8000`, `$8a01`, `$a200`, `$a400`,
+  `$a801`, and `0xffff2000`; exact board-signal names and physical event
+  timing are outside the ROM-local documentation boundary.
+- Unknown:
+  no unresolved ROM-local scheduler middle edge remains for the documented
+  source-selection, work-record alternation, bridge, and active-band branches.
+  Remaining uncertainty is hardware/MMIO timing and byte streams that create
+  different source records or object continuation fields.
+
+Evidence:
+
+- Checked-in explanations:
+  [active-render-scheduler.md](active-render-scheduler.md),
+  `Worked Path: Published Record To Active Bands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  `Published Record To Active Render Scheduler` in
+  [semantic-state-model.md](semantic-state-model.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+  `generated/disasm/ic30_ic13_page_pool_init_003100.lst`,
+  `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`,
+  `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`,
+  `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`,
+  `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`,
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`,
+  `generated/analysis/ic30_ic13_page_record_bridge.md`, and
+  `generated/analysis/ic30_ic13_render_path_references.md`.
+
 ## Minimal Render Dispatch Walkthrough
 
 This is the smallest top-level renderer spine after publication. It starts
@@ -3348,12 +3478,12 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `Worked Path: Published Record To Active Bands` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Confidence is high for source-root copying, context-slot copying,
-  rule/fixed normalization, render-root ownership, and rendered rows after the
-  bridge.
+  rule/fixed normalization, render-root ownership, and ROM-derived row-write
+  paths after the bridge.
   No unresolved ROM-local bridge edge remains for the documented compact,
   segment-list, encoded-raster, rule, and fixed-list objects; remaining work
   starts from byte streams that change source record fields, bridge-normalized
-  values, or rendered rows.
+  values, or row-write paths.
 - Active render scheduler:
   The active render scheduler is the software-visible path from a published
   page/control record to render-band calls.
@@ -3413,7 +3543,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Confidence is high for pool-head versus cursor roles, candidate selection,
   `0x780eaa -> 0x780eae`, work-record alternation, `0x783a18`,
   same-geometry reuse, active-loop branches, wait-object transitions, and
-  rendered rows.
+  the ROM-local path from scheduler-produced band words to render-entry
+  calls.
   Remaining edges are bounded hardware/MMIO timing and naming edges:
   `0x0d52..0x0f7a`, `0x0f84..0x102e`, `0x10bc..0x1282`, and
   `0x1cf8..0x1ea8` are modeled as firmware-visible scheduler and wait-object
@@ -5114,12 +5245,13 @@ than open middle edges.
    `0x780eaa -> 0x780eae`, work-record alternation through `0x7820bc`, active render
    pointer `0x783a18`, and `0x1ed84`/`0x1ef6a` output for a published page/control
    record. Fixture `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
-   checks candidate staging, `0x1fd4` slot insertion, state-4 release, candidate
-   promotion through `0x7ec6..0x7f90`, and the same rendered rows. Fixture
-   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers cleanup,
-   throttle, capacity-wait, and render-call branches, while fixture `0x1eba4 scheduler
-   band words render published downloaded glyph` checks the interpretation of
-   scheduler-produced band words `0..9` against a published downloaded-glyph record.
+   checks candidate staging, `0x1fd4` slot insertion, state-4 release, and
+   candidate promotion through `0x7ec6..0x7f90`. Fixture
+   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers
+   cleanup, throttle, capacity-wait, and render-call branches, while fixture
+   `0x1eba4 scheduler band words render published downloaded glyph` checks
+   the ROM-local interpretation of scheduler-produced band words `0..9`
+   against a published downloaded-glyph record.
    The remaining scheduler risk is not a ROM object/rendering middle edge: it is
    board-level timing for `$8000.4`
    selection at `0x0f84..0x0fa0` and `0x1020..0x102e`, MMIO effects around `$a601 =

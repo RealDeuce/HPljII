@@ -5536,19 +5536,21 @@ Output effect:
 
 - Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
   published source `0x00d0eaa0` reaches active source `0x780eae`, render work
-  `0x782128`, active render pointer `0x783a18`, and the same rows as direct
-  `0x1ed84` / `0x1ef6a` rendering.
+  `0x782128`, active render pointer `0x783a18`, and the same ROM-local
+  render-entry path as a direct `0x1ed84` / `0x1ef6a` setup.
 - Fixture `0x1ecd6 same-geometry render work reuse reaches render entry`
   proves the same-geometry branch computes destination word `+8`, derives
   `0x783a20 = 0x0020`, `0x783a22 = 3`, and
-  `0x783a28 = 0x00103800`, and still reaches the same composed rows.
+  `0x783a28 = 0x00103800`, and still reaches the documented render-entry
+  path.
 - Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` pins
   the render, capacity-wait, cleanup, and throttle outcomes from active and
   paired work-record fields.
 - Fixture `0x1eba4 scheduler band words render published downloaded glyph`
   proves ten scheduler-produced band words `0..9` feed a published
   downloaded-glyph page record into `0x1ef6a`; only buckets `1` and `9`
-  dispatch compact objects, and bucket `9` produces visible page row `86`.
+  dispatch compact objects, and bucket `9` reaches the ROM-derived row-write
+  path for page row `86`.
 
 State classification for this path:
 

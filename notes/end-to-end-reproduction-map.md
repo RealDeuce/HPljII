@@ -3348,6 +3348,110 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
 
+## Minimal Secondary Segment-57 Boundary Walkthrough
+
+This is the top-level path for the remaining pixel-affecting external resource
+boundary. It is not a transparent-parser, page-record, bridge, or compact-render
+dispatch gap. The ROM-local path reaches a concrete segmented glyph source
+range, and the unresolved input is the physical resource-window decode after the
+verified IC32/IC15 resource pair ends.
+
+Boundary stream:
+
+```text
+SO ESC &p3X ! 80 !
+```
+
+Parser, selection, and page-object path:
+
+- SO byte `0x0e` reaches handler `0xc6b8`, selects secondary text slot `1`, and
+  installs secondary context `0xc00ae122` in the page root through
+  `0xc428(1)` / `0xc4fc`.
+- `ESC &p3X` reaches arming handler `0x11f5a`, which schedules transparent
+  payload reader `0x12452` through delayed path `0x121cc` / `0x12218`.
+- Restored transparent record `80 58 00 03 00 00` gives payload bytes
+  `21 80 21`. With secondary filtering active, all three route to `0xd04a`.
+- The two `!` bytes read secondary context `0xc00ae122`, map to glyph `0`, and
+  queue short selector-1 entries. Payload byte `0x80` maps to glyph `0x5f`.
+- The high-control byte queues segmented compact objects with selector
+  `0x2001`; the bridged render context slots are `(0x440946b4, 0xc00ae122)`.
+
+Resolved renderer source:
+
+- `0x1f354` uses the bit-30 offset-table form for secondary context
+  `0xc00ae122`.
+- For secondary `LINE_PRINTER`, table index `0x5f` has relative offset `0`, so
+  the glyph entry resolves to record header file offset `0x02e122`.
+- The interpreted glyph entry has bitmap delta `0`, mode `0`, rows `20062`,
+  width `74`, and render span `10`.
+- Segmented renderer `0x1f1f0` applies segment `0x39` as row skip `7296`,
+  clamps the selected segment to `0x80` rows, and advances source A2 to file
+  offset `0x03fe22`.
+- File offset `0x03fe22` maps to firmware source address `0x0bfe22`. The row
+  source needs bytes through firmware address `0x0c0321`.
+
+Exact boundary:
+
+- Required source range:
+  `0x0bfe22..0x0c0321`.
+- Verified IC32/IC15 suffix:
+  `0x0bfe22..0x0bffff`, `478` bytes, digest
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`.
+- Unverified continuation:
+  `0x0c0000..0x0c0321`, `802` bytes. This range is beyond the verified
+  `0x40000`-byte resource-pair image.
+- Mirror, code-pair continuation, and zero-fill policies all produce the same
+  current-band digest
+  `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`, but
+  diverge in fallback rows after the verified suffix.
+
+State classification:
+
+- Canonical:
+  secondary selected context `0xc00ae122`, secondary map `0x783032`, routed
+  transparent payload bytes, selector-`0x2001` compact segment objects, glyph
+  `0x5f`, segment `0x39`, render-record context slots, and verified resource
+  suffix bytes `0x0bfe22..0x0bffff`.
+- Derived/cache:
+  local transparent filtering word, row skip `7296`, selected bucket sequence,
+  glyph-entry interpretation, source file offset `0x03fe22`, firmware source
+  address `0x0bfe22`, suffix digest, continuation candidate hashes, and
+  current/fallback row digests.
+- Parser scratch:
+  restored transparent command record `80 58 00 03 00 00`, delayed handler
+  fields `0x782a1a/0x782a1c/0x782a20..0x782a25`, payload count, and transparent
+  reader cursor.
+- Firmware bookkeeping:
+  page-root font-slot install state, stream allocator state, publication flag
+  `0x782996`, render-work progress, startup scanner counts used to constrain
+  continuation hypotheses, and probe-script hash bookkeeping.
+- Hardware/external:
+  physical ROM/resource decode for firmware address `0x0c0000..0x0c0321`.
+- Unknown:
+  the exact byte source for `0x0c0000..0x0c0321`. Closing this boundary requires
+  board or emulator memory-map evidence, a direct bus read around `0x0c0000`, or
+  startup candidate counters that identify the actual continuation policy.
+
+Evidence:
+
+- Checked-in explanations:
+  `Boundary: Secondary Segment-57 Source` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [resource-rom.md](resource-rom.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
+  [formatter-interface-pca.md](formatter-interface-pca.md), and
+  [rom-dump-manifest.md](rom-dump-manifest.md).
+- Reproduction probe:
+  `tools/probe_resource_window.py --quiet`.
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`, and
+  `generated/disasm/ic30_ic13_cart_resource_scan_0003e8.lst`.
+
 ## Minimal Display Functions Walkthrough
 
 This is the smallest top-level `ESC Y ... ESC Z` direct-reader spine. Unlike

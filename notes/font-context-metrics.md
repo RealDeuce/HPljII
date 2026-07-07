@@ -310,6 +310,36 @@ Fixture-pinned secondary result:
 - map range: `0x21..0xff`;
 - patch kind: selected symbol is not Roman-8.
 
+### Active Candidate Chooser
+
+`0x14398` is the selection boundary between filtered candidate windows and the
+current-font context record that printable bytes later use:
+
+- The filtered window enters as pointer `0x78287c` and count `0x7827b8`.
+  Filter stages `0x1569c`, `0x156de`, `0x153c6`, `0x1519a`, `0x147b2`, and
+  `0x14758` have already cleared the active bit on rejected candidate slots
+  and shrunk the window.
+- `0x143a0..0x143b6` reports status `(0xe7, 0x36)` through `0x1284` when the
+  active count is zero. The covered visible streams enter the chooser with a
+  nonzero count.
+- `0x143b8..0x143f8` walks longword slots from `0x78287c`, treating negative
+  longwords as active survivors. The first active survivor seeds the current
+  best slot in `A4`.
+- `0x143d8..0x143f4` compares each later active survivor against the current
+  best by calling `0x13c06(challenger, best)`. When that comparator returns
+  `D7 = 1`, the challenger replaces the current best.
+- `0x143fa..0x14406` writes the winning slot pointer to `0x7828a8`.
+
+Comparator `0x13c06` classifies both records by address window and, for
+same-class records, delegates tie-breaking through `0x1428c`. The tie-breaker
+inputs include decoded height and candidate bytes `+0x2f..+0x31`, as composed
+in [semantic-state-model.md](semantic-state-model.md). The chooser's output is
+canonical selected-font state: `0x144d2` copies the selected longword from
+`0x7828a8` into current-font record `0x782ee6` or `0x782ef6`, and `0x14c64`
+rebuilds the selected character map consumed by later `0xd04a` printable
+bytes. A different `0x7828a8` therefore changes the selected context slot,
+mapped glyph byte, compact object, and rendered text rows.
+
 `0x14c64` chooses the map-building path from the selected context form:
 
 - bit-30 set / offset-table form: rebuilds a base range through `0x14d9c`,
@@ -1350,6 +1380,11 @@ Disassembly evidence:
   staged payload copy `0x1719c..0x1725c`.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
   span consumers `0xd4ac..0xd548` and `0xd8fc..0xd992`.
+- `generated/disasm/ic30_ic13_active_object_scan_014398.lst`:
+  active-candidate scan and selected-slot write `0x14398..0x14406`.
+- `generated/disasm/ic30_ic13_object_compare_013a48.lst`:
+  selected-font snapshot check `0x13a48` and active survivor comparator
+  `0x13c06`.
 - `generated/disasm/ic30_ic13_text_span_flush_012714.lst` and
   `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
   pending-span output into page-record span objects.

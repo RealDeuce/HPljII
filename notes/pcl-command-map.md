@@ -425,7 +425,10 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   handler `0x12452` through `0x121cc` / `0x12218`. `ESC Y ... ESC Z` enters
   mode `1` and dispatches normal reader `0x12536`; alternate/data mode uses
   `0x12120`. Control-Z mode `2` terminals use normal handlers `0x120d2` /
-  `0x1219e` or alternate handlers `0x1210c` / `0x121b2`. Owner notes:
+  `0x1219e` or alternate handlers `0x1210c` / `0x121b2`. `ESC z` enters
+  mode `1` and dispatches normal handler `0xcd86`; it tests active data-chain
+  frame byte `0x782d76 + 9`, calls status helper `0x9c2c` only when that byte
+  is zero, and creates no page object. Owner notes:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).
 - Rectangle and raster imaging:

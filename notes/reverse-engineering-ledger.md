@@ -1634,9 +1634,10 @@ ROM work needed:
   patterned rule across bands `0` and `5`; modeled rectangle fill
   clipping now covers left/right/top/bottom, landscape-edge, and
   off-page ignore cases; compact mode-0 text now also has current-band
-  and fallback-row coverage through `0x1f414` and `0x7810b4 + D2`, and
-  synthetic wide/segmented compact text now covers the same fallback
-  split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`; host-fetched
+  and fallback-row coverage through `0x1f414` and
+  `0x7810b4 + byte_pair_offset`, and synthetic wide/segmented compact
+  text now covers the same fallback split for `0x1f0d2`, `0x1f1f0`, and
+  `0x1f264`; host-fetched
   150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
   `0x1ed84` and `0x1ef6a`.
 - Continue the active-render scheduler from the remaining physical

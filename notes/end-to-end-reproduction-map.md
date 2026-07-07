@@ -2432,7 +2432,8 @@ State classification:
   active render pointer `0x783a18`, band split count `0x783a20`, band
   remainder `0x783a22`, destination base `0x783a28`, stride `0x783a1c`,
   offset table `0x7839f8..`, compact context cache `0x783a2c`, wide-mode
-  caches `0x783a40..0x783a48`, and fallback base `0x7810b4 + D2`.
+  caches `0x783a40..0x783a48`, and fallback base
+  `0x7810b4 + byte_pair_offset`.
 - Parser scratch:
   none at this layer. Parser records, delayed payload state, and payload
   source positions have already become page-record objects.
@@ -5015,7 +5016,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Derived/cache render state is band split count `0x783a20`, band remainder
   `0x783a22`, destination base `0x783a28`, stride `0x783a1c`, offset table
   `0x7839f8..`, phase byte `$a001`, compact context cache `0x783a2c`,
-  compact row-copy phase `0x783a46`, and fallback buffer base `0x7810b4 + D2`.
+  compact row-copy phase `0x783a46`, and fallback buffer base
+  `0x7810b4 + byte_pair_offset`.
   Destination helpers `0x1f3d4`, `0x1f414`, and `0x1f626` decode packed
   coordinates into row index, subbyte phase, byte-pair offset, current-band
   rows, and fallback rows.
@@ -5031,8 +5033,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   contents.
   Reproduction rule: execute the band in ROM call order, use `0x783a28` plus
   offset table `0x7839f8..` for current-band destinations, use
-  `0x7810b4 + D2` only for documented fallback rows, and treat later direct
-  stores as overwrites rather than logical blends.
+  `0x7810b4 + byte_pair_offset` only for documented fallback rows, and treat
+  later direct stores as overwrites rather than logical blends.
   Writers are page producers `0x12f2e` / `0x1387c`, `0x12714` /
   `0x13520` / `0x135f0`, `0x13070` / `0x13250`, `0x13386` / `0x133aa`, and
   `0x136d2`; bridge writer `0x1edc6`; band-cache writer `0x1ef86`; and row
@@ -5327,8 +5329,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   bucket root. Derived/cache state is the selector word, low row/width bytes
   consumed by `0x12f2e`, `0x1f414` current/fallback split counts, row-copy
   table index, wide-mode caches `0x783a40..0x783a48`, and fallback buffer base
-  `0x7810b4 + D2`. Parser scratch is the restored `ESC )s#W` command record,
-  payload budget `0x783140`, and post-install drain through `0x12328`.
+  `0x7810b4 + byte_pair_offset`. Parser scratch is the restored
+  `ESC )s#W` command record, payload budget `0x783140`, and post-install
+  drain through `0x12328`.
   Firmware bookkeeping is copy status, continuation state, allocation/release
   state, and page publication state.
   The row-count matrix closes parser-produced rows `0x0001..0x00ff` for the

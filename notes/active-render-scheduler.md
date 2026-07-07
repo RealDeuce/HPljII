@@ -139,10 +139,11 @@ band calls:
 Continuation is explicit ROM state. Rule objects carry remaining rows in
 bridged field `+0x0c`; fixed-list objects carry remaining rows in `+0x0a`;
 compact glyph and encoded raster helpers may split rows between the current
-band and fallback buffer `0x7810b4 + D2`. The next scheduler band call resumes
-from those mutated object or fallback states. Physical formatter/DC timing can
-wake, stall, or pace this loop, but it does not create a different page-object
-model unless it changes the ROM-visible scheduler fields above.
+band and fallback buffer `0x7810b4 + byte_pair_offset`. The next scheduler
+band call resumes from those mutated object or fallback states. Physical
+formatter/DC timing can wake, stall, or pace this loop, but it does not create
+a different page-object model unless it changes the ROM-visible scheduler
+fields above.
 
 ## Writers
 

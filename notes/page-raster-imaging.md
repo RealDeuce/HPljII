@@ -1182,10 +1182,37 @@ any physical engine handoff:
   coordinates. Subbyte phase is written to MMIO byte `0xa001`; nonzero phases
   are stored with bit `0x10` set.
 - Fallback/continuation buffer:
-  helpers use `0x7810b4 + D2` when a compact glyph or encoded raster span
-  crosses the active band boundary. The split count comes from `0x1f414`,
-  which returns rows-in-current-band in the low word and remaining-after-band
-  in the high word.
+  helpers restart continuation rows at `0x7810b4` plus the horizontal
+  byte-pair offset decoded from the packed coordinate. Helper `0x1f3d4`
+  leaves that offset in `D2`; helper `0x1f626` leaves it in `A2`. The split
+  count comes from `0x1f414` or the matching split block inside `0x1f626`,
+  which returns rows-in-current-band in the low word and
+  remaining-after-band in the high word.
+
+Destination helper disassembly contract:
+
+- `0x1f3d4..0x1f412` decodes packed coordinate `D1`. The coordinate low byte
+  becomes `byte_pair_offset = (D1 & 0xff) * 2`; that value is added to
+  current-band pointer `A1` and preserved in `D2` for later fallback writes.
+  Coordinate bits `12..15` become a row index into word table `0x7839f8..`;
+  the selected table word is added to `0x783a28 + byte_pair_offset`.
+  Coordinate bits `8..11` become the subbyte phase written to `$a001`, with
+  bit `0x10` set when the phase is nonzero.
+- `0x1f414..0x1f436` does not recompute the destination pointer. It uses the
+  row index already packed into the high word of `D1`, clips requested row
+  count `D3` against `0x783a20 - row_index`, and returns either unchanged
+  `D3` or a split longword with fallback rows in the high word and
+  current-band rows in the low word.
+- `0x1f626..0x1f6ec` repeats the coordinate decode for rule/fixed-list style
+  writers and moves the byte-pair offset into address register `A2`. It then
+  converts incoming `D2` to a vertical row displacement with `lsl.w #4,D2`.
+  If the displacement is zero, it behaves like the current-band case above.
+  If the shifted displacement is still before `0x783a20`, it starts at
+  `0x783a28 + 0x783a1c * D2_rows + row_offset[row_index] +
+  byte_pair_offset` and clips `D3` against the remaining current-band rows.
+  Otherwise it subtracts `0x783a20` from the shifted displacement and starts
+  at `0x7810b4 + 0x783a1c * (row_index + adjusted_displacement) +
+  byte_pair_offset`.
 
 Writer families:
 
@@ -1375,8 +1402,10 @@ Field groups:
   - `0x7839f8..`: 16-word offset table written by `0x1ee9e` and consumed by
     destination helpers.
   - `0x783a2c`: compact glyph context/resource cache written by `0x1f008`.
-  - `0x7810b4 + D2`: fallback buffer used by compact glyph and encoded raster
-    helpers when current-band clipping carries rows beyond the active band.
+  - `0x7810b4 + byte_pair_offset`: fallback buffer position used by compact
+    glyph and encoded raster helpers when current-band clipping carries rows
+    beyond the active band. `0x1f3d4` preserves the byte-pair offset in `D2`;
+    `0x1f626` preserves it in `A2`.
 - Parser scratch:
   - none in the shared dispatch layer. Parser-family scratch has already been
     converted into page-record objects by `0x12f2e`, `0x13070`, `0x133aa`,
@@ -1697,13 +1726,14 @@ Compact object mode behavior:
   - Payload entry shape: glyph byte, coordinate word
   - Current behavior: renders each glyph through table `0x1f08e`, with
     `0x1f414` splitting the row count at `0x783a20` and continuation rows
-    written through the `0x7810b4 + D2` fallback buffer
+    written through `0x7810b4 + byte_pair_offset`, where `0x1f3d4`
+    preserved the coordinate low-byte offset in `D2`
 - `0x10`
   - Target: `0x1f0d2`
   - Payload entry shape: glyph byte, coordinate word
   - Current behavior: renders wide glyphs in 16-pixel chunks via
     `0x2f27c`, then a remainder through table `0x1f1ac`; crossing rows
-    rerun from `0x7810b4 + D2` after the `0x1f414` count split
+    rerun from `0x7810b4 + byte_pair_offset` after the `0x1f414` count split
 - `0x20`
   - Target: `0x1f1f0`
   - Payload entry shape: glyph byte, vertical/plane byte, coordinate
@@ -1835,8 +1865,10 @@ Field groups:
     row-skip, fallback row-skip, remainder row-skip, current 16-byte chunk
     phase, and fallback source pointer caches written by `0x1f0d2` and
     `0x1f264`.
-  - `0x7810b4 + D2`: fallback destination base used when `0x1f414` reports
-    rows past the current band.
+  - `0x7810b4 + byte_pair_offset`: fallback destination base used when
+    `0x1f414` reports rows past the current band. For compact helpers,
+    `0x1f3d4` leaves this offset in `D2`; for `0x1f626` callers, the helper
+    leaves the same offset in `A2`.
 - Parser scratch:
   - downloaded-character command records such as `80 57 00 06 00 00`,
     `80 57 00 12 00 00`, `80 57 01 83 00 00`, and

@@ -10091,12 +10091,14 @@ fixture detail. Helper `0x1f3d4` treats packed coordinate `D1` as row index
 `D1 >> 12`, subbyte phase `(D1 >> 8) & 0x0f`, and byte-pair offset
 `(D1 & 0xff) * 2`; it writes the phase, with bit `0x10` set when nonzero, to
 MMIO byte `0xa001`, then computes `A1` from `0x783a28`, the row-offset table,
-the byte-pair offset, and the caller-supplied x offset. Helper `0x1f414`
-clips a requested row count against `0x783a20 - row_index` and returns
-remaining-after-band in the high word and rows-in-current-band in the low
-word. Helper `0x1f626` repeats the same coordinate decode for later spans and
-chooses current-band, shifted-current-band, or fallback-buffer destinations
-from `D2`, `0x783a20`, `0x783a1c`, and `0x7810b4`.
+and the byte-pair offset. It also preserves that byte-pair offset in `D2` for
+fallback-row restarts. Helper `0x1f414` clips a requested row count against
+`0x783a20 - row_index` and returns remaining-after-band in the high word and
+rows-in-current-band in the low word. Helper `0x1f626` repeats the same
+coordinate decode for later spans, preserves the byte-pair offset in `A2`,
+converts incoming `D2` to a row displacement with `lsl.w #4,D2`, and chooses
+current-band, shifted-current-band, or fallback-buffer destinations from that
+row displacement, `0x783a20`, `0x783a1c`, and `0x7810b4`.
 
 ### Field Groups
 
@@ -10148,8 +10150,10 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
   - `0xa001`: subbyte destination phase written by `0x1f3d4` /
     `0x1f626`; nonzero phases are stored with bit `0x10` set.
   - `0x783a2c`: compact glyph context/resource cache written by `0x1f008`.
-  - `0x7810b4 + D2`: fallback buffer used when compact glyph or encoded raster
-    rows continue beyond the active band.
+  - `0x7810b4 + byte_pair_offset`: fallback buffer position used when compact
+    glyph or encoded raster rows continue beyond the active band. The offset
+    is the coordinate low byte doubled; `0x1f3d4` carries it in `D2`, while
+    `0x1f626` carries it in `A2`.
   - compact row-copy helper tables under `0x1fa5c..0x207ac` copy decoded glyph
     source bytes into the current band or fallback rows. Fixture
     `main row-copy width 3 rows 3 writes` pins mixed word/byte writes for

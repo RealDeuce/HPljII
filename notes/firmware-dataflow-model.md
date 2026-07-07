@@ -5716,8 +5716,11 @@ Composition effect:
   `+0x0c` and fixed-list `+0x0a`, so later render bands resume the same
   object rather than reparsing the page stream.
 - Current-band overflow for compact glyphs and encoded raster rows writes
-  continuation rows through the fallback buffer rooted at `0x7810b4 + D2`;
-  the scheduler then calls `0x1ef6a` again with later band words.
+  continuation rows through the fallback buffer rooted at `0x7810b4` plus
+  the horizontal byte-pair offset decoded from the packed coordinate. In the
+  compact path `0x1f3d4` leaves that offset in `D2`; in the `0x1f626` path
+  the helper leaves it in `A2`. The scheduler then calls `0x1ef6a` again
+  with later band words.
 
 Reproduction rule:
 
@@ -5729,8 +5732,9 @@ Reproduction rule:
   overwrite earlier destination words because the helpers store generated
   words directly.
 - Use `0x783a28` and offset table `0x7839f8..` for active-band destinations,
-  with stride `0x783a1c`. Use fallback base `0x7810b4 + D2` only when
-  destination helpers such as `0x1f414` report rows beyond the current band.
+  with stride `0x783a1c`. Use fallback base
+  `0x7810b4 + byte_pair_offset` only when destination helpers such as
+  `0x1f414` report rows beyond the current band.
 - Do not implement an implicit compositing mode. The documented helper set
   writes bytes, words, or longwords in ROM call order. Pattern helpers mask
   their generated pattern before storing it, but they do not read the
@@ -5747,7 +5751,8 @@ State classification:
   active render pointer `0x783a18`, band split count `0x783a20`, band
   remainder `0x783a22`, destination base `0x783a28`, stride `0x783a1c`,
   offset table `0x7839f8..`, compact context cache `0x783a2c`, wide-mode
-  caches `0x783a40..0x783a48`, and fallback base `0x7810b4 + D2`.
+  caches `0x783a40..0x783a48`, and fallback base
+  `0x7810b4 + byte_pair_offset`.
 - Parser scratch:
   none. Parser records, delayed payload state, and payload source positions
   have already been reduced to page-record objects by earlier producers.

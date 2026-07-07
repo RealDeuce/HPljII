@@ -3285,7 +3285,7 @@ def render_subrenderer_report(data: bytes) -> str:
     lines.append("")
     lines.append("| Selector bits from object byte `+4` | Target | Payload entry shape | Current write behavior |")
     lines.append("| --- | --- | --- | --- |")
-    lines.append("| `0x00` | `0x1f034` | glyph byte, coordinate word | resolves glyph, computes destination with `0x1f3d4`/`0x1f414`, then uses table `0x1f08e` indexed by glyph span/count to copy glyph rows; if clipped across a band, repeats from `0x7810b4 + D2` |")
+    lines.append("| `0x00` | `0x1f034` | glyph byte, coordinate word | resolves glyph, computes destination with `0x1f3d4`/`0x1f414`, then uses table `0x1f08e` indexed by glyph span/count to copy glyph rows; if clipped across a band, repeats from `0x7810b4 + byte_pair_offset` |")
     lines.append("| `0x10` | `0x1f0d2` | glyph byte, coordinate word | like `0x1f034`, but splits wide glyphs into full 16-pixel chunks via helper `0x2f27c` and a remainder through table `0x1f1ac`; uses scratch `0x783a40..0x783a48` |")
     lines.append("| `0x20` | `0x1f1f0` | glyph byte, vertical/plane byte, coordinate word | adjusts glyph bitmap pointers by `byte*0x80`, clips height to `0x80`, then uses table `0x1f08e` |")
     lines.append("| `0x30` | `0x1f264` | glyph byte, vertical/plane byte, coordinate word | combines the vertical/plane adjustment of `0x1f1f0` with the chunk/remainder loop of `0x1f0d2` |")
@@ -3677,7 +3677,6 @@ def render_destination_fixture_report(data: bytes) -> str:
     ]
     row_offsets = [i * 0x20 for i in range(16)]
     band_base = 0x100000
-    object_payload_offset = 0x40
     buffer_base = 0x200000
     stride = 0x100
 
@@ -3693,15 +3692,15 @@ def render_destination_fixture_report(data: bytes) -> str:
     lines.append("- `row_index = D1 >> 12`, used as an index into word table `0x7839f8`.")
     lines.append("- `byte_pair_offset = (D1 & 0xff) * 2`, added directly to the destination pointer.")
     lines.append("- `subbyte = (D1 >> 8) & 0x0f`; if nonzero, bit `0x10` is set before writing the low byte to MMIO `0xa001`.")
-    lines.append("- destination pointer `A1 = 0x783a28 + row_offsets[row_index] + byte_pair_offset + A2`.")
+    lines.append("- destination pointer `A1 = 0x783a28 + row_offsets[row_index] + byte_pair_offset`; the byte-pair offset is preserved in `D2` for fallback-row restarts.")
     lines.append("")
-    lines.append("Synthetic state for the fixture table below: `0x783a28 = 0x100000`, `A2 = 0x40`, and `row_offsets[i] = i * 0x20`.")
+    lines.append("Synthetic state for the fixture table below: `0x783a28 = 0x100000` and `row_offsets[i] = i * 0x20`.")
     lines.append("")
     lines.append("| Coordinate | Row index | Byte-pair offset | `0xa001` value | Expected `A1` |")
     lines.append("| ---: | ---: | ---: | ---: | ---: |")
     for coord in sample_coords:
         decoded = coord_decode(coord)
-        expected_a1 = band_base + row_offsets[decoded["row_index"]] + decoded["byte_pair_offset"] + object_payload_offset
+        expected_a1 = band_base + row_offsets[decoded["row_index"]] + decoded["byte_pair_offset"]
         lines.append(
             f"| `0x{coord:04x}` | {decoded['row_index']} | `0x{decoded['byte_pair_offset']:04x}` | `0x{decoded['a001']:02x}` | `0x{expected_a1:06x}` |"
         )
@@ -3725,43 +3724,44 @@ def render_destination_fixture_report(data: bytes) -> str:
 
     lines.append("## Helper `0x1f626` Destination Cases")
     lines.append("")
-    lines.append("Helper `0x1f626` repeats the same packed-coordinate decode, then chooses between current-band, shifted-in-band, and fallback-buffer destinations using `D2` and `0x783a20`.")
-    lines.append("The table uses synthetic state: `0x783a28=0x100000`, `0x7810b4=0x200000`, `0x783a1c=0x100`, `0x783a20=8`, `A2=(coord & 0xff)*2`, and `row_offsets[i]=i*0x20`.")
+    lines.append("Helper `0x1f626` repeats the same packed-coordinate decode, preserves the byte-pair offset in `A2`, shifts incoming `D2` left by four to form a row displacement, then chooses between current-band, shifted-in-band, and fallback-buffer destinations.")
+    lines.append("The table uses synthetic state: `0x783a28=0x100000`, `0x7810b4=0x200000`, `0x783a1c=0x100`, `0x783a20=80`, and `row_offsets[i]=i*0x20`.")
     lines.append("")
-    lines.append("| Case | Coordinate | Input `D2` | Input count `D3` | Expected branch | Expected `A1` | Returned `D2` | Returned `D3` |")
-    lines.append("| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |")
+    lines.append("| Case | Coordinate | Input `D2` | Shifted rows | Input count `D3` | Expected branch | Expected `A1` | Returned `D2` rows | Returned `D3` |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: |")
     dest_cases = [
         ("current band/no D2", 0x1234, 0, 5),
         ("shifted current band", 0x3234, 2, 3),
-        ("fallback buffer", 0x1234, 12, 5),
-        ("band boundary split", 0x7002, 1, 4),
+        ("fallback buffer", 0x1234, 6, 5),
+        ("band boundary split", 0x7002, 4, 12),
     ]
-    band_remainder = 8
+    band_remainder = 80
     for name, coord, d2_in, d3_in in dest_cases:
         decoded = coord_decode(coord)
         row = decoded["row_index"]
         a2 = decoded["byte_pair_offset"]
-        if d2_in == 0:
+        d2_rows = (d2_in << 4) & 0xFFFF
+        if d2_rows == 0:
             branch = "current band"
             a1 = band_base + row_offsets[row] + a2
-            d2_out = d2_in
+            d2_out = d2_rows
             d3_out = clip_count(coord, d3_in, band_remainder)
-        elif row > d2_in:
+        elif band_remainder > d2_rows:
             branch = "shifted current band"
-            a1 = band_base + stride * d2_in + row_offsets[row] + a2
-            d2_out = d2_in
-            rows_here = band_remainder - d2_in - row
+            a1 = band_base + stride * d2_rows + row_offsets[row] + a2
+            d2_out = d2_rows
+            rows_here = band_remainder - d2_rows - row
             if d3_in > rows_here:
                 d3_out = ((d3_in - rows_here) << 16) | (rows_here & 0xFFFF)
             else:
                 d3_out = d3_in
         else:
             branch = "fallback buffer"
-            d2_out = d2_in - row
+            d2_out = d2_rows - band_remainder
             a1 = buffer_base + stride * (row + d2_out) + a2
             d3_out = d3_in
         lines.append(
-            f"| {name} | `0x{coord:04x}` | {d2_in} | {d3_in} | {branch} | `0x{a1:06x}` | {d2_out} | `0x{d3_out:08x}` |"
+            f"| {name} | `0x{coord:04x}` | {d2_in} | {d2_rows} | {d3_in} | {branch} | `0x{a1:06x}` | {d2_out} | `0x{d3_out:08x}` |"
         )
     lines.append("")
     return "\n".join(lines)

@@ -353,6 +353,19 @@ font's normalized Roman-8 word, then uses active symbol words
 `0x783144` / `0x783146` to select hard-coded half-map behavior or one of the
 `0x14fce` patch tables.
 
+`0x1440c` writes the selected-font snapshot after a map rebuild. It chooses
+snapshot block `0x783148` for primary when `0x7828de == 0`, or `0x783152`
+for secondary when `0x7828de != 0`. For bit-30 resource records,
+`0x14436..0x14470` masks the selected address from `0x7828a8`, calls
+`0x15890`, writes snapshot word `+0x02`, stores form byte `+0 = 1`, copies
+record bytes `+0x0f` and `+0x11` into snapshot bytes `+0x06/+0x07`, and sets
+provenance byte `+0x09` only when the selected address is below `0x780efa`.
+For bit-30-clear inline/downloaded records, `0x14472..0x144ac` calls
+`0x158be`, writes snapshot word `+0x02`, stores form byte `+0 = 0`, copies
+record byte `+0x0e` into snapshot byte `+0x08`, and uses the same provenance
+test. The shared tail at `0x144b0..0x144ca` copies active symbol word
+`0x783144` or `0x783146` into snapshot word `+0x04`.
+
 The snapshot is the cache key for skipping redundant map rebuilds. Helper
 `0x13a48` selects `0x783148` or `0x783152` from `0x7828de`, loads selected
 candidate slot `0x7828a8`, and compares the selected record against the

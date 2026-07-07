@@ -43,8 +43,9 @@ imaging commands: the handler records the family transition and leaves the
 final command byte to a later mode. Examples are `ESC`, `ESC &`, `ESC &l`,
 `ESC *c`, and the primary/secondary font family prefixes. Rows labeled as
 font-designation terminals are the `ESC (#A..^` / `ESC )#A..^` family handled
-by `0x120be`; their command-specific effects are documented with the
-symbol-set and font-selection state in `notes/semantic-state-model.md`.
+by `0x120be`; their command-specific effects are documented in
+[symbol-set-selection.md](symbol-set-selection.md), with selected-font context
+and metric consumers in [font-context-metrics.md](font-context-metrics.md).
 The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
 uppercase `T` has no terminal handler, while lowercase `t` only reaches the
 generic `0x11f4c` rewind used by lowercase chaining rows.
@@ -138,7 +139,8 @@ boundaries:
 - Font selection, symbol sets, font attributes, pitch mode, SO/SI selected
   context switches, metric producer/consumer behavior, and built-in resource
   selection:
-  [font-context-metrics.md](font-context-metrics.md) and
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md), and
   [built-in-resource-scan.md](built-in-resource-scan.md).
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current
   resource objects, no-install exits, row/span publication, and compact
@@ -356,7 +358,7 @@ Checked-in dispatch audit, generated from
 ## Supported Stream Dispatch Matrix
 
 Use this matrix with
-[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#supported-stream-entry-points).
+[the end-to-end map](end-to-end-reproduction-map.md#supported-stream-entry-points).
 It names the parser route for the concrete supported stream families before the owner
 notes take over field writes, page objects, and pixels. The generated table files remain
 supporting evidence; the checked-in owner notes are the semantic source of truth.

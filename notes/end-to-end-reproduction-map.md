@@ -117,6 +117,7 @@ controlling artifact.
   section below. Each owner records parsed inputs, RAM writers, consumers,
   side effects, output/page effects, field classification, confidence, and
   exact residual boundaries. High-volume families include font selection in
+  [symbol-set-selection.md](symbol-set-selection.md) and
   [font-context-metrics.md](font-context-metrics.md), downloaded fonts in
   [downloaded-fonts.md](downloaded-fonts.md), rectangles in
   [rectangle-graphics.md](rectangle-graphics.md), raster in

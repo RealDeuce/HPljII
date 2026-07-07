@@ -3599,6 +3599,77 @@ The control bytes select font id `0x1234`, character code `0x25`, mark the
 current downloaded-font record, install a glyph payload, print `%`, and eject
 the page.
 
+Downloaded-font command-to-output matrix:
+
+- `ESC *c#D`:
+  parser edge `0x11774 -> 0x11eb6 -> 0x11ec8 -> 0x11eda ->
+  0x15a56`; writer `0x15a56` rewinds parser-record cursor `0x78299e`
+  and writes current downloaded-font id `0x782f2e`. Consumers
+  `0x15d0a` and `0x16c14` resolve the current record by this id. There is
+  no page object by itself; it selects which downloaded-font record later
+  payload commands mutate.
+- `ESC *c#E`:
+  the same `*c` parser chain reaches `0x15a18`; writer `0x15a18` writes
+  current character/code word `0x782f30`. Consumer `0x16498` uses it for the
+  glyph-table entry when a character payload installs. There is no page
+  object by itself; it names the glyph that later printable bytes can resolve.
+- `ESC *c#F`:
+  the same `*c` parser chain reaches `0x16df6`. Value `5F` reaches
+  `0x16e86 -> 0x17108`, sets current-record flag bit `6`, and moves counts
+  `0x782782/0x782786`; value `4F` uses unmark sibling `0x17150`.
+  Marked/unmarked record counts constrain later current-record allocation,
+  release, and selection. There is no page object by itself; it changes
+  bookkeeping before descriptor or payload commands.
+- `ESC )s0W` / `ESC (s0W`:
+  parser edge `0x11f96 -> 0x121cc -> 0x12218 -> 0x15d0a`; writer
+  `0x15d0a` writes payload budget `0x783140`, consumes descriptor bytes
+  through `0x1599c`, and routes bit-30-clear fixed-record objects or
+  continuation paths. Fixed-record resource object paths feed printable-byte
+  selection and compact text production through `0xd04a`, `0xd824`, and
+  `0x12f2e`. Output is visible only after a following printable byte consumes
+  the selected resource; rejected descriptors drain and leave following
+  default printable output unchanged.
+- Nonzero `ESC )s#W` / `ESC (s#W` resource header:
+  parser edge `0x11f96 -> 0x121cc -> 0x12218 -> 0x16c14`; writer
+  `0x16c14` writes `0x783140`, current-record ids/payload pointers,
+  candidate flags, counters, and installed payload state after validation
+  through `0x16fae` and allocation through `0x17026` / `0x1719c`. Consumers
+  include selection and metric paths `0x14c64`, `d4ac`, and `d8fc`; later
+  downloaded-character payloads may reuse the installed resource form. There
+  are no pixels at install time; later printable bytes can queue compact,
+  wide, or segmented downloaded-glyph page objects.
+- Nonzero `ESC )s#W` / `ESC (s#W` downloaded-character payload:
+  parser edge `0x11f96 -> 0x121cc -> 0x12218 -> 0x16c14 -> 0x15dc6 ->
+  0x16498 -> 0x15dcc -> 0x12328`; writer `0x16498` writes glyph-table
+  entries, glyph record bytes, bitmap bytes, continuation state on partial
+  copies, and release/no-install cleanup through `0x17a24` / `0x1887a` when
+  needed. Printable handler `0xd04a` resolves host bytes through the
+  installed context; `0xd824 -> 0x12f2e -> 0x1387c` queues compact page
+  objects. Accepted payloads become visible only when a following printable
+  byte queues objects; `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` publishes
+  and renders them through compact targets `0x1fe76`, `0x1f0d2`, `0x1f1f0`,
+  or `0x1f264`. No-install exits drain payload bytes and leave the next
+  printable byte on the prior/default font path.
+
+Matrix evidence is the detailed ledger below, `Downloaded Glyph`,
+`Nonzero Resource Payload`, and `Fixed-Record Resource Object` checkpoints in
+[semantic-state-model.md](semantic-state-model.md), and listings
+`generated/disasm/ic30_ic13_assign_font_id_015a56.lst`,
+`generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+`generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+`generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+Open ROM-local boundaries for this command family are the documented
+downloaded-glyph helper edges, not missing external output comparisons:
+unchecked short compact helper indices above table entry `128` in `0x1fe76`,
+wrapped width low bytes selecting invalid compact mode-0 helper targets through
+`0x1f034` / `0x1f08e`, segmented-wide span-31 fallback source offset `+0xb50`,
+and the oversized segmented-wide payload-count cap `0x7fff` before `0x16498`
+can publish a glyph.
+
 Parser dispatch and font-control state:
 
 - All bytes enter through `0xa904` and parser loop `0x11774`.

@@ -184,6 +184,116 @@ Do not use fixtures as a separate state class. A fixture can exercise a
 documented interpretation, but the documented field must still be classified
 as one of the categories above.
 
+## Minimal Host Input Walkthrough
+
+This is the smallest top-level host-byte spine. It documents the firmware
+boundary before parser state exists: routine `0xa904` chooses one normalized
+byte source, returns an unsigned byte in `D7`, or returns `D7 = -1` for the
+documented no-byte gate. Parser, payload, macro, raster, and downloaded-font
+readers all build on this byte contract.
+
+Representative sources:
+
+```text
+ring bytes: 21 21
+data-chain replay bytes: 21 0d
+direct mode byte: 1a
+```
+
+Source priority at `0xa904`:
+
+- Service byte `0x7821cd` wins first. `0xa904` calls
+  `0x10cc(0x780202)` through the service retry path and then retries the
+  byte-source decision.
+- Buffered-source byte `0x780e66` plus gate byte `0x780e3b` returns
+  `D7 = -1` before any stack, data-chain, ring, or direct hardware source is
+  consumed.
+- First pushback stack count `0x783e8c` and pointer `0x783e8e` win next.
+  The pointer is one past the next byte; the routine predecrements it before
+  reading.
+- Active data-chain frame pointer `0x782d76` wins after the first stack.
+  Frame longword `+4` is the remaining count or `-1` end marker. Nonzero
+  counts call `0x9f6a`; end markers clear the field, call `0xe22c`, and retry.
+- Second pushback stack count `0x783e76` and pointer `0x783e78` win after the
+  data-chain source.
+- Ring input is used when selector `0x780e40 == 0` and ring count
+  `0x783e54` is nonzero. It reads from pointer `0x783e56`, wraps after
+  `0x783e53` to `0x783a4c`, decrements the count, and returns the byte.
+- Direct mode 1 uses status/data/acknowledge registers `0x8e01`, `0x8801`,
+  and `0x8c01`, then control writes through `0xa601` and `0xaa01`.
+- Other nonzero direct modes use status/data/control registers
+  `0xfffee005`, `0xfffee001`, and `0xfffee009`.
+
+Consumer boundaries:
+
+- Parser wrapper `0xda9a` calls `0xa904` and only adds ESC-aware lookahead.
+  Non-`ESC` bytes enter parser loop `0x11774` unchanged.
+- Payload/control reader `0xdace` also calls `0xa904`, but its local
+  `0x1a 0x58` probe belongs to that reader family, not to the byte source.
+- Display-functions, transparent text, raster payload, VFC payload, and
+  downloaded-font readers either call `0xa904` directly or through their
+  family reader; each owns its own `D7 = -1` and `0x1a` behavior.
+- Macro execute/call replay has no separate direct call site. Replay frames
+  created by `0xe418` become active data-chain frames under `0x782d76`, so
+  replayed bytes re-enter through the same `0xa904` source priority.
+
+Output effect:
+
+- `0xa904` does not parse PCL and does not create page objects or pixels.
+- Its visible reproduction effect is source equivalence. The same byte stream
+  can come from ring input, pushback, data-chain replay, or direct hardware
+  and then follow the same parser and page-object path.
+- The byte source must not globally normalize `0x1a 0x58`. Direct modes report
+  `0x1a` through `0x9ec0` and preserve `D7 = 0x1a`; payload readers such as
+  `0xdace`, transparent text, raster, and downloaded-font readers apply their
+  own local pair handling after the byte is fetched.
+
+State classification:
+
+- Canonical:
+  first stack `0x783e8c` / `0x783e8e`, data-chain frame pointer `0x782d76`,
+  second stack `0x783e76` / `0x783e78`, ring count/read/write state
+  `0x783e54` / `0x783e56` / `0x783e5a`, ring bounds
+  `0x783a4c..0x783e53`, and direct selector `0x780e40`.
+- Derived/cache:
+  ring occupancy and free-capacity values, low-water threshold `0x783e5e`,
+  status-escape sequence cursor `0x783e62`, and control-shadow bytes
+  `0x7828fa` / `0x7828fb`.
+- Parser scratch:
+  none. Parser scratch begins only after a returned byte reaches `0xda9a`,
+  `0x11774`, `0x12218`, or a payload reader.
+- Firmware bookkeeping:
+  service-needed byte `0x7821cd`, service-active byte `0x7821cc`,
+  buffered-source bits `0x780e66`, no-byte gate `0x780e3b`,
+  direct-mode completion byte `0x7828ec`, host status accumulator
+  `0x780e2e`, and data-chain frame-end unwinding through `0xe22c`.
+- Hardware/external:
+  direct-mode register banks `0x8e01` / `0x8801` / `0x8c01` /
+  `0xa601` / `0xaa01` and `0xfffee005` / `0xfffee001` /
+  `0xfffee009`. Their ROM-visible ready/data/control roles are documented;
+  physical connector signal names remain board-level boundaries.
+- Unknown:
+  board-level names and timing for the direct MMIO banks, data-chain frame
+  byte `+0x09` values outside observed execute `2`, call `3`, and non-replay
+  page-finalization `4`, and user-facing names for host-input quiesce/reset
+  branches `0x4218..0x44d2` and `0x61e4..0x6362`.
+
+Evidence:
+
+- Checked-in explanations:
+  [host-byte-fetch.md](host-byte-fetch.md),
+  [macro-data-chain.md](macro-data-chain.md),
+  `Worked Path: Host Byte Source Priority` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `Host Byte Fetch And Data-Chain Input` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
+  `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`,
+  `generated/disasm/ic30_ic13_host_input_quiesce_0061e4.lst`,
+  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`, and
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
+
 ## Minimal Stream Walkthrough: `!!`
 
 This is the smallest checked-in byte-to-pixel spine for ordinary printable

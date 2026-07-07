@@ -1102,8 +1102,8 @@ and `0x16df6` before the current-record mark side effect. A second
 control-to-install fixture traces `ESC *c4660d37e5F` from the modeled
 `0xa904` ring source, uses the resulting current font id `0x1234` and
 current character `0x25` as the inputs to the descriptor and character
-payload models, and proves the marked current record is the one
-consulted by the following font `W` streams. `ESC (s#W` / `ESC )s#W`
+payload models, and records the marked current record consumed by the
+following font `W` streams. `ESC (s#W` / `ESC )s#W`
 reaches `0x11f96`: a zero count schedules delayed descriptor handler
 `0x15d0a`, while any nonzero count schedules delayed payload installer
 `0x16c14` with the absolute byte count in `0x783140`. The executable
@@ -1118,7 +1118,7 @@ resource-payload validation/allocation through `0x16c14` -> `0x16fae` ->
 `0x17026` -> `0x1719c` plus candidate insertion through `0x1bc38`, and
 tie the `ESC )s6W` and `ESC )s2193W` payload offsets, byte counts, linear
 `0x168dc` bytes, split-plane tail, `0x16498` downloaded-pointer objects, and
-rendered rows to the same parser trace. Fixture
+ROM-derived rendered rows to the same parser trace. Fixture
 `0x16c14 allocation failure releases existing payload through 0x1887a` pins
 the replacement failure order: when `0x172c0` finds an existing current-record
 payload, `0x16c14` releases it through `0x1887a` before the later allocation

@@ -890,9 +890,9 @@ bucket chain` adds the two-raster-row sibling. A `0x1ef6a` page-band
 walker separately merges compact text, mode-0 raster, and a crossing
 patterned rule across bands `0` and `5`, carrying the mutated rule node
 into the second band. The remaining edge is therefore parser/page-record
-producer variants that change object shapes, bridge fields, or ROM-derived
-rendered rows, not parser-produced heterogeneous page objects, final
-device-output validation, or the modeled per-band merge itself.
+producer variants that change object shapes, bridge fields, or ROM-derived row
+construction. It is not parser-produced heterogeneous page objects, a
+real-device row comparison, or the modeled per-band merge itself.
 
 Published-record coverage now also takes the reset, FF, page-size, and
 orientation `0xff1e` records from the host-fetched publication fixtures

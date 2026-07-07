@@ -9107,8 +9107,9 @@ host-fetched and addressed publication forms of that same page-record contract.
 High for parser handler order, delayed snapshot bytes, delayed scratch layout,
 direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
 root boundary for beyond-extent versus negative rows, encoded object layout,
-bridge preservation, mode dispatch helpers, and rendered rows because those are
-supported by disassembly addresses and checked by named harness fixtures:
+bridge preservation, mode dispatch helpers, and ROM-derived row construction
+because those are supported by disassembly addresses and exercised by named
+harness fixtures:
 `0x121cc..0x12262`, `0x105e4..0x106cc`, `0x10084..0x10218`,
 `0x13070..0x13250`, and `0x132b6..0x13382`. High for the covered raster-state
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
@@ -10217,8 +10218,9 @@ compact text rendering. The width-3 and width-16 main helper fixtures record
 source/destination write sequences and final `A1/A2/A3` registers; the
 remainder-width-1 fixture records the byte-tail helper; and the chunk-width-16
 fixture records the shifted full-chunk helper used after the first 16-byte
-span. Resource glyph row-copy fixtures then prove those helpers reproduce
-directly decoded bitmap rows for sampled built-in contexts.
+span. Resource glyph row-copy fixtures then derive sampled built-in rows by
+applying those ROM helpers to directly decoded bitmap bytes. They are not a
+comparison against physical printer output.
 
 The row-copy tables are concrete ROM dataflow. Table `0x1f08e` indexes compact
 main helpers for byte spans `1..16`; table `0x1f1ac` indexes wide-glyph

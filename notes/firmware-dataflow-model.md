@@ -1203,6 +1203,42 @@ Status-byte sibling:
   `0x780e90`, cache byte `0x780e98`, and warning/status accumulator bit
   `0x780e2a.4`.
 
+Host/status side-channel matrix:
+
+- Model-ID/backchannel command:
+  parser wrapper `0x12034 -> 0x122be..0x12326` consumes command state and
+  query byte `0x11`; accepted queries enqueue literal `33440A\r\n` through
+  `0xb090`. Output is host-visible FIFO data only. It creates no page root,
+  page object, publication record, or render work record.
+- FIFO enqueue and drain:
+  producers `0xb0c0` / `0xb090` write FIFO count/pointers
+  `0x783ed2/0x783ed4/0x783ed8` and storage `0x783e92..0x783ed1`; worker
+  `0xae2c` drains through `0xb022` and output helpers `0xaf7c` or
+  `0xafcc` depending on backend selector `0x780e40`. Output is physical host
+  interface data, with `0xb090` able to stall while the FIFO is full.
+- Status-byte worker:
+  `0xaece` consumes pending status count `0x780e22`, bridge-service byte
+  `0x783e61`, reason byte `0x783e60`, aggregate words `0x780e12`,
+  `0x780e0a`, warning/status accumulator `0x780e2a`, and page-environment
+  flag `0x780e90`. Output is a host-visible status/service byte, not page
+  imaging.
+- Page-environment status bridge:
+  helper `0x2888` consumes selected page/control-pool record bytes from
+  `0x780eaa`, writes `0x780e8f`, `0x780e90`, `0x780e98`, and
+  `0x780e2a.4`, and feeds both `0xaece` status bytes and panel/service paths
+  under `0x7612..0x7834`. Output is host status or panel/service state.
+- External-ready/service preemption:
+  loop `0xba48..0xc36e` consumes external MMIO state, can display
+  `01 EXT READY` or service messages, can publish status bits, and can block
+  or defer normal parser progress. It does not allocate page roots or enter
+  bitmap render dispatch.
+
+For fixed host-byte pixel reproduction, these side channels are no-page-output
+unless a modeled bidirectional host reacts by sending different later bytes or
+the service loop prevents bytes from reaching `0xa904`. For a board-level
+emulator, their FIFO timing, status bytes, panel messages, and MMIO identities
+are observable firmware behavior.
+
 State classification:
 
 - Canonical host-output state: FIFO count `0x783ed2`, read pointer

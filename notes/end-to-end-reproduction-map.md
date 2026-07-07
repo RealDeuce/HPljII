@@ -686,6 +686,124 @@ Evidence:
   `generated/analysis/ic30_ic13_pcl_command_map.md`, and
   `generated/analysis/ic30_ic13_parser_xrefs.md`.
 
+## Minimal Ignored/No-Output Parser Walkthrough
+
+This is the smallest top-level ignored/no-output parser spine. It separates
+explicit parser decisions from unknown commands: some bytes are consumed by
+the ROM and deliberately produce no page object, while alternate/data mode can
+store the same byte instead of running its normal immediate effect.
+
+Representative streams:
+
+```text
+NUL BEL VT
+ESC ? 11
+ESC Y ! ESC Z
+ESC &lT
+```
+
+Parser classification:
+
+- Normal-mode C0 bytes `0x00`, `0x07`, and `0x0b` enter through
+  `0xa904 -> 0xda9a -> 0x11774`.
+- In the normal mode-zero table, these three bytes have explicit rows with
+  next mode `0` and no handler longword. They are matched table rows, not
+  unmatched printable fallback.
+- Adjacent normal C0 rows dispatch to handlers such as BS `0xf2a8`, HT
+  `0xf1cc`, LF `0xf08c`, FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, and SI
+  `0xc68a`; the no-output rows deliberately have no handler.
+- A zero-handler row writes parser mode `0`, enters terminal path
+  `0x11912..0x119bc`, calls delayed restore boundary `0x12218`, and then
+  resets parser scratch.
+- Because `0x12218` can restore and dispatch a pending delayed payload before
+  scratch reset, these rows are not a simple byte skip when
+  `0x782a1a/0x782a1c/0x782a20..0x782a25` are active.
+
+Parser artifacts and unimplemented rows:
+
+- `ESC ?` is consumed in byte wrapper `0xda9a`, not by a page-output handler.
+  After `0xda9a` sees `ESC`, wrapper fetch `0xdaa6` checks the next byte; when
+  it is `?`, wrapper fetch `0xdab2` consumes a third byte. Third byte `0x11`
+  is swallowed and the wrapper restarts; other third bytes follow the wrapper
+  reporting path described in [pcl-parser-core.md](pcl-parser-core.md).
+- `ESC Z` is local terminator input for `ESC Y ... ESC Z` display-functions
+  readers. Normal reader `0x12536` and alternate/data reader `0x12120`
+  consume the terminator inside direct `0xa904` loops. It is not a standalone
+  imaging command in the main parser table.
+- `ESC &lT/t` is an unimplemented parser-table slot. Uppercase `T` has no
+  terminal handler. Lowercase `t` reaches generic rewind helper `0x11f4c` for
+  lowercase command-family chaining and does not write page environment,
+  page-object, publication, or render state by itself.
+
+Alternate/data counterpart:
+
+- Alternate/data mode uses table roots `0x116f6` / `0x116fa` instead of the
+  normal table roots `0x112a4` / `0x112a8`.
+- In alternate/data mode, mode-zero blank C0 rows `0x00` and `0x07..0x0f`
+  are append-preserving terminal rows.
+- Path `0x11930..0x11ab8` stores the matched byte in parser scratch, flushes
+  command and numeric scratch through `0x123ae` and `0x123de`, appends the
+  byte through macro/data sink `0xe002`, then rejoins the terminal reset path.
+- Therefore alternate/data BS, HT, LF, FF, CR, SO, and SI bytes are preserved
+  as stored input instead of running normal-mode cursor/control handlers.
+  They can become visible only if macro/data-chain replay later feeds those
+  stored bytes back through `0xa904`.
+
+Output effect:
+
+- Normal `0x00`, `0x07`, and `0x0b` do not call printable handler `0xd04a`,
+  direct-control handlers, page-root allocation, publication, scheduler, or
+  render entry.
+- `ESC ?`, display-reader `ESC Z`, and `ESC &lT/t` are parser artifacts or
+  unimplemented rows, not hidden drawing commands.
+- The reproduction model must still preserve parser mode, delayed-payload
+  restore, command scratch reset, and alternate/data append behavior, because
+  those effects can determine how later bytes are parsed or replayed.
+
+State classification:
+
+- Canonical:
+  parser mode `0x782999`, normal versus alternate/data selector `0x782c18`,
+  command-record cursor `0x78299e`, delayed pending byte `0x782a1a`,
+  delayed handler pointer `0x782a1c`, and saved delayed record
+  `0x782a20..0x782a25`.
+- Derived/cache:
+  none for immediate page imaging. Alternate/data appended bytes are stored
+  input for later macro/data-chain replay, not rendered state.
+- Parser scratch:
+  matched-byte buffer `0x783196..0x783199`, nonnumeric scratch cursor
+  `0x782a26`, numeric scratch cursor `0x782a3e`, scratch buffers
+  `0x782a2a..` and `0x782a42..`, and alternate echo latch `0x782a56`.
+- Firmware bookkeeping:
+  parser table pointers, active callback helper pointer `0x78299a`,
+  terminal delayed-restore boundary `0x12218`, append sink `0xe002`, and
+  scratch flush helpers `0x123ae` / `0x123de`.
+- Hardware/external:
+  none for the ROM-local no-output parser contract after bytes have entered
+  through `0xa904`.
+- Unknown:
+  no unresolved ROM-local middle edge remains for normal no-output C0 rows,
+  alternate/data append-preserving C0 rows, `ESC ?`, display-reader `ESC Z`,
+  or `ESC &lT/t`. Remaining ignored/error work starts only from byte streams
+  that exercise a different rejecting predicate, delayed consumer, append
+  path, or status/error-reporting side channel.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md),
+  [display-functions.md](display-functions.md), and
+  [macro-data-chain.md](macro-data-chain.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+  `generated/analysis/ic30_ic13_pcl_command_map.md`, and
+  `generated/analysis/ic30_ic13_parser_xrefs.md`.
+
 ## Minimal Host/Status Side-Channel Walkthrough
 
 This is the smallest top-level side-channel spine. It covers parser-visible

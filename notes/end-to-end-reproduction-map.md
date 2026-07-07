@@ -184,6 +184,123 @@ Do not use fixtures as a separate state class. A fixture can exercise a
 documented interpretation, but the documented field must still be classified
 as one of the categories above.
 
+## Minimal Stream Walkthrough: `!!`
+
+This is the smallest checked-in byte-to-pixel spine for ordinary printable
+text. It composes the detailed `Worked Path: Printable Glyph` and `Worked Path:
+Text Source Objects And Compact Buckets` sections in
+[firmware-dataflow-model.md](firmware-dataflow-model.md) into one top-level
+trace.
+
+Input bytes:
+
+```text
+21 21
+```
+
+Parser and dispatch:
+
+- Each `0x21` byte is normalized by byte-source entry `0xa904` and delivered
+  to parser wrapper `0xda9a`.
+- Parser loop `0x11774` is in mode zero with parser state byte `0x782999 = 0`.
+  Alternate/data mode `0x782c18` is clear.
+- No normal-table command row claims `0x21`. The printable fallback dispatches
+  each byte to `0xd04a`; no six-byte command record or delayed-payload record
+  is created for these two bytes.
+
+Printable source and page-object construction:
+
+- `0xd04a` calls `0x1393a(host_byte, 0x782d7e)`. The source object at
+  `0x782d7e` receives the selected font/context pointer, glyph/source pointer,
+  mapped compact glyph byte, source flag, and context slot.
+- In the documented built-in `LINE_PRINTER` path, `0x1393a` maps host byte
+  `0x21` to compact glyph byte `0x20`, glyph-entry pointer `0x015330`,
+  source flag `1`, and context slot `0`.
+- Source flag `1` routes through the flagged built-in path
+  `0xd550 -> 0xd824`. `0xd824` writes positioned source fields
+  `+0x12/+0x14/+0x16`, marks page-root live-font flag `0x78297f + slot`,
+  and calls `0x12f2e`.
+- `0x12f2e` consumes the source glyph byte, source pointer, source flag,
+  positioned coordinates, and context slot. It derives compact bucket/key
+  fields at `0x782a7c..0x782a7e`, then calls `0x1387c`.
+- `0x1387c` stores or reuses a compact bucket object under current page-root
+  field `+0x1c`. For the two `!` bytes, the second byte reuses the compatible
+  short compact object while capacity remains and appends another
+  glyph/coordinate entry.
+
+Publication, bridge, and render:
+
+- Before publication, visible output is pending page-record state rooted at
+  current page root `0x78297a`.
+- Publication `0xff1e` snapshots the current root into a page/control pool
+  record, preserves compact bucket roots, and clears `0x78297a`.
+- Render entry `0x1ed84` selects the active source record through
+  `0x780eae`. Bridge `0x1edc6` copies source root `+0x1c` to render-record
+  `+0x18` and copies page-root context slots `+0x2c..+0x68` to render-record
+  context slots `+0x24..+0x60`.
+- Scheduler entry `0x1eba4` calls `0x1ef6a` for the active band. `0x1ef6a`
+  calls `0x1ef86` for band setup and `0x1efc2` for bucket-chain dispatch.
+- `0x1efc2` sees compact object class byte `+0x04 & 0xc0 == 0` and dispatches
+  through `0x1effe`. For the built-in short compact object, `0x1effe` selects
+  `0x1f034`; `0x1f354` resolves glyph `0x20` through the copied context slot;
+  row-copy helpers selected from the table at `0x1fa5c` write the ROM-derived
+  bitmap rows into the active band buffer.
+
+State classification:
+
+- Canonical:
+  input byte values, parser mode `0x782999`, selected font context and map,
+  source object `0x782d7e`, current page root `0x78297a`, page-root compact
+  bucket root `+0x1c`, compact bucket object payload entries, page-root
+  context slot, published source record, active source `0x780eae`, and
+  render-record bucket/context roots.
+- Derived/cache:
+  compact bucket/key fields `0x782a7c..0x782a7e`, glyph offsets from the
+  selected font record, compact coordinate words, render-band fields
+  `0x783a20`, `0x783a22`, `0x783a28`, stride `0x783a1c`, and compact glyph
+  cache `0x783a2c`.
+- Parser scratch:
+  the unmatched printable byte in the parser loop and normal-table lookup
+  state. No parser command record, digit scratch, or delayed-payload scratch
+  survives this printable fallback route.
+- Firmware bookkeeping:
+  live-font flags at `0x78297f + slot`, stream allocator cursors
+  `0x782a70/0x782a72/0x782a76`, publication flag `0x782996`, pool cursors
+  `0x780ea6/0x780eaa/0x780eae`, render-work pointer `0x783a18`, and
+  scheduler progress fields.
+- Hardware/external:
+  the physical source that supplied the same normalized `0x21 0x21` bytes to
+  `0xa904`, plus any formatter/DC timing events that cause later publication
+  and active-band rendering. These do not change the ROM-local byte-to-bitmap
+  construction once the same normalized bytes and publication boundary exist.
+- Unknown:
+  no ROM-local parser-to-compact-render middle edge is unresolved for this
+  built-in printable path. Remaining work starts only from streams or state
+  that change the selected context/map, source flag, compact selector class,
+  bridge roots, scheduler band fields, or row-construction helper.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Printable Glyph` and `Worked Path: Text Source Objects And
+  Compact Buckets` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [page-record-storage.md](page-record-storage.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

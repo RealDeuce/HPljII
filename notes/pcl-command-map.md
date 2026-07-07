@@ -196,6 +196,76 @@ bus timing, external memory decode, and formatter/DC signal naming are only
 part of the command map when they change a ROM-visible byte, parser state,
 page object, scheduler field, or render input.
 
+## Inbound Byte Outcome Classes
+
+Every admitted byte from `0xa904` lands in one of these ROM-visible outcome
+classes before any page pixels can be derived:
+
+- Printable byte:
+  mode-zero normal parser loop `0x11774` routes bytes whose low seven bits are
+  `>= 0x20` to `0xd04a` when alternate/data flag `0x782c18` is clear.
+  `0xd04a` is the first page-output text handler: it consumes selected context
+  state, builds source text objects through the `0x1393a` / `0x12f2e` path,
+  and later reaches page-root publication and render dispatch documented in
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Alternate/data printable or matched C0 byte:
+  when `0x782c18` is nonzero, mode-zero printable bytes and matched blank C0
+  rows append through `0xe002`. They preserve bytes for macro/data contexts
+  but do not immediately call `0xd04a`, cursor-control handlers, page-layout
+  handlers, or render producers. The append-vs-execute split is documented in
+  [pcl-parser-core.md](pcl-parser-core.md) and
+  [macro-data-chain.md](macro-data-chain.md).
+- Explicit no-output parser byte:
+  normal-table blank C0 rows `0x00`, `0x07`, and `0x0b` match table entries,
+  run the terminal reset path through `0x12218`, reset parser scratch, and
+  produce no page object. `ESC ?` is consumed by the `0xda9a` wrapper, and
+  `ESC Z` is consumed by display-functions readers `0x12536` / `0x12120`.
+  These rows are parser behavior, not undocumented imaging commands.
+- Syntax or family-prefix byte:
+  `ESC`, `ESC &`, `ESC *`, `ESC (`, `ESC )`, `ESC &l`, `ESC *c`, and similar
+  prefixes update parser mode `0x782999` and callback pointer `0x78299a`
+  through setup handlers such as `0x11eb6`, `0x11ec8`, `0x11eda`,
+  `0x11eec`, `0x11ff6`, `0x12008`, and `0x1201e`. Their output effect is
+  delayed until a terminal handler or delayed-payload restore runs.
+- Parameter terminal with state-only effect:
+  handlers such as `0xf39e`, `0xf416`, `0xf560`, `0xf60a`, `0xeb58`,
+  `0xec0c`, `0xca8c`, `0xedb0`, `0xee64`, and font-selection wrappers
+  mutate canonical cursor/layout/font state but draw nothing by themselves.
+  Their page effect appears only when a later printable, span flush, VFC jump,
+  rectangle, raster, FF, or reset consumes the updated state.
+- Delayed binary payload:
+  `ESC &p#X`, `ESC &l#W`, `ESC *b#W`, and `ESC (s#W` / `ESC )s#W` first
+  schedule a pending handler through `0x121cc`; restore path
+  `0x12218` then calls `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or
+  `0x16c14`. Payload bytes remain parser-visible only through those payload
+  consumers, which decide whether they update VFC tables, transparent text,
+  raster objects, downloaded-font records, or no page state.
+- Page-object producer:
+  printable text `0xd04a`, rectangle fill `0x10898`, raster transfer
+  `0x105d0`, text-span flush `0x12714`, downloaded glyph output, and macro
+  replay can allocate page-root records or bucket/list objects. The downstream
+  object classes are documented in [page-record-storage.md](page-record-storage.md)
+  and [page-raster-imaging.md](page-raster-imaging.md).
+- Publication or render boundary:
+  FF `0xf0f0`, reset `0xcc52`, selected page-layout changes, allocation retry,
+  VFC jumps, and macro overlay paths can publish page roots through `0xff1e`.
+  Render scheduling then consumes published roots through `0x1ed84`,
+  `0x1edc6`, and `0x1ef6a`; bytes do not become pixels before this bridge and
+  renderer path.
+- Host/status side channel:
+  `ESC *r#K` and `ESC *s#^` use wrapper `0x12034 -> 0x122be` and host-output
+  FIFO helper `0xb090` to emit `33440A\r\n` under the documented predicates.
+  These commands create host-visible response bytes, not page roots, page
+  objects, or render work.
+
+These classes are mutually useful for reproduction: a byte-stream renderer
+does not need physical paper output to classify a byte. It must preserve the
+ROM parser state, command records, delayed-payload state, and page/render
+fields that the class writes, then derive rows from the ROM-defined object and
+render helper paths.
+
 ## Table Coverage Note
 
 The generated flat table in

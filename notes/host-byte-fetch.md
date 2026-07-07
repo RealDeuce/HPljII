@@ -44,6 +44,52 @@ priority itself. `0xa904` still tests the concrete count/frame fields in the
 order above. The bits keep the routine on the buffered-source path until the
 producer state drains or a gate is cleared.
 
+## Instruction Range Source Priority
+
+The source-priority order above is implemented directly in
+`generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
+
+- `0xa904..0xa90a`: if service-needed byte `0x7821cd` is nonzero, branch to
+  the common service-and-retry path at `0xaa88`.
+- `0xa90e..0xa922`: if buffered-source byte `0x780e66` is nonzero and no-byte
+  gate `0x780e3b` is also nonzero, return `D7 = -1` immediately. This happens
+  before either LIFO stack, the data-chain frame, the ring, or direct hardware
+  can consume a byte.
+- `0xa924..0xa94a`: clear `0x780e66.3`, then consume the first LIFO stack when
+  count `0x783e8c` is nonzero. The routine predecrements pointer
+  `0x783e8e`, reads that byte into `D7`, stores the decremented pointer,
+  decrements count `0x783e8c`, and returns.
+- `0xa94c..0xa97c`: clear `0x780e66.2`, then test current data-chain frame
+  pointer `0x782d76`. A zero frame count at `+4` skips this source; a nonzero
+  count calls `0x9f6a` and returns its `D7`; count `-1` is an end marker that
+  clears frame `+4`, calls `0xe22c`, and restarts at `0xa904`.
+- `0xa980..0xa9a0`: consume the second LIFO stack when count `0x783e76` is
+  nonzero, using the same predecrement shape with pointer `0x783e78`. If empty,
+  clear `0x780e66.0`.
+- `0xa9a8..0xa9e0`: when direct selector `0x780e40` is zero, read from the
+  ring only if count `0x783e54` is nonzero. The read pointer `0x783e56`
+  advances after the byte, wraps from after `0x783e53` to `0x783a4c`,
+  decrements count `0x783e54`, and returns the byte.
+- `0xa9e2..0xaa86`: selector `0x780e40 == 1` enters direct mode 1. It polls
+  `0x8e01.4`, reads data byte `0x8801`, reports literal `0x1a` through
+  `0x9ec0` while preserving returned `D7 = 0x1a`, waits for `0x8c01.0` to
+  clear, then performs the `$a601` / `$aa01` control-shadow handshake before
+  returning.
+- `0xaaa6..0xab8a`: other nonzero selectors enter direct mode 2. It optionally
+  clears `0xfffee009.6` before polling, treats `0xfffee005.7` and
+  `0xfffee005.6` as status bits accumulated into `0x780e2e`, reads data byte
+  `0xfffee001` when `0xfffee005.0` is ready, reports literal `0x1a` through
+  `0x9ec0`, sets `0xfffee009.6`, sets `0x7828ec = 1`, clears `0x7821c4`, and
+  returns.
+- `0xaa88..0xaaa2` and `0xab70..0xab8a`: service retry paths. They set
+  `0x7821cc = 1`, call `0x10cc` with wait object `0x780202`, clear
+  `0x7821cc`, and restart at `0xa904` rather than returning a byte.
+
+This outline is the byte-source handoff contract for the parser. Later parser
+or payload consumers may transform specific byte pairs such as `0x1a 0x58`,
+but `0xa904` itself only selects a source and returns one `D7` value or the
+gate value `-1`.
+
 ## Pseudocode
 
 The following is intentionally close to the ROM branch structure:
@@ -543,11 +589,12 @@ Writers:
   `0xa6cc` also writes low-water, full-buffer, and status-service fields
   including `0x780e2a`, `0x780e2e`, `0x783e60`, `0x783e61`,
   `0x783e62`, and `$aa01`.
-- Macro setup helper `0xe418` builds execute/call data-chain frames that later replay
-  through `0xa904`; `0xe4f4` builds the non-replay page-finalization frame. The concrete
-  frame fields and `0xe22c` frame-end consumers are composed in
-  [semantic-state-model.md](semantic-state-model.md#host-byte-fetch-and-data-chain-input)
-  and `Macro Definition And Data-Chain Replay`.
+- Macro setup helper `0xe418` builds execute/call data-chain frames that later
+  replay through `0xa904`; `0xe4f4` builds the non-replay page-finalization
+  frame. The concrete frame fields and `0xe22c` frame-end consumers are
+  composed in the host-byte-fetch section of
+  [semantic-state-model.md](semantic-state-model.md) and in
+  `Macro Definition And Data-Chain Replay`.
 - `0x9ec0` writes the two pushback stacks: frame byte `+0x09 == 0` selects
   `0x783e76` / `0x783e78` and sets `0x780e66.0`; frame byte `+0x09 != 0`
   selects `0x783e8c` / `0x783e8e` and sets `0x780e66.2`.

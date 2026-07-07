@@ -407,6 +407,21 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Owner notes:
   [rectangle-graphics.md](rectangle-graphics.md) and
   [raster-graphics.md](raster-graphics.md).
+- Downloaded-font current-state controls in the `*c` family:
+  the same `ESC *` / `*c` parser route enters mode `16`, but finals
+  `D/d`, `E/e`, and `F/f` are owned by the downloaded-font state block rather
+  than rectangle imaging. `D/d -> 0x15a56` writes current downloaded-font id
+  `0x782f2e`; `E/e -> 0x15a18` writes current character/code word
+  `0x782f30`; `F/f -> 0x16df6` dispatches selector values through the
+  `0x16db6` jump table. Selectors `0`, `1`, and `2` release all or current
+  records when macro/overlay byte `0x782a92 != 2`; selector `3` uses
+  `0x782f2e` plus `0x782f30`; selectors `4` and `5` unmark/mark the current
+  downloaded-font record through `0x17150` / `0x17108`; selector `6` runs
+  active/current resource housekeeping; other selectors return unchanged.
+  These commands create no page object by themselves. They select or mutate
+  the records later consumed by `ESC (s#W` / `ESC )s#W` descriptor and glyph
+  payload handlers. Owner note:
+  [downloaded-fonts.md](downloaded-fonts.md).
 - Font selection and downloaded-font payloads:
   primary `ESC (` reaches prefix handler `0x1201e`; secondary `ESC )`
   reaches `0x12008`; designation terminals in mode `4` share `0x120be`.
@@ -558,10 +573,15 @@ documented in the owner notes.
   `0x78316a`.
 - `ESC *c#V`, handler `0x010ae0`: rectangle height in decipoints into
   `0x783166`.
-- `ESC *c#D`, handler `0x015a56`: assign font ID.
-- `ESC *c#E`, handler `0x015a18`: select current downloaded
-  character/code.
-- `ESC *c#F`, handler `0x016df6`: font control.
+- `ESC *c#D`, handler `0x015a56`: assign current downloaded-font ID
+  `0x782f2e` after parsed-word absolute-value normalization.
+- `ESC *c#E`, handler `0x015a18`: assign current downloaded
+  character/code word `0x782f30` with the same normalization.
+- `ESC *c#F`, handler `0x016df6`: downloaded-font control selector. Values
+  `0`, `1`, `2`, `3`, and `6` are suppressed while `0x782a92 == 2`; values
+  `4` and `5` always reach current-record unmark/mark helpers
+  `0x17150` / `0x17108`. The command changes downloaded-font bookkeeping and
+  payload routing state, not page records directly.
 - `ESC (#A..^`, handler `0x0120be`: primary font-designation family;
   symbol set, `#X` font ID, and `3@` default font.
 - `ESC )#A..^`, handler `0x0120be`: secondary font-designation family;

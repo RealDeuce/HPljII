@@ -1156,19 +1156,19 @@ primary boundary through `ESC (1234U ESC (s0p10h12v0s0b3T!!`, where requested
 word `0x9a55` misses in `0x156de`, fallback table word `0x0115` survives,
 survivor slots `0x782354`, `0x782364`, and `0x782374` remain active, and the
 final selected context, primary map, object prefix, render-context slot, and
-rows match the primary case; fixture
+rows use the same ROM-derived primary path; fixture
 `remembered secondary symbol feeds visible SO page-record rows` covers the
 secondary remembered-word sibling for `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`:
 requested word `0x9a55` misses in `0x156de`, remembered word `0x000e` rejects
-slot `0x782324` / record `0x019d18`, then matches slot `0x782330` / record
+slot `0x782324` / record `0x019d18`, then selects slot `0x782330` / record
 `0x01a984`, and the final selected context, secondary map, SO transition,
-object prefix, render-context slots, and row digest match the secondary SO
-case; fixture
+object prefix, render-context slots, and row digest use the same ROM-derived
+secondary SO path; fixture
 `secondary symbol miss falls back before visible SO page-record rows` now
 extends that boundary through `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, where
 requested word `0x9a55` misses in `0x156de`, fallback table word `0x000e`
 survives, and the final selected context, secondary map, object prefix,
-render-context slots, and rows match the secondary SO case; fixture
+render-context slots, and rows use the same ROM-derived secondary SO path; fixture
 `live secondary current-font RAM install feeds SO page-record rows` pins the
 secondary existing-root handoff by seeding `0x782ee6 = 0xc008004c` and
 `0x782ef6 = 0xc00ae122`, routing SO through `0xc6b8`, `0xc428(1)`, and

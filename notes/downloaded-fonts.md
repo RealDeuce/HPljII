@@ -372,7 +372,7 @@ Published page-record state:
   helpers` closes the main compact helper indexes for downloaded-character widths:
   host-fetched spans `1..16` install canonical widths `8..128`, mode bytes alternate
   `2/1` by span parity, odd spans above one use the `0x16942` split-plane copy path, all
-  cases publish bucket `0` through FF, and `0x1ed84`/`0x1ef6a` renders rows matching the
+  cases publish bucket `0` through FF, and `0x1ed84`/`0x1ef6a` derives rows from the
   installed bitmap through the `0x1f08e` helper selected by `D1`. Fixture `downloaded
   glyph wide-remainder matrix publishes and renders compact chunks` extends this to
   spans `17..32`: selector `0x1003` publishes bucket `0`, object byte `0x10` dispatches
@@ -390,7 +390,7 @@ Published page-record state:
   `0`, clear the current root, preserve empty rule/fixed lists and context prefix
   `(0, 0, 0, 0)`, and keep the published bucket root equal to the queued page object.
   The render edge is split by source byte: high source bytes stay on compact-wide
-  `0x1f0d2` and now produce rows matching the installed bitmap, while low source bytes
+  `0x1f0d2` and derive rows from the installed bitmap, while low source bytes
   enter compact mode-0 at `0x1effe` and read helper entries outside decoded row-copy
   helper heads. Fixture `downloaded glyph
   segmented-wide matrix publishes and renders compact chunks` carries the matched span
@@ -398,8 +398,8 @@ Published page-record state:
   dispatches object byte `0x30` to compact target `0x1effe` / `0x1f264`, full chunks
   render through `0x2f27c`, remainders `1..15` select `0x1f1ac[remainder]`, and span
   `32` proves the segmented no-remainder sibling. The same fixture probes segmented-wide
-  spans `33`, `48`, `49`, and `64` through the same upstream boundary and compares the
-  segment-1 rendered rows with the installed bitmap rows. The covered publication
+  spans `33`, `48`, `49`, and `64` through the same upstream boundary and documents
+  segment-1 row derivation from the installed bitmap rows. The covered publication
   fixture set is the primary fixture ledger above, now including the width-span matrix,
   wide-remainder matrix, segmented-wide matrix, row-count matrix, row-`0x80`,
   split-plane segmented, segmented-wide, payload-control wide, no-install, status-`2`,
@@ -1099,7 +1099,7 @@ Output effect:
   printable byte.
 - No downloaded-font candidate is installed, no current-record payload is
   selected, the queued compact object matches the baseline default-font `!`,
-  and the rendered rows match the baseline rows.
+  and the rendered rows are derived from the baseline default-font path.
 
 Confidence:
 
@@ -1628,8 +1628,8 @@ the `0x1f08e[D1]` helper. All sixteen cases return through
 `0x1ef6a` then dispatches object byte `0x00` to compact target `0x1effe`.
 Rows rendered by helpers `0x1fa5c`, `0x1fe76`, `0x20290`, `0x207ac`,
 `0x20cc8`, `0x212e4`, `0x21900`, `0x2201c`, `0x22738`, `0x22f54`,
-`0x23770`, `0x24090`, `0x249b0`, `0x253d0`, `0x25df0`, and `0x26910` match
-the installed bitmap rows in the fixture.
+`0x23770`, `0x24090`, `0x249b0`, `0x253d0`, `0x25df0`, and `0x26910` are
+derived from the installed bitmap rows.
 
 Fixture `downloaded glyph wide-remainder matrix publishes and renders compact
 chunks` covers the compact-wide sibling of that width/span matrix. It drives
@@ -1645,15 +1645,15 @@ selected remainder helper. Remainders `1..15` select
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
 `0x783140 = 0`, no drained bytes, and next handler `0xd04a`; `0x1ed84` /
 `0x1ef6a` then dispatches compact target `0x1effe` / `0x1f0d2`, and rendered
-rows match the installed bitmap rows.
+rows are derived from the installed bitmap rows.
 
 The same fixture now adds compact-wide high-span probes `33`, `48`, `49`,
 `64`, and `255`. These probes keep the same canonical fields and return
 boundary, prove additional full-chunk counts `2`, `3`, `4`, and `15`, and keep
 the expected remainder/no-remainder helper choices. The fixture now replays the
 `0x2f27c` full-chunk source walk and `0x1f1ac[remainder]` tail into row bytes,
-passes render width word `max(0x20, span)`, and matches the installed bitmap
-rows for those high spans. Width helper fixture
+passes render width word `max(0x20, span)`, and derives rows from the installed
+bitmap for those high spans. Width helper fixture
 `0x16b1a descriptor width helper emits only mode 1/2` still proves accepted
 descriptor width `0x1068` rounds to span `0x020d`.
 
@@ -1670,7 +1670,7 @@ stay empty, context prefix stays `(0, 0, 0, 0)`, and the published bucket root
 matches the queued page object. The render edge is now pinned for the same
 cases and carries the valid compact-wide side to pixels: source width bytes
 `0x11..0xff` remain compact-wide through `0x1f0d2`, render bucket `0`, and
-produce visible rows matching the installed bitmap for spans `0x00ff`,
+derive visible rows from the installed bitmap for spans `0x00ff`,
 `0x0111`, `0x017f`, `0x0180`, and `0x01fe`. Source width bytes `0x00..0x10`
 enter compact mode-0 at `0x1effe` across the full low-byte range and read
 full-span helper-table entries outside decoded row-copy helper heads. The
@@ -1696,13 +1696,13 @@ full chunks with no remainder helper. All matched cases return through
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
 `0x783140 = 0`, no drained bytes, and next handler `0xd04a`; `0x1ed84` /
 `0x1ef6a` then dispatches compact target `0x1effe` / `0x1f264`, and rendered
-segment-1 rows match the installed bitmap rows.
+segment-1 rows are derived from the installed bitmap rows.
 
 The same fixture now adds segmented-wide high-span probes `33`, `48`, `49`,
 and `64` at rows `0x81`. They prove bucket `8` / segment `1`, bucket `0` /
 segment `0`, object byte `0x30`, segment row skip `0x80`, A2/A3 offsets, and
 full-chunk/remainder metadata through the same zero-drain return boundary.
-Their segment-1 rendered rows now match installed bitmap rows through
+Their segment-1 rendered rows are derived from installed bitmap rows through
 `0x1f264`, `0x2f27c`, and the selected `0x1f1ac` remainder helper, so the
 remaining segmented-wide gaps are no longer the sampled high-span source walk.
 
@@ -1711,7 +1711,7 @@ segment` adds the next bounded cross-product: row words `0x0082` and `0x0083`
 crossed with spans `17`, `18`, `31`, and `32`. All eight cases preserve the
 same full-success return boundary, publish buckets `0` and `8` as selector
 `0x3003`, dispatch segment `1` through `0x1ed84` / `0x1ef6a` to `0x1f264`,
-and match selected segment rows against the installed bitmap.
+and derive selected segment rows from the installed bitmap.
 
 Fixtures `downloaded segmented-wide high-row fallback renders selected segment`,
 `downloaded segmented-wide high-row even-span fallback renders selected
@@ -1722,8 +1722,8 @@ case is split-plane mode `2`; the span-18 and span-32 cases are linear mode
 `1`, with span `32` taking the no-remainder two-full-chunk path. All three keep
 the same `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` zero-drain return
 boundary, publish buckets `0` and `8`, dispatch bucket word `8` through
-`0x1f264`, and prove both the `32` current rows and `96` fallback rows for
-segment `1` match the installed bitmap.
+`0x1f264`, and derive both the `32` current rows and `96` fallback rows for
+segment `1` from the installed bitmap.
 
 Fixture `downloaded segmented-wide high-row span-31 fallback hits source
 boundary` covers the adjacent large-remainder sibling. It reaches the same
@@ -1764,7 +1764,7 @@ current unflagged printable source record still exposes only low byte `0x81`
 to `0x12f2e`; the page-record producer therefore queues selector `0x3003`
 segments `1` and `0`, not a segment above `1`. Bucket `8` dispatches selected
 segment `1` through `0x1f264`; spans `17`, `18`, and `32` render `32` current
-rows plus `96` fallback rows matching the installed bitmap, while adjacent
+rows plus `96` fallback rows derived from the installed bitmap, while adjacent
 span `31` stops at the same fallback A2 source read boundary `+0xb50`.
 
 Fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected
@@ -1774,7 +1774,7 @@ source boundary` broaden that same state split to row words `0x0282` and
 only low source bytes `0x82` and `0xff` to `0x12f2e`, queue selector `0x3003`
 segments `1` and `0`, and render selected bucket-8 segment `1` through
 `0x1f264`. Spans `17`, `18`, and `32` again produce `32` current rows plus
-`96` fallback rows matching the installed bitmap; span `31` for both rows
+`96` fallback rows derived from the installed bitmap; span `31` for both rows
 stops at the same fallback A2 source read boundary `+0xb50`.
 
 Fixtures `downloaded segmented-wide high-row 0x03xx matrix renders selected
@@ -1857,7 +1857,7 @@ short/segmented counts` broadens the same command family beyond boundary
 samples. Its 250 cases cover short rows `0x0001..0x001f`, `0x0021..0x003f`,
 and `0x0041..0x007f`; separate fixtures cover the missing short-boundary rows
 `0x0020`, `0x0040`, and `0x0080`. The matrix restores fetched `ESC )s#W`
-records, installs mode-byte-`1` records ending in matching row words, publishes
+records, installs mode-byte-`1` records ending in corresponding row words, publishes
 only bucket `1`, keeps selector `0x0003`, and dispatches compact target
 `0x1effe` with object byte `0x00`. For short rows below `0x003a`, published
 row count is `rows + 6`; from `0x003a` through `0x007f` the render path caps the

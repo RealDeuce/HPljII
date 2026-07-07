@@ -3907,8 +3907,8 @@ Producer and consumer behavior:
 
 - The valid high-source-byte side publishes bucket `0`, bridges normally
   through `0x1ed84` / `0x1ef6a`, dispatches compact target `0x1effe`, enters
-  wide compact helper `0x1f0d2`, and renders rows matching the installed
-  bitmap for sampled spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and
+  wide compact helper `0x1f0d2`, and derives rows from the installed bitmap
+  for sampled spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and
   `0x01fe`.
 - The wrapped low-source-byte side also publishes bucket `0` and bridges
   normally, but selector `0x0003` enters compact mode-0. Its full-span helper
@@ -3948,7 +3948,7 @@ State classification:
 Output effect:
 
 - Source width bytes `0x11..0xff` are pixel-defined for the sampled wrapped
-  spans: they render through `0x1f0d2` and match installed bitmap rows.
+  spans: they render through `0x1f0d2` using the installed bitmap rows.
 - Source width bytes `0x00..0x10` are not pixel-modeled after the invalid
   helper target is selected. They remain a precise invalid-helper boundary,
   not an unknown page-record or parser state.
@@ -3987,7 +3987,7 @@ Boundary stream family:
   `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, and `0x03ff`.
 - The successful neighboring spans are documented for the same row family:
   spans `17`, `18`, and `32` render selected segment `1` through `0x1f264`
-  with `32` current rows and `96` fallback rows matching installed bitmap
+  with `32` current rows and `96` fallback rows derived from installed bitmap
   bytes.
 
 Producer and consumer behavior:
@@ -4037,8 +4037,8 @@ State classification:
 Output effect:
 
 - The successful siblings are pixel-defined: the sampled rows render selected
-  segment `1` through `0x1f264` with current and fallback rows matching the
-  installed bitmap.
+  segment `1` through `0x1f264` with current and fallback rows derived from
+  the installed bitmap.
 - The span-31 siblings through row `0x03ff` are not pixel-modeled past A2
   offset `+0xb50`. That is a bounded source-read edge, not an unknown selector
   or render-dispatch edge.
@@ -4241,8 +4241,8 @@ Output effect:
   helper family.
 - Downloaded-glyph fixtures prove parser-produced `ESC )s#W` payloads install
   normal, wide, segmented, and segmented-wide glyph payloads, publish compact
-  objects, and render rows matching installed bitmap bytes through all main
-  helpers and the wide chunk/remainder path.
+  objects, and derive rows from installed bitmap bytes through all main helpers
+  and the wide chunk/remainder path.
 - Row-count and width-boundary fixtures classify the failures separately:
   installed canonical row/width words may survive, while the current printable
   source record exposes only low row/width bytes to `0x12f2e`; those wrapped
@@ -4513,7 +4513,7 @@ Bridge and render:
 - `0x1ef6a` renders in call order
   `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`; this stream dispatches one
   compact bucket object through `0x1efc2 -> 0x1effe`.
-- The published FF page-record rows match the pre-eject compact text rows.
+- The published FF page-record rows use the pre-eject compact text row path.
 
 State classification for this path:
 

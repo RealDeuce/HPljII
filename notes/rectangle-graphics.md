@@ -487,7 +487,7 @@ order.
 Fixture `addressed text plus rectangle stream matches page-record output`
 adds the addressed storage form for the same stream: compact text is in bucket
 array `+0x1c`, the selector-7 rule is in rule list `+0x24`, context slot 0 is
-`0x440946b4`, and the rendered rows match the page-record runner.
+`0x440946b4`, and the rendered rows are derived through the page-record runner.
 
 Fixture `host-fetched alternate rectangle selectors feed full page records`
 keeps the same compact `!` text producer and rectangle origin, then drives two

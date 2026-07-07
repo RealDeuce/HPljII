@@ -581,12 +581,12 @@ Evidence and confidence:
   0x1381c across chunk rollover`.
 - Confidence is high for the ROM-local split algorithm and object fields
   because the branch boundaries, field writes, and static large-payload
-  walkthrough are direct disassembly. A parser-fed fixture would only check
-  that our transcription reaches the documented object chain; it would not
-  supply an independent pixel oracle. Broader dense-row documentation remains
-  open only where a new byte stream changes the accepted count, allocator
-  pre-state, packed-key advance, bridge bucket root, or `0x1f88e`
-  mode-specific row construction.
+  walkthrough are direct disassembly. A parser-fed fixture can only guard that
+  the documented transcription reaches the same object chain; pixel output must
+  still be documented from the ROM render helpers and derived row construction.
+  Broader dense-row documentation remains open only where a new byte stream
+  changes the accepted count, allocator pre-state, packed-key advance, bridge
+  bucket root, or `0x1f88e` mode-specific row construction.
 
 ## Render Dispatch
 
@@ -683,10 +683,10 @@ when fixture `host-fetched text rectangle raster FF publishes rendered page
 record` finalizes the heterogeneous page record. Readers are `0x1ed84` /
 `0x1edc6`, `0x1ef6a`, `0x1efc2`, raster dispatch `0x1f88e`, compact text
 dispatch `0x1effe`, and rule dispatch `0x1f446`. The output effect is one
-published text/rule/raster page image whose rows match the non-published
-current-page render for the same byte stream. Fixture `addressed text
-rectangle raster stream matches page-record output` verifies that the
-addressed storage model and page-record renderer agree for this composition.
+published text/rule/raster page image using the same ROM-derived row path as
+the non-published current-page render for the same byte stream. Fixture
+`addressed text rectangle raster stream matches page-record output` records
+the addressed storage model and page-record renderer composition.
 
 ## Additional Command-Family Coverage
 

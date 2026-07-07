@@ -724,8 +724,8 @@ and both retry after a no-room return through `0xd47a..0xd4a0` /
 preserves source and rows` forces the addressed `0x12f2e` allocation
 failure, sets page-root retry flag `+0x14.0`, publishes the old compact
 bucket through `0xff1e`, ensures a fresh root through `0x10084`, retries
-the preserved source pointer `0x00d06004`, and renders rows matching the
-published bucket through `0x1effe`.
+the preserved source pointer `0x00d06004`, and renders rows from the published
+bucket through `0x1effe`.
 
 The short-object retry contract is exact for both source families:
 
@@ -746,8 +746,8 @@ Fixture `0xd3b2 and 0xd824 segmented text queue no-room retry preserves
 source and rows` extends the same retry contract to tall/segmented text
 objects. The unflagged rows-`0x81` case retries bucket words `9` and
 `1`; the flagged tall built-in space-glyph case retries all nine bucket
-indexes `0..64`. Selected published and retried buckets render matching
-rows through `0x1effe`. The remaining uncertainty is broader selector-mode
+indexes `0..64`. Selected published and retried buckets render the same
+ROM-derived rows through `0x1effe`. The remaining uncertainty is broader selector-mode
 cross-products that change source fields, allocator retry behavior, bucket
 shapes, or visible rows, not the paired no-room return semantics or row
 contract for these source families.
@@ -759,7 +759,7 @@ The segmented retry contract is also exact:
   segment `1`, selector `0x2003`, object size `0x28`; retry emits bucket
   `9` object `00 00 00 00 20 03 00 01 01 01 66 01` and bucket `1`
   object `00 00 00 00 20 03 00 01 01 00 66 01`. Published and retried
-  rows match for bucket words `9` and `1` with digests
+  rows use the same bucket-word paths `9` and `1` with digests
   `ab4ebb802552dc6ad497da75344f369876cc9f0fabbffdfc7801213b9a7ff372` and
   `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
 - flagged `0xd824` tall built-in source
@@ -767,8 +767,8 @@ The segmented retry contract is also exact:
   segment `8`, selector `0x2000`; retry emits bucket indexes
   `[0, 8, 16, 24, 32, 40, 48, 56, 64]`, with first prefix
   `00 00 00 00 20 00 00 01 1f 08 00 00` and last prefix
-  `00 00 00 00 20 00 00 01 1f 00 00 00`. Published and retried rows match
-  for bucket words `64` and `0` with digests
+  `00 00 00 00 20 00 00 01 1f 00 00 00`. Published and retried rows use the
+  same bucket-word paths `64` and `0` with digests
   `c2c1504836f113d5a2c89168702ccb008dcc93126cfcf55a57964ba889170318` and
   `15b6d4e1c1691ca7d6204259f3dfff5c96575588c0c71c8ff011898581be4f35`.
 
@@ -1553,7 +1553,7 @@ renders two Courier glyph-0 shapes. Fixture
 `inline primary font selection stream renders visible rows` now carries that
 same host-fetched stream through one mixed-stream state: `0x1205a`/`0x13eb8`
 write `0x782ee6 = 0xc008004c`, HMI becomes `30`, the following `!!` bytes
-read context slot `0`, and the rows match the pinned primary fixture. The
+read context slot `0`, and the rows use the pinned primary path. The
 current-font-RAM handoff is now narrower:
 fixture `live primary current-font RAM install feeds SI page-record rows`
 starts from seeded `0x782ee6 = 0xc008004c` and `0x782ef6 = 0xc00ae122`, then
@@ -1877,20 +1877,21 @@ Output effect:
 - Fixture `downloaded glyph width-span matrix publishes and renders all main
   helpers` proves parser-produced downloaded-character spans `1..16` install
   widths `8..128`, preserve odd-span split-plane copies where required, publish
-  bucket `0` through FF, and render rows matching the installed bitmap through
-  all sixteen main `0x1f08e` helpers from `0x1fa5c` through `0x26910`.
+  bucket `0` through FF, and derive rows from the installed bitmap through all
+  sixteen main `0x1f08e` helpers from `0x1fa5c` through `0x26910`.
 - Fixture `downloaded glyph wide-remainder matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   install widths `136..256`, publish bucket `0` as selector `0x1003`, dispatch
   object byte `0x10` through `0x1effe` to `0x1f0d2`, render full chunks through
   `0x2f27c`, render remainders `1..15` through `0x1f1ac[remainder]`, and
-  match the installed bitmap rows. Span `32` is the no-remainder two-full-chunk
-  sibling and does not select a remainder helper. The same fixture now probes
+  derive rows from the installed bitmap. Span `32` is the no-remainder
+  two-full-chunk sibling and does not select a remainder helper. The same
+  fixture now probes
   compact-wide spans `33`, `48`, `49`, `64`, and `255`; parser install,
   selector `0x1003`, object byte `0x10`, bucket-0 publication, zero-drain
   returns, full-chunk/remainder metadata, `0x2f27c` A2 source-walk rows, and
-  render-record width words `>= span` are pinned, and rendered rows match the
-  installed bitmap rows for those high spans.
+  render-record width words `>= span` are pinned, and the high-span rendered
+  rows are derived from those installed bitmap rows.
 - Fixture `downloaded glyph width-byte boundary truncates page-record span`
   proves descriptor-accepted spans `0x00ff`, every span `0x0100..0x0111`,
   `0x017f`, `0x0180`, `0x01fe`, and `0x020d` keep canonical installed width
@@ -1899,7 +1900,7 @@ Output effect:
   source width bytes `0x11..0xff` queue
   selector `0x1003`. The same fixture now carries valid compact-wide wrapped
   cases to pixels: spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and `0x01fe`
-  render through `0x1f0d2` and match the installed bitmap rows. Low source
+  render through `0x1f0d2` using the installed bitmap rows. Low source
   bytes `0x00..0x10` still dispatch through compact mode-0 at `0x1effe`,
   reading helper entries outside decoded row-copy helper heads. The fixture
   records exact target classes: `0x0102` is the only sampled low-byte case that
@@ -1912,17 +1913,17 @@ Output effect:
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as
   selector `0x3003`, dispatch segment `1` object byte `0x30` through
   `0x1effe` to `0x1f264`, render full chunks through `0x2f27c`, render
-  remainders `1..15` through `0x1f1ac[remainder]`, and match the installed
-  segment-1 bitmap rows. Span `32` is the segmented no-remainder sibling. The
-  same fixture now probes segmented-wide spans `33`, `48`, `49`, and `64` at
-  rows `0x81`; segment bucket/object metadata and chunk/remainder state are
-  pinned, and segment-1 rendered rows match the installed bitmap rows above
-  span `32`.
+  remainders `1..15` through `0x1f1ac[remainder]`, and derive output from the
+  installed segment-1 bitmap rows. Span `32` is the segmented no-remainder
+  sibling. The same fixture now probes segmented-wide spans `33`, `48`, `49`,
+  and `64` at rows `0x81`; segment bucket/object metadata and chunk/remainder
+  state are pinned, and segment-1 rendered rows are derived from the installed
+  bitmap rows above span `32`.
 - Fixture `downloaded segmented-wide row-span cross-products render selected
   segment` extends that path beyond row `0x81`: row words `0x0082` and
   `0x0083` crossed with spans `17`, `18`, `31`, and `32` publish selector
   `0x3003` buckets `0` and `8`, dispatch segment `1` through `0x1f264`, and
-  match selected segment rows to the installed bitmap.
+  derive selected segment rows from the installed bitmap.
 - Fixtures `downloaded segmented-wide high-row fallback renders selected
   segment` and `downloaded segmented-wide high-row even-span fallback renders
   selected segment` prove sampled higher-row fallback siblings: row word
@@ -2125,7 +2126,7 @@ Unresolved middle edges:
   `0x0581`/`0x0582`, spans `17`, `18`, and `21` for `0x05ff`, spans `17`,
   `18`, and `19` for `0x0681`/`0x0682`, spans `17` and `18` for `0x06ff`,
   and span `17` for `0x0781`, `0x0782`, and `0x0787` render bucket-8 segment
-  `1` as `32` current rows and `96` fallback rows matching the installed
+  `1` as `32` current rows and `96` fallback rows derived from the installed
   bitmap. The span-31 siblings through `0x03ff` are explicit A2 source
   boundaries at `+0xb50`; higher oversized siblings stop at the parser
   payload-count cap before renderer entry, including `0x0788*17`.

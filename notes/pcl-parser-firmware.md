@@ -688,8 +688,8 @@ modeled printable/page-record path. The stored `ESC &k1G!\r!`
 mixed-control execute payload now also starts from modeled `0xa904` ring
 fetch through the ROM/alternate parser trace, stores the full mixed
 payload, builds the execute frame, and replays through
-`0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record rows matching the
-direct mixed-stream model. Execute, call, and mixed-control macro replay
+`0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record rows using the same
+ROM-derived mixed-stream model. Execute, call, and mixed-control macro replay
 payloads now also cross `0x1ed84` and `0x1ef6a` before rendering.
 Overlay publication now has the same parser-to-output chain for the
 covered selector-4 case: `0xff1e` resolves saved id `0x782a94` through

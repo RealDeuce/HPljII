@@ -864,8 +864,8 @@ work can close the right gap instead of re-tracing already-covered consumers.
   parser handlers `0x11eb6`, `0x1201e`, and `0x120be`; fallback active word
   `0x0115`; survivor slots `0x782354`, `0x782364`, and `0x782374`; selected
   context `0xc008004c`; map `0x782f32`; queued object prefix
-  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; rows match the pinned primary
-  visible fixture. Status: parser-produced symbol fallback plus modeled
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; rows use the pinned primary
+  visible path. Status: parser-produced symbol fallback plus modeled
   selected-context handoff to visible-output fixture.
 - Claim: parsed secondary built-in font-selection bytes can determine visible
   compact text rows after SO selects the secondary context. Evidence: fixture
@@ -896,8 +896,8 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `0x782ee6 = 0xc008004c`; map `0x782f32`; SI handler `0xc68a`; install
   helper `0xc428(0)` / `0xc4fc`; page-root slots
   `(0xc008004c, 0xc00ae122)`; printable source contexts `0xc008004c`;
-  object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; rows match the
-  pinned parsed primary visible fixture. Status: composed parser-selection to
+  object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; rows use the
+  pinned parsed primary visible path. Status: composed parser-selection to
   current-font RAM to existing page-root slot and visible output.
 - Claim: the secondary current-font RAM record can feed visible SO output
   through the page-root context slot path. Evidence: fixture
@@ -917,8 +917,8 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `0x782ef6 = 0xc00ae122`; map `0x783032`; SO handler `0xc6b8`; install
   helper `0xc428(1)` / `0xc4fc`; page-root slots
   `(0xc008004c, 0xc00ae122)`; printable source contexts `0xc00ae122`;
-  object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`; rows match the
-  pinned parsed secondary visible fixture. Status: composed parser-selection
+  object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`; rows use the
+  pinned parsed secondary visible path. Status: composed parser-selection
   to current-font RAM to existing page-root slot and visible output.
 - Claim: a secondary symbol-set miss can fall back to the firmware table word
   before visible SO output. Evidence: fixture

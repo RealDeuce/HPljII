@@ -213,7 +213,7 @@ The two payload bytes queue as normal printable text:
 - second payload byte `0x21`: compact coord `0x0202`
 - page-record root allocation count: `1`
 - page-record bridge: `0x1edc6` copies the selected context slot
-- render entry: the bridged rows match the plain `!!` text fixture
+- render entry: the bridged rows use the same ROM-derived path as plain `!!`
 
 The visible probe fixture uses stream:
 

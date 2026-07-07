@@ -423,7 +423,9 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   reproducible through the compact helpers, while high-row short compact
   siblings `0x0101..0x0103` stop at the unchecked `0x1fe76` fallback
   jump-table read. Owner notes:
-  [font-context-metrics.md](font-context-metrics.md) and
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md), and
   [downloaded-fonts.md](downloaded-fonts.md).
 - Macro definition, replay, and overlay:
   `ESC &f` enters mode `17`. `Y/y` reaches macro-id handler `0xe112`;

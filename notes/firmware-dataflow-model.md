@@ -1557,6 +1557,45 @@ Refresh side effects:
   missing or not bit-27 marked, and copies ten longwords from scratch
   `0x782894` into canonical table `0x7828b6`.
 
+Scheduler branch-to-consumer matrix:
+
+- Both predicates zero:
+  `0x19dd2` calls `0x19fb8(0)`, runs shared font/default refresh
+  `0x1b04c`, and returns `D7 = 1`. It does not prune candidates, release
+  downloaded-font payloads, rescan optional ranges, or replace canonical
+  resource-window table `0x7828b6`.
+- Status-return branch:
+  when the first predicate is nonzero and `0x72a2` returns zero,
+  `0x19e32..0x19e46` writes `0x780e8d`, raises status mask `0x00000200` at
+  status root `0x780e2e` through `0x9bee`, calls `0x19fb8(predicate)`, and
+  returns `D7 = 0`. This is a firmware/status side effect, not page output.
+- Long-refresh branch:
+  nonzero predicates outside the status-return branch call
+  `0x1ba92(predicate)`, `0x178fa(predicate)`, `0x19d9c()`,
+  `0x1a4fa(fresh_side_predicate)`, and `0x1a900()`, then return
+  `D7 = 1`. This can remove candidate entries, release current downloaded
+  payloads, mark remaining candidates dirty, rescan optional windows through
+  `0x1a616`, validate active contexts, and commit scratch state to
+  `0x7828b6`.
+- Host-quiesce caller `0x447a`:
+  ignores scheduler `D7`; only the side effects above can affect later
+  parsing or font state.
+- Host/menu caller `0x4760`:
+  consumes scheduler `D7`; `D7 = 0` returns immediately, while `D7 != 0`
+  enters menu/default setup and polling state.
+- External-ready teardown caller `0xbb16`:
+  records scheduler side effects but ignores `D7` before status aggregation
+  through `0x36e4`.
+- Font-resource scan caller `0x1a3c2`:
+  ignores scheduler `D7`, then passes `0x78219b`, `0x78219c`, and local
+  `A6-0x02` to resolver `0x1b50e`. Only resolver `D7 == 0` selects the
+  following `0x6364` default refresh call.
+
+The matrix output is refreshed resource/font state or status/caller control,
+not pixels. Later visible output can change only when subsequent font
+selection, downloaded-font resolution, resource lookup, or caller continuation
+consumes the modified candidate, context, or status state.
+
 Caller contracts:
 
 - Known callers are `0x00447a`, `0x004760`, `0x007164`, `0x00bb16`, and

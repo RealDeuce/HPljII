@@ -735,6 +735,18 @@ Fixture values:
 - `0x16da0..0x16dac`: installed counters `0x78278a` and `0x782782`
   increment, then `0x1b04c` refreshes font selection bookkeeping.
 
+The skip exits are three distinct ROM states, not one generic failure:
+
+- `0x16c44..0x16c50`: parser/device mode `0x782a92 == 2` skips the whole
+  payload budget in `0x783140` without scanning or releasing records.
+- `0x16c52..0x16c68`: current-record scanner `0x172c0` returns status `2`
+  when no 10-byte slot under `0x782640..0x782776` can accept the current
+  font id; the handler skips `0x783140` bytes and returns.
+- `0x16c94..0x16ca2`: total candidate count `0x78278e >= 0x00c0` also skips
+  `0x783140` bytes. If `0x172c0` returned status `0` for an existing
+  current-record slot, the old payload has already been released through
+  `0x1887a` at `0x16c80..0x16c92` before this count-full test runs.
+
 The `ESC )s80W` fixture proves the parser-to-install boundary:
 
 - parsed record `80 57 00 50 00 00`.

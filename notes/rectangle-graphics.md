@@ -175,6 +175,64 @@ Fixture-pinned examples:
 - `ESC *c72H` stores `0x001e000b`.
 - `ESC *c1.5V` stores `0x00010007`.
 
+## Command Handler Boundaries
+
+The ROM-local command boundary for this family is:
+
+- `0x10e68..0x10eac` handles dot width `ESC *c#A`; `0x10e22..0x10e66`
+  handles dot height `ESC *c#B`. Both rewind `0x78299e`, require an explicit
+  positive integer in parser record word `+2`, clear the target longword for
+  missing or nonpositive values, and otherwise store the word in
+  `0x78316a` or `0x783166` while clearing the fractional companion word.
+- `0x10a40..0x10ade` handles decipoint width `ESC *c#H`;
+  `0x10ae0..0x10b7e` handles decipoint height `ESC *c#V`. Both reject missing,
+  negative, or zero parsed values, convert integer/fraction words through
+  `value * 5 / 10000`, round up when helper `0x33238` reports a remainder, add
+  the ROM bias `+0x0b`, convert through `0x104d8`, and write the packed
+  dimension to `0x78316a` or `0x783166`.
+- `0x10dce..0x10e20` handles area-fill id `ESC *c#G`. It rewinds
+  `0x78299e`, treats missing or zero explicit values as `0`, takes the absolute
+  value for negative explicit values, and writes word `0x78316e`.
+- `0x10898..0x108f2` handles fill selector `ESC *c#P` setup. It rewinds
+  `0x78299e`, reads area-fill state `0x78316e`, records missing/zero selector
+  as solid selector `7`, and normalizes an explicit negative selector to its
+  absolute value.
+- `0x10910..0x109fc` maps selector `2` through percent-fill thresholds from
+  `0x78316e`: `1..2 -> 0`, `3..10 -> 1`, `11..20 -> 2`, `21..35 -> 3`,
+  `36..55 -> 4`, `56..80 -> 5`, `81..99 -> 6`, and `100 -> 7`. A percent id
+  below `1` or above `100` exits without queueing.
+- `0x10928..0x10a34` maps selector `3` through pattern ids `1..6` to
+  selectors `8..13`. In landscape orientation byte `0x782da3 == 1`, ids
+  `1..4` are remapped to selectors `9`, `8`, `11`, and `10`.
+- `0x108f2..0x1090c` is the shared queue gate after selector mapping. Width
+  `0x78316a` and height `0x783166` must both be nonzero before the handler
+  calls clip/queue helper `0x10b80`; otherwise the selector state is recorded
+  in scratch `0x782a88+8` but no page object is allocated.
+- `0x10b80..0x10c10` reads cursor x/y, page extents, and stored dimensions,
+  rejects starts past the right or bottom page edge, rejects negative starts
+  whose rectangle does not cross back onto the page, and clips negative x/y by
+  reducing the effective source origin to zero while preserving the original
+  cursor value for later width/height calculation.
+- `0x10c10..0x10d0a` is the portrait queue path. It writes source x/y at
+  `0x782a88+0/+2`, computes clipped width/height at `+4/+6`, rejects empty
+  clipped results, ensures a page root through `0x10084`, and calls
+  `0x13386`.
+- `0x10c74..0x10dcc` is the landscape queue path. It swaps axes, derives the
+  queued x from the portrait y axis, derives queued y from the clipped right
+  edge of the portrait x extent, computes clipped dimensions in swapped order,
+  then shares the `0x10084 -> 0x13386` page-object insertion path.
+- `0x10d22..0x10d3e` is the no-room retry path. If `0x13386` returns zero,
+  it sets page-root flag `+0x15.0`, publishes the current root through
+  `0xff1e`, allocates a fresh root through `0x10084`, and retries the same
+  source record at `0x782a88`.
+- `0x13386..0x133a8` derives ordered-list key fields through `0x134d6` and
+  then calls `0x133aa`.
+- `0x133aa..0x13470` allocates a 14-byte rule object through `0x1381c`,
+  inserts it under current root `+0x24` in ascending bucket order, writes
+  object bytes from derived fields `0x782a7d` / `0x782a7e`, copies selector
+  word `0x782a88+8`, width `+4`, and height `+6`, and returns zero without
+  changing the list if allocation fails.
+
 ## Fill Selector At 0x10898
 
 `0x10898` handles `ESC *c#P`. It rewinds the parsed record and maps the fill

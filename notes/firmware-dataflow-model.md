@@ -5376,6 +5376,114 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
 
+## Worked Path: Downloaded Glyph Rule/Raster Composition
+
+This path composes a downloaded glyph install with following page-imaging
+commands in one host byte stream. It documents the state handoff at byte `24`
+between the `ESC )s18W` font payload and the following page stream:
+
+```text
+ESC )s18W <18 bitmap bytes>
+ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c
+```
+
+The full stream is a single `0xa904` ring-source stream, not two independent
+host sources. The font phase is bytes `0..24`; the page phase is bytes
+`24..54`.
+
+Parser and command flow:
+
+- `ESC )s18W` reaches `0x11f96` through parser-family handlers `0x11eb6`,
+  `0x12008`, and `0x11ff6`.
+- `0x11f96` schedules delayed handler `0x16c14` through `0x121cc`; restore
+  path `0x12218` reinstalls record `80 57 00 12 00 00`.
+- `0x16c14 -> 0x16498` installs downloaded glyph `0x29` at table entry
+  `0x00ee`, record delta `0x0780`, record bytes
+  `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset `0x078c`, bitmap size
+  `18`, and bitmap bytes
+  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`.
+- The install helper drains to byte `24` with no pending handler. Fixture
+  `downloaded glyph byte-24 state handoff feeds following page handler`
+  records that the final font-command header is the page memory image consumed
+  by the following handler.
+- Page bytes `24..54` route through rectangle handlers `0x10e68`,
+  `0x10e22`, and `0x10898`; printable handler `0xd04a`; raster setup
+  handlers `0x10808` and `0x1075a`; delayed raster wrapper `0x11f82`; and
+  raster payload consumer `0x105d0`.
+
+Canonical page state:
+
+- The downloaded glyph object is queued through `0xd04a -> 0x1393a ->
+  0x12f2e` as bucket-5 object
+  `00 00 00 00 10 03 00 01 29 06 01...`.
+- The selector-7 rectangle is queued through `0x10898 -> 0x10b80 ->
+  0x13386 -> 0x133aa`; after bridge normalization it is
+  `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`.
+- The mode-0 raster object is queued through `0x105d0 -> 0x13070 ->
+  0x13250` as
+  `00 00 00 00 80 00 00 02 00 00 c3 3c`.
+- Publication sibling fixture `parser-driven downloaded glyph rule raster FF
+  publishes page record` appends FF, publishes bucket `5`, preserves the raw
+  selector-7 rule list, clears current root `0x78297a`, and sets publication
+  flag `0x782996`.
+
+State classification:
+
+- Canonical state: downloaded glyph table entry `0x00ee`, installed record
+  delta `0x0780`, bitmap offset `0x078c`, bitmap bytes, current page root,
+  bucket-5 glyph/raster chain, selector-7 rule object, and published page
+  record.
+- Derived/cache state: final font-command header used as the page memory
+  image, bridge-normalized rule selector bit `0x10`, render bucket word `5`,
+  and render-band setup from `0x1ef86`.
+- Parser scratch: font bytes `0..24`, page bytes `24..54`, restored
+  downloaded-font record `80 57 00 12 00 00`, raster record
+  `80 57 00 02 00 00`, raster snapshot
+  `01 00 01 05 d0 80 57 00 02 00 00`, and raster payload `c3 3c`.
+- Firmware bookkeeping: downloaded-record allocation state around
+  `0x16c14` / `0x16498`, stream allocator state, publication flag
+  `0x782996`, root clear count, and render-work progress.
+- Hardware/external state: none for this ROM-local byte-to-bitmap path.
+
+Output effect:
+
+- Render entry `0x1ed84` copies the active or published page record into a
+  render work record; `0x1edc6` copies bucket roots, rule roots, and context
+  slots.
+- `0x1ef6a` calls `0x1ef86`, bucket dispatch `0x1efc2`, rule dispatch
+  `0x1f446`, and fixed-list dispatch `0x1f756`.
+- The raster object dispatches to `0x1f88e`, the downloaded glyph dispatches
+  through `0x1effe -> 0x1f0d2`, and the rule dispatches through `0x1f596`.
+- The derived rows are row `0` with raster payload `c3 3c`, downloaded glyph
+  at x `22`, and rule from x `24` through x `35`, followed by rows `1` and
+  `2` containing the rule only.
+
+Evidence and unresolved boundary:
+
+- Detail checkpoint: `Downloaded Glyph Rule/Raster Composition` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Detail note: [downloaded-fonts.md](downloaded-fonts.md).
+- Fixture evidence:
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a`, `downloaded glyph byte-24 state handoff feeds following page
+  handler`, `even-span downloaded glyph rule raster FF publication renders
+  page record`, and
+  `parser-driven downloaded glyph rule raster FF publishes page record`.
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- No unresolved middle edge remains for the documented byte-24 handoff,
+  glyph/rule/raster page-object fields, publication, bridge roots, or render
+  dispatch. Further work must change the final header, installed record,
+  post-install drain, following parser handler, page-object bytes, bucket
+  assignment, dispatch target, or derived rows.
+
 ## Worked Path: Vertical Forms Control
 
 This path covers the VFC command family: `ESC &l#W` loads a channel table, and

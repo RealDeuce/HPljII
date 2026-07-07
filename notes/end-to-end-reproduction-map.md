@@ -5514,6 +5514,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   success, final-`X` preserved-output exits, bit-30-clear inline/downloaded
   context selection, and selected current-font RAM handoff through SI/SO.
   Evidence: [font-context-metrics.md](font-context-metrics.md),
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
   `Worked Path: Font Selection To Visible Glyphs` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and fixtures
   `inline primary font selection stream renders visible rows`,
@@ -5541,6 +5543,14 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   stream writes current context `0x782ee6 = 0xc008004c` and map `0x782f32`;
   the selected secondary stream writes current context `0x782ef6 =
   0xc00ae122` and map `0x783032`.
+  The candidate records filtered by that path come from the startup/resource
+  scan `0x1a2e4 -> 0x1a616 -> 0x1a9be`. In the verified built-in image,
+  `0x1a9be` accepts 24 `HEAD`-path records and partitions them into 12
+  class-zero and 12 class-one low-window candidates. Primary refresh activates
+  class-zero pointer/count `0x782354` / `12`; secondary refresh activates
+  class-one pointer/count `0x782324` / `12`. Later symbol, pitch, height,
+  stroke, and chooser filters operate on those concrete windows, leaving
+  selected slot `0x7828a8` and context/map state for `0x144d2` / `0x14c64`.
   Symbol-set finals route through `0x120be -> 0x1be22`, write requested
   symbol words at `0x782ef4 + 0x10 * slot`, dirty refresh flags
   `0x782f2c` / `0x782f2d`, and use `0x156de` to consume requested,

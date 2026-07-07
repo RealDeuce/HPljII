@@ -777,6 +777,12 @@ for physical connector naming and the external protocol name of the
   output mode` covers mode `0` output through the `0xaf7c` path, mode `1`
   dequeue-and-discard, and alternate nonzero output through the `0xafcc`
   path.
+- `tools/render_fixture_harness.py`: `0x12034/0x122be model-ID response emits
+  FIFO literal` covers both parser-table entries (`ESC *r#K` and
+  `ESC *s#^`), the `0x11efe` synthetic record word `+2 = 1`, the accepted
+  `0x11` query, non-query rejection through `0x9ec0`, record-word rejection,
+  the direct `+2 = -1` accepted sibling, and FIFO bytes `33440A\r\n` from
+  ROM literal `0x12280`.
 
 ### Disassembly Evidence
 

@@ -1105,7 +1105,8 @@ Evidence and unresolved boundary:
 - Fixture evidence includes `0xb0c0/0xb022 output FIFO wraps and preserves
   order`, `0xb090 waits on full FIFO then enqueues after drain`,
   `0xaece emits service byte and combined status byte`, `0xae2c drains FIFO
-  by configured output mode`, and
+  by configured output mode`,
+  `0x12034/0x122be model-ID response emits FIFO literal`, and
   `0x2888 sets page-environment status consumed by 0xaece`.
 - The unresolved edge is external naming and timing: the protocol name for
   query byte `0x11`, physical output-register mapping, and whether a

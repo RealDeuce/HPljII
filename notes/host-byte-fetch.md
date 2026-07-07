@@ -358,7 +358,10 @@ query remains unidentified, but the ROM response bytes, `0x12034` command
 entry, and FIFO producer path are pinned by
 `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
 `generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and
-`generated/analysis/ic30_ic13_strings.txt`.
+`generated/analysis/ic30_ic13_strings.txt`. Fixture
+`0x12034/0x122be model-ID response emits FIFO literal` ties the two command
+entries, `0x11efe` setup record, accepted/rejected query branches, and FIFO
+bytes into one model-consistency check.
 
 Wait object `0x7801e2` restarts at `0xae2c`. The worker first sleeps
 through `0x10d0(0x15)` when FIFO count `0x783ed2`, pending status count

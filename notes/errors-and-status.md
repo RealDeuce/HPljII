@@ -204,9 +204,9 @@ Confidence is high for FIFO capacity/order, output mode selection, outbound
 status-byte composition, `0x780e90` production, media-feed message selection,
 and normal service-message routing because these are direct disassembly reads
 and executable fixtures. Confidence is high for model-ID literal emission from
-the disassembly path `0x12034 -> 0x122be..0x12326` and string-table hit at
-`0x12280`; this specific producer is not currently covered by a dedicated
-fixture.
+the disassembly path `0x12034 -> 0x122be..0x12326`, string-table hit at
+`0x12280`, and fixture
+`0x12034/0x122be model-ID response emits FIFO literal`.
 
 Fixture evidence:
 
@@ -214,6 +214,7 @@ Fixture evidence:
 - `0xb090 waits on full FIFO then enqueues after drain`
 - `0xaece emits service byte and combined status byte`
 - `0xae2c drains FIFO by configured output mode`
+- `0x12034/0x122be model-ID response emits FIFO literal`
 - `0x2888 sets page-environment status consumed by 0xaece`
 - `0x2888 publishes environment mismatch or status-cache changes`
 - `0x7612 selects page-environment or normal service helper`

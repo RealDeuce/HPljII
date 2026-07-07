@@ -198,9 +198,13 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   no direct page-object or pixel effect: `ESC *r1K 11` and the `ESC *s#^`
   sibling enqueue literal `33440A\r\n` through host-output FIFO helpers, and
   status producers such as `0x2888` feed outbound status bytes through
-  `0xaece`. It still belongs in byte-stream reproduction because a full FIFO
-  can stall producer `0xb090`, and a bidirectional host can react to the
-  backchannel bytes by sending different future input.
+  `0xaece`. Fixture
+  `0x12034/0x122be model-ID response emits FIFO literal` now pins both command
+  entries, the `0x11efe` synthetic record, accepted query byte `0x11`,
+  reject paths, and FIFO literal bytes. It still belongs in byte-stream
+  reproduction because a full FIFO can stall producer `0xb090`, and a
+  bidirectional host can react to the backchannel bytes by sending different
+  future input.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   The checked-in contracts are [pcl-parser-core.md](pcl-parser-core.md) and

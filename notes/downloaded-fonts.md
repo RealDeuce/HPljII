@@ -580,11 +580,33 @@ Unknown:
 
 ## Command Dispatch And Descriptor Route
 
-`0x11f96` is the `ESC )s#W` / `ESC (s#W` payload selector. It reads the parsed
-count from the six-byte command record:
+`ESC *c#D` and `ESC *c#E` are the current-state writers for the
+downloaded-font command family. The parser command map routes uppercase
+finals `D` and `E`, and lowercase chaining finals `d` and `e`, to the same
+handlers:
 
-- count `0`: schedules delayed handler `0x15d0a`.
-- nonzero count: schedules delayed handler `0x16c14`.
+- `0x15a56..0x15a92` rewinds parser record cursor `0x78299e` by six bytes,
+  reads parsed word `+2`, sign-extends it, takes the absolute value, maps
+  `0x8000` to `0x7fff`, and writes current downloaded-font id `0x782f2e`.
+- `0x15a18..0x15a54` performs the same normalization and writes current
+  character/code word `0x782f30`.
+
+Those two canonical fields are consumed by the later command routes in this
+section: current-record scans such as `0x172c0`, payload installs through
+`0x16c14`, descriptor/object handlers such as `0x16498`, and `ESC *c#F`
+control helpers such as `0x17b5c`.
+
+`0x11f96` is the `ESC )s#W` / `ESC (s#W` payload selector. At
+`0x11f9e..0x11faa`, it loads parser record cursor `0x78299e`, backs up by
+twelve bytes, and tests the preceding count record word at `+2`:
+
+- `0x11faa..0x11fb6`: count `0` schedules delayed handler `0x15d0a`.
+- `0x11fbe..0x11fc4`: nonzero count schedules delayed handler `0x16c14`.
+
+Both routes call delayed-payload scheduler `0x121cc`. Parser terminal restore
+`0x12218` later reinstalls the saved six-byte command record before calling
+the selected handler, so `0x15d0a` and `0x16c14` see the original parsed
+`W` count and consume the following host payload bytes.
 
 The parser trace fixtures show the same dispatch path for `ESC )s0W`,
 `ESC )s80W`, and `ESC )s2193W`: handlers

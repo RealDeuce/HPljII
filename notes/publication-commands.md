@@ -88,8 +88,15 @@ Canonical command state:
   copies it into published pool-header word `+0x0c`.
 - `0x782da6`: paper-source/environment byte. `0xef62` writes selector `2` as
   `0x80`, and the addressed fixture also mirrors it to `0x780e8f`.
-- `0x782998`: pending paper-source/layout refresh byte. The addressed
-  paper-source fixture pins it to `1` after selector `2`.
+- `0x782997`: pending page-size/page-length header flag. `0xfc74` and
+  `0xf9e8` set it after committing a new page code or page length, and
+  environment reset `0xcda2` can also set it from default state.
+- `0x780e99`: status/header pending byte consumed by `0xff1e` when no
+  page-size/page-length pending flag clears it first.
+- `0x782998`: pending paper-source/layout header flag. `0xef62` sets it after
+  paper-source selection, and environment reset `0xcda2` can also set it from
+  default state. The addressed paper-source fixture pins it to `1` after
+  selector `2`.
 - `0x780e8f` / `0x780e26`: paper-source output/control bytes. The addressed
   paper-source fixture pins them to `0x80` and `1` after publication.
 - `0x782da3`: orientation byte, written by `0x10220`.
@@ -209,6 +216,31 @@ same command families.
 The helper does not construct pixels directly. It freezes the current page-root
 record so the `0x1ed84` / `0x1edc6` bridge can later copy buckets, rule lists,
 fixed lists, and context slots into a render record.
+
+### Published Header Flags
+
+The `0xff1e` header flag branches compose command-state bytes into published
+page-root fields before the root is marked ready:
+
+- Page-size and page-length changes set `0x782997 = 1` at `0xfd74` and
+  `0xfb20`. Environment reset can also set it at `0xce2e`. The publication
+  helper consumes it at `0xffd2..0xfffe`, sets root byte `+0x0a` bit `0`,
+  clears `0x780e99`, and clears `0x782997`.
+- If `0x780e99 == 1` remains set after the `0x782997` branch, `0xff1e`
+  writes root byte `+0x08 = 1` at `0x10000..0x1001e`. The branch does not clear
+  `0x780e99`; page-size, page-length, and reset paths clear that byte through
+  `0xfd7c..0xfd88`, `0xfb28..0xfb34`, and `0xcf38..0xcf44`.
+- Paper-source changes set `0x782998 = 1` at `0xf01c`. Environment reset can
+  also set it at `0xce36`. The publication helper consumes it at
+  `0x10020..0x1003e`, sets root byte `+0x0a` bit `1`, and clears `0x782998`.
+- Every non-early publication copies environment byte `0x782da6` to root byte
+  `+0x07` and copy count `0x782da4` to root word `+0x0c` at
+  `0x10044..0x1005a`.
+
+These fields are canonical page-header state, not rendered row data. They do
+not change the bucket root at `+0x1c`; they change the published page/control
+record that downstream page services and the render bridge receive alongside
+the bucket, fixed-list, rule-list, and context-slot roots.
 
 ## Command Handler Boundaries
 
@@ -366,11 +398,11 @@ published page-root header word `+0x0c`.
   / `0xff1e`.
 - `0xf0f0` handles FF and publishes the current root through `0xff1e`.
 - `0xfc74` handles page size and publishes the current root before changing
-  geometry.
+  geometry, then sets pending header flag `0x782997`.
 - `0x10220` handles orientation and publishes the current root before changing
   orientation and active extents.
 - `0xef62` handles paper source, publishing queued text and then writing
-  paper-source state.
+  paper-source state and pending header flag `0x782998`.
 - `0xeef0` handles copies, storing the copy count that a following FF
   publication copies into pool-header word `+0x0c`.
 - `0xff1e` writes the published pool record and clears the current page root.
@@ -383,7 +415,8 @@ published page-root header word `+0x0c`.
 - `0x11774` consumes the host byte stream and dispatches to the command
   handlers listed above.
 - `0xff1e` consumes current page root `0x78297a`, page-root state byte `+4`,
-  parser/page state `0x782a92`, and root bucket/context fields.
+  parser/page state `0x782a92`, pending header flags `0x782997` and
+  `0x782998`, status/header byte `0x780e99`, and root bucket/context fields.
 - `0x1ed84` and `0x1edc6` consume the published pool record and produce a
   render record.
 - `0x1ef6a` consumes the render record in call order

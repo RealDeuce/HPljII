@@ -4911,7 +4911,7 @@ def esc_e_reset_flow_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A byte-stream model must treat `ESC E` as a page/environment boundary: flush pending text spans, run the page-root finalization path, rebuild page geometry/font metrics, reset raster graphics state, and clear parser/data-chain state.")
     lines.append("- The ROM evidence distinguishes `ESC E` from a simple hard clear: `0xff1e` can publish/finalize the current page root before `0x78297a` is cleared.")
-    lines.append("- `tools/render_fixture_harness.py` now has synthetic `ESC E` byte-stream fixtures for valid-page-root publication and missing-root clearing, plus a mixed `!\\x1bE` fixture that applies valid-root reset after queued text. Exact reset reproduction still needs fixtures that start from a fuller parser-allocated page root; the current page-record reset fixture now compares the modeled published record against the bridged/rendered compact bucket.")
+    lines.append("- `tools/render_fixture_harness.py` now has synthetic `ESC E` byte-stream fixtures for valid-page-root publication and missing-root clearing, plus a mixed `!\\x1bE` fixture that applies valid-root reset after queued text. Exact reset reproduction still needs ROM-local coverage that starts from a fuller parser-allocated page root; the current page-record reset fixture checks that the modeled published record reaches the bridged/render-derived compact bucket.")
     lines.append("")
     return "\n".join(lines)
 

@@ -5687,9 +5687,10 @@ State classification for this path:
 - Unknown:
   no unresolved ROM-local middle edge remains for this covered execute replay
   path from stored `!\r` to compact text rendering. Remaining macro work is
-  broader payload variants, overlay variants outside the documented matrix,
-  external/manual names for macro context bytes, and byte streams that change
-  parser dispatch, page-object fields, bridge roots, or rendered rows.
+  byte streams that change replay-frame fields, skip-gate state,
+  parser/delayed-payload dispatch, page-object fields, bridge roots,
+  continuation fields, or ROM-derived row construction. External/manual names
+  for macro context bytes remain separate.
 
 Evidence for this path is in
 [macro-data-chain.md](macro-data-chain.md),
@@ -5801,9 +5802,9 @@ State classification:
   none for the ROM-local overlay replay and publication behavior.
 - Unknown:
   no unresolved ROM-local middle edge remains for the documented overlay
-  payload families. Remaining macro work is broader payload variants that
-  change parser dispatch, page-object fields, delayed payload state, or
-  rendered rows.
+  payload families. Remaining macro work must change replay-frame fields,
+  skip-gate state, parser/delayed-payload dispatch, page-object fields, bridge
+  roots, continuation fields, or ROM-derived row construction.
 
 Output effect:
 
@@ -6548,9 +6549,11 @@ Current top-level boundaries include:
   parser-fed raster streams that change the documented `0x132b6..0x13382`
   current-tail or capped-new-chunk object-chain derivation; dense page/object
   streams that change `0x1381c` rollover, `0x133aa` / `0x136d2` list ordering,
-  or bridge fields; macro overlay payload variants beyond the documented
-  matrix; and selected font combinations that change context/map/selector state before
-  visible output.
+  or bridge fields; macro overlay payloads that change replay-frame fields,
+  skip-gate state, parser/delayed-payload dispatch, page-object fields, bridge
+  roots, continuation fields, or ROM-derived row construction; and selected
+  font combinations that change context/map/selector state before visible
+  output.
 
 These are not blockers for documenting ROM-local parser, command, page-object,
 or render behavior that is already visible in the disassembly.

@@ -8408,8 +8408,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     overlay payload, raster overlay payload, multi-row raster overlay payload,
     span-flush overlay payload, transparent-data overlay payload, or overlay
     skip-gate middle edge in this checkpoint. The next high-value macro edges
-    are broader overlay payload variants that expose different ROM-derived
-    page-object, bridge, or rendered-row behavior.
+    must change replay-frame fields, skip-gate state, parser/delayed-payload
+    dispatch, page-object fields, bridge roots, continuation fields, or
+    ROM-derived row construction.
     Descriptor metric validation is tracked separately as external/manual naming for
     consumed-but-not-staged fields, not as a macro-cluster middle edge.
 
@@ -8777,17 +8778,18 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 ### Unresolved Middle Edges
 
-- None remaining for macro execute/call replay, macro font-context refresh, first
-  overlay-publication, repeated enabled-overlay publication across two page boundaries,
-  mixed-control overlay payload publication, cursor-position overlay payload family
-  publication, vertical-decipoint overlay payload publication, chained-margin overlay
-  payload publication, raster overlay payload publication, multi-row raster overlay
-  payload publication, span-flush overlay payload publication, transparent-data
-  overlay payload publication, or the
-  disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk is
-  broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, `ESC &a2C!`,
-  `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered raster
-  payloads, and `ESC &a6L!`, plus optional final-device correlation, not the
+- None remaining for macro execute/call replay, macro font-context refresh,
+  first overlay-publication, repeated enabled-overlay publication across two
+  page boundaries, mixed-control overlay payload publication, cursor-position
+  overlay payload family publication, vertical-decipoint overlay payload
+  publication, chained-margin overlay payload publication, raster overlay
+  payload publication, multi-row raster overlay payload publication,
+  span-flush overlay payload publication, transparent-data overlay payload
+  publication, or the disabled/missing-record/retry-flag overlay skip gates.
+  Remaining macro risk must change a concrete overlay boundary documented in
+  [macro-data-chain.md](macro-data-chain.md): replay-frame fields, skip-gate
+  state, parser/delayed-payload dispatch, page-object fields, bridge roots,
+  continuation fields, or ROM-derived row construction. It is not the
   `0xdd08` selector-4 to `0xff1e` visible-output path or its skip gates.
 
 ## Raster Transfer Gate And Encoded Rows

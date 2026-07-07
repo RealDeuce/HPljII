@@ -1956,10 +1956,11 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   publication, repeated enabled-overlay publication, mixed-control overlay,
   cursor-position overlay, chained-margin overlay, raster overlay, multi-row
   raster overlay, span-flush overlay, transparent-data overlay, or overlay
-  skip-gate middle edge remains for the documented streams. Remaining work is
-  broader overlay payload variants that change replay frame state, page-object
-  fields, publication state, bridge roots, or rendered rows; over-deep
-  context-stack failure behavior remains a separate external/manual boundary.
+  skip-gate middle edge remains for the documented streams. Remaining work
+  must change replay-frame fields, skip-gate state, parser/delayed-payload
+  dispatch, page-object fields, bridge roots, continuation fields, or
+  ROM-derived row construction; over-deep context-stack failure behavior
+  remains a separate external/manual boundary.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.

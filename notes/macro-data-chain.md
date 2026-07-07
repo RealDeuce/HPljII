@@ -463,9 +463,48 @@ The fixture-backed render contract for that matrix is:
 
 All covered overlay payloads publish through `0xff1e`, bridge through
 `0x1edc6`, and render through `0x1ed84` / `0x1ef6a`. Remaining edges are no
-longer inside the listed payload paths; they are broader overlay payload
-variants outside this matrix that would need to expose different ROM-local
-output fields or rendered rows.
+longer inside the listed payload paths. A new overlay stream matters here only
+if it exposes different ROM-local output fields or a different row derivation
+path inside the ROM render helpers.
+
+Overlay variant boundary map:
+
+- Overlay selection is canonical macro/page state: `ESC &f4X` stores overlay
+  mode in `0x782a92` and overlay id in `0x782a94`; `ESC &f5X` clears that
+  mode. Page publication `0xff1e` consumes both fields plus current page-root
+  retry flag `+0x14.0` before deciding whether overlay replay can run.
+- Skip gates are exact: disabled overlay mode, missing/nonempty macro record
+  lookup through `0xe0a4(0x782a94)`, and page-root retry flag all preserve the
+  base page publication without producing a non-replay frame.
+- `0xe4f4` produces the non-replay frame. Canonical replay-frame fields are
+  frame `+0x00` source chunk pointer, frame `+0x04` byte count, frame
+  `+0x08 = 4`, frame `+0x09 = 4`, frame `+0x0a = 0`, saved cursor
+  `0x782c92`, selected context byte `0x782f06`, and host gate bit 1 in
+  `0x780e66`. Snapshot helpers `0xe996` / `0xe972` are firmware
+  bookkeeping, not page content.
+- Replay parser scratch is the stored payload byte stream consumed through
+  `0xa904`, parser mode in `0x782999`, alternate/data state when a replayed
+  command enters a delayed payload mode, restored transparent record
+  `80 58 ...`, restored raster record `80 57 ...`, and delayed payload
+  counters/offsets. A new overlay variant is only a new parser edge if it
+  reaches a handler or delayed-payload branch outside the listed payload
+  matrix.
+- Page-output fields are produced by the replayed handlers, not by the macro
+  engine directly: compact text and encoded raster bucket objects under
+  page-root `+0x1c`, selector-`0x4000` segment-list span objects under the
+  same bucket root, rectangle/rule objects under `+0x24`, fixed-list objects
+  under `+0x28`, context slots `+0x2c..+0x68`, and publication state through
+  `0xff1e`.
+- Render-visible boundaries are the same shared page pipeline as live host
+  bytes: `0x1ed84` copies the published record, `0x1edc6` bridges bucket,
+  rule, fixed-list, and context roots, `0x1ef6a` runs bucket/rule/fixed-list
+  dispatch, and helpers such as `0x1effe`, `0x1f88e`, `0x1f596`, `0x1f4e0`,
+  `0x1f756`, and `0x1f812` derive rows from those objects.
+
+Remaining overlay work is therefore not "does overlay replay work"; it must
+change at least one concrete boundary above: replay-frame fields, skip-gate
+state, parser/delayed-payload dispatch, page-object fields, bridge roots,
+continuation fields, or ROM-derived rows.
 
 ## Reproduction Contract
 
@@ -485,7 +524,8 @@ A byte-stream renderer must preserve:
   replay detour;
 - skip gates for disabled overlay, missing overlay record, and page-root retry
   flag;
-- page-record publication and render output after replayed macro bytes.
+- page-record publication and ROM-derived render output after replayed macro
+  bytes.
 
 ## Confidence
 
@@ -495,9 +535,10 @@ field offsets, `0xa904` replay, `0xe22c` frame ending, heap unit allocation,
 `0xe65c` font-context bridge, overlay detour, skip gates, and page-record
 output because each is backed by disassembly and named fixtures.
 
-High for the covered overlay payload matrix because each fixture starts from a
-stored macro payload, re-enters parser handlers, preserves the page-record
-bridge, and renders rows.
+High for the covered overlay payload matrix because each documented stream
+starts from a stored macro payload, re-enters parser handlers, preserves the
+page-record bridge, and reaches the ROM helpers that derive rows from the
+published objects. There is no external row oracle in this evidence standard.
 
 Medium for external/manual names for macro context and overlay state fields.
 Medium for behavior beyond the eight reset-cleared macro context records
@@ -513,6 +554,7 @@ failure case is validated.
   payloads, transparent-data overlay payloads, raster overlay payloads,
   multi-row raster overlay payloads, span-flush overlay payloads, or the
   disabled/missing-record/retry-flag overlay skip gates.
-- Remaining macro work is broader overlay payload variants beyond the listed
-  command-family matrix, external/manual naming, and ROM-local output fields
-  or rendered rows that differ from the covered matrix.
+- Remaining macro work must change a concrete overlay boundary from the map
+  above: replay-frame fields, skip-gate state, parser/delayed-payload
+  dispatch, page-object fields, bridge roots, continuation fields, or
+  ROM-derived row construction. External/manual naming remains separate.

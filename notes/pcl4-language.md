@@ -19,6 +19,31 @@ changed by another command or reset.
 
 Unsupported PCL commands should be ignored.
 
+In the ROM model, "ignored" is not a single behavior:
+
+- Normal C0 bytes `0x00`, `0x07`, and `0x0b` are explicit zero-handler parser
+  rows. They still enter `0xa904 -> 0xda9a -> 0x11774`, run the terminal
+  parser reset path through `0x119a6..0x119f4`, and preserve the delayed
+  payload restore boundary at `0x12218`; they do not call a page-output
+  handler.
+- `ESC ? 0x11` is consumed by the `0xda9a` ESC-aware byte wrapper before the
+  parser table sees a command. It restarts byte fetching rather than creating
+  a page object or command record.
+- `ESC &lT/t` is an unimplemented `&l` table slot. Uppercase `T` has no
+  terminal handler, while lowercase `t` uses the lowercase chaining helper
+  path; neither form writes page environment, page objects, publication state,
+  or render inputs by itself.
+- In alternate/data mode, many zero-handler rows are byte-preserving. The
+  alternate table rooted at `0x116f6` appends matched C0 bytes through
+  `0xe002` instead of running their normal control-code handlers, so they can
+  matter later if macro/data-chain replay feeds them back to the parser.
+
+Evidence: [pcl-parser-core.md](pcl-parser-core.md),
+[pcl-command-map.md](pcl-command-map.md), the ignored/no-output walkthrough in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), and table
+extracts in `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
+`generated/analysis/ic30_ic13_pcl_command_map.md`.
+
 ## ROM-Backed Level IV Boundary
 
 The firmware command tables and semantic notes support the manual claim that

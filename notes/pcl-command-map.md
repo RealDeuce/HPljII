@@ -510,8 +510,22 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `X/x` reaches macro-control handler `0xdd08`; `S/s` reaches cursor-stack
   handler `0xf75e`. Normal and alternate/data tables both keep `X/x` active
   so selector `1` can stop macro definition while payload controls are
-  appended rather than executed. Replay re-enters host byte fetch through the
-  data-chain source consumed by `0xa904`. Owner note:
+  appended rather than executed. `0xe112` writes current macro id
+  `0x783164`; `0xdd08` resolves that id through the 32-entry pool at
+  `0x782a98` and dispatches selector `0` start-definition, `1`
+  stop-definition, `2` execute, `3` call, `4`/`5` overlay on/off, `6` delete
+  all, `7` delete temporary, `8` delete current, and `9`/`10`
+  temporary/permanent. Definition bytes append through `0xe002` into 0x100-byte
+  chunks, with payload after each chunk's longword next pointer. Execute and
+  call create data-chain frames through `0xe418`, copying record head/count
+  into frame `+0/+4`, writing source offset `+8 = 4`, frame kind `+9 = 2` or
+  `3`, and snapshot pointer `+0x0a`; replay re-enters host byte fetch through
+  `0xa904`, then parser `0x11774` dispatches the stored bytes to the same
+  text/control/rectangle/raster/payload handlers as live input. Overlay
+  selector `4` stores `0x782a92` / `0x782a94`; publication `0xff1e` may
+  resolve that id, build a non-replay frame through `0xe4f4`, re-enter
+  `0x11774`, and publish the replayed page objects through the normal
+  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path. Owner note:
   [macro-data-chain.md](macro-data-chain.md).
 - Status and model-response side channels:
   `ESC *r#K` enters mode `7` and `ESC *s#^` enters mode `6`; both dispatch

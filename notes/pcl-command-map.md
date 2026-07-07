@@ -380,6 +380,28 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   to mode zero. Text-motion `&k` enters mode `11` and reaches `0xedf8`
   (`G/g`), `0xca8c` (`H/h`), and `0xc390` (`S/s`). Owner note:
   [direct-control-codes.md](direct-control-codes.md).
+- Direct ESC cursor helpers:
+  `ESC 9` reaches handler `0xe9ba` directly from mode `1`, clears the left
+  margin state, resets the right margin from page width, and draws nothing
+  until later CR, printable text, rectangle, or raster paths consume the
+  updated margin/cursor state. `ESC =` reaches handler `0xf176` directly from
+  mode `1`; it ensures a page root, flushes pending span state, advances
+  vertical cursor `0x782c8e` by half of current VMI `0x783160`, and runs the
+  same vertical overflow helper used by LF. Owner note:
+  [direct-control-codes.md](direct-control-codes.md).
+- Dot-position commands:
+  `ESC *` enters mode `3`, `*p` enters mode `18` through `0x11eda`, and
+  `X/x` / `Y/y` finals dispatch to handlers `0xf48c` and `0xf692`.
+  Uppercase finals return to mode zero; lowercase finals keep mode `18`, so a
+  stream such as `ESC *p30x30Y` performs horizontal and vertical dot
+  positioning before the next printable byte. Both handlers convert the parsed
+  signed integer to a whole-dot packed coordinate by shifting it left 16 bits;
+  parsed-record bit `0` selects relative movement. Horizontal commits through
+  `0xf4ca` to canonical cursor `0x782c8a`; vertical commits through
+  `0xf6e2` to canonical cursor `0x782c8e` and clamps to `0x782dc6`. They
+  create no page object directly. Later printable text, raster start,
+  rectangle fill, VFC, or publication paths consume the updated cursor fields.
+  Owner note: [direct-control-codes.md](direct-control-codes.md).
 - Underline/text-attribute commands:
   `ESC &d` dispatches terminal handler `0x12622` directly from the `ESC &`
   family. It tokenizes the local `&d` form, writes underline/span selector

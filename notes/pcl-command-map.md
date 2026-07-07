@@ -530,8 +530,17 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
 - Status and model-response side channels:
   `ESC *r#K` enters mode `7` and `ESC *s#^` enters mode `6`; both dispatch
   wrapper `0x12034`, which appends setup record `0x11efe` and calls
-  `0x122be` to emit `33440A\r\n` under the documented predicates. Owner note:
-  [errors-and-status.md](errors-and-status.md).
+  `0x122be`. The producer rewinds parser record cursor `0x78299e`, fetches
+  the following query byte through `0xda9a`, and emits the ROM literal
+  `33440A\r\n` at `0x12280..0x12288` through FIFO enqueue helper `0xb090`
+  only when the query byte is `0x11` and active record word `+2` is `1` or
+  `-1`; other query bytes are reported through `0x9ec0`. Canonical output
+  state is host-output FIFO count/pointers/storage at `0x783ed2`,
+  `0x783ed4`, `0x783ed8`, and `0x783e92..0x783ed1`. These commands create no
+  page root, no page object, no publication record, and no render work; they
+  affect pixels only indirectly if FIFO fullness stalls the producer or a
+  bidirectional host changes later input after reading the response. Owner
+  note: [errors-and-status.md](errors-and-status.md).
 
 ## High-Value Normal-Mode Handlers
 

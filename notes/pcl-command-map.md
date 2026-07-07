@@ -389,7 +389,15 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   (`H/h`), `0xeb58` (`L/l`), `0xec0c` (`M/m`), `0xf560` (`R/r`), and
   `0xf60a` (`V/v`). Lowercase finals keep mode `12`; uppercase finals return
   to mode zero. Text-motion `&k` enters mode `11` and reaches `0xedf8`
-  (`G/g`), `0xca8c` (`H/h`), and `0xc390` (`S/s`). Owner note:
+  (`G/g`), `0xca8c` (`H/h`), and `0xc390` (`S/s`). Wrap mode `&s` enters
+  mode `8` and reaches `0xedb0` (`C/c`). `0xedf8` writes
+  line-termination byte `0x78318f`: CR `0xf02c` tests bit `7` before applying
+  LF movement, LF `0xf08c` tests bit `6` before applying CR-style x reset,
+  and FF `0xf0f0` tests bit `5` before applying CR-style x reset and page
+  publication. `0xedb0` writes wrap byte `0x783190` for selectors `0` and
+  `1`; printable prechecks `0xd28a` / `0xd6bc` consume that byte before
+  queueing glyphs, either rejecting horizontal overflow or calling `0xf054` to
+  reset x, advance y, and retry from recovered x `0`. Owner note:
   [direct-control-codes.md](direct-control-codes.md).
 - Direct ESC cursor helpers:
   `ESC 9` reaches handler `0xe9ba` directly from mode `1`, clears the left

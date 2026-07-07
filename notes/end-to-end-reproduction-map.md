@@ -976,6 +976,130 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
 
+## Minimal Display Functions Walkthrough
+
+This is the smallest top-level `ESC Y ... ESC Z` direct-reader spine. Unlike
+ordinary parser commands, the bytes after `ESC Y` are read directly through
+`0xa904` until a local normalized `ESC Z` terminator is seen.
+
+Input stream:
+
+```text
+ESC Y ! 05 ! ESC Z
+```
+
+Parser and direct-reader dispatch:
+
+- The initial command bytes enter through `0xa904`, parser wrapper `0xda9a`,
+  and parser loop `0x11774`.
+- Normal parser mode `1` routes byte `Y` to handler `0x12536`.
+- After dispatch, `0x12536` fetches loop bytes directly through `0xa904`.
+  These loop bytes do not pass through `0xda9a` or the normal parser table.
+- The loop keeps local flag `D4`: zero until a routed value is `ESC`
+  (`0x1b`), one after `ESC`, and tested when the current value is `Z`
+  (`0x5a`). `Z` terminates only when `D4 == 1`.
+- Pair `1a 58` is locally normalized to routed value `0x7f` after helper
+  `0xd99a`.
+
+Loop routing and page-object effect:
+
+- `0x12536` derives the same filter state used by transparent print data:
+  selected slot `0x782f06`, selected context byte
+  `0x782eea + 0x10 * slot`, fallback high-control byte `0x782efa`, and local
+  high-control filter word at `A6-2`.
+- Values `0x00..0x1f` route through fixed-space handler `0xd0f0` only when
+  the selected context byte is zero.
+- Values `0x80..0x9f` route through `0xd0f0` only when the local filter word
+  is zero.
+- All other values route through printable handler `0xd04a`. If the routed
+  value is CR `0x0d`, `0x12536` calls post-handler `0xf054` after the route.
+- For this stream, `0x12536` consumes loop values `21 05 21 1b 5a` and routes
+  them:
+
+```text
+d04a d0f0 d04a d0f0 d04a
+```
+
+- The terminating `ESC Z` pair participates as routed values before the loop
+  exits. In the documented built-in path, visible compact entries are `!`,
+  `!`, and `Z`; fixed-space routes advance cursor state without compact glyph
+  entries.
+- Routed printable values use the same `0xd04a -> 0xd824 -> 0x12f2e ->
+  0x1387c` compact text path as ordinary printable bytes.
+- Publication and render are shared: `0xff1e` publishes the page root,
+  `0x1ed84` / `0x1edc6` copy bucket/context roots, and
+  `0x1ef6a -> 0x1efc2 -> 0x1effe` renders the compact object.
+
+Alternate/data and status siblings:
+
+- Alternate/data parser mode `1` routes `ESC Y` to handler `0x12120`.
+  `0x12120` appends literal prefix `ESC Y` and each normalized loop value
+  through macro/data append sink `0xe002` until the same local `ESC Z`
+  termination or no-byte return.
+- The alternate/data reader has no immediate page-root, page-object,
+  publication, or pixel effect. Its output is stored input for later macro or
+  data-chain replay.
+- Local Control-Z handlers are table-local consumers for `0x1a`, not one
+  global parser rule. The documented siblings route literal/synthetic values
+  through `0xd04a`, append through `0xe002`, or normalize `1a 58` through
+  `0xd99a` depending on parser mode and filter state.
+- `ESC z` reaches status/display-off handler `0xcd86`. It tests active
+  data-chain frame byte `+9` at `0x782d76 + 9` and calls status helper
+  `0x9c2c` only when that byte is zero. This path writes status-side state but
+  queues no page objects and renders no pixels.
+
+State classification:
+
+- Canonical:
+  direct-reader termination flag `D4`, normalized loop value `D5`, selected
+  text/context slot `0x782f06`, routed values, current page root `0x78297a`,
+  compact text objects, alternate append stream for `0x12120`, active
+  data-chain frame pointer `0x782d76`, published source record, and
+  render-record bucket/context roots.
+- Derived/cache:
+  selected context byte `0x782eea + 0x10 * slot`, fallback filter byte
+  `0x782efa`, high-character flags `0x783132/0x783133`, local filter word,
+  compact coordinates and glyph mappings, status marker `0x7822db`,
+  warning/status bit `0x780e2a.3`, and render-band fields `0x783a20`,
+  `0x783a22`, and `0x783a28`.
+- Parser scratch:
+  the initial `ESC Y` parser mode/table dispatch state and the parser state
+  resumed after the direct reader returns. The loop bytes themselves are
+  direct-reader values, not normal parser command records.
+- Firmware bookkeeping:
+  `0xd99a` local control-report side effect, `0xf054` CR post-handler, append
+  sink `0xe002`, service-in-progress marker `0x7821cc`, `0x9c2c` wait
+  behavior on `0x780e2d.3`, stream allocator fields, publication flag
+  `0x782996`, pool cursors, and scheduler/render progress fields.
+- Hardware/external:
+  the physical source that supplied `ESC Y` and loop bytes to `0xa904`, plus
+  later formatter/DC timing events for publication and active-band rendering.
+  External consumers of `0x7821cc`, `0x7822db`, and `0x780e2a.3` remain
+  outside this ROM-local display-functions path.
+- Unknown:
+  no ROM-local middle edge remains for the normal `0x12536` reader loop,
+  default-filter and filter-on route predicates, alternate/data `0x12120`
+  append loop, local Control-Z siblings, or `0xcd86 -> 0x9c2c` status
+  boundary.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Display Functions Direct Reader` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [display-functions.md](display-functions.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

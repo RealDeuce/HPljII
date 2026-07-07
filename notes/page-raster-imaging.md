@@ -1955,6 +1955,43 @@ Encoded raster mode disassembly contract:
   through `0x30914` again to form one longword, writes that longword to `A1`,
   `A4`, `A5`, and `A6`, and advances each row pointer by four bytes.
 
+The exact encoded-raster instruction boundaries are:
+
+- `0x1f88e..0x1f8a4`: parse the encoded object header. Starting from object
+  byte `+0x04`, it reads `object[5] & 0x03` as mode `D4`, object word `+0x06`
+  as payload byte count `D5`, sets requested row count `D3 = mode + 1`, reads
+  packed coordinate word `+0x08` into `D1`, and calls destination helper
+  `0x1f3d4`.
+- `0x1f8aa..0x1f8c8`: copy byte-pair offset `D2` to `A3`, call `0x1f414` to
+  split rows between current band and fallback buffer, restore byte count
+  into `D2`, select table `0x1f8ca[mode]`, and dispatch to the mode helper.
+- `0x1f8da..0x1f8e4`: mode `0` literal copy. A zero byte count returns;
+  otherwise the helper copies payload words from `A2` to consecutive
+  destination words at `A1`, subtracting two bytes from `D2` per store.
+- `0x1f8e6..0x1f900`: mode `1` row setup. It seeds second row pointer `A4`
+  as `A1 + 0x783a1c`, or switches it to fallback `0x7810b4 + A3` when split
+  `D3` has a nonzero high word.
+- `0x1f900..0x1f91e`: mode `1` expansion. It indexes word table `0x30914` by
+  each payload byte and writes the expanded word to both `A1` and `A4`.
+- `0x1f920..0x1f964`: mode `2` setup. It loads stride `0x783a1c`, derives the
+  even-byte pass count from payload byte count `D2`, and chooses row pointers
+  `A1`, `A4`, and `A5` from the current band or fallback buffer based on split
+  `D3` high word.
+- `0x1f964..0x1f99e`: mode `2` two-pass expansion. The first pass uses table
+  `0x30b14` and shared loop `0x1f9a0`; the second pass shifts all row pointers
+  by two or four bytes from `$a001`, rewrites `$a001` with bit `0x10`, skips
+  to the odd payload byte stream, and repeats the same loop when bytes remain.
+- `0x1f9a0..0x1f9c4`: shared mode-`2` loop. It reads every other payload byte,
+  indexes longword table `0x30b14`, writes that longword to `A1`, `A4`, and
+  `A5`, and advances each row pointer by six bytes.
+- `0x1f9c6..0x1fa26`: mode `3` setup. It loads stride `0x783a1c`, rejects an
+  empty byte count, and chooses row pointers `A1`, `A4`, `A5`, and `A6` from
+  the current band or fallback buffer based on split `D3` high word.
+- `0x1fa26..0x1fa5a`: mode `3` expansion. It indexes `0x30914` with each
+  payload byte, expands both bytes of the resulting word through `0x30914`
+  again, combines those words into one longword, and writes it to all four row
+  pointers.
+
 Encoded raster field groups:
 
 - Canonical object fields:

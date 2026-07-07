@@ -1461,8 +1461,11 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   unless it is paired with a stream that changes the selected context or
   rendered rows. [font-context-metrics.md](font-context-metrics.md) documents
   `0xc390` selectors `0`, `2`, and `4` rewriting synthetic pitch records and
-  rejoining `0xc89c` / `0xc580`; [semantic-state-model.md](semantic-state-model.md)
-  records the same writer path in `Built-In Font Selection To Visible Text`.
+  rejoining `0xc89c` / `0xc580`; `Worked Path: Pitch Mode To Font Refresh` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) and
+  [semantic-state-model.md](semantic-state-model.md) record the same writer
+  path and downstream printable handoff in `Built-In Font Selection To Visible
+  Text`.
 - Treat font metric producer behavior as regression expansion unless it
   exposes a new page-visible selected-font boundary. The metric formulas and
   producer/consumer cross-products are documented in

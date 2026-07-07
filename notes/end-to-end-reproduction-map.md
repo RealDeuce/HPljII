@@ -1414,6 +1414,21 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   current context only`, `0xc580 dirty-2 secondary selector-match branch
   installs current context only`, and `0xc580 dirty-2 selector-mismatch branch
   only copies remembered word`.
+  Pitch-mode `ESC &k#S/s` is a compatibility producer into that same refresh
+  pipeline, not an independent text renderer. Handler `0xc390` accepts
+  selectors `0`, `2`, and `4`; selector `0` synthesizes pitch `10.0000`,
+  runs `0xc89c -> 0xc580`, then synthesizes a second record and runs the
+  same pair again; selector `2` synthesizes pitch `16.6600`; selector `4`
+  synthesizes pitch `12.0000`. Other selectors exit without calling the
+  pitch writer or common refresh. The output handoff is therefore:
+  `0xc390 -> 0xc89c -> 0xc580 -> 0xc428/0x14c64` when state changes, then
+  later printable bytes consume the selected context through
+  `0xd04a -> 0x1393a -> 0x12f2e` and render through the ordinary
+  page-root/context bridge. Evidence is
+  [font-context-metrics.md](font-context-metrics.md),
+  `Worked Path: Pitch Mode To Font Refresh` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`.
   Canonical state is selected slot `0x782f06`, primary/secondary contexts
   `0x782ee6` / `0x782ef6`, maps `0x782f32` / `0x783032`, active and remembered
   symbol words `0x783144` / `0x783146` and `0x782f08` / `0x782f0a`,

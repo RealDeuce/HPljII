@@ -1735,11 +1735,16 @@ Producer-to-root map:
   `0x13070 -> 0x13250`. They write class-`0x80` bucket objects under root
   `+0x1c`; dense rows can split before the bucket chain is rendered.
 - Rectangle/rule commands reach `0x10898 -> 0x13386 -> 0x133aa`. They write
-  ordered rule-list nodes under root `+0x24`.
+  ordered rule-list nodes under root `+0x24`. `0x13472` defines that order by
+  comparing existing object byte `+4` with key `0x782a7c`, then `0x133aa`
+  links the new 14-byte object at head, after the returned predecessor, or
+  after the returned tail.
 - Pending text spans reach `0x12714`. Portrait spans use
   `0x13520` / `0x1354a` / `0x135f0` to write class-`0x40` segment-list
   objects under root `+0x1c`; landscape spans use `0x136d2` to write
-  fixed-list objects under root `+0x28`.
+  fixed-list objects under root `+0x28`. `0x13690` searches fixed-list byte
+  `+4` values before `0x136d2` allocates, so allocation failure after the
+  search still leaves root `+0x28` and existing nodes unchanged.
 
 Bridge-facing object classes:
 

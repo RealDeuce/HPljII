@@ -543,8 +543,22 @@ All four families converge on the current page root:
   bookkeeping `0x782a70`, `0x782a72`, and `0x782a76`; when it needs a new
   0x100-byte chunk, it links that chunk through the prior `0x782a72` target.
 - `0x1387c` links or reuses compact/raster bucket objects under root `+0x1c`.
-  `0x133aa` links ordered rule objects under root `+0x24`.
-  `0x136d2` links ordered fixed-list objects under root `+0x28`.
+- `0x13386` derives rule key state through `0x134d6`, then `0x133aa`
+  links rule objects under root `+0x24`. For nonempty lists, helper
+  `0x13472` compares existing object byte `+4` with key `0x782a7c` and
+  returns one of three link cases: insert after predecessor, append after
+  tail, or insert at head. The new object stores byte `+4` from `0x782a7d`,
+  ORs selector bits into byte `+5`, stores key word `+6` from `0x782a7e`,
+  and copies width/height from source words `+4/+6`.
+- `0x1366c` derives fixed-list state through `0x137a2`, then `0x136d2`
+  links fixed-list objects under root `+0x28`. For nonempty lists, helper
+  `0x13690` searches before allocation, returning the predecessor before
+  the first object whose byte `+4` exceeds key `0x782a7c`, or the tail when
+  the tail byte is less than or equal to the key. `0x136d2` then allocates
+  the 14-byte object and links at head, after predecessor, or after tail.
+  The new object stores byte `+4` from `0x782a7d`, byte `+5` from normalized
+  source byte `+1`, key word `+6` from `0x782a7e`, and extent word `+8`
+  from source word `+6`.
 
 Page-object class handoff matrix:
 
@@ -569,13 +583,15 @@ Page-object class handoff matrix:
   rendered raster rows.
 - Rectangle/rule objects:
   producers `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`; current-root field
-  `+0x24`; render-root field `+0x1c`; ordered list key in object fields
-  `+0x04/+0x06`. Render dispatch is `0x1f446`, which sends bridged selector
-  `7` to solid helper `0x1f596` and other documented selectors to patterned
-  helper `0x1f4e0`.
+  `+0x24`; render-root field `+0x1c`; list order is the `0x13472` search
+  result described above; object byte/key fields are `+0x04/+0x06`.
+  Render dispatch is `0x1f446`, which sends bridged selector `7` to solid
+  helper `0x1f596` and other documented selectors to patterned helper
+  `0x1f4e0`.
 - Fixed-list and landscape span objects:
   producers `0x12714 -> 0x136d2` or fixed-list command paths; current-root
-  field `+0x28`; render-root field `+0x20`; ordered fixed-list fields
+  field `+0x28`; render-root field `+0x20`; list order is the `0x13690`
+  predecessor/tail search result described above; fixed-list fields are
   `+0x04..+0x0d`. Render dispatch is `0x1f756`, gated on five-band
   boundaries, then row writing through `0x1f7b0` / `0x1f626`.
 

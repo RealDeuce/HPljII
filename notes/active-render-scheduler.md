@@ -145,6 +145,43 @@ formatter/DC timing can wake, stall, or pace this loop, but it does not create
 a different page-object model unless it changes the ROM-visible scheduler
 fields above.
 
+## Active Copy And Bridge
+
+`0x1ed84..0x1ee96` is the exact software boundary where the active published
+record becomes render-record state. The source is always the active source
+pointer `0x780eae`; the destination is the render work record passed by
+`0x1ecd6` and later selected through `0x783a18`.
+
+Active-copy entry `0x1ed84`:
+
+- `0x1ed8c..0x1ed96` loads destination work record `A5` from the call
+  argument and source page/control record `A4` from `0x780eae`.
+- `0x1ed96..0x1edae` copies source header words `+0x18/+0x1a` into render
+  work words `+0x0a/+0x0c`, seeds current band word `+0x10` from source
+  `+0x18`, mirrors that start into `+0x16`, and clears throttle word `+0x0e`.
+- `0x1edb2..0x1edbc` calls bridge helper `0x1edc6(source, destination)`.
+
+Bridge helper `0x1edc6`:
+
+- `0x1edce..0x1ede0` returns immediately if the source pointer is zero.
+- `0x1ede2..0x1edee` copies source bucket root `+0x1c` to render `+0x18`,
+  source rule-list root `+0x24` to render `+0x1c`, and source fixed-list root
+  `+0x28` to render `+0x20`.
+- `0x1edf4..0x1ee0e` walks the copied rule list at render `+0x1c`. Each rule
+  node has selector byte `+0x05` ORed with `0x10`, and height word `+0x0a`
+  copied to continuation word `+0x0c`.
+- `0x1ee10..0x1ee5e` walks the copied fixed-list at render `+0x20`. Each
+  fixed node has byte `+0x05` ORed with `0x10`, word `+0x08` copied to
+  continuation word `+0x0a`, byte `+0x0c` set to `1`, and byte `+0x0d` set
+  to `8`.
+- `0x1ee60..0x1ee96` copies 16 context/resource slots from source
+  `+0x2c..+0x68` to render `+0x24..+0x60`.
+
+These writes are canonical render-record state, not parser scratch. They are
+the fields consumed by `0x1ef6a`: bucket root `+0x18` by `0x1efc2`, rule root
+`+0x1c` by `0x1f446`, fixed-list root `+0x20` by `0x1f756`, and context slots
+`+0x24..+0x60` by compact-glyph and segment renderers.
+
 ## Writers
 
 - `0xff1e` publishes state byte `+4 = 2`, writes source root longword to

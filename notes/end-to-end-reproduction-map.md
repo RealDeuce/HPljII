@@ -4940,6 +4940,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   and mixed text/rule/raster bridge fixtures.
   Checked-in evidence is [page-record-storage.md](page-record-storage.md),
   [page-raster-imaging.md](page-raster-imaging.md),
+  [active-render-scheduler.md](active-render-scheduler.md),
   `Shared Page-Record Storage And Allocator`,
   `Published Record To Active Render Scheduler`, and
   `Bitmap Render Dispatch Contract` in

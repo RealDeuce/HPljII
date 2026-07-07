@@ -301,6 +301,168 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+## Minimal Font Selection Walkthrough
+
+This is the smallest top-level font-selection spine that changes later text
+pixels. The font-selection bytes do not draw. They write primary or secondary
+font request state, select a concrete ROM resource, rebuild the selected
+host-byte-to-glyph map, and install that context so later printable bytes can
+create different compact text objects.
+
+Primary input stream:
+
+```text
+ESC (s0p10h12v0s0b3T ! !
+```
+
+Secondary input stream:
+
+```text
+ESC )s0p16h8v0s0b0T SO ! !
+```
+
+Parser and request-field dispatch:
+
+- Both streams enter through `0xa904`, parser wrapper `0xda9a`, and parser
+  loop `0x11774`.
+- `ESC (` creates the primary setup record through `0x1201e`; `ESC )`
+  creates the secondary setup record through `0x12008`.
+- Parser modes advance `0 -> 1 -> 4 -> 13` while the `s...T` attribute
+  sequence accumulates. Lowercase finals stay in mode `13`; uppercase final
+  `T` returns to parser mode `0`.
+- Lowercase finals dispatch to spacing `p` handler `0xc930`, pitch `h`
+  handler `0xc89c`, point-size `v` handler `0xc6ec`, style `s` handler
+  `0xc780`, and stroke `b` handler `0xc840`.
+- Uppercase final `T` reaches wrapper `0x1205a`, which calls typeface writer
+  `0xc7e0` and common refresh entry `0xc580`.
+
+Font selection and map rebuild:
+
+- The primary stream decodes to spacing `0`, pitch `0x03e8`, height
+  `0x04b0`, style `0`, stroke `0`, and typeface `3`.
+- Those request fields are stored in the primary request block around
+  `0x782eec..0x782ef2`; dirty flags `0x782f2c` / `0x782f2d` mark refresh
+  work before `0xc580`.
+- `0xc580` calls `0x13eb8(0)` for primary slot `0`. The documented primary
+  path runs
+  `0x148f8 -> 0x1569c -> 0x156de -> 0x153c6 -> 0x1519a -> 0x147b2 ->
+  0x14758 -> 0x14398 -> 0x144d2 -> 0x14c64`.
+- Symbol, pitch, height, and stroke filtering select slot `0x782354`, record
+  `0x00004c`, and context longword `0xc008004c`.
+- `0x144d2` writes primary current-font context record `0x782ee6`.
+- `0x14c64` rebuilds primary map `0x782f32`.
+- The secondary stream follows the same selection family for slot `1`;
+  nearest-pitch selection chooses slot `0x782350`, record `0x02e122`, and
+  context longword `0xc00ae122`.
+- `0x144d2` writes secondary current-font context record `0x782ef6`, and
+  `0x14c64` rebuilds secondary map `0x783032`.
+- SO byte `0x0e` later reaches handler `0xc6b8`, selecting secondary text
+  slot `1`; SI byte `0x0f` reaches sibling `0xc68a`, selecting primary slot
+  `0`.
+
+Printable consumption and page objects:
+
+- The primary stream's two printable `!` bytes route through handler
+  `0xd04a` after selection.
+- Source helper `0x1393a` reads selected slot `0`, context `0xc008004c`, and
+  map `0x782f32`; host byte `0x21` maps to glyph `0x00`.
+- The selected built-in record supplies HMI from byte `+0x21 = 0` and
+  longword `+0x24 = 0x00780000`, producing packed advance `30`.
+- `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c` queues this compact object:
+
+```text
+00 00 00 00 00 00 00 02 00 6a 00 00 68 02
+```
+
+- The primary entries use compact coordinates `0x6a00` and `0x6802`.
+- In the secondary stream, SO selects slot `1`; `0x1393a` reads context
+  `0xc00ae122` and map `0x783032`, maps host byte `0x21` to glyph `0x00`,
+  and uses HMI advance `18`.
+- The secondary compact object prefix is:
+
+```text
+00 00 00 00 00 01 00 02 00 c9 00 00 cb 01
+```
+
+Publication, bridge, and pixels:
+
+- Publication uses the ordinary page-root path through `0xff1e`.
+- `0x1ed84` selects the published page/control record into a render work
+  record.
+- `0x1edc6` copies page-root context slots into render-record context slots.
+  The primary stream carries render-record context slot `0` as `0xc008004c`;
+  the secondary stream carries context slots `(0xc008004c, 0xc00ae122)`.
+- Compact render dispatch `0x1ef6a -> 0x1efc2 -> 0x1effe` resolves glyphs
+  through `0x1f354` using the copied context slots. The selected font is
+  therefore the context longword plus mapped glyph byte, not the raw PCL
+  request or original host byte alone.
+- The primary stream's first nonblank row is:
+
+```text
+.............###...........................###...
+```
+
+- The secondary stream's first visible row is:
+
+```text
+.........################..################...###
+```
+
+State classification:
+
+- Canonical:
+  selected text slot `0x782f06`, primary context `0x782ee6`, secondary
+  context `0x782ef6`, primary map `0x782f32`, secondary map `0x783032`,
+  active symbol words `0x783144/0x783146`, remembered symbol words
+  `0x782f08/0x782f0a`, selected page-root slot `0x78297e`, page-root context
+  slots, compact text objects, and render-record context slots.
+- Derived/cache:
+  candidate survivor lists, selected candidate slot `0x7828a8`, selected
+  target `0x7828de`, snapshot records `0x783148/0x783152`, HMI `0x78315c`,
+  transient selected context `0x782992`, current font id `0x782f2e`, compact
+  coordinates, glyph-entry pointers, and render-band fields.
+- Parser scratch:
+  setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
+  records, dirty flags `0x782f2c/0x782f2d` while refresh is pending, and the
+  following printable bytes.
+- Firmware bookkeeping:
+  page-root live-font flags, `0xc4fc` slot-scan state, symbol-map snapshot
+  provenance byte `+0x09`, selected-font flags `0x783132/0x783133`,
+  publication flag `0x782996`, scheduler cursors, and render-work progress
+  words.
+- Hardware/external:
+  the physical host path that supplied the same normalized bytes to `0xa904`,
+  plus later formatter/DC timing outside the ROM-local page-record/render
+  chain.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the primary and secondary
+  built-in selection streams documented here. Remaining font work starts only
+  from variants that change candidate windows `0x7827a0..0x7827b8`, selected
+  slot `0x7828a8`, active symbol words, selected context/map bytes, compact
+  object shape, bridge state, or ROM-derived rows.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Font Selection To Visible Glyphs` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
+  [resource-rom.md](resource-rom.md),
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+  `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+  `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`,
+  `generated/analysis/ic30_ic13_font_context_bridge.md`, and
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
+
 ## Minimal Raster Payload Walkthrough
 
 This is the smallest top-level raster byte-to-pixel spine for an accepted

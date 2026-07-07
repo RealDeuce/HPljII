@@ -1326,19 +1326,54 @@ selected-bucket indexing from render-record word `+0x10` into the
 `+0x18` bucket array, and verifies the compact, segment-list, and
 encoded-span class branches plus compact/encoded subtable targets.
 
-The executable segment-list coverage now pins the `0x1f812` object
-layout for the `0x40..0x7f` bucket class: word `+0x06` is an entry
-count; each six-byte entry supplies a coordinate word, a low-nibble row
-count, one skipped byte, and a width/mask word. Helper `0x1f836` maps
-the width low nibble through ROM table `0x308f2`, then `0x1f862` writes
-full `0xffff` words plus the trailing mask for each row.
+The segment-list disassembly contract is:
 
-The executable fixed-width list coverage now pins the `0x1f756` consumer
-of render-record `+0x20`: it runs only on five-band boundaries, filters
-object byte `+4` against the current band, uses byte `+5 & 0x0f` to read
-a pattern longword from ROM table `0x308de`, clears bridge flag bit
-`0x10`, decrements remaining rows at object `+0x0a`, and writes the
-selected low pattern word once per row through `0x1f7b0` / `0x1f626`.
+- `0x1f812` receives `A1` at object byte `+4` for bucket class `0x40..0x7f`,
+  copies it to `A4`, skips to object word `+0x06`, reads that word as an entry
+  count, and loops over six-byte entries.
+- Each entry supplies packed coordinate word `D1`, a row-count/phase byte
+  loaded into `D2`, one skipped byte, and span-width word `D3`.
+- Helper `0x1f836` saves the outer entry counter, calls `0x1f3d4` to compute
+  the current-band destination, restores the row-count byte into `D2`, maps
+  the span-width low nibble through ROM table `0x308f2`, and stores the result
+  in the high word of `D3`.
+- Writer `0x1f862` loads stride `0x783a1c`, seeds full-word pattern `0xffff`,
+  and writes each row as zero or more full `0xffff` words followed by the
+  trailing mask from `D3`. It advances to the next destination row by the
+  stride and does not read the prior destination word.
+
+The fixed-width list disassembly contract is:
+
+- `0x1f756` reads render-record list `+0x20`. If it is zero, the fixed-list
+  pass is skipped.
+- It reads render word `+0x10`, divides by `5`, and runs only when the
+  remainder is zero. Non-five-band render rows do not consume or mutate
+  fixed-list objects.
+- For an active five-band row, it walks the linked list and filters each object
+  by `object[4] <= render_band + 4`. Objects after that window are skipped for
+  this pass.
+- Objects with word `+0x0a <= 0` are ignored. Otherwise `object[4] -
+  render_band` becomes row displacement `D2`, `object[5] & 0x0f` indexes the
+  pattern table at `0x308de`, and the selected longword is passed to
+  `0x1f7b0`.
+- `0x1f7b0` copies the selected pattern longword to `D4`, reads packed
+  coordinate word `+0x06`, clears bridge flag bit `0x10` in object byte
+  `+0x05`, and computes the draw count from either the initial bridge form or
+  the already-normalized continuation form.
+- It subtracts the draw count from remaining-row word `+0x0a`, clips the
+  current draw count if the subtraction reaches or crosses zero, and calls
+  destination helper `0x1f626`.
+- It writes the low pattern word to the current-band destination once per row,
+  advancing by stride `0x783a1c`. If the split count has fallback rows, it
+  restarts at `0x7810b4 + A2` and continues the same stores.
+
+The controlling evidence is
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst` at
+`0x1f756..0x1f810` for fixed-list rendering and `0x1f812..0x1f88c` for
+segment-list rendering. Fixtures named `0x1f812 segment-list object renders
+counted mask spans`, `0x1f756 fixed-width list renders bridged +0x20 object`,
+and `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+order` are branch and transcription checks for this static contract.
 
 The pixel-composition operation at this shared layer is order-dependent direct
 writing, not an implicit OR/XOR/AND blend with the previous destination word.

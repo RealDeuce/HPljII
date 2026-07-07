@@ -1615,7 +1615,7 @@ ROM work needed:
   proves a separate imaging role.
 - Broaden the current text/rule/raster and macro-payload page-band
   composition fixtures into fuller parser-produced heterogeneous
-  page-object rendering and final device-output pixel validation. For
+  page-object rendering using ROM-derived row construction. For
   macros, continue from the composed
   `Macro Definition And Data-Chain Replay` semantic checkpoint by
   moving back to parser-produced page-object rendering; no macro

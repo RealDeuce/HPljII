@@ -8374,7 +8374,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     overlay payload, raster overlay payload, multi-row raster overlay payload,
     span-flush overlay payload, transparent-data overlay payload, or overlay
     skip-gate middle edge in this checkpoint. The next high-value macro edges
-    are broader overlay payload variants and final device-output validation.
+    are broader overlay payload variants that expose different ROM-derived
+    page-object, bridge, or rendered-row behavior.
     Descriptor metric validation is tracked separately as external/manual naming for
     consumed-but-not-staged fields, not as a macro-cluster middle edge.
 

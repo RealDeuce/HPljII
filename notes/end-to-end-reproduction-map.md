@@ -2542,8 +2542,9 @@ than open middle edges.
    it only blocks hardware-level emulation claims. Evidence:
    [host-byte-fetch.md](host-byte-fetch.md) and supporting report
    `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
-7. Final device-output correlation is outside the ROM evidence model. The
-   checked-in model derives rows from disassembly and ROM data. The initial
+7. Final device-output correlation is outside the ROM evidence model and is
+   not a completion condition. The checked-in model derives rows from
+   disassembly and ROM data. The initial
    mixed page-image stream above is a ROM-derived internal reproduction
    contract, not a physical-device validation artifact. The font-sample
    printout now has its own

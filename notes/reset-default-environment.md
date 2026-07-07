@@ -137,25 +137,80 @@ Unknown/provenance:
 ## Writers
 
 - Parser dispatch sends `ESC E` to handler `0xcc52`.
-- `0xcc52` calls `0xcc70`, `0xcbd4`, and `0xe146`, then clears `0x782a93`.
-- `0xcc70` flushes pending text through `0xf34a`, publishes or clears the
-  current page root through `0xff1e`, waits through `0x9ac2`, clears
-  orientation byte `0x782da3`, calls `0xcda2`, and rebuilds raster/page-derived
+- `0xcc52..0xcc6e` calls `0xcc70`, `0xcbd4`, and `0xe146`, then clears
+  `0x782a93`.
+- `0xcc70..0xcd7a` flushes pending text through `0xf34a`, publishes or clears
+  the current page root through `0xff1e`, waits through `0x9ac2`, handles the
+  `0x7810b2` reset gate, calls `0xcda2`, and rebuilds raster/page-derived
   state.
-- `0xcda2` rebuilds page/control records, default environment copies, parser
-  scratch, VMI/HMI, and reset bookkeeping bytes.
-- `0xcbd4` refreshes HMI and active-symbol snapshots from current-font context
-  state.
-- `0xe146` resets parser/data-chain records and clears parser/text
+- `0xcda2..0xcf50` rebuilds page/control records, default environment copies,
+  parser scratch, VMI/HMI, and reset bookkeeping bytes.
+- `0xcbd4..0xcc50` refreshes HMI and active-symbol snapshots from current-font
+  context state.
+- `0xe146..0xe1e2` resets parser/data-chain records and clears parser/text
   accumulation state.
-- `0x5e80` copies selected default-record fields into `0x78219d`, `0x78219e`,
-  and `0x7821a2`.
+- `0x5e80..0x5f94` copies selected default-record fields into `0x78219d`,
+  `0x78219e`, and `0x7821a2`.
 - `0x5060`, `0x50be`, and `0x52ba` update backing records and canonical
   defaults.
 - `0x56c2`, `0x571e`, and `0x5a62` maintain default-record banks and ROM-table
   fallback records.
 - `0x96c4` commits dirty retained records; `0x97e4` reads retained records;
   `0x9a4a` emits software-visible serial phase pairs to `$a400`.
+
+## Reset Handler Boundaries
+
+The software reset path is ordered by disassembly, not by fixture output:
+
+- `0xcc52..0xcc6e`: top-level `ESC E` handler. It calls reset publication and
+  environment rebuild helper `0xcc70`, refreshes selected-font metrics through
+  `0xcbd4`, resets parser/data-chain state through `0xe146`, clears
+  `0x782a93`, and returns.
+- `0xcc70..0xcc98`: if reset gate `0x7810b2` is clear, clear alternate/data
+  byte `0x782c18`; flush pending text through `0xf34a`; publish or clear the
+  current page root through `0xff1e`; then call `0x9ac2`.
+- `0xcc9e..0xccd2`: when `0x7810b2` is clear and status byte `0x780e3c` is
+  `1`, copy default environment byte `0x7821a2` to `0x780e8f` and signal
+  `0x780e26` through `0x9b5e`.
+- `0xccd6..0xcd7a`: clear orientation byte `0x782da3`, call environment reset
+  `0xcda2`, refresh page length/geometry helpers, rebuild top offset, margins,
+  VFC caches, default VFC table, orientation geometry, and reset raster state
+  block `0x783170`.
+- `0xcd7c..0xcd82`: if the gate/status branch requires the font/resource path,
+  call `0x1bba6` before rejoining the `0xccd6` rebuild.
+
+`0xcda2` is the reset environment writer:
+
+- `0xcdaa..0xcddc`: iterate four page/control records at `0x780f02`, writing
+  each record's bucket-array pointer `+0x1c` to `0x7810bc + 0x400 * index`.
+- `0xcddc..0xce02`: reset scratch/cursor-stack pointers and clear rectangle
+  width, height, and fill selector.
+- `0xce02..0xce10`: copy default byte `0x78219d` to reset environment word
+  `0x782da4`.
+- `0xce10..0xce3e`: when reset gate `0x7810b2` is clear, copy default
+  environment byte `0x7821a2` to `0x782da6` and set pending bytes
+  `0x782997` and `0x782998`.
+- `0xce3e..0xce84`: clear or set reset bookkeeping bytes including `0x782990`,
+  `0x782a6d`, `0x78297e`, `0x782c72`, `0x782c73`, `0x783184`, `0x783185`,
+  `0x782f2c`, `0x78318f`, `0x783190`, and `0x783191`.
+- `0xce84..0xcec8`: recompute HMI `0x78315c` from current-font context
+  `0x782ee6`, using the inline/fixed-record branch or the alternate metric
+  branch selected by context byte `+4`.
+- `0xcec8..0xcf38`: convert default line-spacing word `0x78219e` through
+  `0xcfea`, clamp outside `5..128` through `0xcf52`, convert the selected
+  line spacing through `0x104d8`, and write VMI `0x783160`.
+- `0xcf38..0xcf50`: clear `0x780e99` under scheduler lock.
+
+`0xe146` is the parser/data-chain reset writer:
+
+- `0xe14e..0xe17c`: reset `0x782d76` to `0x782d3e`, free active data-chain
+  chunks through `0xe1e4`, clear `0x782d7a`, `0x783164`, alternate/data bytes
+  `0x782c18` / `0x782c19`, page/parser byte `0x782a92`, and text accumulation
+  bytes `0x783196..0x783199`.
+- `0xe194..0xe1be`: reset parser/control record cursor `0x782c6e` to
+  `0x782c1e` and clear eight 10-byte records at `0x782c1e..0x782c6d`.
+- `0xe1be..0xe1dc`: call `0xe996` and `0xdf80` to restore font/context
+  parser-side state after the record clear.
 
 ## Readers And Consumers
 
@@ -176,30 +231,27 @@ Unknown/provenance:
 
 ## Output Effect
 
-`ESC E` can publish pixels. With a valid active page root, `0xcc70` calls
-`0xff1e` before the reset rebuild. Fixture
-`ESC E stream publishes valid page root and resets environment/parser state`
-pins that publication and the subsequent environment/parser side effects.
-Fixtures `mixed printable/reset page-record stream queues through 0x1387c
-before reset`, `mixed printable/reset page-record finalization publishes
-bridged record`, and `addressed printable reset publishes rendered page record`
-carry `! ESC E` from byte stream through compact bucket materialization,
-publication, `0x1edc6`, `0x1ed84`, and `0x1ef6a`.
+`ESC E` can publish ROM-derived rows when a valid active page root exists. With
+a valid root, `0xcc70..0xcc98` calls `0xf34a` and `0xff1e` before any reset
+environment rebuild. The `! ESC E` byte-stream examples carry the pre-reset
+printable byte through compact bucket materialization, publication, `0x1edc6`,
+`0x1ed84`, and `0x1ef6a`; those examples exercise the documented branch path,
+not an external rendered-output comparison.
 
-With no current page root, reset does not invent output. Fixtures
-`ESC E stream clears missing page root without publication` and
-`host-fetched ESC E clears missing page root without publication` pin the
-missing-root path from modeled `0xa904` host bytes to handler `0xcc52`.
+With no current page root, reset does not invent output. The missing-root
+examples reach handler `0xcc52`, enter `0xff1e`, take the no-root/current-root
+clear exit documented in [publication-commands.md](publication-commands.md),
+and create no published page record.
 
-The default producer side is joined to reset by fixture
-`0x5e80 -> 0xcda2 reset consumes default record outputs`: selected backing
-record fields become canonical defaults, then `0xcda2` consumes them as the
-environment word, gated environment byte, pending status bytes, and reset VMI.
+The default producer side joins reset at concrete RAM fields. `0x5e80..0x5f94`
+selects a backing default record through `0x7822d5`, writes canonical defaults
+`0x78219d`, `0x78219e`, and `0x7821a2`, and `0xcda2` later consumes those
+fields as the environment word, gated environment byte, pending status bytes,
+and reset VMI source.
 
-Fixture `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI`
-pins the line-spacing arithmetic: `0xcfea` computes a line count from
-`(page_table_value - 0x12c) * 12 / 0x78219e`, `0xcda2` clamps outside
-`5..128` lines through `0xcf52`, and `0x104d8` converts the selected
+The line-spacing arithmetic is at `0xcec8..0xcf38`: `0xcfea` computes a line
+count from `(page_table_value - 0x12c) * 12 / 0x78219e`, `0xcda2` clamps
+outside `5..128` lines through `0xcf52`, and `0x104d8` converts the selected
 line-spacing longword into packed 12-subunit VMI.
 
 ## Reproduction Contract
@@ -225,8 +277,10 @@ A byte-stream renderer must preserve:
 High for `ESC E` handler order, valid-root publication, missing-root clearing,
 page-record pool header fields, compact-bucket rendering before reset,
 default-record load into reset-consumed fields, line-spacing-to-VMI arithmetic,
-and parser/data-chain clearing because each is backed by disassembly and named
-fixtures.
+and parser/data-chain clearing because the claims are backed by disassembly
+`0xcc52..0xcd7a`, `0xcda2..0xcf50`, `0xcbd4..0xcc50`,
+`0xe146..0xe1e2`, `0x5e80..0x5f94`, publication helper `0xff1e`, and the named
+byte-stream examples.
 
 High for the immediate default producer edge from selected backing records to
 `0x78219d`, `0x78219e`, and `0x7821a2`.

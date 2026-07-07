@@ -1262,6 +1262,170 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
 
+## Minimal VFC Walkthrough
+
+This is the smallest top-level vertical-forms-control spine. VFC table
+definition consumes a binary payload and writes layout state; it does not draw.
+VFC channel jumps later consume that table to move the cursor or publish the
+current page before the next printable byte queues visible text.
+
+Table-load stream:
+
+```text
+ESC &l4W 00 00 00 02 !
+```
+
+Channel-jump stream:
+
+```text
+ESC &l2V !
+```
+
+Page-eject sibling:
+
+```text
+! ESC &l0V !
+```
+
+Parser and delayed table payload:
+
+- All stream bytes enter through `0xa904`, parser wrapper `0xda9a`, and
+  parser loop `0x11774`.
+- `ESC &l#W` routes through the `ESC &l` family to handler `0x11f6e`.
+- `0x11f6e` schedules delayed handler `0x12cfe` through shared delayed
+  payload path `0x121cc`.
+- `0x121cc` stores the six-byte command record and delayed-handler pointer in
+  parser scratch. The lowercase preservation sibling `ESC &l4w4W` records
+  lowercase snapshot `80 77 00 04 00 00` and keeps it until uppercase `W`
+  terminates the family.
+- `0x12218` restores the saved record after parser mode returns to zero and
+  calls `0x12cfe`.
+- `0x12cfe` rewinds command-record cursor `0x78299e`, reads the absolute
+  payload byte count, consumes payload through data reader `0xdace`, writes
+  VFC table words rooted at `0x782dde`, clears unused table bytes, derives VFC
+  bottom `0x782dc2`, copies text-bottom cache `0x782dd2`, and clears modified
+  layout flag `0x782ee1`.
+- In `ESC &l4W 00 00 00 02 !`, bytes `00 00 00 02` become the table prefix
+  and are consumed before the following printable `!`.
+- The following `!` then returns to ordinary printable handler `0xd04a` and
+  queues at compact coordinate `0x9001`.
+
+Default table and channel-jump consumers:
+
+- Default-table builder `0x12b96` rebuilds the 128-word VFC table from cached
+  line bounds. Shared layout refresh `0xe5e2` calls the same builder after it
+  refreshes top offset, margins, text bottom, pending cursor, and font-context
+  state.
+- For the documented Letter/6 LPI default table, channel selectors are
+  one-based: selector `2` searches for bit `0x0002`, and the default table
+  marks lines `61` and `62` for channel `2`.
+- `ESC &l#V` routes to handler `0x1280a`.
+- `0x1280a` reads selector, current VMI `0x783160`, vertical cursor
+  `0x782c8e`, horizontal cursor `0x782c8a`, top offset `0x782dce`, line
+  caches `0x782ede` and `0x782ee0`, and VFC table words
+  `0x782dde..0x782edd`.
+- Selector `n` becomes mask `1 << (n - 1)`. Selector `2` therefore searches
+  table bit `0x0002`.
+
+Cursor-only output path:
+
+- In the forward in-text `ESC &l2V !` fixture, `0x1280a` finds channel `2` at
+  line `1`.
+- It ensures a current page root through `0x10084`, resets horizontal cursor
+  through `0xf06e`, flushes pending text through `0xf34a`, writes vertical
+  cursor y `176`, and lets the following printable `!` queue at compact
+  coordinate `0xb001`.
+- The before-top sibling starts at y `89`, below top offset `90`; branch
+  `0x128ae..0x128f4` normalizes the search start line to `0` before the same
+  line-1 hit and the same following printable coordinate `0xb001`.
+- These cursor-only paths do not publish the current page. The visible effect
+  is the following printable object's coordinate on the current root.
+
+Page-boundary output path:
+
+- Selector-zero top-of-form stream `ESC &l0V!` computes target y `126`, leaves
+  an already matching cursor unchanged, ensures a page root, and queues `!` at
+  compact coordinate `0x9e02`.
+- Selector-zero page-eject stream `! ESC &l0V !` first queues a printable on
+  the old page. Branch `0x1299c..0x129c4` then runs
+  `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publishes the old page through
+  `0xff1e`, resets x/y to `10`/`126`, and queues the next `!` on a fresh page
+  at compact coordinate `0x9001`.
+- Wrap-hit stream `! ESC &l2V !` starts at y `226`, publishes the old page,
+  wraps to line `1`, writes y `176`, and queues the next `!` at coordinate
+  `0xb001`.
+- Wrap-no-hit and target-after-text paths publish the old page and recover to
+  top-of-form or near-top y before the following printable queues.
+- Non-publishing recovery siblings write the same recovered cursor state
+  without calling `0xf124`; the following printable remains on the current
+  page.
+
+Publication, bridge, and pixels:
+
+- VFC never writes pixels directly. Pixel output comes from already queued
+  page objects or from the printable byte that follows a VFC cursor move.
+- Publishing VFC branches use the same `0xf124 -> 0xff1e` boundary as FF and
+  reset.
+- `0xff1e` preserves the old page root's compact bucket objects in the
+  published page/control record, sets publication flag `0x782996`, and clears
+  current root pointer `0x78297a`.
+- The next printable byte allocates or reuses a fresh current page root through
+  the normal `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c` path.
+- Published pre-VFC rows render through `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+  Post-VFC rows render from the fresh page root when that later page is
+  published.
+
+State classification:
+
+- Canonical:
+  VFC table `0x782dde..0x782edd`, current VMI `0x783160`, top offset
+  `0x782dce`, vertical cursor `0x782c8e`, horizontal cursor `0x782c8a`,
+  margins `0x782dd6` and `0x782dda`, current page root `0x78297a`,
+  published source record, and render-record bucket/context roots.
+- Derived/cache:
+  VFC bottom `0x782dc2`, text-bottom cache `0x782dd2`, line-count caches
+  `0x782ede`, `0x782edf`, and `0x782ee0`, selector mask
+  `1 << (selector - 1)`, recovered y values, compact coordinates such as
+  `0xb001` and `0x9001`, and render-band fields.
+- Parser scratch:
+  command-record cursor `0x78299e`, delayed-payload flag `0x782a1a`,
+  delayed handler pointer `0x782a1c`, saved command record bytes, direct
+  `ESC &l#W` payload bytes, and the current `ESC &l#V` selector.
+- Firmware bookkeeping:
+  modified-layout flag `0x782ee1`, pending text/cursor latches
+  `0x782a58` and `0x782a6d`, pending span-flush flag `0x783184`, publication
+  flag `0x782996`, scheduler cursors, and render-work progress words.
+- Hardware/external:
+  the physical source that supplied the same normalized bytes to `0xa904`,
+  plus later formatter/DC timing outside the ROM-local page-record/render
+  chain.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented table-load,
+  default-table, forward jump, selector-zero, wrap-hit, wrap-no-hit,
+  target-after-text, start-after-text, or alternate high-start VFC paths.
+  Manual-facing names for line-count fields `0x782ede`, `0x782edf`, and
+  `0x782ee0` remain inferred.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Vertical Forms Control` and `Worked Path: VFC Table And
+  Channel Branch Matrix` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [vertical-forms-control.md](vertical-forms-control.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [publication-commands.md](publication-commands.md),
+  [page-record-storage.md](page-record-storage.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
+
 ## Minimal Downloaded Glyph Walkthrough
 
 This is the smallest top-level resource-installation spine that later changes

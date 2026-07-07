@@ -1859,6 +1859,128 @@ Evidence:
   `generated/analysis/ic30_ic13_page_root_finalization.md`, and
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md`.
 
+## Minimal Paper Source And Copies Walkthrough
+
+This is the smallest top-level path for the two `ESC &l` page-environment
+commands whose visible effect is mediated by publication rather than direct
+pixel drawing. `ESC &l#H` publishes already queued content before changing paper
+source/output state. `ESC &l#X` stores a copy count and relies on a later
+publication command, normally FF, to place that count in the published
+page/control header.
+
+Representative streams:
+
+```text
+! ESC &l2H
+! ESC &l2X FF
+```
+
+Parser and dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- Printable `!` reaches `0xd04a`, ensures current root `0x78297a` through
+  `0x10084`, and queues a compact text object through `0x12f2e -> 0x1387c`.
+- `ESC &l2H` reaches paper-source handler `0xef62`.
+- `ESC &l2X` reaches copies handler `0xeef0`; the following FF byte `0x0c`
+  reaches handler `0xf0f0`.
+
+Paper-source command path:
+
+- Handler `0xef62` reads current paper-source byte `0x782da6`, rewinds the
+  parser record by subtracting six from `0x78299e`, reads parsed word `+2`, and
+  normalizes it to an absolute selector.
+- Before changing paper-source state, it flushes pending text through `0xf34a`,
+  publishes the current page root through `0xff1e`, and refreshes cursor state
+  through `0xf8fc`.
+- The selector table at `0xef3a` maps selector `0` to `0xefae`, selector `1` to
+  `0xefb6`, selector `2` to `0xefe8`, selector `3` to `0xeff0`, and other
+  selectors to `0xeff8`.
+- Selector `2` writes selected value `0x80` through `0xefe8`, reaches the common
+  output path at `0xefc0`, and then writes paper-source byte
+  `0x782da6 = 0x80` at `0xf010`.
+- When the output path accepts the selection, `0xefce` mirrors the selected byte
+  to `0x780e8f` and `0xefd4..0xefe4` signals bit `0` through control word
+  `0x780e26`. The handler also sets pending refresh byte `0x782998 = 1` at
+  `0xf01c`.
+
+Copies command path:
+
+- Handler `0xeef0` rewinds the parser record by subtracting six from
+  `0x78299e`, reads parsed word `+2`, and normalizes it to an absolute count.
+- `0xef16..0xef26` clamps values above `99` by writing `0x782da4 = 99`.
+- `0xef28..0xef2c` ignores zero and otherwise stores the normalized count in
+  `0x782da4`.
+- `0xeef0` does not publish a page by itself. In the representative stream,
+  following FF handler `0xf0f0` publishes the queued page through `0xff1e`,
+  which copies copy count `0x782da4 = 2` into published pool-header word
+  `+0x0c`.
+
+Output and page-image effect:
+
+- `ESC &l2H` does not create a paper-source pixel object. Its pixel output comes
+  from the compact text object queued before the command, then published by the
+  command's `0xf34a -> 0xff1e` path.
+- `ESC &l2X` does not create a pixel object or publish immediately. Its
+  ROM-visible page effect is the stored copy count consumed by later
+  publication.
+- The rendered pixels for both representative streams use the ordinary
+  publication and render path:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`. The command-specific
+  effects are page/control header fields and paper-source output state, not a
+  separate renderer.
+
+State classification:
+
+- Canonical:
+  current page root `0x78297a`, compact text object, published page/control
+  record, copy count `0x782da4`, paper-source byte `0x782da6`, published
+  pool-header word `+0x0c`, paper-source output byte `0x780e8f`, and output
+  control word `0x780e26`.
+- Derived/cache:
+  normalized selector/count values, selected paper-source byte `0x80`, copied
+  pool-header fields, and render-record roots after `0x1ed84` / `0x1edc6`.
+- Parser scratch:
+  six-byte `ESC &l2H` and `ESC &l2X` command records, parser record pointer
+  `0x78299e`, and direct FF control byte.
+- Firmware bookkeeping:
+  pending text flush state, publication flag `0x782996`, pending refresh byte
+  `0x782998`, stream allocator cursors, cursor refresh state from `0xf8fc`, and
+  scheduler progress words.
+- Hardware/external:
+  the physical paper-source/output mechanism behind software-visible bytes
+  `0x780e8f` and `0x780e26`, and any physical copy-count actuation after the
+  published page/control record leaves the ROM-local model.
+- Unknown:
+  no unresolved ROM-local parser, field-write, publication, or render middle
+  edge remains for the documented selector-`2` and copy-count-`2` streams.
+  Remaining variants start only from other paper-source selectors, zero/negative
+  or high copy values, other published header fields, or physical mechanism
+  behavior beyond the ROM-visible output/control bytes.
+
+Evidence:
+
+- Checked-in explanations:
+  [publication-commands.md](publication-commands.md),
+  `ESC &l#H` and `ESC &l#X` in
+  [pcl-command-map.md](pcl-command-map.md),
+  `Worked Path: Publication Commands To Rendered Page Records` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `Publication Commands To Rendered Page Records` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings:
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+- Supporting fixtures:
+  `mixed printable/paper-source page-record stream publishes queued text`,
+  `mixed printable/copies/FF stream publishes copy count`,
+  `addressed paper-source and copies publications render page records`,
+  `host-fetched FF geometry and paper-source publications preserve 0xff1e pool
+  header`, `host-fetched copies publication preserves 0xeef0 pool header word`,
+  and `0xeef0 ESC &l#X stores absolute clamped copy count`.
+
 ## Minimal Render Scheduler Walkthrough
 
 This is the smallest top-level spine from a published page/control record to

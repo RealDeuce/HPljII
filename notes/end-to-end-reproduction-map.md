@@ -171,7 +171,11 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   streams, low-byte rows `0x0001..0x00ff` render through the documented
   compact helpers; high-row short compact cases such as installed rows
   `0x0101..0x0103` stop at the exact `0x1fe76` fallback table boundary rather
-  than claiming pixels beyond the ROM jump-table overflow.
+  than claiming pixels beyond the ROM jump-table overflow. For a heterogeneous
+  downloaded-glyph page image, start with `Worked Path: Downloaded Glyph
+  Rule/Raster Composition`, which follows `ESC )s18W` through the byte-24
+  handoff into rectangle, printable, raster, publication, bridge, and render
+  dispatch.
 - Raster, rectangle/rule, and mixed page-image streams:
   `ESC *t300R ESC *r0A ESC *b2W...`,
   `ESC *c12a5b0P`, and

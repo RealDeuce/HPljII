@@ -64,6 +64,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Firmware Font Sample Page`,
   `Worked Path: Selected Font Metrics To Span Output`,
   `Worked Path: Downloaded Glyph`,
+  `Worked Path: Downloaded Glyph Rule/Raster Composition`,
   `Worked Path: Nonzero Resource Payload`,
   `Worked Path: Fixed-Record Resource Object`,
   `Boundary: Short Compact Downloaded-Glyph High Rows`,

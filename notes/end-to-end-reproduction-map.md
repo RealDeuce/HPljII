@@ -3674,6 +3674,112 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/analysis/ic30_ic13_font_control_flow.md`.
 
+## Minimal Downloaded Glyph Boundary Walkthrough
+
+This section separates the solved downloaded-glyph path above from the remaining
+ROM-local helper boundaries. All four boundaries start from the same broad
+install-to-print pipeline:
+
+```text
+ESC )s#W <downloaded-glyph payload> printable FF
+```
+
+Shared path before divergence:
+
+- Host bytes enter through `0xa904`, parser loop `0x11774`, delayed-payload
+  setup `0x121cc`, and delayed restore `0x12218`.
+- Downloaded-character handler `0x16c14` consumes the restored `ESC )s#W`
+  record, drives payload readers such as `0x16942`, and installs completed
+  glyph records through `0x16498` when the payload reaches a legal complete
+  object.
+- A later printable byte reaches `0xd04a`; source production through
+  `0xd824 -> 0x12f2e` exposes low row or width bytes to compact page-object
+  selection.
+- Publication and render use the normal page path:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
+
+Boundary classes:
+
+- Short compact high rows:
+  installed row words `0x0101..0x0103` are preserved by `0x16498`, but the
+  printable source exposes low row bytes `0x01..0x03` to `0x12f2e`. The producer
+  therefore queues selector `0x0003` under bucket `1`. `0x1f414` can split row
+  `0x0102` into `58` current-band rows and fallback count `200`; helper
+  `0x1fe76` only has valid row-count entries through index `128`. The exact
+  boundary is unchecked table read `0x1fe8a + 4 * D3`, where index `200` reads
+  row-copy code bytes `32 9a d3 c0` as target `0x329ad3c0`.
+- Wrapped width low bytes:
+  `0x16498` preserves installed width words, but unflagged printable sources
+  expose only width byte `+0` to `0x12f2e`. Source width bytes `0x11..0xff`
+  select wide compact helper `0x1f0d2`; wrapped bytes `0x00..0x10` select
+  compact mode-0 helper `0x1f034` with full-span table indexes. Span `0x0102`
+  indexes `0x1f08e + 0x0408 = 0x1f496`, reads bytes `00 00 66 cc`, and jumps to
+  unrelated firmware at `0x0066cc` rather than a decoded row-copy helper.
+- Segmented-wide fallback source:
+  row words above `0x00ff` can still produce selector `0x3003` when the low row
+  byte selects segmented-wide output. Buckets `8` and `0` preserve segments
+  `1` and `0`; bucket `8` dispatches through `0x1f264`. Successful neighboring
+  spans `17`, `18`, and `32` render selected segment `1` with a `32/96`
+  current/fallback split. Span `31` follows the same parser, install,
+  publication, bridge, and renderer path, but the fallback row-copy source read
+  reaches modeled A2 offset `+0xb50`; that is the exact source-boundary stop.
+- Payload count cap:
+  segmented-wide high-row streams whose required bitmap bytes exceed the
+  restored `ESC )s#W` count cap stop before installation. The parser count cap
+  is `0x7fff`; with minimum segmented-wide span `17`, the last possible row word
+  is `floor(0x7fff / 17) = 0x0787`. The adjacent `0x0788 * 17` case requires
+  `0x7ff8` bytes, so it stops inside the delayed payload before `0x16498`,
+  before any selector-`0x3003` page object, and before renderer `0x1f264`.
+
+State classification:
+
+- Canonical:
+  installed downloaded glyph records and bitmap payload bytes for below-cap
+  completed installs; current page root `0x78297a`; selector `0x0003`,
+  `0x1003`, or `0x3003` compact bucket objects; published page/control record;
+  render-record bucket roots.
+- Derived/cache:
+  source low row byte, source low width byte, row/span product, bucket number,
+  segment number, `0x1f414` current/fallback split, row-copy table target,
+  invalid compact-mode target, A2/A3 source offsets, and parser-cap maximum row
+  `0x0787`.
+- Parser scratch:
+  delayed `ESC )s#W` command records, payload budget `0x783140`, delayed handler
+  fields `0x782a1a/0x782a1c/0x782a20..0x782a25`, parser stop offset, and next
+  printable handler state when the stream completes.
+- Firmware bookkeeping:
+  downloaded-record allocation/release around `0x16c14` / `0x16498`,
+  continuation fields for partial payload copies, stream allocator state,
+  publication flag `0x782996`, and render-work progress.
+- Hardware/external:
+  none for these four ROM-local helper boundaries.
+- Unknown:
+  no unresolved parser, install, publication, bridge, or renderer-dispatch edge
+  remains for the named boundary streams. The remaining unknowns are the exact
+  execution contract after computed jumps into non-row-copy code or source reads
+  beyond the modeled installed bitmap, and broader byte streams that avoid the
+  documented stops by changing row count, width, span, or payload length.
+
+Evidence:
+
+- Checked-in explanations:
+  `Boundary: Short Compact Downloaded-Glyph High Rows`,
+  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
+  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source`, and
+  `Boundary: Downloaded-Glyph Payload Count Cap` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  `Downloaded Glyph Row-Count Publication Checkpoint` in
+  [semantic-state-model.md](semantic-state-model.md), and compact row-copy
+  sections in [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings:
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016880.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`, and
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

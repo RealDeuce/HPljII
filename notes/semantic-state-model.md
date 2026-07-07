@@ -9870,6 +9870,12 @@ bucket through `0x1387c`/`0x1381c` before publication.
   - wrap-mode `ESC &s0C` sets `0x783190 = 1`, while `ESC &s1C` clears it;
     printable overflow paths consume this byte before deciding whether to
     wrap.
+  - command-to-output handoff:
+    `0xf9e8` page-length writes are consumed by later printable placement
+    through `0xd04a`; the `ESC &l0P` default branch can publish the
+    pre-command current root; `0xee64` perforation-skip writes are consumed
+    by `0xf36c -> 0xf124` page-eject gating; and `0xedb0` wrap writes are
+    consumed by `0xd28a` / `0xd6bc` before compact text object allocation.
   Evidence: disassembly listings
   `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
   `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`, and

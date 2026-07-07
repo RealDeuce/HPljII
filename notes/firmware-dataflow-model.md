@@ -5076,9 +5076,36 @@ Downstream consumers:
 - The `ESC &l1L !` and `ESC &l66P !` streams prove that these delayed layout
   controls reach visible page-record output when followed by printable data.
   The perforation-skip stream pins the `0xee64` writer plus the following
-  compact object and rendered rows. The page-length stream pins the
-  `0xf9e8 -> 0xd04a` path, including refreshed cursor y and the compact text
-  object.
+  compact object and ROM-derived row construction. The page-length stream
+  pins the `0xf9e8 -> 0xd04a` path, including refreshed cursor y and the
+  compact text object.
+
+Layout command-to-output matrix:
+
+- `ESC &l#P` page length:
+  handler `0xf9e8` converts line count through VMI `0x783160`, writes page
+  extent `0x782dba`, selects or restores the page code, and recomputes
+  text-bottom/geometry state. It creates no glyph object directly; the next
+  printable byte consumes the refreshed cursor and geometry through `0xd04a`.
+- `ESC &l0P` default page length:
+  the same handler takes the default-page branch, can publish an existing
+  current root, can mirror paper-source state to `0x780e8f` / `0x780e26`,
+  and then restores the default page code. Its immediate visible output, when
+  a root exists, is the pre-command page publication.
+- `ESC &l#L` perforation skip:
+  handler `0xee64` writes byte `0x783191` for selectors `0` and `1`. It is
+  consumed by vertical overflow helper `0xf36c`, which either leaves the
+  caller on the no-eject path or calls page-eject helper `0xf124`.
+- `ESC &s#C` wrap:
+  handler `0xedb0` writes byte `0x783190` for selectors `0` and `1`.
+  Printable prechecks `0xd28a` and `0xd6bc` consume it before queueing; wrap
+  disabled rejects horizontal overflow, while wrap enabled routes through
+  recovery helper `0xf054` and then retries placement.
+- Following printable consumer:
+  after any of these layout commands, printable handler `0xd04a` is the first
+  page-object producer in the documented streams. It queues compact text
+  through `0x12f2e` / `0x1387c`, and later publication/rendering uses the
+  normal `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` path.
 
 Output effect:
 

@@ -181,6 +181,46 @@ Unknown:
   normal install path; flag `1` also arms the `0x9406` display-output table
   after the text has changed.
 
+### Model-ID Command Stream
+
+The concrete parser-visible response stream is:
+
+```text
+ESC *r1K 0x11
+```
+
+The `ESC *s#^` command-table sibling reaches the same wrapper and response
+producer.
+
+Byte-stream route:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- `ESC *r#K` reaches mode `7`; `ESC *s#^` reaches mode `6`.
+- Both command forms dispatch wrapper `0x12034`.
+- `0x12034` calls `0x11efe`, which appends a synthetic six-byte setup record
+  with word `+2 = 1`, then enters producer `0x122be`.
+- `0x122be..0x12326` rewinds parser record cursor `0x78299e`, fetches the
+  following query byte through `0xda9a`, and tests the active record word
+  `+2`.
+- Query byte `0x11` with active word `1` or `-1` emits the literal at
+  `0x12280..0x12288` (`33440A\r\n`) through FIFO helper `0xb090`.
+- Other query bytes are reported through `0x9ec0` and do not enter the
+  host-output FIFO.
+
+State and output effect:
+
+- Canonical parser/response state is the synthetic record, the active record
+  word `+2`, the query byte, and ROM literal `0x12280..0x12288`.
+- Canonical host-output state is FIFO count/pointers/storage
+  `0x783ed2`, `0x783ed4`, `0x783ed8`, and `0x783e92..0x783ed1`.
+- Firmware bookkeeping is the blocking enqueue wait on `0x7801e2` when
+  `0xb090` sees a full FIFO.
+- This command creates no page root, no page object, no publication record,
+  and no render work. It can affect later pixels only if a bidirectional host
+  consumes the response bytes and sends different future input, or if FIFO
+  fullness stalls the parser-side producer.
+
 ### Output Effect
 
 These paths do not create page-record objects and do not feed `0x1ed84` or

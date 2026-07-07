@@ -1152,7 +1152,7 @@ though the ROM does not draw pixels for the response.
 The primary response stream is:
 
 ```text
-ESC *r1K 11
+ESC *r1K 0x11
 ```
 
 The same producer is also reached from `ESC *s#^` through parser-table handler

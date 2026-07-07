@@ -1321,10 +1321,18 @@ Evidence and unresolved boundaries:
   0x9bee`, `0xc1c6 dispatches 68 SERVICE from retained-status bit`,
   `0xc1c6 displays pending external-ready message`, and
   `0xbb0a external-ready teardown ignores scheduler return`.
+- The retained-storage status edges are now software-composed in
+  [external-ready-service.md](external-ready-service.md): commit/readback
+  failure writes `0x780e39.3` through `0x571e -> 0x9bee`, and `0xc1c6`
+  consumes that bit as non-returning `68 SERVICE` through `0x85c0`; startup
+  retained-record load reaches separate active-bank validation
+  `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284` and reports `67 SERVICE` when no
+  active marker is found.
 - The remaining exact boundaries are external: physical identity of the
-  `$fffee00*`, `$a200`, and `$a801` register family; one continuous live
-  fixture for `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`; startup
-  retained-load failure to `67 SERVICE`; and a full `0xba48` loop fixture that
+  `$fffee00*`, `$a200`, and `$a801` register family; the physical
+  retained-storage condition that makes commit/readback fail through all
+  retries; the physical retained-storage contents that leave no active marker
+  after startup readback; and a full board-level `0xba48` loop scenario that
   drives `$fffee00b.7` through the live-condition transition.
 
 ## Worked Path: Page Font Scheduler Resource Handoff

@@ -176,6 +176,64 @@ teardown handoff `0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`: scheduler returns
 `D7 = 0` and `D7 = 1` are recorded but ignored, and final byte `0x780e08`
 comes from the following `0x36e4` aggregate result.
 
+## Retained-Storage Service Status Paths
+
+The ROM has two separate retained-storage failure surfaces. They share the
+default-record state block but do not have the same software edge.
+
+Commit/readback failure is a deferred service-status bit:
+
+- Producer: default-record maintenance helper `0x571e` retries commit helper
+  `0x96c4`. In the direct commit branch, exhausted attempts through
+  `0x57ea..0x5808` reach `0x59f4..0x5a04`; in the normal maintenance branch,
+  exhausted outer retries through `0x593c..0x59ce` reach
+  `0x59b0..0x59ba`.
+- State write: both exits call `0x9bee(0x780e36, 0x00000008)`. Since
+  `0x780e36..0x780e39` is a big-endian status longword, this sets bit `3` of
+  byte `0x780e39`.
+- Consumer: external-service dispatcher `0xc1c6` tests aggregate bits
+  `0x780e36 & 0x18`, clears `0x7822fd`, samples the service byte through
+  `0xc2b8`, then tests `0x780e39.3` at `0xc1f4..0xc1fc`.
+- Output effect: when the bit is set, `0xc1c6` calls `0x85c0`; `0x85c0`
+  displays string `0xb45c` (`68 SERVICE`) through wrapper `0x8c90` and then
+  loops forever at `0x85d0`. No page root, page object, publication, or render
+  entry is involved.
+
+Startup retained-record load is a separate active-record validation path:
+
+- Producer/read path: `0x5a16` temporarily writes all
+  `0x780eba..0x780ed8` dirty flags to `1`, calls retained read helper
+  `0x97e4`, then clears the same flags. The helper does not return a success
+  value that its startup caller branches on.
+- Consumer/error path: active-bank selector `0x56c2` scans record word-2
+  entries at `0x780eda + 2*D5` for bit `15`. If the scan passes the modeled
+  retained-record groups without finding an active marker, `0x56f0..0x56fe`
+  calls `0x1284(0xe2, 0x21)`.
+- Output effect: `0x1284` uses string base `0xb44b`, which is `67 SERVICE` in
+  `generated/analysis/ic30_ic13_strings.txt`. This path is not the same as
+  the `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` `68 SERVICE` path, and no ROM
+  edge has been found that treats failed startup readback as an implicit
+  `0xba3e` / `0xba44` factory-default fallback.
+
+State classification for this service block:
+
+- Canonical status: status longword `0x780e36..0x780e39`; bit
+  `0x780e39.3` is the retained commit/readback failure consumed as
+  `68 SERVICE`.
+- Canonical retained records: backing words under `0x780eda`, active-bank
+  selector `0x7822d5`, active marker bit `15` in the scanned word-2 entries,
+  and dirty/read-mask flags `0x780eba..0x780ed8`.
+- Derived/cache: commit/readback buffers `0x782252..0x782270` and
+  `0x782232..0x782250`, maintenance counter `0x780ef0`, active/status word
+  `0x780ede`, and service-loop shadows `0x7822eb`, `0x7822ec`, and
+  `0x7828f9`.
+- Firmware bookkeeping: retry counters and loop locals inside
+  `0x571e`, service-poll latch `0x7822fd`, service byte cache `0x7821aa`, and
+  message/display fields touched by `0x1284`, `0x85c0`, and `0x8c90`.
+- Hardware/external: the physical retained-storage device behind `$a400` /
+  `$8c01`, the external conditions that make `0x96c4` fail repeatedly, and
+  the board-level source of the startup retained data read by `0x97e4`.
+
 ## Reproduction Contract
 
 A byte-stream renderer can ignore this loop only if it starts from canonical
@@ -204,12 +262,16 @@ device mapping is still unresolved.
 
 ## Remaining Edges
 
-- `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`: writer and consumer boundaries are
-  documented and fixture-backed separately. A single live execution fixture
-  covering the whole retained-storage failure path is still absent.
-- `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284`: startup retained-load failure is
-  bounded separately as `67 SERVICE`; no ROM edge from failed power-on load
-  into the `0xba3e` / `0xba44` factory-default fallback has been found.
+- `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`: no ROM-local software edge remains
+  between the retained commit/readback failure writer and `68 SERVICE`
+  display consumer. The unresolved boundary is the physical retained-storage
+  condition that makes `0x96c4` fail through all retry attempts.
+- `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284`: startup retained-record load and
+  active-record validation are bounded as a separate `67 SERVICE` path. No
+  ROM edge from failed power-on readback into the `0xba3e` / `0xba44`
+  factory-default fallback has been found; the remaining boundary is the
+  physical retained-storage content/device behavior that leads to missing
+  active markers.
 - `$fffee00*`, `$a200`, and `$a801`: ROM-visible traffic is bounded; physical
   device and pin-level meanings remain board-level work.
 - `0xba48` full loop: no fixture currently drives `$fffee00b` through the

@@ -321,6 +321,22 @@ For `PC LOAD [paper]`, `[paper]` can be A4, EXEC, LETTER, or LEGAL.
 - `68 SERVICE`: NVRAM failure. On HP 33440/33449, operation may continue
   with factory defaults until Interface/Formatter PCA replacement.
 
+ROM retained-storage distinction:
+
+- `67 SERVICE` is the startup active-record failure path. Bulk loader
+  `0x5a16` marks all retained-record flags dirty, calls read helper `0x97e4`,
+  and clears the flags; later active-bank selector `0x56c2` calls
+  `0x1284(0xe2, 0x21)` if no scanned record word has bit `15` set. String
+  `0xb44b` is `67 SERVICE`.
+- `68 SERVICE` is the retained commit/readback failure status path.
+  Maintenance helper `0x571e` calls `0x9bee(0x780e36, 0x00000008)` after
+  exhausted `0x96c4` commit retries, setting `0x780e39.3`. External-service
+  dispatcher `0xc1c6` consumes that bit and calls non-returning display helper
+  `0x85c0`, which displays string `0xb45c` (`68 SERVICE`) through `0x8c90`.
+- Neither path allocates page objects or reaches render entry `0x1ef6a`; they
+  can only affect pixel reproduction by stopping/deferring parsing or changing
+  host/service status behavior before later input is admitted.
+
 ## Formatter/DC Controller Communication
 
 - `55 ERROR`: Communication problem between DC Controller PCA and

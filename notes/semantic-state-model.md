@@ -10976,10 +10976,11 @@ proves startup bulk load and active-record failure reporting through
   `0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`: scheduler `D7` values `0` and `1`
   are recorded but ignored by the caller, and final byte `0x780e08` is written
   from the following `0x36e4` aggregate result.
-- No harness fixture currently executes the full `0xba48` loop, drives
-  `$fffee00b` through the outer live-condition transition, or runs
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` as one continuous upstream NVRAM
-  validation failure scenario.
+- No harness fixture currently executes the full `0xba48` loop or drives
+  `$fffee00b` through the outer live-condition transition. The
+  retained-storage status path does not require a separate row or hardware
+  oracle: `0x571e -> 0x9bee` documents the writer, and
+  `0xc1c6 -> 0x85c0` documents the consumer of the same status bit.
 
 ### Disassembly Evidence
 
@@ -11006,11 +11007,11 @@ proves startup bulk load and active-record failure reporting through
 
 ### Unresolved Middle Edges
 
-- `retained-storage commit failure -> 0x780e39.3 -> 0x85c0`: this edge is
-  composed through `0x571e`, `0x9bee`, and the `0x836e`/`0xc1c6` consumers.
-  The writer and consumer boundaries are documented and fixture-backed
-  separately; a single live execution fixture covering the whole path is still
-  absent.
+- `retained-storage commit failure -> 0x780e39.3 -> 0x85c0`: no ROM-local
+  software edge remains. The edge is composed through `0x571e`, `0x9bee`, and
+  the `0x836e`/`0xc1c6` consumers. The remaining boundary is the physical
+  retained-storage condition that makes `0x96c4` fail through all retry
+  attempts.
 - `startup retained-load failure -> default fallback into 0x780eda`: the
   power-on load path is now bounded through `0x5a16 -> 0x97e4`, and invalid
   active records are bounded through `0x56c2 -> 0x1284` (`67 SERVICE`).

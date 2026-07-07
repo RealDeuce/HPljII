@@ -1797,6 +1797,124 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
   `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
 
+## Minimal Dense Raster Split Walkthrough
+
+This extends the accepted `ESC *b#W` raster path above to a row whose accepted
+payload is too large for one encoded-span object. The split is a
+page-object-construction behavior, not a renderer behavior: `0x13070` and
+`0x13250` create one or more class-`0x80` bucket objects before publication,
+and `0x1f88e` later consumes whatever object chain the producer built.
+
+Representative condition:
+
+```text
+ESC *t300R ESC *r1A ESC *b300W <300 payload bytes>
+```
+
+Parser and transfer gate:
+
+- Parser dispatch is unchanged from the simple raster payload path:
+  `ESC *b#W` reaches `0x11f82`, which schedules delayed handler `0x105d0`
+  through `0x121cc`; `0x12218` restores the six-byte command record and calls
+  `0x105d0`.
+- `0x105d0` owns transfer acceptance. It writes raster row word `+0x02`,
+  accepted byte count `+0x04`, overflow count `+0x06`, and active byte
+  `+0x12` in raster state block `0x783170`.
+- Only accepted nonnegative rows call `0x13070`. Beyond-extent rows drain
+  bytes through `0xdace`; negative rows ensure a page root and drain without
+  queueing an encoded object.
+
+Split allocation:
+
+- `0x13070..0x13136` derives bucket index `0x782a7c`, packed key
+  `0x782a7e`, requested object size `accepted + 0x0a`, and the render mode
+  byte copied later into object `+0x05`.
+- `0x13250..0x132ae` links each returned object at the head of the selected
+  current-page bucket chain under root `+0x1c`, writes class byte
+  `+0x04 = 0x80`, and copies the raster mode byte into `+0x05`.
+- `0x132be..0x13320` is the same-chunk branch. When the requested size fits
+  remaining stream bytes `0x782a70`, it writes capacity
+  `0x782a80 = size - 0x0a`, advances free cursor `0x782a76`, subtracts from
+  `0x782a70`, and returns the old free pointer.
+- `0x132ce..0x132fc` is the current-tail branch. When the request does not
+  fit but at least `12` bytes remain, it writes
+  `0x782a80 = 0x782a70 - 0x0a`, clears `0x782a70`, and returns the current
+  free pointer.
+- `0x13328..0x13382` is the new-chunk branch. It allocates a `0x100`-byte
+  stream chunk through `0x1710`, links it through `0x782a72`, seeds
+  `0x782a76 = chunk + 4`, and either reuses the same-chunk path or caps an
+  oversized request at capacity `0x00f2`.
+
+Object-chain effect:
+
+- `0x13146..0x13220` writes object capacity word `+0x06` from `0x782a80`,
+  writes packed key `+0x08` from `0x782a7e`, and copies up to that many
+  payload bytes through `0x138de`.
+- If accepted bytes remain, `0x1319e..0x131d0` subtracts the copied capacity
+  from raster state `+0x04`, advances the packed key through
+  `0x332ee(0x782a80, mode + 1)`, and loops back to allocate the next object.
+- For the documented static `0x012c` accepted-count case with an empty fresh
+  chunk, the first object is capped at capacity `0x00f2`, the second object
+  carries the remaining `0x003a` bytes, and the later `0x003a` object becomes
+  the bucket head because `0x13250` inserts each object at the head.
+- For the documented current-tail case with `0x782a70 = 0x0014`, a request
+  larger than the tail writes `0x782a80 = 0x000a`, emits one ten-byte object
+  from the tail, clears `0x782a70`, advances the packed key, and loops for the
+  remaining accepted bytes.
+
+Render consequence:
+
+- Publication and bridge preserve the encoded object chain through
+  `0xff1e -> 0x1ed84 -> 0x1edc6`.
+- Scheduler and render dispatch are unchanged:
+  `0x1eba4 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+- Pixel provenance for a dense row is therefore the ordered bucket-chain walk
+  over the split class-`0x80` objects plus the selected `0x1f88e` mode helper.
+  The row bytes are derived from object payload, packed keys, mode helper, and
+  destination fields; no external rendered-row image is part of the evidence.
+
+State classification:
+
+- Canonical:
+  raster state block `0x783170`, encoded-span object fields `+0x04`,
+  `+0x05`, `+0x06`, `+0x08`, payload `+0x0a..`, current page-root bucket
+  heads, published bucket roots, and render-record bucket root `+0x18`.
+- Derived/cache:
+  bucket index `0x782a7c`, packed key `0x782a7e`, per-object capacity
+  `0x782a80`, packed-key advance through `0x332ee`, render-band caches
+  `0x783a20`, `0x783a22`, `0x783a28`, and stride `0x783a1c`.
+- Parser scratch:
+  restored delayed `80 57 ...` command record, delayed handler state
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`, payload cursor, and drained bytes.
+- Firmware bookkeeping:
+  stream allocator cursors `0x782a70`, `0x782a72`, `0x782a76`,
+  publication/copy-stop byte `0x782996`, allocator failure returns, scheduler
+  cursors, and render-work progress.
+- Hardware/external:
+  none for this ROM-local split contract.
+- Unknown:
+  no unresolved branch target remains inside `0x13070..0x13382` for the
+  documented same-chunk, current-tail, new-chunk, and capped-new-chunk paths.
+  Remaining dense-raster work starts only from byte streams that change
+  transfer acceptance, drain behavior, allocator pre-state, copy-stop state,
+  bridge bucket roots, or mode-specific row construction in `0x1f88e`.
+
+Evidence:
+
+- Checked-in explanations:
+  `Dense-Row Split Composition Checkpoint` in
+  [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint),
+  `Worked Path: Raster Transfer Gates And Modes` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  and `Raster Transfer Gate And Encoded Rows` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings:
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
+
 ## Minimal Macro Replay Walkthrough
 
 This is the smallest top-level stored-byte replay spine. It shows how bytes

@@ -200,6 +200,36 @@ table prefix is `f8 fd 00 46 01 6e 00 44 00 00 00 00 00 00 00 00`; for the
 short-page case it is `f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00`.
 These bytes are canonical VFC table state consumed later by `0x1280a`.
 
+The builder algorithm is pinned by
+`generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`:
+
+- `0x12b9e..0x12c32` iterates line index `D5` from `0` through
+  `0x782edf`, stopping at line `0x80`. It starts each active text-line word
+  with channel-3 bit `0x0004`, then ORs in channel bits for line multiples:
+  channel 4 for even lines, channel 5 for multiples of `3`, channel 8 for
+  multiples of `10`, channels 13/14/15 for multiples of `7`/`6`/`5`, and
+  channel 16 for multiples of `4`.
+- `0x12c36..0x12c42` clears every remaining table word through index `127`.
+  This makes the default table a complete 128-word canonical state block, not
+  a partial overlay on a previous table.
+- `0x12c44..0x12c48` ORs line `0` with `0x0861`, adding channels 1, 6, 7,
+  and 12 to the loop-generated line-zero bits.
+- `0x12c4a..0x12c72` marks channel 2 on lines `0x782edf - 1` and
+  `0x782edf`, and marks channel 9 on line `0x782edf`.
+- `0x12c76..0x12ccc` adds channel 6 at the half-text line, channel 7 at the
+  quarter and three-quarter text lines, and channel 3 at final VFC line
+  `0x782ede`.
+- `0x12ce6..0x12cf0` copies text-bottom cache `0x782dd2` into VFC bottom
+  cache `0x782dc2` and clears modified-layout flag `0x782ee1`.
+
+The default builder's writers are therefore `0x12b96` for table
+`0x782dde..0x782edd`, VFC bottom cache `0x782dc2`, and modified-layout flag
+`0x782ee1`. Its readers are zero-count `0x12cfe`, shared layout refresh
+`0xe5e2`, page-length/layout helpers that call `0x12b96`, and channel-jump
+consumer `0x1280a`. The output effect is indirect: it defines the canonical
+channel table that later `ESC &l#V` searches before cursor movement or page
+publication.
+
 ## Channel Jump Consumer
 
 `0x1280a` is the `ESC &l#V` consumer. It reads the absolute selector, current

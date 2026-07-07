@@ -6893,6 +6893,37 @@ Mode and row-object variants:
 - `0x138de` copies payload through `0xa904` and locally maps control pair
   `1a 58` to copied byte `00`.
 
+Raster command-to-output matrix:
+
+- `ESC *t#R` resolution:
+  handler `0x10808` writes scale `+0x0e` and encoded mode `+0x08` in
+  raster state block `0x783170` only while active byte `+0x12` is clear.
+  Its output effect is deferred: the next accepted `ESC *b#W` transfer
+  writes object mode byte `+0x05`, which selects an `0x1f88e` expansion
+  helper during rendering.
+- `ESC *r#A` start raster:
+  handler `0x1075a` writes origin/baseline, active state, and byte limit
+  `+0x10`. It queues no page object by itself; `0x105d0` consumes these
+  fields when the next delayed row transfer arrives.
+- `ESC *r#B` end raster:
+  handler `0x107fa` clears only active byte `+0x12`. That permits later
+  resolution commands to update mode/scale again, but does not itself delete
+  queued raster objects or publish a page.
+- `ESC *b#W` raster row transfer:
+  handler `0x11f82` schedules delayed handler `0x105d0`; `0x105d0` consumes
+  the restored byte count, drains skipped bytes, writes row/count state, and
+  calls `0x13070` only for accepted rows. Accepted rows become encoded-span
+  bucket objects under page-root `+0x1c`.
+- Lowercase `ESC *b#w`:
+  the parser keeps the same `*b` command family pending until an uppercase
+  terminal arrives. The uppercase terminal supplies the restored handler and
+  payload boundary that finally reaches `0x105d0`.
+- Render effect:
+  publication and bridge copy accepted raster objects through
+  `0xff1e -> 0x1ed84 -> 0x1edc6`; `0x1ef6a -> 0x1efc2 -> 0x1f88e` consumes
+  object mode `+0x05` and payload bytes. Gate failures that only drain bytes
+  have no page-object or render effect.
+
 Dense-row allocation and splitting:
 
 - `0x132b6` can satisfy a request from remaining stream bytes

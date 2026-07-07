@@ -1147,10 +1147,13 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   the byte-24 install-to-page handoff, parser-produced row counts
   `0x0001..0x00ff`, wide span publication through sampled high spans, and
   segmented-wide selected-segment rendering for below-cap high-row products.
-  Remaining exact boundaries are variant breadth, not the covered paths:
-  unmodeled fixed-record current variants inside `0x16606..0x16770`,
-  unmodeled continuation variants inside `0x15c4c..0x15d08`,
-  selected-font combinations that change context/map state before visible
+  Remaining exact boundaries are variant breadth, not the covered paths. The
+  fixed-record current and continuation ranges are now decomposed in
+  [downloaded-fonts.md](downloaded-fonts.md): remaining work there is
+  branch-combination coverage that changes table base, active-context refresh,
+  release-helper effect, copy status, or later page-record selector inside
+  `0x16612..0x16870` and `0x15c4c..0x15d08`. Other remaining exact boundaries
+  are selected-font combinations that change context/map state before visible
   output, and the exact ROM-local helper failures already named as bounded
   edges: short compact
   fallback indices above `0x1fe76` valid index `128` where the unchecked table

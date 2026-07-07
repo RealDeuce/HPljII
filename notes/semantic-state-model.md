@@ -7316,16 +7316,25 @@ renders two rows beginning at x `22`, y `7`, proving that saved prefix/trailing
 destinations and D4/D3 counters are sufficient for the later compact renderer
 to recover the odd-width bitmap layout.
 
-Unresolved middle edges after this checkpoint are exact variant boundaries, not
-the documented bit-30-clear current-record/continuation path itself. The
-nonzero-count `0x16c14..0x16c68 -> 0x12328` resource-payload path is composed
-separately in `Nonzero Resource Payload Checkpoint`; it should not be merged
-with this zero-count bit-30-clear object route. Broader object-shape coverage
-also remains for fixed-record resource objects outside the fixture records
-above, specifically the unmodeled current-record variants between
-`0x16606..0x16770` and continuation variants between `0x15c4c..0x15d08` that
-are not the named one-piece, linear-continuation, split-plane-continuation,
-partial-resave, or failed-release cases.
+Unresolved middle edges after this checkpoint are exact variant cross-products,
+not the documented bit-30-clear current-record/continuation path itself.
+[downloaded-fonts.md](downloaded-fonts.md) now decomposes the branch
+boundaries: current-record stale-continuation clear `0x16612..0x1664e`,
+character/type admission `0x16656..0x166ba`, fixed-record table addressing and
+preexisting-entry release `0x16692..0x16700`, descriptor/object-prefix gates
+`0x16702..0x16716`, allocation/copy `0x16718..0x16754`, primary/secondary
+active-context refresh `0x16770..0x16870`, allocation-failure bookkeeping
+`0x167b6..0x167d8`, status-`2` continuation save `0x167e0..0x16838`,
+continuation table reload `0x15c4c..0x15c82`, resume copy
+`0x15c84..0x15ca8`, status dispatch/release `0x15cac..0x15cd4`, and
+continuation clear `0x15cd6..0x15d08`. The remaining breadth is combinations
+inside those branch ranges that expose a different table base, active-context
+refresh, release helper effect, copy status, or later page-record selector
+than the named one-piece, linear-continuation, split-plane-continuation,
+partial-resave, or failed-release cases. The nonzero-count
+`0x16c14..0x16c68 -> 0x12328` resource-payload path is composed separately in
+`Nonzero Resource Payload Checkpoint`; it should not be merged with this
+zero-count bit-30-clear object route.
 
 ### Confidence
 

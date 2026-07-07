@@ -2243,6 +2243,80 @@ the final longword comes from the base fixed-record entry at payload `+0x40`.
 This covers the `0x15c4c` status-0 release exit for one active-primary
 bit-30-clear fixed-record payload.
 
+Boundary map for the bit-30-clear fixed-record route:
+
+- `0x16612..0x1664e` clears stale continuation scratch before the
+  current-record install path reads the new payload. It writes
+  `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`,
+  `0x7827d2`, `0x7827d6`, and `0x7827d8`; no fixed-record table entry,
+  active context, page object, or rendered row changes at this boundary.
+- `0x16656..0x166ba` is the current-record character/type admission gate.
+  Direct characters `0x21..0x7f` continue immediately; extended characters
+  `0xa0..0xff` require payload type byte `+0x0e = 1`; all other characters
+  exit before fixed-record table addressing or bitmap copying.
+- `0x16692..0x16700` selects the fixed-record table. Type byte `+0x0e = 0`
+  uses side-table base `payload + 0x300` and base code `0x20`; type byte
+  `+0x0e = 1` uses side-table base `payload + 0x600`. Characters
+  `>= 0xa0` switch the fixed-record index base to `0x40`. The canonical
+  fixed-record table entry is `payload + 0x40 + 8 * (char - base)`. If
+  entry longword `+4` differs from base entry longword `payload + 0x44`,
+  `0x166f2..0x16700` calls release helper `0x17d7c(payload, char)` before
+  the install continues.
+- `0x16702..0x16716` is the descriptor-budget/object-prefix gate: budget
+  `0x783140` must be at least `0x0e`, and helper `0x15eb4` must accept the
+  staged fixed-record prefix. Failing either gate falls into active-context
+  refresh at `0x16770` without allocating a bitmap object.
+- `0x16718..0x16754` allocates a bitmap object with
+  `0x170c(1, ((0x7827be + 0x3f) >> 6), 0x40)` and invokes copy helper
+  `0x16874`. Copy status `1` means the bitmap is complete; status `2` means
+  continuation scratch must be saved; status `0` means the allocated object
+  must be freed by `0x18b4`.
+- `0x16770..0x16870` is not a pixel emitter. It refreshes active font
+  contexts when the installed payload matches primary `0x782ee6 & 0xffffff`
+  or secondary `0x782ef6 & 0xffffff`: `0x1b4c0` supplies the active object,
+  `0x7828a8` receives it, `0x7828de` is set to `0` for primary or `1` for
+  secondary, and `0x14c64` rebuilds the selected map consumed later by
+  printable text and the compact downloaded-glyph renderer.
+- `0x167b6..0x167d8` is allocation-failure bookkeeping. It reports through
+  `0x9b5e(0x780e2e, 4)`, calls cleanup helper `0x1887a(payload)`, and returns
+  without writing a new fixed-record bitmap object.
+- `0x167e0..0x16838` handles copy status `2`. It saves canonical
+  continuation identity `0x7827da = payload` and `0x7827c8 = char`, records
+  the fixed-record table entry in `0x782866`, derives the side-table write
+  cursor `0x78286a` from the selected side-table base and copied span, calls
+  `0x15f32` to persist the advanced prefix/counter state, then runs the same
+  active-context refresh path.
+- `0x15c4c..0x15c82` is the continuation fixed-record table reload. It
+  consumes saved payload `0x7827da` as its argument and saved glyph/table
+  index `0x7827c8`; characters `> 0x7f` use index base `0x40`, otherwise
+  base `0x20`. The reloaded table entry is again
+  `payload + 0x40 + 8 * (char - base)`.
+- `0x15c84..0x15ca8` reloads width byte `+0` into `0x7827c2`, row/span byte
+  `+1` into `0x7827c4`, and calls `0x16874` with resume flag `1`. The copy
+  helper consumes saved destination/counter scratch, not parser command
+  bytes directly.
+- `0x15cac..0x15cd4` branches on copy status. Status `2` returns immediately
+  with advanced continuation scratch preserved for a later descriptor packet.
+  Status `0` calls `0x17d7c(payload, saved char)` at `0x15cb8..0x15ccc` to
+  release/rewrite the fixed-record entry before clearing the continuation
+  block. Status `1` skips the release helper and clears the same block.
+- `0x15cd6..0x15d08` clears the continuation block after status `0` or
+  status `1`. The canonical fixed-record payload remains installed only for
+  status `1`; status `0` leaves the helper's replacement entry instead.
+
+Canonical state for this route is the fixed-record table entry under
+`payload + 0x40`, side-table bytes under `payload + 0x300` or
+`payload + 0x600`, active context selector `0x7828a8` / `0x7828de`, and the
+selected-map rebuild consumed by printable glyph output. Parser scratch is the
+descriptor budget `0x783140`, restored delayed record `80 57 ...`, and
+continuation block `0x7827c6..0x7827d8`. Derived/cache state is the computed
+table-entry pointer, side-table cursor, allocation unit count, copy status,
+and `0x7827c2` / `0x7827c4` width/span words. Firmware bookkeeping is heap
+allocation/free, `0x9b5e` error reporting, `0x1887a` cleanup, `0x17d7c`
+release/rewrite, and active-context rebuild. The output effect remains
+deferred until a printable byte uses the rebuilt map to queue a page-record
+text object and the render path consumes that object.
+
 The fixed-record extended-table fixture
 `0x17d7c releases extended fixed-record table with secondary refresh` enters
 the same helper directly with payload byte `+0x0e = 1` and char `0xa1`.

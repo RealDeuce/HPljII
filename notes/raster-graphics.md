@@ -196,6 +196,17 @@ When raster is not active, it takes the absolute parsed parameter and maps it:
 It then computes the row byte limit at `+0x10` from active page extent,
 baseline word, and `scale * 8`.
 
+Instruction boundary:
+
+- `0x10808..0x1083a` rewinds `0x78299e`, exits without changes when raster
+  active byte `+0x12` is set, and otherwise reads the absolute parsed
+  resolution from record word `+2`.
+- `0x10842..0x10868` maps the requested resolution to scale values
+  `1`, `2`, `3`, or `4` using thresholds `150`, `100`, and `75`.
+- `0x10868..0x10896` writes scale `+0x0e`, recomputes row byte limit `+0x10`
+  from page extent `0x782db4`, baseline word `+0x00`, and `scale * 8`, then
+  writes encoded mode byte `+0x08 = scale - 1`.
+
 Fixture `0x10808 ESC *t#R selects raster mode and scale thresholds` pins the
 threshold table at the handler boundary. The lower-resolution parser fixtures
 `modeled raster command stream selects 150-dpi mode-1 state`, `modeled raster
@@ -224,6 +235,22 @@ computes byte limit `+0x10`.
 Fixtures `0x1075a ESC *r#A seeds raster baseline from cursor or left edge` and
 `0x1075a raster origin source follows orientation` pin both origin sources and
 the left-edge fallback.
+
+Instruction boundary:
+
+- `0x1075a..0x1078a` rewinds the parser record, takes the absolute parsed
+  selector, exits if raster active byte `+0x12` is already set, and otherwise
+  sets active byte `+0x12 = 1`.
+- `0x10790..0x107b6` handles origin selection. Selector `1` copies the active
+  cursor axis into origin `+0x0a`: portrait uses horizontal cursor
+  `0x782c8a`, while landscape uses vertical cursor `0x782c8e`. Other selectors
+  clear origin `+0x0a`.
+- `0x107b6..0x107ee` copies origin word `+0x0a` to baseline word `+0x00` and
+  recomputes row byte limit `+0x10` from page extent `0x782db4`, baseline, and
+  encoded scale `+0x08`.
+- `0x107fa..0x10806` is the raster-end handler. It clears only active byte
+  `0x783182` and leaves origin, baseline, scale, mode, byte limit, and row
+  fields unchanged.
 
 `0x107fa` handles `ESC *r#B`. It clears only active byte `0x783182`
 (`state+0x12`). It leaves origin, mode, scale, limit, and row state intact.

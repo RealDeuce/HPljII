@@ -4783,6 +4783,12 @@ Output effect:
   installed canonical row/width words may survive, while the current printable
   source record exposes only low row/width bytes to `0x12f2e`; those wrapped
   page-object bytes can choose invalid helper-table entries.
+  The grouped renderer-side contract is
+  `Invalid Compact Helper Boundary Composition` in
+  [page-raster-imaging.md](page-raster-imaging.md): the short high-row
+  `0x1fe76 -> 0x1fe8a` fallback-index boundary and the wrapped low-width
+  `0x1f034 -> 0x1f08e` mode-0 boundary are exact computed-jump boundaries,
+  not parser, publication, bridge, or physical-output gaps.
 
 Evidence:
 
@@ -7409,6 +7415,10 @@ Current top-level boundaries include:
   helper heads, including in-firmware target `0x0066cc` at opcode `0x4a39`
   for span `0x0102`; high source bytes `0x11..0xff` render through
   compact-wide helper `0x1f0d2`.
+  These two helper-boundary siblings are grouped in
+  `Invalid Compact Helper Boundary Composition` in
+  [page-raster-imaging.md](page-raster-imaging.md), with field classes,
+  writers, readers, exact target addresses, and output contract.
 - ROM-local visible-output source boundary:
   `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` documents the
   exact span-31 selected-segment source edge. Sampled high-row segmented-wide

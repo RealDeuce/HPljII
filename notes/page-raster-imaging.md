@@ -1856,11 +1856,13 @@ Field groups:
 - Unknown:
   - no unresolved middle edge remains for documented downloaded-descriptor
     metric formulas, legal selected-context forms, `0xd4ac` / `0xd8fc`
-    consumer gates, or segment-list render handoff. The remaining ROM-local
-    boundary is broader selected-font cross-products or byte streams that
-    change copied metric fields, selected-context form, span object bytes, or
-    rendered rows; exact HP manual names for consumed-but-not-staged
-    validation fields remain external/manual naming work.
+    consumer gates, or segment-list render handoff.
+  - the remaining ROM-local compact-helper boundaries are exact computed-jump
+    boundaries, not parser/page-record/render-dispatch uncertainty: wrapped
+    low-width mode-0 targets selected through `0x1f034 -> 0x1f08e`, and short
+    compact high-row fallback targets selected through `0x1fe76 -> 0x1fe8a`.
+  - exact HP manual names for consumed-but-not-staged validation fields remain
+    external/manual naming work.
 
 Writers:
 
@@ -2057,6 +2059,101 @@ Output effect:
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid
   helper `0x1fe76` row-count table, so no pixel-output claim is made.
+
+#### Invalid Compact Helper Boundary Composition
+
+This checkpoint composes the two invalid compact-helper families that remain
+after parser, installed-glyph, page-object, publication, bridge, and compact
+dispatch are already documented. Both are ROM-local computed jumps inside the
+compact renderer. They are not evidence gaps in the host parser, downloaded
+glyph installer, page-record allocator, publication path, or `0x1ef6a`
+dispatch.
+
+Field groups:
+
+- Canonical state:
+  installed downloaded-glyph records written by `0x16498`, including 16-bit
+  row words and width words; bitmap payload bytes; current page root; compact
+  bucket objects; published bucket roots; and render-record bucket roots.
+- Derived/cache state:
+  low row/width bytes exposed by the printable source record to `0x12f2e`,
+  compact selector `0x0003` or `0x1003`, active compact target selected by
+  `0x1effe`, row split from `0x1f414`, and table targets read from
+  `0x1f08e` or `0x1fe8a`.
+- Parser scratch:
+  delayed `ESC )s#W` command records, payload byte budgets, drain status, and
+  next parser handler. These prove how the installed glyph exists, but they
+  are no longer consumed once compact rendering begins.
+- Firmware bookkeeping:
+  stream allocator state, publication flag `0x782996`, render progress, and
+  invalid computed targets used only as failure boundaries.
+- Hardware/external state:
+  none. These are ROM table/control-flow boundaries.
+- Unknown:
+  no pixel contract is claimed after the invalid computed target. The known
+  facts stop at the table read and target longword.
+
+Writers:
+
+- `0x16498` preserves canonical installed row and width words in the
+  downloaded-glyph record.
+- `0x12f2e` writes the compact page object from the printable source record,
+  using low row/width bytes for selector and object shape.
+- `0xff1e` publishes the page root, and `0x1ed84` / `0x1edc6` copy the
+  published bucket roots into render-record state.
+
+Readers and consumers:
+
+- `0x1ef6a` / `0x1efc2` walk the active bucket and call `0x1effe`.
+- `0x1effe` selects compact mode-0 `0x1f034` for selector `0x0003`, or
+  compact-wide `0x1f0d2` for selector `0x1003`.
+- Wrapped low-width mode-0 cases enter `0x1f034`, index main helper table
+  `0x1f08e` with the full span word, and can jump to non-helper targets.
+- Short high-row fallback cases enter span-2 row helper `0x1fe76`, index
+  row-count table `0x1fe8a` with fallback row count `D3`, and can read
+  executable copy-tail bytes as a target.
+
+Exact boundaries:
+
+- Wrapped width low bytes:
+  span `0x0102` reaches `0x1f034`, shifts full span word `D5` left by two,
+  reads `0x1f08e + 0x0408 = 0x1f496`, and jumps to target `0x0066cc` from
+  bytes `00 00 66 cc`. Listing
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst` shows
+  this is unrelated control code, not a row-copy helper head. Other sampled
+  low-byte spans select out-of-firmware or non-helper longwords such as
+  `0x20700000`, `0x4e90202c`, `0x4cdf1030`, `0x4e750001`, `0xf4e00001`,
+  `0xf5960001`, and `0x4e904cdf`.
+- Short compact high rows:
+  installed rows `0x0101..0x0103` preserve canonical row words, but
+  `0x12f2e` sees low row bytes `0x01..0x03` and publishes selector `0x0003`
+  bucket `1`. `0x1f414` splits those installed row words at coord `0x6601`
+  into `58` current-band rows plus fallback counts `199`, `200`, and `201`.
+  Helper `0x1fe76..0x1fe88` loads row-count table base `0x1fe8a`, shifts
+  `D3` left by two, reads an unchecked target, and jumps. Valid entries end at
+  index `128` (`0x2008a -> 0x2008e`). Indexes `199..201` read copy-tail code
+  bytes, and row `0x0102` fallback index `200` reads target `0x329ad3c0`.
+
+Output effect:
+
+- The valid sibling sides remain reproducible. Width source bytes `0x11..0xff`
+  dispatch through `0x1f0d2`, and row words `0x0001..0x00ff` dispatch through
+  documented short or segmented helpers.
+- The invalid sibling sides have no documented pixels after the computed
+  target. A reproducer should preserve all state up to the target selection and
+  then report the exact invalid compact-helper boundary.
+
+Confidence:
+
+- High for the boundary addresses and target longwords because they are direct
+  disassembly/table reads from
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`, and
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`.
+- High for the producer and bridge state because the downloaded-glyph notes
+  cite parser-produced command families that install the records, publish the
+  compact objects, and reach `0x1effe`. Fixture evidence is only supporting
+  path evidence; it is not an external pixel oracle.
 
 Confidence:
 

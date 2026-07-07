@@ -291,9 +291,10 @@ this ROM-internal publication contract.
 
 ## Remaining Edges
 
-- `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
-  commands. Physical-device comparison is optional correlation outside the
-  ROM-internal reproduction contract, not a required oracle.
+- `0xff1e..0x1ed84`: final rows are ROM-derived for all six publication
+  commands by tracing publication, bridge, and render helpers.
+  Physical-device comparison is optional correlation outside the ROM-internal
+  reproduction contract, not a required oracle.
 - No parser-to-publication or publication-to-render ROM middle edge remains for
   the covered reset, FF, page-size, orientation, paper-source, and copies
   streams. Additional ROM work should target streams that change page-record

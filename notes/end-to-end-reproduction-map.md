@@ -4730,3 +4730,5 @@ boundaries only when new evidence changes the documented state or pixel output.
    page-record fields, and render helpers. A representative physical print, if
    one is ever used, can only correlate that model with a device; it is not an
    oracle for the documentation and is not a substitute for static ROM evidence.
+   Fixture output is likewise only a ROM-local branch or transcription check;
+   the deliverable is the documented path that constructs rows.

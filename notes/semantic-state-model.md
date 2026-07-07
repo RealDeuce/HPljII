@@ -10059,9 +10059,10 @@ because each is fixture-pinned.
 
 ### Unresolved Middle Edges
 
-- `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
-  commands. Physical-device comparison is optional correlation outside the
-  ROM-internal reproduction contract, not a required oracle.
+- `0xff1e..0x1ed84`: final rows are ROM-derived for all six publication
+  commands by tracing publication, bridge, and render helpers.
+  Physical-device comparison is optional correlation outside the ROM-internal
+  reproduction contract, not a required oracle.
 
 ## Bitmap Render Dispatch Contract
 
@@ -11611,8 +11612,9 @@ checkpoint only consumes their canonical outputs.
     `0x5a16 -> 0x97e4`, and invalid active-record state reaches
     `0x56c2 -> 0x1284` (`67 SERVICE`); the remaining gap is reconciling that
     ROM behavior with manual NVRAM-failure fallback wording.
-  - physical page output after reset is optional device correlation;
-    ROM-internal reset publication rows are fixture-backed.
+  - physical page output after reset is optional device correlation; the
+    ROM-internal reset publication rows are derived from the documented
+    `0xff1e -> 0x1ed84 -> 0x1ef6a` path.
 
 ### Writers
 

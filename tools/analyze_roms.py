@@ -1491,9 +1491,9 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
         "This ties the font printout path to the same resource-selection, "
         "symbol-map, page-root font-slot, and printable text machinery already "
         "used by the host-byte fixtures. The remaining placement work is to "
-        "model the surrounding `0x1c334` loop and compare the produced page "
-        "objects against these direct payload hashes and a known printed/"
-        "self-test sample."
+        "model the surrounding `0x1c334` loop, document the produced page "
+        "objects against these direct payload hashes, and treat any known "
+        "printed/self-test sample only as optional physical correlation."
     )
     lines.append("")
     return "\n".join(lines)
@@ -2902,7 +2902,7 @@ def page_root_finalization_report(data: bytes) -> str:
     lines.append("- A page-root reproduction must distinguish the no-publication clear path from the active-root publication path: only active roots with byte `+4 == 1` are promoted to state `2` and exposed through `0x780ea6`.")
     lines.append("- The finalizer is not a pure state copy. In the `0x782a92 == 1` case it can restore saved command/data state, re-enter the parser at `0x11774`, and ensure a root again before publication.")
     lines.append("- The published pool record must preserve the root-header fields written by `0xff1e`: state byte `+4`, environment byte `+7`, status byte `+8`, status bits in `+0x0a`, environment word `+0x0c`, the `+0x16` to `+0x1a` copy, cleared `+0x18`, queue root `+0x1c`, rule/fixed roots `+0x24/+0x28`, and context slots from `+0x2c`.")
-    lines.append("- Reset, FF, page-size, orientation, text retry, rectangle/rule queue retry, font-slot/default update, and raster page-boundary paths all share this finalizer; byte-perfect reproduction should therefore compare the same published root shape at this boundary before rendering through `0x1edc6`.")
+    lines.append("- Reset, FF, page-size, orientation, text retry, rectangle/rule queue retry, font-slot/default update, and raster page-boundary paths all share this finalizer; byte-perfect reproduction must therefore preserve the same published root shape at this boundary before rendering through `0x1edc6`.")
     lines.append("- `tools/render_fixture_harness.py` already models valid-root publication, missing-root clear, mixed printable reset/FF/page-geometry publication, and the `0xff1e` header-field copies for default and nonzero status/environment state. The remaining fidelity gap is to replace those fixture-only source/root objects with roots produced by the full parser and allocator path.")
     lines.append("")
     return "\n".join(lines)
@@ -3114,7 +3114,7 @@ def page_record_bridge_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A page-object reproduction model must preserve the three page/control record queues separately until the `0x1edc6` bridge copies them into render-record fields `+0x18`, `+0x1c`, and `+0x20`.")
     lines.append("- The compact text/glyph path is the least transformed by the bridge: the bucket root pointer is copied, and the renderer then selects context slots copied from source `+0x2c..+0x68`.")
-    lines.append("- The rule/list and fixed-width chains are not pass-through. Their object bytes are normalized by `0x1edc6` before the render dispatchers see them, so fixtures must compare the post-bridge object shape when validating these paths.")
+    lines.append("- The rule/list and fixed-width chains are not pass-through. Their object bytes are normalized by `0x1edc6` before the render dispatchers see them, so documentation must preserve the post-bridge object shape for these paths.")
     lines.append("- `tools/render_fixture_harness.py` now has a `0x1ed84`/`0x1edc6` fixture that copies source words `+0x18/+0x1a` into render-record header words `+0x0a/+0x0c/+0x10/+0x16`, clears render word `+0x0e`, bridges a compact text bucket, verifies the copied context slot can render the same glyph rows, pins the render-record destination offsets `+0x18/+0x1c/+0x20/+0x24`, pins both list-normalization side effects, pins `0x1ef86` render-band remainder/base-pointer setup, `0x1efc2` selected-bucket class dispatch, `0x1f812` segment-list rendering, `0x1f756` fixed-width list rendering, and the `0x1ef6a` call order over bucket/rule/fixed-width consumers, composes a non-overlapping compact text bucket plus selector-7 rule from the same bridged render record into one page band, overlays a separately bridged mode-0 raster row into that same band, traces simple execute/call and mixed-control macro execute payloads from the `0xa904` data-chain through parser handlers into the same page-record streams, composes a macro execute payload page-record layer with the same selector-7 rule and mode-0 raster row, and carries reset/FF/page-size/orientation `0xff1e` published records through `0x1ed84` and `0x1ef6a`. The remaining gap is fuller live-parser page-object allocation and the true heterogeneous bucket-chain/full-page merge.")
     lines.append("")
     return "\n".join(lines)

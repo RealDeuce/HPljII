@@ -584,6 +584,128 @@ Evidence:
   `generated/analysis/ic30_ic13_direct_control_code_flow.md`, and
   `generated/analysis/ic30_ic13_page_geometry_tables.md`.
 
+## Minimal Page Assembly Walkthrough
+
+This is the smallest top-level page-object spine. It starts after parser
+handlers have accepted commands and before publication. At this layer the ROM
+does not maintain a full-page bitmap. It builds a current page/control root
+with typed display-list objects, then later publishes and renders that root.
+
+Representative mixed stream:
+
+```text
+! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c
+```
+
+Current-root setup:
+
+- Page-object producers call ensure-root helper `0x10084`.
+- If current root pointer `0x78297a` is nonzero, `0x10084` reuses the root.
+- On first allocation, `0x10084` creates a page/control root, marks root byte
+  `+4 = 1`, seeds stream-link pointer `0x782a72 = root + 0x20`, calls
+  initializer `0x10110`, clears transient byte `0x782990`, and zeroes the
+  256 compact/raster bucket heads under root `+0x1c`.
+- `0x10110` installs page geometry fields, status/header fields, list heads,
+  and the selected current-font context slot at root `+0x2c`.
+
+Shared stream allocation:
+
+- Variable-size page objects are allocated by `0x1381c`.
+- `0x1381c` owns stream bookkeeping `0x782a70`, `0x782a72`, and `0x782a76`.
+  It reuses remaining bytes in the current stream chunk when possible, or
+  links a fresh 0x100-byte chunk through the prior `0x782a72` target.
+- The same stream allocator backs compact text, raster bucket objects,
+  rectangle/rule nodes, and fixed-list nodes. Producer identity comes from the
+  root field and object class, not from a separate heap.
+
+Producer-to-root map:
+
+- Printable text reaches `0xd04a -> 0x12f2e -> 0x1387c`.
+  `0x1387c` writes compact bucket objects under root `+0x1c`, reusing a
+  matching selector object while count `+6` is below capacity.
+- Encoded raster rows reach delayed handler `0x105d0`, then
+  `0x13070 -> 0x13250`. They write class-`0x80` bucket objects under root
+  `+0x1c`; dense rows can split before the bucket chain is rendered.
+- Rectangle/rule commands reach `0x10898 -> 0x13386 -> 0x133aa`. They write
+  ordered rule-list nodes under root `+0x24`.
+- Pending text spans reach `0x12714`. Portrait spans use
+  `0x13520` / `0x1354a` / `0x135f0` to write class-`0x40` segment-list
+  objects under root `+0x1c`; landscape spans use `0x136d2` to write
+  fixed-list objects under root `+0x28`.
+
+Bridge-facing object classes:
+
+- Root `+0x1c` holds compact text, downloaded-glyph, segment-list, and
+  encoded-raster bucket objects. Bridge `0x1edc6` later copies this root to
+  render-record field `+0x18`.
+- Root `+0x24` holds rectangle/rule list nodes. Bridge `0x1edc6` later copies
+  and normalizes this list into render-record field `+0x1c`.
+- Root `+0x28` holds fixed-list nodes. Bridge `0x1edc6` later copies and
+  normalizes this list into render-record field `+0x20`.
+- Root `+0x2c..+0x68` holds 16 font/resource context slots. Bridge `0x1edc6`
+  later copies them to render-record `+0x24..+0x60` for compact-glyph and
+  downloaded-glyph render helpers.
+
+Output effect:
+
+- Page assembly has no pixels by itself. It determines which objects exist,
+  their bucket/list order, and which render roots will receive them.
+- The mixed text/rule/raster stream composes one current page root containing
+  a compact text object, a selector-7 rule object, and a mode-0 raster object.
+  Publication and render later consume those root fields through the ordinary
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` path.
+- Allocation failure is visible as preserved prior page state. If `0x1381c`
+  fails inside `0x133aa`, root `+0x24` is not modified. If it fails inside
+  `0x136d2`, root `+0x28` and existing fixed nodes are preserved.
+
+State classification:
+
+- Canonical:
+  current root pointer `0x78297a`, root state byte `+4`, root bucket/list
+  fields `+0x1c`, `+0x24`, `+0x28`, context slots `+0x2c..+0x68`, and typed
+  object fields such as next pointer `+0`, selector/class `+4`, count/key
+  `+6`, and payload bytes.
+- Derived/cache:
+  producer keys `0x782a7c..0x782a7e`, compact coordinates, bucket indexes,
+  object capacity decisions, bridge destination offsets, and render-band
+  fields derived later by `0x1ef86`.
+- Parser scratch:
+  none newly owned by page assembly. Parser records and delayed-payload
+  cursors are owned by their command-family handlers before the producer calls
+  into `0x10084`, `0x1387c`, `0x133aa`, `0x136d2`, or `0x13070`.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70`, `0x782a72`, `0x782a76`, first-root wait
+  latches `0x782c72` / `0x782c73`, transient byte `0x782990`, allocator
+  failure returns, and later publication flag `0x782996`.
+- Hardware/external:
+  none for the ROM-local page-assembly contract. Hardware timing starts after
+  publication when scheduler/device wait paths decide when render work runs.
+- Unknown:
+  no unknown page-root field is assigned in the documented allocator cluster.
+  Remaining work starts from byte streams that change root topology, allocator
+  failure timing, object layout, bridge fields, scheduler-selected roots, or
+  ROM-derived row construction.
+
+Evidence:
+
+- Checked-in explanations:
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [publication-commands.md](publication-commands.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
+  `Shared Page-Record Storage And Allocator` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/analysis/ic30_ic13_page_root_allocation.md`,
+  `generated/analysis/ic30_ic13_compact_bucket_allocator.md`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+
 ## Minimal Publication Walkthrough
 
 This is the smallest top-level page-boundary spine. Publication commands do

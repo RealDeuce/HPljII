@@ -543,6 +543,39 @@ All four families converge on the current page root:
   `0x133aa` links ordered rule objects under root `+0x24`.
   `0x136d2` links ordered fixed-list objects under root `+0x28`.
 
+Page-object class handoff matrix:
+
+- Compact text and downloaded-glyph objects:
+  producers `0xd04a -> 0x12f2e -> 0x1387c`; current-root field `+0x1c`;
+  render-root field `+0x18`; bucket class byte `+0x04` in `0x00..0x3f`.
+  Render dispatch is `0x1efc2 -> 0x1effe`, then compact helper
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264` depending on selector bits.
+  Output rows come from source glyph/resource bytes resolved through
+  `0x1f354` and row-copy helpers.
+- Portrait text-span segment-list objects:
+  producers `0x12714 -> 0x13520/0x135f0`; current-root field `+0x1c`;
+  render-root field `+0x18`; bucket class byte `+0x04` in `0x40..0x7f`.
+  Render dispatch is `0x1efc2 -> 0x1f812 -> 0x1f862`. Output rows are span
+  masks and full words derived from the queued segment entries, not from
+  parser scratch.
+- Encoded raster span objects:
+  producers `0x105d0 -> 0x13070 -> 0x13250`; current-root field `+0x1c`;
+  render-root field `+0x18`; bucket class byte `+0x04` in `0x80..0xff`.
+  Render dispatch is `0x1efc2 -> 0x1f88e`. Object byte `+0x05 & 3` selects
+  literal or expansion mode helpers, and the queued payload bytes produce the
+  rendered raster rows.
+- Rectangle/rule objects:
+  producers `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`; current-root field
+  `+0x24`; render-root field `+0x1c`; ordered list key in object fields
+  `+0x04/+0x06`. Render dispatch is `0x1f446`, which sends bridged selector
+  `7` to solid helper `0x1f596` and other documented selectors to patterned
+  helper `0x1f4e0`.
+- Fixed-list and landscape span objects:
+  producers `0x12714 -> 0x136d2` or fixed-list command paths; current-root
+  field `+0x28`; render-root field `+0x20`; ordered fixed-list fields
+  `+0x04..+0x0d`. Render dispatch is `0x1f756`, gated on five-band
+  boundaries, then row writing through `0x1f7b0` / `0x1f626`.
+
 The chunk-rollover fixture proves these producers are one shared allocator,
 not separate command-local stores. In
 `addressed page-record writers share 0x1381c across chunk rollover`,

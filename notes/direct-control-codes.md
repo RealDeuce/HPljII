@@ -416,6 +416,95 @@ handlers` pins same-family chaining; fixture
 `vertical layout parser trace feeds page-record queue` carries the resulting
 state into following printable output.
 
+### Layout State To Output Checkpoint
+
+This checkpoint covers layout commands whose immediate output is state, not
+pixels. Their byte streams become visible only when a later printable,
+vertical movement, VFC jump, FF, or page-eject path consumes the updated state.
+
+Command route:
+
+- `ESC &l#P` reaches page-length handler `0xf9e8`.
+- `ESC &l#C` and `ESC &l#D` reach VMI/LPI handlers `0xcb00` and `0xc992`.
+- `ESC &l#E` and `ESC &l#F` reach top-margin and text-length handlers
+  `0xece2` and `0xea9e`.
+- `ESC &l#L` reaches perforation-skip handler `0xee64`.
+- `ESC &s#C` reaches wrap-mode handler `0xedb0`.
+- The following printable byte reaches `0xd04a`, then `0x12f2e` /
+  `0x1387c`, publication, bridge, and render entry through the normal
+  page-record path.
+
+State handoff:
+
+- Canonical layout state:
+  VMI `0x783160`, page extent `0x782dba`, top offset `0x782dce`,
+  text-length bottom `0x782dd2`, wrap byte `0x783190`, perforation-skip byte
+  `0x783191`, and cursor y `0x782c8e`.
+- Derived/cache state:
+  perforation/text-bottom limit `0x782dc2`, refreshed compact coordinates for
+  following printable bytes, page-geometry caches, and render-band fields
+  created later by `0x1ed84` / `0x1ef86`.
+- Parser scratch:
+  six-byte command records for the `ESC &l` and `ESC &s` commands; those records
+  are consumed by the handlers and are not later page-object state.
+- Firmware bookkeeping:
+  modified-layout byte `0x782ee1`, pending text/cursor latch `0x782a6d`,
+  pending publication/root-clear state for the `ESC &l0P` branch, and later
+  scheduler progress after a following publication.
+- Hardware/external state:
+  only the `ESC &l0P` default-page branch can mirror paper-source state to
+  ROM-visible output/control bytes `0x780e8f` / `0x780e26`; physical engine
+  timing is outside this command-family checkpoint.
+
+Downstream consumers:
+
+- Printable prechecks `0xd28a` and `0xd6bc` read wrap byte `0x783190` before
+  queueing a glyph. Disabled wrap rejects horizontal overflow; enabled wrap
+  calls `0xf054`, retries from recovered x `0`, and can continue to `0x12f2e`.
+- Vertical overflow helper `0xf36c` reads cursor y `0x782c8e`, limit
+  `0x782dc2`, and perforation-skip byte `0x783191`. Enabled overflow with a
+  nonzero exceeded limit calls page-eject helper `0xf124`; disabled or
+  below-limit cases return without publication.
+- Cursor, VFC, and printable-placement paths read `0x783160`, `0x782dce`,
+  `0x782dd2`, and `0x782dc2` when converting later command values into page
+  coordinates.
+
+Output boundary:
+
+- `ESC &l66P!` writes page extent `0x782dba = 3300`, refreshes cursor-derived
+  placement, then queues the following printable at compact coordinate
+  `0x9001`.
+- The chained vertical-layout stream reaches `0xcb00`, `0xc992`, `0xece2`, and
+  `0xea9e` before the following printable object proves the stored VMI,
+  top-margin, and text-length state is consumed by page-record queueing.
+- `ESC &l1L!` writes `0x783191 = 1`; the following printable still uses the
+  normal compact page-record path, while later vertical overflow decisions use
+  the new perforation-skip byte.
+- `ESC &s#C` has no immediate object. Its output effect is the later
+  `0xd28a` / `0xd6bc` accept/reject/retry decision before compact text
+  queueing.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+- Generated flow:
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md` and
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`.
+- Fixture families:
+  page-length, VMI/LPI, top-margin, text-length, perforation-skip,
+  wrap/precheck, vertical-layout parser trace, and following-printable
+  page-record queue fixtures named in the evidence list above.
+
+No ROM-local middle edge remains for the documented layout-writer fields or
+their following-printable / overflow consumers. Remaining work must expose a
+new writer, consumer, object shape, publication state, or row-construction input
+instead of rechecking the same state through another byte-stream variant.
+
 ## Reproduction Contract
 
 A byte-stream renderer must preserve:
@@ -424,6 +513,8 @@ A byte-stream renderer must preserve:
 - the `ESC &k#G` mode byte and its per-control-bit consumption;
 - the `ESC &s#C` wrap byte and its prequeue effect on `0xd28a` / `0xd6bc`
   horizontal overflow decisions;
+- VMI/LPI, page-length, top-margin, text-length, and perforation-skip state as
+  delayed inputs to following printable placement and vertical overflow;
 - CR reset through left margin before optional LF movement;
 - LF and FF optional CR-style reset behavior;
 - HT eight-column stop arithmetic using left margin and HMI;

@@ -179,6 +179,31 @@ exceptions: `ESC Y` append reader `0x12120`, Control-Z append/report handlers
 `0xdd08`, and reset `0xcc52`. Blank alternate/data rows are meaningful:
 they preserve syntax or bytes without running the normal page-state handler.
 
+Checked-in dispatch audit, generated from
+`generated/analysis/ic30_ic13_pcl_command_map.md`:
+
+- Normal table `0x112a4`: `214` flattened rows, `78` unique nonzero handler
+  addresses, and `5` zero-handler rows. The zero-handler rows are
+  `0x00`, `0x07`, `0x0b`, `ESC ?`, and `ESC Z`. The first three are explicit
+  no-output C0 parser rows; `ESC ?` is consumed by the `0xda9a` ESC-aware byte
+  wrapper; `ESC Z` is consumed as the local terminator by display-functions
+  readers.
+- Normal table high-fanout rows are intentional family collapses, not missing
+  owners: `0x120be` covers `62` primary/secondary font-designation terminals,
+  `0x11eda` covers `12` parameterized family prefixes, and `0x11f96` covers
+  `4` primary/secondary downloaded-font payload entries.
+- Alternate/data table `0x116f6`: `216` flattened rows, `17` unique nonzero
+  handler addresses, and `130` zero-handler rows. The large zero-handler count
+  is expected: it suppresses immediate page-state side effects for direct C0
+  controls, uppercase cursor/page/layout/rectangle/raster/font-selection
+  terminals, font-designation terminals, and display-functions-off rows while
+  preserving parser syntax, append behavior, or delayed-payload boundaries.
+- Alternate/data nonzero high-fanout rows are also intentional: `0x11f4c`
+  covers `50` lowercase chaining finals that rewind/retain the current family
+  without running the normal uppercase terminal handler; `0x11eda` covers the
+  same `12` family prefixes; `0x11f96` covers the `4` downloaded-font payload
+  entries that must remain stored in data/macro contexts.
+
 ## Supported Stream Dispatch Matrix
 
 Use this matrix with

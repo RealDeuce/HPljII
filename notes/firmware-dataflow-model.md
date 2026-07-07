@@ -6550,6 +6550,39 @@ Command-family writers:
   stored width/height, and calls the rectangle source producer when a queued
   rule should be created.
 
+Rectangle command-to-output matrix:
+
+- `ESC *c#A` and `ESC *c#B` dot dimensions:
+  handlers `0x10e68` and `0x10e22` write pending width `0x78316a` and height
+  `0x783166`. They queue no object by themselves; `ESC *c#P` later consumes
+  those fields.
+- `ESC *c#H` and `ESC *c#V` decipoint dimensions:
+  handlers `0x10a40` and `0x10ae0` convert decipoints through five 300-dpi
+  subunits plus the firmware rounding/bias rule, then write the same
+  width/height fields consumed by `0x10898`.
+- `ESC *c#G` area-fill id:
+  handler `0x10dce` writes `0x78316e`. It affects output only when a later
+  `2P` or `3P` fill command maps that id to a gray or pattern selector.
+- `ESC *c#P` fill rectangle:
+  handler `0x10898` maps the stored fill state to a selector, rejects zero
+  width/height or invalid selector combinations, and calls `0x10b80` for
+  accepted rectangles. `0x10b80` clips against cursor, page extent, and
+  orientation state, then writes source record `0x782a88`.
+- Rule object production:
+  `0x13386 -> 0x133aa` consumes source record `0x782a88`, derives
+  bucket/key fields, allocates a 14-byte rule object, and inserts it under
+  current page-root list `+0x24`.
+- Publication and render:
+  `0xff1e -> 0x1ed84 -> 0x1edc6` copies the rule list to render-record
+  `+0x1c`; `0x1edc6` ORs selector byte `+5` with `0x10` and initializes
+  continuation word `+0x0c`. `0x1ef6a -> 0x1f446` dispatches selector `7`
+  to `0x1f596` and non-solid selectors to `0x1f4e0`.
+- No-room retry:
+  if `0x13386` returns zero, `0x10d22..0x10d3e` marks page-root retry bit
+  `+0x15.0`, publishes the current root, ensures a fresh root, and retries
+  the same source record. The command output is therefore split across the
+  old published page and the retried fresh page root.
+
 Fill selector mapping:
 
 - Missing or `0P` maps to selector `7` for solid black.

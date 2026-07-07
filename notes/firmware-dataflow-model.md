@@ -3948,10 +3948,10 @@ State classification:
 - Hardware/external state:
   none for this boundary.
 - Unknown:
-  physical/device behavior after the documented invalid compact mode-0 helper
-  targets. The ROM-local parser, installed glyph state, low-byte width source,
-  selector choice, publication bucket, render bridge, and valid compact-wide
-  pixel side are documented.
+  ROM-local execution after the documented invalid compact mode-0 helper
+  targets. The parser, installed glyph state, low-byte width source, selector
+  choice, publication bucket, render bridge, and valid compact-wide pixel side
+  are documented.
 
 Output effect:
 

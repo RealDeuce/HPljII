@@ -2497,8 +2497,8 @@ than open middle edges.
    segmented, split-plane segmented, segmented-wide publication, payload-control
    publication, and bit-30-clear fixed-record fixtures. The wrapped source-width-byte
    branch is now fully classified for `0x00..0x10` and `0x11..0xff`; remaining work
-   there is physical/device behavior after the documented invalid compact-mode-0 helper
-   targets, not parser-state discovery. Fixture `0x15c4c partial resource resumes update
+   there is the ROM-local invalid compact-mode-0 helper target behavior, not
+   parser-state discovery. Fixture `0x15c4c partial resource resumes update
    continuation state` covers the fixed-record continuation route's status-`2` resave
    behavior for linear and split-plane bit-30-clear resource objects. ROM-internal
    descriptor-validation error visibility is documented at the rejecting predicate

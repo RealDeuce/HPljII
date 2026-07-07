@@ -244,6 +244,109 @@ Unknown:
 - Raster start consumes `0x782c8a` or `0x782c8e` depending on orientation, as
   documented in `notes/raster-graphics.md`.
 
+## Printable Byte To Compact Object
+
+The normal printable byte path is the first direct-control path that creates
+page pixels from an ordinary host byte. It is not a fixture-only shortcut:
+`0xd04a` builds source scratch, `0xd140` or `0xd550` advances and checks the
+cursor, `0xd3b2` or `0xd824` positions the source, and `0x12f2e` writes the
+compact bucket object later rendered through `0x1effe`.
+
+Exact disassembly boundaries:
+
+- `0xd04a..0xd0a8`: normalize the incoming printable value. Values above
+  `0xff` call `0xd99a` and fall back to `0x7f` on failure; values above
+  `0x7f` can be masked to seven bits when both high-character flags
+  `0x783132/0x783133` are clear. Primary-context masking is wrapped by
+  `0xc6b8` / `0xc68a`.
+- `0xd0a8..0xd0e8`: call `0x1393a(host_byte, 0x782d7e)`, test source byte
+  `+0x10`, branch to flagged path `0xd550` or unflagged path `0xd140`, clear
+  printable bookkeeping byte `0x782a6d`, and return.
+- `0xd0f0..0xd13e`: fixed-space printable helper. It builds source object
+  `0x782d7e` for host space `0x20`, clears source longword `+0x04` before
+  flagged handling when needed, then uses the same `0xd550` / `0xd140`
+  branch and clears `0x782a6d`.
+- `0xd140..0xd25e`: unflagged text advance. It calls precheck `0xd28a`,
+  stores result `0x782a6e`, derives horizontal advance from source metrics,
+  pending-width state, or HMI `0x78315c`, ensures current root `0x78297a`
+  through `0x10084` when the source has drawable word `+0x0a`, and calls
+  queue handoff `0xd3b2` when the precheck result is zero.
+- `0xd25e..0xd288`: unflagged cursor commit. It clamps or wraps the local
+  cursor candidate against text limits, writes `0x782c8a`, clears pending
+  width flag `0x782a58`, and calls span update `0xd4ac` when queueing was not
+  suppressed.
+- `0xd3b2..0xd450`: unflagged queue handoff. It computes compact coordinates
+  from current cursor, orientation byte `0x782da3`, printable offset
+  `0x782dc0`, source record bytes, and context byte `+0x16`.
+- `0xd450..0xd4aa`: unflagged source publication. It writes source words
+  `+0x12/+0x14/+0x16`, marks page-root font-slot live byte
+  `0x78297f + 0x78297e`, calls `0x12f2e`, and on allocation failure sets
+  page-root flag bit `root+0x15.0`, publishes through `0xff1e`, ensures a
+  fresh root through `0x10084`, and retries.
+- `0xd550..0xd690`: flagged text advance. It calls precheck `0xd6bc`, stores
+  result `0x782a6e`, derives advance from glyph/context metrics, pending-width
+  state, or HMI `0x78315c`, ensures current root when source `+0x04` is
+  nonzero, and calls queue handoff `0xd824` when the precheck result is zero.
+- `0xd690..0xd6ba`: flagged cursor commit. It handles the same cursor-limit
+  and pending-width state as `0xd140`, writes `0x782c8a`, clears
+  `0x782a58`, and calls span update `0xd8fc` when queueing was not
+  suppressed.
+- `0xd824..0xd8a0`: flagged queue handoff. It computes compact coordinates
+  from current cursor, source word `+0x08`, orientation byte `0x782da3`,
+  printable offset `0x782dc0`, and glyph-entry words `+0x00/+0x02`.
+- `0xd8a0..0xd8fa`: flagged source publication. It writes source words
+  `+0x12/+0x14/+0x16`, marks page-root font-slot live byte
+  `0x78297f + 0x78297e`, calls `0x12f2e`, and uses the same
+  `0xff1e` / `0x10084` retry path as `0xd3b2` on allocation failure.
+- `0x12f2e..0x12f6e`: compact object producer setup. It converts source words
+  `+0x12/+0x14` into bucket/key state `0x782a7c` and packed coordinate word,
+  and derives the low context selector from source word `+0x16`.
+- `0x12f70..0x12fb8`: selector-shape decision. Flagged sources inspect the
+  glyph-entry width word at source `+0x04 + 8`; unflagged sources inspect the
+  low source width byte at source `+0x04`. Wide shapes set selector bit
+  `0x1000`; row counts above `0x80` later set selector bit `0x2000`.
+- `0x12fb8..0x13018`: allocate or reject the compact bucket object through
+  `0x1387c`. Short objects request entry size `0x0a` and object size `0x26`;
+  segmented objects request entry size `0x08` and object size `0x28`, adding
+  eight to bucket/key state for each segment.
+- `0x1301c..0x1303c`: segmented compact entry write. It appends glyph byte
+  from source byte `+0x0b`, segment index, and packed coordinate word, then
+  loops over remaining segments.
+- `0x1303e..0x1306e`: short compact entry write. It appends glyph byte from
+  source byte `+0x0b` and either a full coordinate word or its two coordinate
+  bytes, depending on entry parity, then returns success.
+
+Field groups for this path:
+
+- Canonical state:
+  `0x782c8a` horizontal cursor, `0x782c8e` vertical cursor, current page root
+  `0x78297a`, current root context slot `0x78297e`, live-slot bytes
+  `0x78297f..`, and compact bucket objects under page-root `+0x1c`.
+- Derived/cache state:
+  source scratch `0x782d7e`, queue key `0x782a7c`, pending-width latch
+  `0x782a58/0x782a5a/0x782a5c`, and precheck result `0x782a6e`.
+- Parser scratch:
+  the admitted host byte and parser state that routed to `0xd04a`; after
+  `0x1393a`, the page-object producer consumes source scratch, not the parser
+  record.
+- Firmware bookkeeping:
+  `0x782a6d`, retry publication flag `root+0x15.0`, and span watermarks
+  updated later by `0xd4ac` / `0xd8fc`.
+- Unknown:
+  no unresolved ROM-local middle edge remains between a normal printable byte
+  reaching `0xd04a` and a compact bucket object reaching page-root `+0x1c` for
+  the documented short and segmented source shapes. New work must change one
+  of the named fields, allocation branches, source widths/rows, or compact
+  object bytes.
+
+Controlling evidence is
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst` for
+`0xd04a..0xd8fc`, `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+for `0x12f2e..0x1306e`, and
+`generated/analysis/ic30_ic13_printable_text_path.md` /
+`generated/analysis/ic30_ic13_text_cursor_span_flow.md` for table extracts and
+field-reference scans.
+
 ## Output Effect
 
 `ESC &k1G!\r!` routes `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`. The

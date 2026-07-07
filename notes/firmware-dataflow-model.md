@@ -4121,6 +4121,13 @@ Producer and consumer behavior:
 
 - The parser-delayed payload path restores an `ESC )s#W` byte count clamped to
   `0x7fff`.
+- The byte count consumed by the downloaded-character bitmap path is
+  `row_word * span` for this segmented-wide family. Since segmented-wide
+  rendering requires span `>= 17`, the largest row word that can still fit the
+  restored count cap at the minimum span is
+  `floor(0x7fff / 17) = 0x0787`. The adjacent row `0x0788` at span `17`
+  requires `0x7ff8` payload bytes and therefore cannot reach `0x16498` or
+  `0x1f264` through this host-fetched command shape.
 - Oversized products such as `0x0481*31`, `0x0481*32`, `0x0482*31`,
   `0x0482*32`, `0x04ff*31`, `0x04ff*32`, `0x0581*24`, `0x0581*32`,
   `0x0582*24`, `0x0582*32`, `0x05ff*22`, `0x05ff*32`, `0x0681*20`,
@@ -4140,8 +4147,9 @@ State classification:
   neighboring below-cap cases install canonical downloaded glyph row/width
   words, bitmap bytes, and selector-`0x3003` bucket objects.
 - Derived/cache state:
-  computed row/span product, clamped restored payload count `0x7fff`, parser
-  stop offset, and full payload end offset.
+  computed row/span product, minimum segmented-wide span `17`, cap-derived
+  maximum row `0x0787`, clamped restored payload count `0x7fff`, parser stop
+  offset, and full payload end offset.
 - Parser scratch:
   delayed `ESC )s#W` records, pending payload handler state, payload byte
   budget `0x783140`, and the host byte-source position where the stream stops
@@ -4166,7 +4174,8 @@ Output effect:
   render dispatch.
 - Row `0x0787` at span `17` is the last sampled segmented-wide high-row case
   that reaches the renderer through this host-fetched `ESC )s#W` shape; the
-  adjacent `0x0788*17` stream stops at the count cap.
+  adjacent `0x0788*17` stream stops at the count cap before any installed
+  glyph record or page object exists.
 
 Evidence:
 

@@ -2805,8 +2805,10 @@ A byte-stream renderer must preserve:
   `downloaded segmented-wide high-row 0x05xx matrix renders selected segment`, and
   `downloaded segmented-wide high-row parser-limit matrix renders selected segment`
   extend the selected-segment zero-drain return boundary through sampled rows up to
-  `0x0787`, with higher rows limited by the parser payload-count cap; the corresponding
-  oversized fixtures record parser stop offsets before renderer entry; fixture
+  `0x0787`, with higher rows limited by the parser payload-count cap. The exact limit
+  for this command shape is `floor(0x7fff / 17) = 0x0787`, because segmented-wide
+  rendering starts at span `17`; the corresponding oversized fixtures, including
+  `0x0788*17`, record parser stop offsets before renderer entry; fixture
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`
   pins normal, row-`0x80`, and linear-segmented zero-drain returns before handler
   `0xd04a`; fixture `split-plane segmented downloaded glyph FF publication renders page

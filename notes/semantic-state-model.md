@@ -5908,7 +5908,11 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     `0x0681*20`, `0x0682*20`, `0x06ff*19`, `0x0781*18`, `0x0782*18`,
     `0x0787*18`, and `0x0788*17` stop before renderer entry, making
     `0x0787` the last segmented-wide high row reachable through this
-    host-fetched `ESC )s#W` shape.
+    host-fetched `ESC )s#W` shape. The cap arithmetic is exact for the
+    minimum segmented-wide span: `floor(0x7fff / 17) = 0x0787`, so row
+    `0x0788` at span `17` requires `0x7ff8` payload bytes and stops inside
+    parser-delayed payload consumption before any installed glyph or page
+    object can be produced.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -6270,7 +6274,9 @@ cap and stop before `0x16498`. Fixtures `downloaded segmented-wide high-row 0x05
 matrix renders selected segment` and `downloaded segmented-wide high-row parser-limit
 matrix renders selected segment` extend the same selected-segment proof through sampled
 rows up to `0x0787`; their oversized siblings prove that adjacent rows/spans stop at the
-parser payload-count cap before renderer entry, including `0x0788*17`. Fixture
+parser payload-count cap before renderer entry, including `0x0788*17`. That final
+edge is the arithmetic consequence of the same cap: segmented-wide spans start at `17`,
+and `floor(0x7fff / 17) = 0x0787`, while `0x0788 * 17 = 0x7ff8`. Fixture
 `downloaded glyph row-count matrix publishes and renders additional short/segmented
 counts` adds two hundred fifty row-count siblings through the same fetched install,
 printable, FF-publication, and render-entry chain. Short rows `0x0001..0x001f`,

@@ -861,6 +861,121 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   and `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.
 
+## Minimal Transparent Payload Walkthrough
+
+This is the smallest top-level transparent-print-data spine. It covers a
+counted payload that is not a binary skip: `ESC &p#X` arms a delayed reader,
+and the payload bytes are then routed into the normal text/page-object path.
+
+Input stream:
+
+```text
+ESC &p2X!!
+```
+
+Input bytes:
+
+```text
+1b 26 70 32 58 21 21
+```
+
+Parser and delayed-payload setup:
+
+- Host bytes are normalized by `0xa904`, pass through parser wrapper
+  `0xda9a`, and enter parser loop `0x11774`.
+- `ESC &p2X` enters the transparent-print-data command family and calls
+  handler `0x11f5a`.
+- `0x11f5a` is an arming stub. It pushes delayed handler pointer `0x12452`
+  and calls shared delayed-payload scheduler `0x121cc`.
+- `0x121cc` rewinds command-record cursor `0x78299e` by six, writes pending
+  flag `0x782a1a = 1`, writes handler pointer `0x782a1c = 0x12452`, and
+  saves command record `80 58 00 02 00 00` at `0x782a20..0x782a25`.
+- When parser mode returns to zero, `0x12218` restores that saved command
+  record and calls `0x12452`.
+
+Payload reader and routing:
+
+- `0x12452` rewinds `0x78299e` by six and reads command-record word `+2`.
+  The absolute value of that word is the transparent payload count.
+- It reads selected text/context slot `0x782f06`, derives a selected-slot
+  context byte through `0x332ee` and `0x782eea + 0x10 * slot`, and chooses a
+  local filtering word from either that context byte or fallback byte
+  `0x782efa` depending on high-character flags `0x783132/0x783133`.
+- The payload loop fetches raw payload bytes directly through `0xa904`.
+  A payload byte `0x1a` probes one more byte: `1a 58` becomes routed value
+  `0x7f`, while `1a xx` with `xx != 58` routes `xx` and consumes the probe.
+- In this primary stream, both payload bytes are `0x21`. They route through
+  `0xd04a` as ordinary printable bytes.
+
+Page-object and render effect:
+
+- Each routed `0x21` takes the normal printable path through
+  `0xd04a -> 0x1393a`.
+- In the documented `LINE_PRINTER` path, each byte maps to compact glyph byte
+  `0x20`, source flag `1`, and the flagged built-in queue path
+  `0xd550 -> 0xd824 -> 0x12f2e -> 0x1387c`.
+- The two routed payload bytes reuse one compatible short compact object under
+  current page-root bucket array `+0x1c`, just like direct host stream `!!`.
+- Publication `0xff1e` snapshots the current root, `0x1ed84` seeds the active
+  render record, and `0x1edc6` copies bucket/context roots.
+- `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches the compact object to the same
+  compact text renderer used by direct printable bytes. Transparent print data
+  has no separate renderer.
+
+State classification:
+
+- Canonical:
+  restored transparent command record `80 58 00 02 00 00`, record word `+2`
+  payload count, selected text/context slot `0x782f06`, routed payload bytes
+  `21 21`, current page root `0x78297a`, compact text object, published
+  source record, and render-record bucket/context roots.
+- Derived/cache:
+  selected-slot context byte `0x782eea + 0x10 * 0x782f06`, fallback filtering
+  byte `0x782efa`, high-character flags `0x783132/0x783133`, compact
+  coordinates for the two payload glyphs, compact bucket/key fields
+  `0x782a7c..0x782a7e`, glyph offsets from the selected font record, and
+  render-band fields `0x783a20`, `0x783a22`, and `0x783a28`.
+- Parser scratch:
+  delayed-payload pending flag `0x782a1a`, delayed handler pointer
+  `0x782a1c`, saved record bytes `0x782a20..0x782a25`, command-record cursor
+  `0x78299e`, and current payload count inside `0x12452`.
+- Firmware bookkeeping:
+  local filtering word at `A6-2`, source-object scratch `0x782d7e`, stream
+  allocator fields `0x782a70/0x782a72/0x782a76`, publication flag
+  `0x782996`, pool cursors, render-work pointer `0x783a18`, and scheduler
+  progress fields.
+- Hardware/external:
+  the physical source that supplied the command and payload bytes to `0xa904`,
+  plus later formatter/DC timing events that allow publication and active-band
+  rendering. These do not change the ROM-local delayed-reader route or compact
+  text pixel construction.
+- Unknown:
+  no ROM-local parser, delayed-payload, primary routing, page-object, bridge,
+  or compact-render edge is unresolved for `ESC &p2X!!`. The remaining
+  transparent boundary is the secondary segmented high-control fallback-row
+  physical resource-window source at firmware range `0x0c0000..0x0c0321`,
+  reached by `SO ESC &p3X ! 80 !` after the primary parser/payload route has
+  already succeeded.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Transparent Print Data` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

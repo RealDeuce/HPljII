@@ -545,6 +545,116 @@ Evidence:
   `generated/analysis/ic30_ic13_pcl_command_map.md`, and
   `generated/analysis/ic30_ic13_parser_xrefs.md`.
 
+## Minimal Host/Status Side-Channel Walkthrough
+
+This is the smallest top-level side-channel spine. It covers parser-visible
+commands and status workers that write host/interface output bytes rather than
+page objects. They matter to exact byte-stream reproduction because a
+bidirectional host can react to these bytes, and a full output FIFO can stall a
+parser-side producer.
+
+Representative response stream:
+
+```text
+ESC *r1K 11
+```
+
+Parser and response dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- The parser-table command path reaches wrapper `0x12034` for `ESC *r#K`.
+  The same wrapper is reached by the `ESC *s#^` sibling.
+- `0x12034` calls setup helper `0x11efe`, appending a synthetic six-byte
+  record with record word `+2 = 1`.
+- Producer `0x122be..0x12326` rewinds parser record cursor `0x78299e` to that
+  synthetic record, fetches the following query byte through `0xda9a`, and
+  tests the active record word.
+- If the fetched byte is `0x11` and record word `+2` is `1` or `-1`, the
+  producer walks ROM literal `33440A\r\n` at `0x12280` and enqueues each byte
+  through blocking FIFO helper `0xb090`.
+- Other fetched bytes are reported through `0x9ec0` instead of entering the
+  host-output FIFO.
+
+Output FIFO and status worker:
+
+- Startup helper `0x31d6` initializes FIFO storage `0x783e92..0x783ed1`,
+  count `0x783ed2`, read pointer `0x783ed4`, and write pointer `0x783ed8`.
+- `0xb0c0` enqueues one byte when count `0x783ed2 < 0x40`, wraps write
+  pointer `0x783ed8`, increments the count, and returns success.
+- `0xb090` retries `0xb0c0` and waits through `0x10c8(0x7801e2)` while the
+  FIFO is full.
+- Output worker `0xae2c` sleeps only when FIFO count `0x783ed2`, pending
+  status count `0x780e22`, and bridge-service byte `0x783e61` are all zero.
+- In output mode `0`, worker `0xae2c` drains FIFO bytes through `0xb022` and
+  writes them through retry helper `0xaf7c` to `0xfffe0003`.
+- In output mode `1`, it dequeues and discards FIFO bytes.
+- In other nonzero modes, it sends queued FIFO bytes through
+  `0xafcc -> 0xa1d6` to `0xfffee003`.
+- Status builder `0xaece` can also emit service byte `0x13` from
+  `0x783e61`, or build normal status bytes from base `0x30` using
+  `0x780e12`, `0x780e90`, `0x780e2a`, `0x780e0a`, and reason byte
+  `0x783e60`.
+
+Output effect:
+
+- This path creates no page root, page object, published record, render work
+  record, or pixels.
+- It does not feed `0x1ed84`, `0x1edc6`, `0x1ef6a`, or bitmap render helpers.
+- It can still affect a full reproduction session if the modeled host consumes
+  `33440A\r\n` or status bytes and sends different later input, or if full
+  FIFO state stalls `0xb090`.
+- A closed byte-stream-to-page renderer that ignores backchannel bytes can
+  treat this path as no page-output while preserving parser/FIFO state.
+
+State classification:
+
+- Canonical:
+  output FIFO count `0x783ed2`, read pointer `0x783ed4`, write pointer
+  `0x783ed8`, storage `0x783e92..0x783ed1`, backend selector `0x780e40`,
+  response literal `0x12280..0x12288`, active record word `+2`, and fetched
+  query byte.
+- Derived/cache:
+  pending status count `0x780e22`, bridge-service byte `0x783e61`,
+  reason byte `0x783e60`, accepted-byte cache `0x780e62`, aggregate words
+  `0x780e12` and `0x780e0a`, warning/status accumulator `0x780e2a`,
+  page-environment status flag `0x780e90`, and media/status cache
+  `0x780e98`.
+- Parser scratch:
+  synthetic record from `0x11efe`, parser record cursor `0x78299e`, and the
+  `0x122be` query fetch state.
+- Firmware bookkeeping:
+  wait object `0x7801e2`, output-worker sleep state, critical sections around
+  FIFO mutation, and service/message helpers under `0x7612`, `0x8656`, and
+  `0x8a48`.
+- Hardware/external:
+  output registers `0xfffe0001`, `0xfffe0003`, `0xfffee005`, and
+  `0xfffee003`, plus the external protocol meaning of query byte `0x11`.
+- Unknown:
+  no ROM-local page/render edge remains. Remaining boundaries are the physical
+  output-register mapping, the external protocol name for the `0x11` query,
+  and host behavior if it consumes backchannel bytes.
+
+Evidence:
+
+- Checked-in explanations:
+  [errors-and-status.md](errors-and-status.md),
+  [io-interfaces.md](io-interfaces.md),
+  [host-byte-fetch.md](host-byte-fetch.md),
+  `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `Host Interface Output FIFO` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`,
+  `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`,
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+  `generated/analysis/ic30_ic13_pcl_command_map.md`, and
+  `generated/analysis/ic30_ic13_strings.txt`.
+
 ## Minimal Direct-Control Walkthrough
 
 This is the smallest top-level control/cursor spine. The control bytes and

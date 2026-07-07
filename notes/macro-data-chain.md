@@ -27,7 +27,7 @@ renderer-facing macro checkpoint.
 - `notes/page-raster-imaging.md`
 - `notes/semantic-state-model.md`
 
-Primary fixtures:
+Primary byte-stream examples:
 
 - `0xe112 stores absolute parsed macro id`
 - `0xe0a4 macro record lookup uses head presence and first free slot`
@@ -158,7 +158,7 @@ Derived/cache state:
   not have a separate renderer.
 - Non-replay overlay setup snapshots and restores flat environment state
   before replaying the stored payload against the page being published.
-- Covered overlay fixture coords and rule decoder suffixes are derived/cache
+- Covered overlay example coords and rule decoder suffixes are derived/cache
   evidence: compact text coords such as `0x0a02`, `0x9001`, `0x3a02`, and
   `0x0207`, and rule mutations such as tail words `ff ca`, `ff cc`, and
   `ff d0`, are products of page-record bridge/render consumers rather than
@@ -173,7 +173,7 @@ Parser scratch:
   than dispatched.
 - `0x782c18` and `0x782c19` gate definition mode and macro append errors.
 - `0x78299e` is rewound by `0xdd08` before selector dispatch.
-- Non-replay overlay fixtures restore the stored payload bytes as parser
+- Non-replay overlay examples restore the stored payload bytes as parser
   scratch under `0xa904` / `0x11774`; examples include `ESC &a72V!`,
   `ESC &a2c+1R!`, delayed transparent record `80 58 00 02 00 00`, and the
   delayed raster `ESC *b#W` payload bytes.
@@ -230,12 +230,55 @@ Selector effects:
 - `10`: handler `0xdf36` marks the current record permanent by setting byte
   `+0x0a`.
 
-Guard behavior is part of the same selector contract. Fixture
-`macro command stream respects definition and active-chain guards` proves the
-selector cases that the ROM suppresses while definition mode is active or an
-active data-chain frame is present. The alternate/data parser table still
-routes `x/X` to `0xdd08`, so selector `1` can stop a definition while payload
-bytes are otherwise appended instead of dispatched.
+Guard behavior is part of the same selector contract. Disassembly
+`0xdd4c..0xdd78` suppresses selector cases while definition mode is active or
+an active data-chain frame is present; byte-stream example
+`macro command stream respects definition and active-chain guards` exercises
+those exits. The alternate/data parser table still routes `x/X` to `0xdd08`,
+so selector `1` can stop a definition while payload bytes are otherwise
+appended instead of dispatched.
+
+The disassembly-backed selector boundary is:
+
+- `0xdd08..0xdd2e`: reopen the six-byte command record by rewinding
+  `0x78299e`, read record word `+2`, and convert the selector to its absolute
+  value in `D5`.
+- `0xdd2e..0xdd40`: call `0xe0a4` with current macro id `0x783164`; save
+  lookup status in `D4`, current/selected record pointer `0x782d7a` in `A4`,
+  and active data-chain frame pointer `0x782d76` in `A5`.
+- `0xdd4c..0xdd78`: guard selector dispatch. When active frame byte `+9` is
+  nonzero, selectors other than execute `2` and call `3` exit without action.
+  When definition byte `0x782c18` is `1`, selector `1` may stop the definition
+  but other selectors exit without action.
+- `0xdd7a..0xdd80`: dispatch selector `D5` through the table at
+  `0xdca8..0xdd04`. The table maps selectors `0..10` to
+  `0xdd86`, `0xddfc`, `0xde7c`, `0xdea2`, `0xdec8`, `0xdef4`, `0xdefe`,
+  `0xdf08`, `0xdf12`, `0xdf24`, and `0xdf36`.
+- `0xdd86..0xddfa`: selector `0` starts definition mode. A missing/free record
+  sets append-error byte `0x782c19` and definition byte `0x782c18`; an existing
+  record is first cleared through `0xdfba`, assigned current id `0x783164`, and
+  then put in definition mode. Lowercase final `x` seeds bytes `ESC & f` into
+  the definition stream through `0xe002`; uppercase `X` seeds one zero byte.
+- `0xddfc..0xde7a`: selector `1` stops definition mode. It normalizes raw count
+  `record[+4]` by subtracting four header bytes per 0x100-byte chunk, clears
+  empty records and lowercase auto-prefix-only records through `0xdfba`, and
+  clears `0x782c19` / `0x782c18`.
+- `0xde7c..0xde9e` and `0xdea2..0xdec4`: selectors `2` and `3` require a
+  selected nonempty record and available frame space before calling
+  `0xe418(2)` for execute or `0xe418(3)` for call.
+- `0xdec8..0xdefa`: selector `4` enables overlay only when lookup status
+  `D4 == 1`, setting `0x782a92 = 1` and copying current id `0x783164` to
+  `0x782a94`; otherwise it clears `0x782a92`. Selector `5` clears
+  `0x782a92`.
+- `0xdefe..0xdf20`: selector `6` calls delete-all helper `0xdf4e`; selector
+  `7` calls delete-temporary helper `0xdf80`; selector `8` clears the selected
+  current record through `0xdfba` when a record pointer exists.
+- `0xdf24..0xdf46`: selectors `9` and `10` require lookup status `D4 == 1`,
+  then clear or set record permanence byte `+0x0a`.
+- `0xdf4e..0xdf7e`: delete-all iterates 32 records at `0x782a98`, clearing each
+  through `0xdfba`.
+- `0xdf80..0xdfb8`: delete-temporary iterates the same 32 records, clearing only
+  records whose permanence byte `+0x0a` is zero.
 
 ## Writers
 
@@ -245,50 +288,82 @@ bytes are otherwise appended instead of dispatched.
   into record `+0x08`.
 - `0xdd08` rewinds `0x78299e`, dispatches selectors `0..10`, and writes
   definition, execute/call, overlay, delete, temporary, and permanent state.
-- Fixture `0xdd08 overlay and temporary/permanent macro controls` pins the
-  selector branches that enable/disable overlay, mark a record permanent, clear
-  temporary records, and delete current/all records. Fixture `macro command
-  stream respects definition and active-chain guards` pins the guard behavior:
-  definition-mode and active data-chain state suppress the selectors that the
-  ROM refuses to run in those states.
+- Byte-stream examples `0xdd08 overlay and temporary/permanent macro controls`
+  and `macro command stream respects definition and active-chain guards`
+  exercise the selector branches and guard behavior described above.
 - `0xdd86..0xde7a` starts/stops definition mode, seeds lowercase `ESC &f`
   auto-prefix bytes through `0xe002`, normalizes counts, and clears empty or
   auto-prefix-only records through `0xdfba`.
 - `0xe002` appends definition bytes into linked 0x100-byte chunks, links new
   chunks, updates record raw count `+0x04`, and sets `0x782c19` on allocation
   failure.
-- Fixture `0xe002 appends macro definition bytes into 0x100 chunks` pins the
-  chunk format: a longword next pointer followed by 252 payload bytes, raw
-  counts including four header bytes per chunk, and the transition to a linked
-  second chunk after the first 252 payload bytes.
+- Byte-stream example `0xe002 appends macro definition bytes into 0x100 chunks`
+  exercises the chunk format: a longword next pointer followed by 252 payload
+  bytes, raw counts including four header bytes per chunk, and the transition
+  to a linked second chunk after the first 252 payload bytes.
 - `0xe418` writes execute/call data-chain frames, environment snapshot pointer
   `+0x0a`, and the call-only context-stack entry.
-- Fixtures `0xdd08 execute and call push macro data-chain frames` and
-  `0xe418 frame metadata distinguishes execute and call context` pin frame
-  bytes `+8 = 4`, `+9 = 2` for execute, `+9 = 3` for call, and the call-only
-  context push.
+- Byte-stream examples `0xdd08 execute and call push macro data-chain frames`
+  and `0xe418 frame metadata distinguishes execute and call context` exercise
+  frame bytes `+8 = 4`, `+9 = 2` for execute, `+9 = 3` for call, and the
+  call-only context push.
 - `0xe4f4` writes the non-replay overlay frame at `0x782d4c`, writes
   `0x782d76`, saves cursor longword `0x782c92`, snapshots flat state, and may
   set host gate bit 1.
 - `0xe22c` unwinds frames, frees snapshot chunks, rewinds `0x782d76` for
   execute/call frames, and writes `0x782a92 = 0x63` on non-execute/non-call
   frame return.
-- Fixture `0xe4f4/0xe22c produce and end data-chain frames` pins the
-  non-replay frame producer and the matching end-frame cleanup. Fixture
-  `macro snapshot helpers copy linked and flat environment ranges` pins the
-  linked `0xe8f0` / `0xe8a2` snapshot chain and flat `0xe972` / `0xe996`
-  copy helpers used by those frame paths.
+- Byte-stream example `0xe4f4/0xe22c produce and end data-chain frames`
+  exercises the non-replay frame producer and the matching end-frame cleanup.
+  Example `macro snapshot helpers copy linked and flat environment ranges`
+  exercises the linked `0xe8f0` / `0xe8a2` snapshot chain and flat `0xe972` /
+  `0xe996` copy helpers used by those frame paths.
 - `0x164a` initializes the heap bitmap and allocator fields.
 - `0x170c` / `0x1710` allocate 64-byte heap units; `0x18b4` frees linked
   macro/snapshot chains when count is zero.
 - `0xe65c(0)` pops macro call-context entries; `0xe65c(1)` consumes static
   context record `0x782c64`.
-- Fixtures `0xe65c refreshes macro font context entries` and `0xe65c refresh
-  composes with font context bridge` pin the bridge from macro context flags
-  through `0x13eb8`, `0x144d2`, `0x14c64`, and final `0xc428` page-root
-  font-slot install. Fixture `0xe146/e418/e4f4/e65c macro context stack has
-  eight records and no guard` pins the reset-cleared stack bounds and the lack
-  of ROM-side push/pop guard checks.
+- Examples `0xe65c refreshes macro font context entries` and `0xe65c refresh
+  composes with font context bridge` exercise the bridge from macro context
+  flags through `0x13eb8`, `0x144d2`, `0x14c64`, and final `0xc428` page-root
+  font-slot install. Example `0xe146/e418/e4f4/e65c macro context stack has
+  eight records and no guard` records the reset-cleared stack bounds and the
+  lack of ROM-side push/pop guard checks.
+
+## Replay Frame Boundaries
+
+Macro replay turns stored bytes back into parser input through data-chain
+frames:
+
+- `0xe002..0xe0a2` appends definition bytes only when active frame byte `+9`
+  is zero and append-error byte `0x782c19` is clear. It allocates a new
+  0x100-byte chunk through `0x170c` when the current raw count low byte is zero,
+  stores payload at chunk offset `4 + ((record[+4] & 0xff) - 4)`, increments
+  raw count `record[+4]`, and links chunks through their first longword.
+- `0xe0a4..0xe110` scans the 32-entry record pool. A matching id with nonzero
+  head pointer selects that record and returns status `1`; otherwise the first
+  empty record is remembered, assigned the requested id, selected, and returns
+  status `0`; if no free record exists it clears `0x782d7a` and returns
+  status `2`.
+- `0xe418..0xe4f2` creates execute/call frames. It advances from the current
+  `0x782d76` frame by 14 bytes, copies selected record head/count into frame
+  `+0x00/+0x04`, writes byte-source offset `+0x08 = 4`, writes frame kind
+  `+0x09` from the execute/call selector, creates a linked snapshot at
+  `+0x0a` through `0xe8f0`, sets host gate bit `0x780e66.1` when byte count is
+  positive, and for call mode pushes a 10-byte macro context entry under
+  `0x782c6e`.
+- `0xe4f4..0xe5e0` creates non-replay overlay frames. It pushes a macro context
+  entry, snapshots selected context and flat state, saves cursor longword
+  `0x782c92`, runs page/layout refresh helper `0xe5e2`, installs frame
+  `0x782d4c` into `0x782d76`, copies selected record head/count, writes
+  `+0x08 = 4`, `+0x09 = 4`, and `+0x0a = 0`, and sets host gate bit
+  `0x780e66.1` if the frame has bytes.
+- `0xe22c..0xe408` unwinds frames after the host byte source reaches their end.
+  Execute frames restore linked environment snapshot data, free the snapshot,
+  rewind `0x782d76`, and clear host gate bit if the previous frame has no byte
+  count. Call and overlay returns restore saved context, may publish through
+  `0xf124`, restore cursor/layout state, call `0xe65c(0)`, and for non-replay
+  frames write `0x782a92 = 0x63`.
 
 ## Readers And Consumers
 
@@ -317,48 +392,48 @@ bytes are otherwise appended instead of dispatched.
 
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X` defines payload `21 0d`, builds
 an execute frame, drains replay bytes through `0xa904`, dispatches `0xd04a`
-then `0xf02c`, queues the same text object as direct host bytes, and renders
-the same rows. The call selector `3` follows the same visible path for the
-covered text payload.
+then `0xf02c`, and queues the same text object as direct host bytes. The call
+selector `3` follows the same parser and page-record path for the covered text
+payload.
 
-The parser-facing macro command stream is fixture-backed at both the handler
-and host-fetched levels. Fixture
-`0x11774 ROM dispatch table routes chained ESC &f macro stream` pins normal
-mode 17 dispatch to `0xe112` and `0xdd08`. Fixture `macro command stream
-assigns id and starts/stops empty definition` pins `ESC &f#Y`, selector `0`
-start, selector `1` stop, and empty-definition cleanup. Fixture
-`host-fetched macro command streams update records and frames` proves the same
-state updates from a real `0xa904` ring source.
+The parser-facing macro command stream is documented at both the handler and
+host-fetched levels. Example `0x11774 ROM dispatch table routes chained ESC &f
+macro stream` records normal mode-17 dispatch to `0xe112` and `0xdd08`.
+Example `macro command stream assigns id and starts/stops empty definition`
+records `ESC &f#Y`, selector `0` start, selector `1` stop, and
+empty-definition cleanup. Example `host-fetched macro command streams update
+records and frames` runs the same state updates from a modeled `0xa904` ring
+source.
 
-Replay output is also fixture-backed in page terms, not only frame terms.
-Fixture `macro execute payload queues printable glyph then applies CR` proves
-stored `!\r` re-enters `0xd04a` and `0xf02c`. Fixture `macro execute payload
-page-record bridge renders queued glyph` carries that queued object through
-`0x1edc6` and render entry. Fixture `macro execute data-chain replay feeds
-page-record stream` proves the replayed data-chain bytes feed the same
-page-record stream as host bytes. Fixture `macro execute mixed control payload
-replays through page-record stream` covers the mixed-control sibling
-`ESC &k1G!\r!`. Fixture `macro execute page-record layer composes with rule
-and raster band` proves macro-replayed text can compose with selector-7 rule
-and mode-0 raster output in one rendered band.
+Replay output is a consequence of replayed bytes re-entering the same parser
+and page-record pipeline as live input. Example `macro execute payload queues
+printable glyph then applies CR` records stored `!\r` re-entering `0xd04a` and
+`0xf02c`. Example `macro execute payload page-record bridge renders queued
+glyph` carries that queued object through `0x1edc6` and render entry. Example
+`macro execute data-chain replay feeds page-record stream` records replayed
+data-chain bytes feeding the same page-record stream as host bytes. Example
+`macro execute mixed control payload replays through page-record stream` covers
+the mixed-control sibling `ESC &k1G!\r!`. Example `macro execute page-record
+layer composes with rule and raster band` records macro-replayed text composing
+with selector-7 rule and mode-0 raster objects in one render band.
 
-The mixed-control execute fixture stores `ESC &k1G!\r!`, builds an execute
-frame, replays through `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then
-matches the direct mixed-stream rows after `0x1edc6`, `0x1ed84`, and
+The mixed-control execute example stores `ESC &k1G!\r!`, builds an execute
+frame, replays through `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then follows
+the direct mixed-stream bridge/render path through `0x1edc6`, `0x1ed84`, and
 `0x1ef6a`.
 
 Overlay publication enters from `0xff1e`, not from the host parser directly.
 With selector `4` enabled, `0xff1e` resolves `0x782a94` through `0xe0a4`,
 calls `0xe4f4`, re-enters parser loop `0x11774`, and publishes the replayed
-payload into the same page record. Fixture `macro overlay finalization replays
-before page publication` proves stored `!\r` composes with an existing
+payload into the same page record. Example `macro overlay finalization replays
+before page publication` records stored `!\r` composing with an existing
 selector-7 rectangle rule.
 
-Fixture `macro overlay replays across repeated page publications` proves the
-enabled overlay state survives two page boundaries; both pages replay `!\r`
+Example `macro overlay replays across repeated page publications` records the
+enabled overlay state surviving two page boundaries; both pages replay `!\r`
 before publication and compose with page-specific selector-7 rules.
 
-Fixture `macro overlay skip gates preserve base page publication` proves the
+Example `macro overlay skip gates preserve base page publication` records the
 opposite branch: disabled overlay mode, missing selected record, and page-root
 retry flag publish the base printable/rule page record without adding a
 non-replay frame.
@@ -384,64 +459,66 @@ The overlay payload matrix now crosses multiple command families:
 - `ESC &a6L!` materializes a selector-`0x4000` span object through `0x12714`
   before queuing the following printable glyph.
 
-The fixture-backed render contract for that matrix is:
+The byte-stream example matrix records these ROM-derived page-object and render
+inputs:
 
 - Repeated overlay publication replays `!\r` on two page boundaries. The first
   page composes with selector-7 rule object
   `00 00 00 00 01 07 88 01 00 0c 00 03 00 00`.
-  Digest:
+  Example row digest:
   `0629159c6a0f5c4a23508d5bfab14b725e13f0bfa32b82efca091aec425fa4c0`.
   The second page composes with selector-7 rule object
   `00 00 00 00 01 07 e4 00 00 08 00 04 00 00`.
-  Digest:
+  Example row digest:
   `2d52675c52b22b80e87a379e32894c7a9638596770093d2fd80b64e25559977e`.
-- The skip-gate fixture publishes base printable `?` plus selector-7 rule
+- The skip-gate example publishes base printable `?` plus selector-7 rule
   `00 00 00 00 01 07 a2 00 00 06 00 02 00 00`. Disabled overlay mode,
-  missing selected record, and page-root retry flag preserve the same digest:
+  missing selected record, and page-root retry flag preserve the same example
+  row digest:
   `425e0a2abf918906a45f655b589c615108f72ca6b89dc1b280b99121e4405e43`.
 - Mixed-control overlay payload `ESC &k1G!\r!` writes line-termination mode
   `0x80`, queues compact text payload `00 02 20 00 01 20 3b 00`, and
   composes with selector-7 rule
   `00 00 00 00 01 07 cc 01 00 08 00 02 00 00`, mutated by `0x1f596` to
-  `00 00 00 00 01 07 cc 01 00 08 00 02 ff ce`. Digest:
+  `00 00 00 00 01 07 cc 01 00 08 00 02 ff ce`. Example row digest:
   `04d32edf47d03c587abc0abaf750c6a2d634ceea80df9787681b618867136f52`.
 - Cursor-position overlay payload `ESC &a2C!` routes through `0xf39e`, moves
   packed horizontal cursor `10 -> 36`, queues compact text payload
   `00 01 20 0a 02`, and composes with selector-7 rule
   `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, mutated to
-  `00 00 00 00 01 07 82 02 00 07 00 02 ff ca`. Digest:
+  `00 00 00 00 01 07 82 02 00 07 00 02 ff ca`. Example row digest:
   `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`.
 - Vertical-decipoint overlay payload `ESC &a72V!` routes through `0xf60a`,
   moves packed vertical cursor `20 -> 30`, queues compact text payload
   `00 01 20 90 01` at coord `0x9001`, and composes with selector-7 rule
   `00 00 00 00 01 07 88 01 00 07 00 02 00 00`, mutated to
-  `00 00 00 00 01 07 88 01 00 07 00 02 ff ca`. Digest:
+  `00 00 00 00 01 07 88 01 00 07 00 02 ff ca`. Example row digest:
   `7ef1cc5d5557fa5a30c57e8ad6918b09747c210daed2639e9d75ccfed727e964`.
 - Chained cursor-position overlay payload `ESC &a2c+1R!` routes through
   `0xf39e`, parser mode `12`, `0xf560`, and `0xd04a`; moves packed cursor
   `(10, 21) -> (36, 24)`; queues compact text payload `00 01 20 3a 02`; and
   composes with selector-7 rule
   `00 00 00 00 01 07 a6 02 00 06 00 02 00 00`, mutated to
-  `00 00 00 00 01 07 a6 02 00 06 00 02 ff cc`. Digest:
+  `00 00 00 00 01 07 a6 02 00 06 00 02 ff cc`. Example row digest:
   `0275857ffbcc11aa5234644930ebcd31571c2178eaf52b79590989d31b39f653`.
 - Chained margin overlay payload `ESC &a6l9M!` routes through `0xeb58`,
   parser mode `12`, `0xec0c`, and `0xd04a`; writes packed left/right margins
   `108` / `180`; queues compact text payload `00 01 20 02 07`; and composes
   with selector-7 rule `00 00 00 00 01 07 6c 02 00 05 00 02 00 00`, mutated
-  to `00 00 00 00 01 07 6c 02 00 05 00 02 ff c8`. Digest:
+  to `00 00 00 00 01 07 6c 02 00 05 00 02 ff c8`. Example row digest:
   `ecae0043ee656ceba42d4d6e052e3d56a365eeb4a847b3b430f80eed72b5a199`.
 - Transparent overlay payload `ESC &p2X!!` reaches `0x11f5a`, saves delayed
   record `80 58 00 02 00 00`, restores it through `0x12452`, routes raw
   bytes `21 21` through `0xd04a`, and queues compact text object prefix
   `00 00 00 00 00 00 00 02 20 00 01 20 02 02`. The selector-7 rule
   `00 00 00 00 01 07 e0 02 00 09 00 02 00 00` mutates to
-  `00 00 00 00 01 07 e0 02 00 09 00 02 ff d0`. Digest:
+  `00 00 00 00 01 07 e0 02 00 09 00 02 ff d0`. Example row digest:
   `1ee999b850b4a35aa2b01b72ae01da961ee4084f0369f4ded5c8e8152464dac8`.
 - Raster overlay payload `! ESC *t300R ESC *r0A ESC *b2W c3 3c` builds a
   20-byte non-replay frame, queues compact text plus mode-0 raster object
   `00 00 00 00 80 00 00 02 00 00 c3 3c`, and mutates selector-7 rule
   `00 00 00 00 01 07 44 01 00 0a 00 02 00 00` to
-  `00 00 00 00 01 07 44 01 00 0a 00 02 ff c6`. Digest:
+  `00 00 00 00 01 07 44 01 00 0a 00 02 ff c6`. Example row digest:
   `bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3`.
 - Multi-row raster overlay payload
   `! ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0` builds a 27-byte
@@ -449,7 +526,7 @@ The fixture-backed render contract for that matrix is:
   `00 00 00 00 80 00 00 02 00 00 f0 0f` and
   `00 00 00 00 80 00 00 02 10 00 0f f0`, advances raster `row_y` to `2`,
   and bridges the bucket chain as second raster row, first raster row, compact
-  text. Digest:
+  text. Example row digest:
   `58c2293bbc6b187db0e964571e5812ab2192d32d8e648a38d61e407a58538638`.
 - Span-flush overlay payload `ESC &a6L!` routes through `0xeb58`, `0xf34a`,
   `0x12714`, `0x126e2`, and `0xd04a`. It writes packed left margin `108`,
@@ -458,7 +535,7 @@ The fixture-backed render contract for that matrix is:
   `0x783186..0x78318a` to `108/108/0`, queues compact object prefix
   `00 00 00 00 00 00 00 01 20 02 07`, and mutates selector-7 rule
   `00 00 00 00 01 07 a4 02 00 07 00 02 00 00` to
-  `00 00 00 00 01 07 a4 02 00 07 00 02 ff cc`. Digest:
+  `00 00 00 00 01 07 a4 02 00 07 00 02 ff cc`. Example row digest:
   `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`.
 
 All covered overlay payloads publish through `0xff1e`, bridge through
@@ -533,7 +610,10 @@ High for parser reachability, selector meanings, record layout, chunk count
 math, `0xe0a4` lookup/free/full behavior, execute/call and non-replay frame
 field offsets, `0xa904` replay, `0xe22c` frame ending, heap unit allocation,
 `0xe65c` font-context bridge, overlay detour, skip gates, and page-record
-output because each is backed by disassembly and named fixtures.
+output because the claims are backed by disassembly ranges
+`0xdd08..0xdfb8`, `0xdfba..0xe110`, `0xe002..0xe0a2`,
+`0xe418..0xe4f2`, `0xe4f4..0xe5e0`, `0xe22c..0xe408`, `0xe65c..0xe85e`,
+parser-table evidence, and the named byte-stream examples.
 
 High for the covered overlay payload matrix because each documented stream
 starts from a stored macro payload, re-enters parser handlers, preserves the

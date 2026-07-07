@@ -6699,126 +6699,126 @@ than open middle edges.
    `0x123a..0x1282`. Evidence: `Published Record To Active Render Scheduler` in
    `notes/semantic-state-model.md` and `Active Render Scheduler` in
    `notes/page-raster-imaging.md`.
-5. Downloaded font support now has tracked documentation for descriptor,
-   resource-payload, current-record, bit-30-clear resource-object, bit-30-clear
-   resource-object no-install exits, even-span and split-plane continuation resume,
-   status-0 fixed-record release, bit-30 offset-table release delegate, release reject
-   no-rewrite exits, split-plane character-object, linear character-object, and
-   downloaded-glyph render paths in `notes/downloaded-fonts.md`. The `0x16c14`
-   existing-record allocation-failure teardown through `0x1887a` is documented for the
-   bit-30-clear extended fixed-record case with fixture checks, and the direct `0x1887a`
-   release variant matrix now covers bit-30-set class-one, bit-30-set class-zero, and
-   bit-30-clear class-zero cleanup branches. The `0x16fae` validation table now has
-   ROM-effect names for all 32 entries plus concrete success and failure fixtures, and
-   host-fetched invalid-resource-type, first-code overflow, zero line/count, high
-   line/count, reversed-range, high range/count, and invalid-class paths document
-   parser-to-validation no-install boundaries plus following-printable default output.
-   The nonzero `ESC )s#W` resource-payload path is composed in
-   `notes/semantic-state-model.md` under `Nonzero Resource Payload Checkpoint`: the
-   documented state now spans ROM parser restore, `0x16fae` validation,
-   `0x17026`/`0x1719c` allocation, `0x16c14`/`0x1bc38` candidate insertion, `0x14c64`
-   consumption, integrated `ESC )s3W` downloaded-pointer glyph install, and page-visible
-   `d4ac`/`d8fc` metric consumers. Fixture `host-fetched resource header plus glyph
-   payload renders offset-table downloaded glyph` closes the basic type-0 `ESC )s80W`
-   plus linear three-row glyph boundary without fixture-side mutation. Fixture `type-1
-   and type-2 resource headers accept downloaded glyph payload stream` closes the same
-   fetched-glyph boundary for legal type-1 and type-2 headers. Fixture `type-1 and
-   type-2 resource glyph FF publications render page records` now adds the legal
-   type-1/type-2 publication sibling: `ESC )s3W` plus printable `!` and FF publishes
-   bucket `1`, preserves candidate contexts `0x40000000` and `0x44000000`, dispatches
-   the span through `0x1f812` and the glyph through `0x1effe`, and renders the same
-   rows. Fixture `type-1 and type-2 resource wide glyph FF publications render page
-   records` adds the legal wide sibling: `ESC )s18W` plus printable `!` and FF publishes
-   bucket `1`, preserves the same candidate contexts, dispatches the span through
-   `0x1f812`, dispatches compact-wide object byte `0x10` through `0x1effe` to `0x1f0d2`,
-   and renders digest
-   `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`. Fixture `type-1
-   and type-2 resource segmented glyph FF publications render page records` adds the
-   legal segmented sibling: `ESC )s258W` plus printable `!` and FF publishes bucket `9`,
-   preserves bucket `1` as span plus segment `0`, dispatches compact object byte `0x20`
-   through `0x1effe` to `0x1f1f0`, and renders digest
-   `f449349d69d7acaff44a3f753253e4ef626057d41a5c8f6d827ce871bfc089b4`. Remaining work
-   for this cluster is now broader glyph row/span/continuation shapes beyond the covered
-   short, wide, and segmented glyphs and publication variants outside those legal
-   type-1/type-2 span+glyph page-record shapes. Downloaded-character coverage now
-   includes parser-produced normal, wide/control, even-span wide, segmented, split-plane
-   segmented, and segmented-wide compact render shapes, and the combined
-   downloaded-glyph stream now reaches FF publication with both segmented buckets
-   preserved and scheduler-produced band words `0..9` rendered. The combined
-   segmented-wide publication fixture now also pins the full-success return boundary:
-   `combined font download FF publishes installed glyph page record` leaves `0x783140 =
-   0`, drains zero bytes through `0x12328`, and resumes at handler `0xd04a` for
-   printable `%` before FF publication. The payload-control wide sibling now has its
-   nonzero return drain pinned: fixture `host-fetched payload-control downloaded glyph
-   FF publishes page record` carries normalized `1a 58`, selector `0x1003`, bucket `1`,
-   `0xff1e`, `0x1ed84`, and `0x1ef6a` to the same `0x1f0d2` modeled row, while the
-   same-stream return leaves `0x783140 = 1`, drains the following `&` through `0x12328`,
-   and leaves FF for handler `0xf0f0`. The rows-`0x82` segmented sibling now publishes
-   through FF as well: fixture `host-fetched rows-0x82 segmented downloaded glyph FF
-   publication renders page record` carries `ESC )s260W`, selector `0x2003`, buckets `1`
-   and `9`, `0xff1e`, `0x1ed84`, and `0x1ef6a` to two `0x1f1f0` segment-1 rows. The
-   rows-`0x20` short sibling now publishes through FF too: fixture `host-fetched
-   rows-0x20 short downloaded glyph FF publication renders page record` carries `ESC
-   )s64W`, selector `0x0003`, bucket `1`, `0xff1e`, `0x1ed84`, and `0x1ef6a` to `38`
-   visible `0x1fe76` rows. The rows-`0x40` short sibling now publishes through FF as
-   well: fixture `host-fetched rows-0x40 short downloaded glyph FF publication renders
-   page record` carries `ESC )s128W`, selector `0x0003`, bucket `1`, `0xff1e`,
-   `0x1ed84`, and `0x1ef6a` to `64` blank current-band `0x1fe76` rows. The accepted
-   descriptor-record mode-byte boundary for this helper table is now documented by
-   fixture `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a`
-   writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
-   widths without scratch writes. Fixture `0x15d0a descriptor grammar exits and handler
-   matrix` covers the zero-count descriptor route's early drains and all four
-   current-record/continuation by bit-30 handler polarities. The bit-30-clear
-   fixed-record current-record and linear/split-plane continuation full-success
-   boundaries now pin `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` and `0x15e64 -> 0x15c4c
-   -> 0x15dcc -> 0x12328` with zero drains before handler `0xd04a`. The field grouping,
-   writers, consumers, output effect, and exact unresolved variant boundaries for those
-   resource-object fixtures are composed in `notes/semantic-state-model.md` under
-   `Fixed-Record Resource Object Checkpoint`. Other release variants and full-success
-   return-boundary siblings are now classified as regression cross-products unless they
-   expose a different `0x783140` remainder, `0x12328` drain status, next handler, or
-   page-record selector from the even-span rule/raster path, row-count matrix,
-   wide-remainder matrix, segmented-wide matrix, high-row segmented-wide matrix,
-   segmented, split-plane segmented, segmented-wide publication, payload-control
-   publication, and bit-30-clear fixed-record fixtures. The wrapped source-width-byte
-   branch is now fully classified for `0x00..0x10` and `0x11..0xff`; remaining work
-   there is the ROM-local invalid compact-mode-0 helper target behavior, not
-   parser-state discovery. Fixture `0x15c4c partial resource resumes update
-   continuation state` covers the fixed-record continuation route's status-`2` resave
-   behavior for linear and split-plane bit-30-clear resource objects. ROM-internal
-   descriptor-validation error visibility is documented at the rejecting predicate
-   boundary instead: fixture `ESC )s#W validation failures preserve following printable
-   output` carries the seven `ESC )s80W` predicate failures plus the short-budget `ESC
-   )s8W` entry-`5` failure through the following default-font page path. The remaining
-   descriptor-validation gap is external HP/manual naming for consumed-but-not-staged
-   fields. The mode-byte-`0` no-install boundary is documented separately: fixture
-   `0x16498 replacement allocation failure partial and rejected downloaded character
-   exits preserve state` checks the unchanged table/header interpretation at object
-   boundary `0x16498`, and fixture `0x16498 no-install exits preserve following
-   printable output` checks that the following printable and FF publication stay on the
-   unchanged default-font page path. The even-span downloaded-glyph plus rule/raster
-   composition now has an exact modeled install-to-page handoff: host-fetched `ESC
-   )s18W` produces the resource image consumed by the parser-driven page stream,
-   including glyph `0x29`, table entry `0x00ee`, record delta `0x0780`, bitmap offset
-   `0x078c`, and the 18 copied bitmap bytes. The same fixture checks the byte-source
-   interpretation as one 54-byte `0xa904` ring fetch: font bytes `0..24`, page bytes
-   `24..54`, and no remaining ring bytes. ROM control flow now narrows the post-install
-   return boundary: disassembly
-   `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` shows `0x15dc6 -> 0x16498
-   -> 0x15dcc -> 0x12328`, where `0x15dcc` passes the remaining `0x783140` count to
-   `0x12328`; the fixture pins this instance with copy status `1`, copy stream position
-   `18`, remaining `0x783140 = 0`, zero-byte drain, and next parser handler `0x10e68`.
-   The no-install visible-output fixture pins the same return edges with `0x783140 = 6`,
-   six drained rejected-payload bytes, and next handler `0xd04a`; the status-`2`
-   partial-install fixture pins the linear/split returns with `0x783140 = 0`, zero
-   drain, and next handler `0xd04a`. The downloaded-glyph publication fixtures now also
-   pin normal, row-`0x80`, linear-segmented, and split-plane segmented full-success
-   publication returns with `0x783140 = 0`, zero drain, and next handler `0xd04a`. The
-   combined segmented-wide publication fixture pins the same zero-drain return for
-   selector `0x3003`: `0x783140 = 0`, zero drain, and next handler `0xd04a`. The
-   payload-control wide publication fixture pins the nonzero return sibling: `0x783140 =
-   1`, drained byte `0x26`, and post-return handler `0xf0f0`.
+5. Downloaded font support is now documented as one command-to-output
+   cluster instead of isolated handler notes. The low-level ledger remains in
+   [downloaded-fonts.md](downloaded-fonts.md), with composed checkpoints in
+   [semantic-state-model.md](semantic-state-model.md) under `Downloaded Font
+   Descriptor And Payload Chain`, `Nonzero Resource Payload Checkpoint`, and
+   `Fixed-Record Resource Object Checkpoint`.
+
+   Command and resource route:
+
+   - Parser dispatch reaches `0x11f96` for restored `ESC )s#W` records.
+     Count `0` schedules descriptor handler `0x15d0a`; nonzero counts schedule
+     delayed payload handler `0x16c14`.
+   - The nonzero resource path validates descriptor bytes at `0x16fae`, builds
+     resource payloads through `0x17026` / `0x1719c`, inserts candidates through
+     `0x16c14` / `0x1bc38`, selects maps through `0x14c64`, and installs
+     downloaded characters through `0x16498`.
+   - The zero-count bit-30-clear fixed-record path is separate: current-record
+     success follows `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328`, while
+     continuation success follows `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328`.
+   - Release and replacement cleanup are documented at `0x1887a` for the
+     bit-30-clear extended fixed-record case plus the direct bit-30-set
+     class-one, bit-30-set class-zero, and bit-30-clear class-zero release
+     branches.
+
+   Visible/page-output route:
+
+   - Installed payloads feed the normal printable path: `0xd04a` /
+     `0x1393a` build source objects from the selected font map, `0xd4ac` and
+     `0xd8fc` consume descriptor metrics, `0x12f2e` queues compact page
+     objects, `0xff1e` publishes the page record, and `0x1ed84` /
+     `0x1edc6` / `0x1ef6a` dispatch rendering.
+   - Covered ROM-derived object shapes include type-0, type-1, and type-2
+     resource headers; normal, wide/control, even-span wide, short row-count,
+     segmented row-count, split-plane segmented, segmented-wide, and
+     segmented-wide high-row downloaded glyphs; and rule/raster composition
+     after a downloaded glyph has been installed.
+   - Selector words `0x0003`, `0x1003`, `0x2003`, and `0x3003` are tied to
+     compact short, compact-wide, segmented, and segmented-wide downloaded
+     glyph output. The relevant render helpers are `0x1effe`, `0x1f0d2`,
+     `0x1f1f0`, `0x1f264`, and current-band/fallback writer `0x1fe76`.
+   - The end-to-end handoff fixture named `downloaded glyph byte-24 state
+     handoff feeds following page handler` documents a single `0xa904` ring
+     stream split into font bytes `0..24` and page bytes `24..54`. The
+     installed glyph is `0x29`, table entry `0x00ee`, record delta `0x0780`,
+     bitmap offset `0x078c`, and `18` copied bitmap bytes before the following
+     page commands consume the same byte source.
+
+   State classification:
+
+   - Canonical state: current font id `0x782f2e`, current character
+     `0x782f30`, current-record pool `0x782640..0x782776`, candidate windows
+     and counts, installed glyph table entries, glyph record bytes, bitmap
+     payload bytes, selected resource/context longwords, page roots, page
+     objects, and bucket lists.
+   - Derived/cache state: maps selected by `0x14c64` / `0x14e24`, selector
+     words `0x0003` / `0x1003` / `0x2003` / `0x3003`, row/span products,
+     bucket words, render helper targets, and scheduler-produced band words
+     `0..9` for published downloaded-glyph records.
+   - Parser scratch: restored six-byte `ESC )s#W` records, payload budget
+     `0x783140`, descriptor scratch `0x7827de..0x7827e9`, optional symbol
+     staging `0x782842..0x782851`, count/span/row scratch, and the split
+     between font payload bytes and following page bytes.
+   - Firmware bookkeeping: allocation/release status, replacement teardown,
+     continuation save/resume state, copy status, `0x12328` drain state,
+     publication status, and current-root clearing.
+   - Hardware/external state: none for the documented ROM-local downloaded-font
+     command and render paths. Optional cartridge/external resource-window
+     contents remain separate from these local payload installs.
+   - Unknown: HP/manual names for consumed-but-not-staged validation fields;
+     the ROM-local invalid compact-mode-0 helper target behavior for wrapped
+     source-width low bytes `0x00..0x10`; and any future glyph row/span or
+     continuation variant only if it changes a documented field, object,
+     bridge state, or row-construction helper.
+
+   Return and drain boundaries:
+
+   - Full-success downloaded-character installs take
+     `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`. The byte-24 handoff instance
+     has copy status `1`, copy stream position `18`, remaining
+     `0x783140 = 0`, zero drain, and next parser handler `0x10e68`.
+   - Normal, row-`0x80`, linear-segmented, split-plane segmented, and
+     segmented-wide publication siblings also leave `0x783140 = 0`, drain zero
+     bytes through `0x12328`, and resume at handler `0xd04a`.
+   - The payload-control wide sibling leaves `0x783140 = 1`, drains byte
+     `0x26`, and leaves the following FF for handler `0xf0f0`.
+   - No-install and rejection paths preserve the following printable/default
+     page path. The visible no-install boundary leaves `0x783140 = 6`, drains
+     six rejected bytes, and resumes at handler `0xd04a`; the status-`2`
+     partial-install boundary leaves `0x783140 = 0`, drains zero bytes, and
+     resumes at handler `0xd04a`.
+
+   Evidence:
+
+   - Disassembly:
+     `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+     `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
+     `generated/disasm/ic30_ic13_font_payload_descriptor_helpers_016a10.lst`,
+     `generated/disasm/ic30_ic13_font_resource_find_017026.lst`,
+     `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`,
+     `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+     `generated/disasm/ic30_ic13_font_candidate_object_alloc_01bc38.lst`,
+     `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+     `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`,
+     `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+     `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and
+     `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+   - Checked-in notes:
+     [downloaded-fonts.md](downloaded-fonts.md),
+     [semantic-state-model.md](semantic-state-model.md),
+     `Descriptor Metric Semantic Checkpoint` in
+     [font-context-metrics.md](font-context-metrics.md), and worked paths
+     `Downloaded Glyph`, `Downloaded Glyph Rule/Raster Composition`,
+     `Nonzero Resource Payload`, and `Fixed-Record Resource Object` in
+     [firmware-dataflow-model.md](firmware-dataflow-model.md).
+   - Fixture evidence is cited only as reproducible ROM-path support. The
+     named families cover validation/no-install exits, type-1/type-2 resource
+     publication, row-count and wide/segmented/segmented-wide glyph forms,
+     fixed-record current/continuation routes, release routes, byte-24 handoff,
+     rule/raster composition, and active scheduler band words. They are not an
+     external rendered-row oracle.
 6. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block the documented byte-stream renderer;

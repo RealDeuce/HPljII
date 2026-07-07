@@ -2833,6 +2833,58 @@ Neighboring command-family status paths:
   command behavior and as status-side state that can affect a bidirectional
   host or service loop.
 
+Direct-reader command-to-output matrix:
+
+- `ESC &p#X` transparent print data:
+  parser edge `0x11774 -> 0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`.
+  The command record word `+2` becomes the absolute payload count, and
+  `0x12452` fetches that many routed values directly through `0xa904`.
+  Values route to printable handler `0xd04a` or fixed-space handler
+  `0xd0f0` based on selected context/filter state. Printable routes queue
+  ordinary compact or segmented text objects; default-filtered fixed-space
+  routes may only advance cursor state in the pinned built-in source path.
+- `ESC Y ... ESC Z` normal display-functions reader:
+  parser edge `0x11774 -> 0x12536`, then direct loop fetches through
+  `0xa904` until local normalized `ESC Z` termination or no-byte return.
+  Loop values use the same context/filter route predicates as transparent
+  data. Values sent to `0xd04a` queue text objects; values sent to `0xd0f0`
+  perform fixed-space behavior. The terminating `ESC Z` pair participates in
+  the route stream before the loop exits.
+- `ESC Y ... ESC Z` alternate/data reader:
+  parser edge `0x11774 -> 0x12120`; the handler appends literal `ESC Y` and
+  each normalized loop value through macro/data sink `0xe002`. It creates no
+  immediate page root, page object, publication, or rendered output. Its
+  output is stored input for later data-chain or macro replay.
+- Local Control-Z handlers:
+  handlers `0x120d2`, `0x1210c`, `0x1219e`, and `0x121b2` are table-local
+  consumers for `0x1a`, not a global parser rule. Depending on parser mode and
+  filter state they route a literal/synthetic value to `0xd04a`, append it
+  through `0xe002`, or normalize `1a 58` through `0xd99a`.
+- `ESC z` display-functions-off/status:
+  handler `0xcd86` tests active data-chain frame kind at `0x782d76 + 9` and
+  calls status helper `0x9c2c` only for kind `0`. It writes status-side state
+  `0x7821cc`, `0x7822db`, and `0x780e2a.3`, but it does not queue page
+  objects or render pixels.
+
+State roles for the direct-reader matrix are shared with transparent print:
+canonical text/page state is selected slot `0x782f06`, cursor `0x782c8a`,
+current page root `0x78297a`, queued page objects, and later published/render
+records; derived/filter state is selected context byte
+`0x782eea + 0x10 * slot`, fallback filter `0x782efa`, and high-character
+flags `0x783132` / `0x783133`; parser scratch is the delayed transparent
+record, display-functions loop flag/value registers, and resumed parser mode;
+firmware bookkeeping is `0xd99a`, `0xf054`, append sink `0xe002`, status
+helper `0x9c2c`, stream allocators, and publication/scheduler progress.
+
+Open boundary:
+
+- The ROM-local direct-reader routes above are closed for the documented
+  primary, filtered, and alternate/data streams. The only remaining
+  pixel-affecting edge in this cluster is the external secondary
+  segment-57 resource continuation at `0x0c0000..0x0c0321`, documented in
+  `Boundary: Secondary Segment-57 Source`. That is a missing resource-window
+  decode boundary, not an `ESC &p#X` or `ESC Y` parser/route gap.
+
 State classification for this path:
 
 - Canonical state:

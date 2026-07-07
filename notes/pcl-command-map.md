@@ -433,11 +433,17 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   [display-functions.md](display-functions.md).
 - Rectangle and raster imaging:
   `ESC *` enters mode `3`. Rectangle `*c` enters mode `16`, with
-  `A/a -> 0x10e68`, `B/b -> 0x10e22`, `G/g -> 0x10dce`, and
-  `P/p -> 0x10898`; the covered `ESC *c12a5b0P` route is
-  `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0`. Raster resolution `*t#R` uses
-  mode `15` and handler `0x10808`; raster start/end `*r#A/#B` use mode `7`
-  and handlers `0x1075a` / `0x107fa`; raster payload `*b#W` uses mode `14`,
+  `A/a -> 0x10e68`, `B/b -> 0x10e22`, `H/h -> 0x10a40`,
+  `V/v -> 0x10ae0`, `G/g -> 0x10dce`, and `P/p -> 0x10898`; the covered
+  `ESC *c12a5b0P` route is `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0`.
+  `A/B` write positive dot dimensions directly to `0x78316a` /
+  `0x783166`; `H/V` convert positive decipoint values through the ROM
+  `value * 5 / 10000` plus round-up and `+0x0b` bias path before writing the
+  same fields. `G` writes area-fill id `0x78316e`, and `P` consumes the size,
+  fill, cursor, page-extent, orientation, and page-root state to clip and
+  queue a rule object. Raster resolution `*t#R` uses mode `15` and handler
+  `0x10808`; raster start/end `*r#A/#B` use mode `7` and handlers
+  `0x1075a` / `0x107fa`; raster payload `*b#W` uses mode `14`,
   `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Owner notes:
   [rectangle-graphics.md](rectangle-graphics.md) and
   [raster-graphics.md](raster-graphics.md).

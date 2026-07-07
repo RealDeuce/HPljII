@@ -593,7 +593,7 @@ Confidence:
 
 - High for page-root creation side effects, stream allocator accounting,
   bucket reuse/new-head behavior, rule/fixed insertion order, root
-  publication, render-record field copies, and final rendered rows.
+  publication, render-record field copies, and ROM-derived row construction.
 - Medium for live render-scheduler timing, because current fixtures model
   active-record handoff rather than executing the entire scheduler path. The
   shared `0x170c` / `0x1710` / `0x18b4` heap contract is covered in
@@ -1473,7 +1473,8 @@ Confidence:
   rule-list selector dispatch, fixed-list consumption, and row-level output
   for the cited fixtures.
 - High for parser-produced raster and rule objects because their command-family
-  checkpoints trace handlers to page-record objects and then to rendered rows.
+  checkpoints trace handlers to page-record objects and then to ROM-derived row
+  construction.
 - High for the documented compact downloaded-glyph producer families because
   the downloaded-font matrices now carry normal, wide, segmented,
   segmented-wide, row-count, width-byte, row-byte, high-row, no-install,
@@ -1537,7 +1538,7 @@ Unresolved middle edges:
   current-band/fallback splitting and the downloaded width/row matrices.
   Remaining compact-glyph work starts only from selected-font combinations or
   wrapped-width streams that change source object bytes, selector class,
-  helper dispatch, fallback split, or rendered rows.
+  helper dispatch, fallback split, or row-construction inputs.
 - `0x12714..0x1f812` / `0x1f756`: pending text-span output is connected for
   both orientation branches. Portrait state `0x783184..0x78318a` is packaged
   by `0x12714`, inserted through `0x13520` / `0x1354a` / `0x135f0` as
@@ -2066,7 +2067,7 @@ Confidence:
 - High for parser-produced built-in, normal downloaded, even-span wide
   downloaded, split-plane segmented, and segmented-wide examples because the
   named fixtures tie host bytes to installed records, queued compact objects,
-  dispatch targets, and rendered rows.
+  dispatch targets, and row-construction inputs.
 - High for the documented symbol-selection variants because non-Roman
   `0N` / `10U` / `11U`, real final-`@` default-table streams, final-`X`
   success paths, final-`X` non-selected exits, and `0x13eb8` no-dispatch exits
@@ -2167,7 +2168,7 @@ Unresolved middle edges:
   `17..32` at rows `0x81`. High-span probes now carry compact-wide spans
   `33`, `48`, `49`, `64`, and `255` plus segmented-wide spans `33`, `48`,
   `49`, and `64` through parser/install/publication/dispatch metadata and
-  documented rendered rows. Fixture `downloaded segmented-wide row-span
+  documented row-construction inputs. Fixture `downloaded segmented-wide row-span
   cross-products render selected segment` covers segmented-wide rows `0x0082`
   and `0x0083` crossed with spans `17`, `18`, `31`, and `32` through selected
   segment rows. Fixture `downloaded glyph width-byte boundary
@@ -2249,10 +2250,10 @@ for `0x1f756`, and raster object rendering through `0x13070` / `0x13250`
 / `0x138de` / `0x1edc6` / `0x1f88e`. The primary 300-dpi raster stream
 has a cross-boundary check tying the ROM parser handlers and `0x12218`
 restore to the modeled payload offset, `0x10084` page-root allocation,
-queued object, bridge, rendered row, and row counter, and now also ties
+queued object, bridge, ROM-derived row, and row counter, and now also ties
 the same bytes fetched through the modeled `0xa904` ring source to the
 queued object, `0x1edc6` bucket-root bridge fields, empty rule/fixed
-lists, and rendered row; the 150/100/75-dpi streams now start from the
+lists, and row-construction input; the 150/100/75-dpi streams now start from the
 modeled `0xa904` ring source and tie the same parser handlers, restored
 `0x105d0` records, payload offsets, queued objects, and rendered
 expansion rows to modes 1/2/3; the `ESC *t300R` / `ESC *r0A` /
@@ -2494,7 +2495,7 @@ table `0x116f6` leaves payload bytes unclaimed while still routing
 `0xf02c`, and feed the same bridged page-record object and rows, and a
 stored `ESC &k1G!\r!` macro payload now drains through `0xa904`, routes
 replayed bytes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and
-`0xd04a`, and feeds the same page-record stream and rendered rows as the
+`0xd04a`, and feeds the same page-record stream and row-construction inputs as the
 direct mixed control-byte model; the execute, call, and mixed-control
 replay payloads now also pin the `0x1edc6` bucket/context bridge
 contract before rendering. Macro overlay publication is now pinned for a
@@ -2627,7 +2628,7 @@ that image matches the install event header. It pins glyph `0x29`, table entry
 `0x078c`, record bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, and the 18 copied
 bitmap bytes. The residual edge is byte streams that change the byte-`24`
 handoff state, installed resource record, following `0x10e68` rectangle
-state, or rendered rows.
+state, or row-construction inputs.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable

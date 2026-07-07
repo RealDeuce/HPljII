@@ -153,9 +153,10 @@ boundaries:
   `Worked Path: Page Font Scheduler Resource Handoff` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
 
-The end-to-end spine that joins those owners from byte stream to rendered rows
-is [firmware-dataflow-model.md](firmware-dataflow-model.md). The shorter
-coverage map and current target list are in
+The end-to-end spine that joins those owners from byte stream to
+ROM-derived row construction is
+[firmware-dataflow-model.md](firmware-dataflow-model.md). The shorter coverage
+map and current target list are in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 
 ## Inbound Byte Reading Contract
@@ -1489,16 +1490,15 @@ The next work should follow the dataflow checkpoints in
 [semantic-state-model.md](semantic-state-model.md) and should start at
 unresolved byte-stream-to-pixel edges, not already-composed handlers.
 
-- Treat the dense raster handoff as documented for ROM semantics. The
-  checkpoint `Raster Transfer Gate And Encoded Rows` documents parser scratch,
-  field groups, writers, consumers, output rows, fixtures, and disassembly for
-  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 -> 0x10084 -> 0x13070 ->
-  0x13250 -> 0x1f88e`. Existing fixtures cover parser dispatch, delayed record
-  restore, capped/drained rows, lower-resolution modes, consecutive rows,
-  same-family lowercase `*b` chaining, bridge fields, and final rows. Continue
-  raster work only for byte streams that change the ROM-visible gate result,
-  encoded-row object fields, allocator chain, bridge bucket roots, or
-  `0x1f88e` mode-specific row construction.
+- Treat the dense raster handoff as documented for ROM semantics. The checkpoint `Raster
+  Transfer Gate And Encoded Rows` documents parser scratch, field groups, writers,
+  consumers, row-construction inputs, fixtures, and disassembly for `0x11f82 -> 0x121cc
+  -> 0x12218 -> 0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x1f88e`. Existing fixtures
+  cover parser dispatch, delayed record restore, capped/drained rows, lower-resolution
+  modes, consecutive rows, same-family lowercase `*b` chaining, bridge fields, and the
+  object/helper data used to derive final rows. Continue raster work only for byte
+  streams that change the ROM-visible gate result, encoded-row object fields, allocator
+  chain, bridge bucket roots, or `0x1f88e` mode-specific row construction.
 - Treat the downloaded-font install-to-page byte-24 handoff as documented for
   the covered rule/raster stream.
   `Downloaded Glyph
@@ -1513,9 +1513,10 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and delayed `0x105d0` render
   through `0x1ef6a`. Remaining ROM-semantic work should focus on byte streams
   that change the `0x16c14` / `0x16498` return state, the byte-24 header,
-  following parser dispatch at `0x11774`, page-object bytes, or rendered rows,
-  rather than rediscovering byte-source identity, modeled resource bytes,
-  rule/raster producers, or render-entry rows already documented here.
+  following parser dispatch at `0x11774`, page-object bytes, or ROM-derived
+  row-construction inputs, rather than rediscovering byte-source identity,
+  modeled resource bytes, rule/raster producers, or render-entry rows already
+  documented here.
 - Broaden visible-output compatibility only when a new selected-font state
   boundary is exposed. `Built-In Font Selection To Visible Text` already
   covers primary and secondary built-in selection, primary/secondary
@@ -1529,7 +1530,7 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   streams or the current final-`X` / final-`@` cases.
 - Treat `ESC &k#S/s` pitch-mode as already covered at the producer boundary
   unless it is paired with a stream that changes the selected context or
-  rendered rows. [font-context-metrics.md](font-context-metrics.md) documents
+  row-construction inputs. [font-context-metrics.md](font-context-metrics.md) documents
   `0xc390` selectors `0`, `2`, and `4` rewriting synthetic pitch records and
   rejoining `0xc89c` / `0xc580`; `Worked Path: Pitch Mode To Font Refresh` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md) and
@@ -1548,9 +1549,9 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, unflagged metric bytes
   `+0x2b/+0x2c/+0x2d`, flagged metric words `+0x16/+0x18/+0x1a`, pending
   span fields `0x783184..0x78318a`, page-object fields, bridge context slots,
-  or rendered rows. Manual-facing names for consumed-but-not-staged validation
-  fields remain external; the rounding, range, offset, inline/resource,
-  `d4ac`, and `d8fc` behavior is already pinned.
+  or row-construction inputs. Manual-facing names for consumed-but-not-staged
+  validation fields remain external; the rounding, range, offset,
+  inline/resource, `d4ac`, and `d8fc` behavior is already pinned.
 - Treat the built-in font sample printout as ROM-local documented through the
   covered source/page-record forms. [resource-rom.md](resource-rom.md)
   documents the candidate sequence and

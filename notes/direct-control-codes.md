@@ -395,7 +395,7 @@ State classification for this cluster:
   `0x10084`;
 - unknown: no ROM-local middle edge remains for these producers. Broader work
   should add only cursor/font/span variants that change the object bytes,
-  bucket choice, bridge state, or rendered rows.
+  bucket choice, bridge state, or row-construction inputs.
 
 `ESC &d3D! ESC &d@` proves underline/text-attribute state crosses into the
 same span machinery. Fixture `ESC &d underline selector materializes span

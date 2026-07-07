@@ -1,7 +1,8 @@
-# Publication Commands To Rendered Page Records
+# Publication Commands To ROM-Derived Page Rows
 
 This note documents the shared publication command family that turns a queued
-current page record into rendered rows. It covers:
+current page record into published records and ROM-derived row construction. It
+covers:
 
 - `ESC E`: software reset
 - `FF`: form feed / page eject
@@ -298,4 +299,5 @@ this ROM-internal publication contract.
 - No parser-to-publication or publication-to-render ROM middle edge remains for
   the covered reset, FF, page-size, orientation, paper-source, and copies
   streams. Additional ROM work should target streams that change page-record
-  fields, command-specific pool-header words, bridge state, or rendered rows.
+  fields, command-specific pool-header words, bridge state, or row-construction
+  inputs.

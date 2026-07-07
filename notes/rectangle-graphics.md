@@ -155,7 +155,7 @@ Unknown:
   pixel-affecting boundary not already covered by the fixtures below: clipped
   source record, `0x1381c` allocation/rollover state, rule object bytes,
   bridge-normalized rule list, no-room retry publication state, render
-  dispatch, or rendered rows.
+  dispatch, or ROM-derived row construction.
 
 ## Size Commands
 
@@ -569,7 +569,7 @@ publication and render entry` classifies these fields:
   `0x782a76 = 0x00d0c044`, one page-root allocation, one stream allocation,
   one publication, one root clear, and publication flag `1`;
 - unknown: parser-to-allocator variants that change clipping output, allocator
-  retry state, rule object bytes, bridge state, or rendered rows.
+  retry state, rule object bytes, bridge state, or row-construction inputs.
 
 Fixture `addressed text rectangle raster stream matches page-record output`
 checks the addressed current-page form before FF publication. Fixture
@@ -694,7 +694,7 @@ A byte-stream reproduction must preserve these behaviors:
   text/rule/raster streams listed in `Covered Boundary`. Remaining ROM-local
   work is limited to byte streams that change clipping output, `0x1381c`
   rollover/allocation state, retry publication fields, rule object bytes,
-  bridge state, render dispatch, or rendered rows.
+  bridge state, render dispatch, or ROM-derived row construction.
 - Pattern rendering is fixture-pinned for selectors, masks, shifted rows, and
   band crossing. The initial mixed text/rule/raster/FF byte stream now provides
   a complete parser-produced page-record/render composition with selector-7

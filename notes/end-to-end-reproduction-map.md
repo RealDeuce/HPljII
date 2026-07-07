@@ -4753,12 +4753,12 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Confidence is high for parser handler order, pre-command object preservation,
   reset/FF/geometry/paper-source/copies side-effect ordering, pool-header
   defaults and copy-count field, current-root clearing, bridge preservation,
-  and rendered rows.
+  and ROM-derived row construction.
   The unresolved boundary is not ROM-local publication state: final rows are
   documented through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, with
   fixtures serving as model-consistency checks for those interpreted rows.
   Remaining work is byte streams that expose a new pool-header field,
-  source-record choice, bridge value, or rendered row.
+  source-record choice, bridge value, or row-construction input.
 - Macro/data-chain replay:
   ROM evidence is `0xe112`, `0xdd08`, `0xe0a4`, `0xe002`, `0xe418`,
   `0xe4f4`, `0xe22c`, `0xe65c`, byte-source multiplexer `0xa904`, parser loop
@@ -5148,7 +5148,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Confidence is high for primary/secondary selection, symbol fallback,
   final-`X` success and non-selected exits, page-root slot install/reuse,
-  glyph-map consumption, bridge preservation, and rendered rows.
+  glyph-map consumption, bridge preservation, and ROM-derived row construction.
   No unresolved ROM-local middle edge remains for the documented primary and
   secondary built-in selection streams. Remaining work must change a concrete
   selected-font boundary: candidate windows `0x7827a0..0x7827b8`, selected
@@ -5323,7 +5323,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
 ## Reproducible Byte-Stream Families
 
 - Plain printable text and text with direct controls are covered from host
-  bytes through parser, compact bucket objects, bridge, and rendered rows.
+  bytes through parser, compact bucket objects, bridge, and ROM-derived row
+  construction.
   Evidence: fixtures `plain printable parser trace feeds page-record queue`,
   `host-fetched mixed control stream reaches parser and page-record render`,
   `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`,
@@ -5494,7 +5495,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   font-ID success/non-selected, common-refresh, and SI/SO handoff streams.
   Remaining font-selection work starts only from command combinations that
   change selected contexts, map bytes, page-root slot behavior, compact object
-  shape, bridge state, or rendered rows.
+  shape, bridge state, or ROM-derived row construction.
 - Explicit no-output parser rows are covered for normal `NUL BEL VT` and for
   alternate/data blank C0 append-preserving rows. Evidence:
   `Worked Path: Explicit No-Output Parser Rows` in
@@ -5886,7 +5887,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   no-room retry, addressed-storage, publication, and mixed text/rule/raster
   streams. Remaining work is limited to byte streams that change clipping
   output, `0x1381c` rollover/allocation state, retry publication fields, rule
-  object bytes, bridge state, render dispatch, or rendered rows.
+  object bytes, bridge state, render dispatch, or ROM-derived row construction.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
   paths are covered through `0xff1e` for current modeled page records. VFC
   coverage includes `ESC &l#W` delayed table payloads, lowercase
@@ -5997,7 +5998,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   No ROM-local parser-to-publication, publication-to-render, VFC table-load,
   or VFC channel-jump middle edge remains for the documented streams.
   Remaining work is new byte streams that change page-record bucket shape,
-  pool-header fields, bridge state, VFC line/cache state, or rendered rows.
+  pool-header fields, bridge state, VFC line/cache state, or row-construction
+  inputs.
 - Macro replay streams are covered for definition, execute/call replay,
   mixed-control replay, overlay publication, repeated overlay publication,
   overlay skip gates, and overlay payloads that cross cursor, margin,
@@ -6175,7 +6177,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   software-visible middle edge remains for the documented text/rule/raster
   page-record fields, publication, bridge, bucket order, or per-band merge;
   future work belongs to byte streams that change object bytes, allocator
-  state, bridge roots, render dispatch, or rendered rows.
+  state, bridge roots, render dispatch, or ROM-derived row construction.
 - A downloaded-glyph page-image stream is covered for
   `ESC *c4660d37e5F`, `ESC )s2193W <0x0891 payload bytes>`, printable
   `%`, and FF publication. The fixture drains the same modeled `0xa904`
@@ -6348,7 +6350,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   and render-progress fields after publication. The remaining unknown state is
   bounded to byte streams that change source-object fields, selected-map
   results, HMI/cursor advance, compact selector class, bridge context slots,
-  helper dispatch, fallback splitting, or rendered rows.
+  helper dispatch, fallback splitting, or row-construction inputs.
   Confidence is high for source field meanings, paired writer behavior,
   `0x12f2e` short/segmented object shapes, selector bits, queue no-room retry,
   compact subdispatch, and row output for the cited fixtures. It remains
@@ -6356,7 +6358,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   boundary is not between parser and compact renderer for the documented
   cases; it starts at new byte-stream
   variants through `0xd04a..0x12f2e` or compact helper variants through
-  `0x1f034..0x1f264` that alter the object bytes or rendered rows.
+  `0x1f034..0x1f264` that alter the object bytes or ROM-derived row
+  construction.
 
 ## Canonical State Groups
 
@@ -6506,7 +6509,7 @@ than open middle edges.
    the remaining metric work is not an unresolved ROM-local producer-to-consumer
    edge. It is regression expansion or selected-font cross-products only when a
    new byte stream changes copied fields, consumer branch, page-record span
-   object, or rendered rows; HP/manual field naming remains external.
+   object, or row-construction input; HP/manual field naming remains external.
 2. VFC table definition and channel jumps now have a tracked command-family
    contract in `notes/vertical-forms-control.md`. That contract groups
    canonical VFC state `0x782dde..0x782edd`, canonical layout inputs
@@ -6579,8 +6582,8 @@ than open middle edges.
    overlay re-entry at `0xff1e`, repeated enabled-overlay publication, the
    documented overlay payload families, or overlay skip gates. Remaining macro
    work starts only from broader payload variants that change parser dispatch,
-   page-object fields, delayed payload state, replay frame state, or rendered
-   rows.
+   page-object fields, delayed payload state, replay frame state, or
+   row-construction inputs.
 4. Active-record selection and render-band scheduling are documented as a
    ROM-internal reproduction boundary, rather than a page-object gap. Fixture
    `0x1eb2a/0x1ecd6 selects published record for render entry` checks
@@ -6794,8 +6797,9 @@ boundaries only when new evidence changes the documented state or pixel output.
    copied metric fields, consumer branch, selected context or map, page-root
    slot behavior, downloaded-glyph selector/helper dispatch, `0x783140`
    remainder, `0x12328` drain status, replay frame state, delayed payload
-   state, page-object bytes, bridge roots, or rendered rows. The controlling
-   sections above cite the exact fixtures and notes for those contracts.
+   state, page-object bytes, bridge roots, or row-construction inputs. The
+   controlling sections above cite the exact fixtures and notes for those
+   contracts.
 4. Page-image expansion should target new pixel-affecting ROM state only. Add
    cases when they expose a new publication selector, allocator/rollover branch,
    raster gate outcome, rectangle selector or clipping behavior, render helper

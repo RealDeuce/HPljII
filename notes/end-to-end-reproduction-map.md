@@ -4312,14 +4312,19 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
 - Font selection and visible glyph output:
   `ESC (s0p10h12v0s0b3T!!`,
   `ESC )s0p16h8v0s0b0T SO !!`, final-`X` / final-`@` streams, and
-  pitch-mode `ESC &k#S`; start with
+  pitch-mode `ESC &k#S`; for symbol-set streams also include `ESC (0N`,
+  `ESC (10U`, `ESC (11U`, and the secondary `ESC )...` forms before the
+  printable tail. Start with
+  [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
   [resource-rom.md](resource-rom.md), and `Worked Path: Font Selection To
   Visible Glyphs`. The font commands update candidate/context/map state
-  through `0xc580`, `0x13eb8`, `0x144d2`, and `0x14c64`; visible output is
-  produced only when later printable bytes consume those contexts through
-  `0xd04a -> 0x1393a -> 0x12f2e` and publication copies both compact buckets
-  and context slots through `0xff1e` / `0x1edc6`.
+  through resource-scan windows, `0xc580`, `0x13eb8`, `0x144d2`, and
+  `0x14c64`; visible output is produced only when later printable bytes
+  consume those contexts through `0xd04a -> 0x1393a -> 0x12f2e` and
+  publication copies both compact buckets and context slots through `0xff1e`
+  / `0x1edc6`.
 - Downloaded-font payloads and downloaded-glyph rendering:
   `ESC )s#W` descriptor/character streams followed by printable output or
   rule/raster composition. Start with
@@ -4346,7 +4351,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Text/Rule/Raster Page Record`.
 - Publication, VFC, macro replay, and status side channels:
   `! ESC E`, `ESC &k2G! FF`, `! ESC &l2X FF`, `ESC &l#W` / `ESC &l#V`,
-  macro `ESC &f#X` streams, and `ESC *r1K 11`; start with
+  macro `ESC &f#X` streams, and `ESC *r1K 0x11`; start with
   [publication-commands.md](publication-commands.md),
   [vertical-forms-control.md](vertical-forms-control.md),
   [macro-data-chain.md](macro-data-chain.md), and

@@ -456,6 +456,134 @@ Evidence:
   `generated/analysis/ic30_ic13_printable_text_path.md`, and
   `generated/analysis/ic30_ic13_text_cursor_span_flow.md`.
 
+## Minimal Page Layout Walkthrough
+
+This is the smallest top-level layout-control spine. These command bytes
+normally do not queue pixels immediately. They rewrite page, vertical-layout,
+wrap, or perforation state; later printable/control bytes consume that state
+to choose coordinates, suppress or recover a glyph, or publish a page.
+
+Representative streams:
+
+```text
+ESC &l66P !
+ESC &l3E !
+ESC &l60F !
+ESC &l1L !
+ESC &s0C
+ESC &s1C
+```
+
+Parser and command dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- `ESC &l#P` dispatches to page-length handler `0xf9e8`.
+- `ESC &l#C` and `ESC &l#D` dispatch to VMI/LPI handlers `0xcb00` and
+  `0xc992`.
+- `ESC &l#E` and `ESC &l#F` dispatch to top-margin/text-length handlers
+  `0xece2` and `0xea9e`.
+- `ESC &l#L` dispatches to perforation-skip handler `0xee64`.
+- `ESC &s#C` dispatches to wrap-mode handler `0xedb0`.
+- A following printable byte returns to `0xd04a`, queues compact text through
+  `0xd824 -> 0x12f2e -> 0x1387c`, and later renders only after the ordinary
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` publication path.
+
+Layout command behavior:
+
+- `ESC &l66P` converts the parsed line count through current VMI `0x783160`,
+  writes page extent `0x782dba`, selects the internal page code, recomputes
+  page/text-bottom geometry, and refreshes the following printable cursor.
+- `ESC &l0P` takes the default-page branch in the same handler. It can flush
+  pending text, publish an existing root through `0xff1e`, mirror paper-source
+  state to `0x780e8f`, signal `0x780e26`, and restore the default page code.
+- `ESC &l#C` converts VMI in 1/48-inch units, writes accepted nonzero values
+  to `0x783160`, and refreshes pending vertical cursor `0x782c8e`.
+- `ESC &l#D` accepts the ROM LPI set, maps it to packed line advance
+  `0x783160`, marks modified-layout byte `0x782ee1`, and refreshes pending
+  vertical cursor `0x782c8e`.
+- `ESC &l#E` scales top-margin lines through VMI, rejects zero-VMI and
+  beyond-page positions, writes top offset `0x782dce`, restores default text
+  length, and refreshes pending vertical cursor.
+- `ESC &l#F` scales text length through VMI, rejects lengths beyond the page
+  below the current top margin, writes text-bottom state `0x782dd2`, and uses
+  selector `0` to restore the default text length.
+- `ESC &l#L` writes perforation-skip byte `0x783191` only for selectors `0`
+  and `1`.
+- `ESC &s#C` writes wrap byte `0x783190` only for selectors `0` and `1`.
+  Selector `0` enables wrap and selector `1` clears it.
+
+Consumers and output effect:
+
+- These layout handlers do not create glyph pixels directly in the cited
+  streams.
+- Printable prechecks `0xd28a` and `0xd6bc` consume wrap byte `0x783190`.
+  With wrap disabled, horizontal overflow returns the reject value and the
+  glyph is not queued. With wrap enabled, the precheck calls recovery helper
+  `0xf054`, retries from recovered x `0`, and queues only if the retry fits.
+- Vertical overflow helper `0xf36c` consumes vertical cursor `0x782c8e`,
+  derived limit `0x782dc2`, and perforation byte `0x783191`. Enabled
+  overflow with nonzero limit calls page-eject helper `0xf124`; below-limit,
+  zero-limit, and disabled-skip cases stay on the no-eject path.
+- Cursor movement, LF/FF, VFC, and absolute row handlers consume VMI
+  `0x783160`, top offset `0x782dce`, text-bottom state `0x782dd2`, and
+  derived limit `0x782dc2`.
+- The `ESC &l66P !` path proves the page-length state is consumed by the
+  following printable byte: `0xf9e8 -> 0xd04a` refreshes placement and queues
+  the `!` compact object at coordinate `0x9001`.
+- The `ESC &l1L !` path proves perforation state and the following printable
+  share the same parser-to-page-record pipeline: `0xee64` writes `0x783191`,
+  then `0xd04a` queues the compact object.
+
+State classification:
+
+- Canonical:
+  page extent `0x782dba`, VMI `0x783160`, top offset `0x782dce`,
+  text-bottom state `0x782dd2`, cursor x/y `0x782c8a` / `0x782c8e`,
+  wrap byte `0x783190`, perforation byte `0x783191`, page code/default state,
+  paper-source byte `0x782da6`, and output/control bytes `0x780e8f` /
+  `0x780e26`.
+- Derived/cache:
+  limit `0x782dc2`, compact coordinates such as `0x9001`, geometry caches,
+  VFC line caches, bucket keys, and render-band fields after publication.
+- Parser scratch:
+  parser mode and six-byte command records rooted at `0x78299e`, parsed
+  numeric parameters, delayed command-family state for lowercase finals, and
+  normalized host bytes from `0xa904`.
+- Firmware bookkeeping:
+  modified-layout byte `0x782ee1`, pending text latch, current-root
+  publication/clear state, page-finalization counters, allocator cursors, and
+  scheduler progress after later publication.
+- Hardware/external:
+  `0x780e8f` and `0x780e26` are ROM-visible output/control bytes in the
+  `ESC &l0P` branch. Physical formatter/DC timing remains outside this
+  ROM-local layout contract.
+- Unknown:
+  no unresolved ROM-local parser-to-handler or handler-to-following-printable
+  edge remains for the cited streams. Remaining work starts from command
+  variants that change geometry caches, overflow branches, page-object bytes,
+  bridge state, or ROM-derived row construction.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Page Length, Wrap, And Perforation Controls` and
+  `Worked Path: Cursor And Margin Placement` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [pcl-command-map.md](pcl-command-map.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`, and
+  `generated/analysis/ic30_ic13_page_geometry_tables.md`.
+
 ## Minimal Publication Walkthrough
 
 This is the smallest top-level page-boundary spine. Publication commands do

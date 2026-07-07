@@ -239,35 +239,36 @@ Branch effects:
 - If available count is less than `9`, the loop clears `+0x0e`, signals
   `0x780182` through `0x10c8`, and waits through `0x10d0(2)`.
 
-Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` pins
-these branch effects against the render-work fields. Fixture
-`0x1eba4 scheduler band words render published downloaded glyph` composes the
-render branch with a published page record: ten successive render calls use
-band words `0..9`, and the row-write path remains tied to the buckets selected
-by `0x1ef6a`, not to any external image or timing source.
+The disassembly-backed active-loop contract is:
 
-The fixture-backed active-loop contract is:
+- `0x1eb78..0x1eb9e` selects the active work record from selector
+  `0x7820bc`: nonzero selects `0x782128`, zero selects `0x7820c4`. It selects
+  the paired record from `0x7820c0` by the same rule.
+- `0x1eba4..0x1ebd2` handles loop-flag cleanup. When byte `0x780ea5` is `1`,
+  the loop calls `0x1ef38`, clears active-render flag `0x780ea4`, signals wait
+  object `0x780182` through `0x10c8`, and immediately calls `0x10c4`.
+- `0x1ebd8..0x1ec06` handles stale work. If active work word `+0x0c` is less
+  than active band word `+0x10`, it clears `0x780ea4` and signals the same wait
+  object through `0x10c8` / `0x10c4`, without rendering.
+- `0x1ec0c..0x1ec30` handles throttle yield. If active word `+0x0e` is greater
+  than `0x28`, it clears `+0x0e`, signals `0x780182`, yields through
+  `0x10d8(2)`, and returns to the top of the loop.
+- `0x1ec34..0x1ec8e` computes capacity as active work `+0x06` minus active
+  remaining rows `(+0x10 - +0x16)`. When active and paired selectors differ,
+  it also subtracts paired remaining rows `(+0x10 - +0x16)`. The resulting
+  capacity is stored in the loop local at `A6-4`.
+- `0x1ec8e..0x1ecac` is the render branch. Capacity `>= 9` releases the
+  scheduler lock through `0x15ac`, calls `0x1ef6a`, increments active band word
+  `+0x10`, increments throttle word `+0x0e`, and loops.
+- `0x1ecb0..0x1ecd2` is the capacity-wait branch. Capacity `< 9` clears
+  `+0x0e`, releases the scheduler lock, signals wait object `0x780182`, waits
+  through `0x10d0(2)`, and loops without calling `0x1ef6a`.
 
-- Render path: active selector `0x7820bc = 1` selects work record
-  `0x00782128`, while paired selector `0x7820c0 = 0` selects paired record
-  `0x007820c4`. With active `+6 = 20`, active remaining `+10 - +16 = 3`,
-  and paired remaining `+10 - +16 = 3`, capacity is `14`; the loop calls
-  `0x1ef6a`, increments active word `+10` from `3` to `4`, and increments
-  throttle word `+0e` from `7` to `8`.
-- Published downloaded-glyph band walk: the `0xff1e` / `0x1ed84` seed leaves
-  source `+0x18` and render words `+0x10/+0x16` at zero. Ten scheduler render
-  calls enter `0x1ef6a` with `word_10_before = 0..9`, leave the work record at
-  `+0x10 = 10`, and dispatch only published buckets `1` and `9`; bucket `9`
-  reaches the ROM-derived row-write path for page row `86`.
-- Capacity-wait path: active `+6 = 10`, active remaining `4`, and paired
-  remaining `1` produce capacity `5`. The loop clears active word `+0e` from
-  `6` to `0`, signals wait object `0x780182` through `0x10c8`, and waits
-  through `0x10d0(2)` without calling `0x1ef6a`.
-- Cleanup/throttle path: with loop flag `0x780ea5 = 1`, active `+0c = 1`,
-  active `+10 = 2`, and active `+0e = 0x29`, the loop records
-  loop-flag cleanup through `0x1ef38`, clears `0x780ea4`, signals
-  `0x10c8` / `0x10c4`, records the row-bound cleanup, repeats that signal
-  pair, clears active `+0e`, and yields through `0x10d8(2)`.
+Fixtures `0x1eba4/0x1ef6a active render loop advances or yields bands` and
+`0x1eba4 scheduler band words render published downloaded glyph` check these
+branches against concrete render-work records. They are not an external pixel
+oracle: the row-write path remains tied to the buckets selected by `0x1ef6a`
+and the render helpers documented in [page-raster-imaging.md](page-raster-imaging.md).
 
 ## Reproduction Contract
 

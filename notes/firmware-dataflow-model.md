@@ -5156,6 +5156,23 @@ Composition effect:
   continuation rows through the fallback buffer rooted at `0x7810b4 + D2`;
   the scheduler then calls `0x1ef6a` again with later band words.
 
+Reproduction rule:
+
+- Start each render pass from the active render work record at `0x783a18`.
+  The parser and page-object producers are no longer consulted at this layer.
+- Run the fixed dispatch order for a band: `0x1ef86` derives destination
+  state, `0x1efc2` renders bucket-chain objects, `0x1f446` renders rule-list
+  objects, and `0x1f756` renders fixed-list objects. Later classes can
+  overwrite earlier destination words because the helpers store generated
+  words directly.
+- Use `0x783a28` and offset table `0x7839f8..` for active-band destinations,
+  with stride `0x783a1c`. Use fallback base `0x7810b4 + D2` only when
+  destination helpers such as `0x1f414` report rows beyond the current band.
+- Do not implement an implicit compositing mode. The documented helper set
+  writes bytes, words, or longwords in ROM call order. Pattern helpers mask
+  their generated pattern before storing it, but they do not read the
+  destination word and blend against already-rendered pixels.
+
 State classification:
 
 - Canonical state:

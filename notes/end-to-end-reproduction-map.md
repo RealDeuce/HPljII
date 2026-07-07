@@ -825,6 +825,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   generated source words into the active band or fallback buffer; the
   documented helpers do not OR/XOR/AND new pixels with prior destination
   contents.
+  Reproduction rule: execute the band in ROM call order, use `0x783a28` plus
+  offset table `0x7839f8..` for current-band destinations, use
+  `0x7810b4 + D2` only for documented fallback rows, and treat later direct
+  stores as overwrites rather than logical blends.
   Writers are page producers `0x12f2e` / `0x1387c`, `0x12714` /
   `0x13520` / `0x135f0`, `0x13070` / `0x13250`, `0x13386` / `0x133aa`, and
   `0x136d2`; bridge writer `0x1edc6`; band-cache writer `0x1ef86`; and row

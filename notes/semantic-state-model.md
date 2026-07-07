@@ -9865,6 +9865,12 @@ bucket through `0x1387c`/`0x1381c` before publication.
   - page-length `ESC &l0P` takes the default-page branch, publishes pending
     state, optionally mirrors paper-source byte `0x782da6` to `0x780e8f`,
     signals control word `0x780e26`, and selects default/fallback page code.
+  - VMI `ESC &l#C` and LPI `ESC &l#D` write line advance `0x783160` through
+    handlers `0xcb00` and `0xc992`, then refresh vertical cursor state.
+  - top-margin `ESC &l#E` writes top offset `0x782dce`, restores default text
+    length, and refreshes vertical cursor state.
+  - text-length `ESC &l#F` writes the bottom/text-length state used to derive
+    vertical overflow limit `0x782dc2`.
   - perforation-skip `ESC &l1L` sets `0x783191 = 1`; selector `0` clears it,
     and other selectors leave it unchanged.
   - wrap-mode `ESC &s0C` sets `0x783190 = 1`, while `ESC &s1C` clears it;
@@ -9873,17 +9879,25 @@ bucket through `0x1387c`/`0x1381c` before publication.
   - command-to-output handoff:
     `0xf9e8` page-length writes are consumed by later printable placement
     through `0xd04a`; the `ESC &l0P` default branch can publish the
-    pre-command current root; `0xee64` perforation-skip writes are consumed
-    by `0xf36c -> 0xf124` page-eject gating; and `0xedb0` wrap writes are
-    consumed by `0xd28a` / `0xd6bc` before compact text object allocation.
+    pre-command current root; VMI/top-margin/text-length writes are consumed
+    by LF/FF, cursor placement, VFC, and vertical overflow helpers;
+    `0xee64` perforation-skip writes are consumed by `0xf36c -> 0xf124`
+    page-eject gating; and `0xedb0` wrap writes are consumed by `0xd28a` /
+    `0xd6bc` before compact text object allocation.
   Evidence: disassembly listings
   `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
   `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`, and
-  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`; fixtures
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`;
+  generated direct-control analysis; fixtures
   `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
-  page code`, `perforation-skip parser-to-page-record boundary`,
-  `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`,
-  and
+  page code`, `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending
+  vertical cursor`, `0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero
+  unmodified`, `0xea9e ESC &l#F sets text length bottom or restores default`,
+  `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`,
+  `vertical layout parser trace feeds page-record queue`,
+  `perforation-skip parser-to-page-record boundary`,
+  `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`, and
   `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
 - Parser scratch:
   - all six host-fetched publication streams drain entirely from the modeled

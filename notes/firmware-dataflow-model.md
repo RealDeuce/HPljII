@@ -5019,15 +5019,19 @@ are `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
 
 This path covers layout controls whose command bytes normally do not emit
 pixels immediately, but whose state changes alter the next printable object or
-the next vertical overflow decision. It links three parser-dispatched command
-handlers, two shared printable/vertical consumers, and one
-following-printable page-record output path.
+the next vertical overflow decision. It links the page-length, VMI/LPI,
+top-margin, text-length, perforation-skip, and wrap handlers to shared
+printable/vertical consumers and the following-printable page-record output
+path.
 
 Representative streams:
 
 ```text
 ESC &l66P !
 ESC &l0P
+ESC &l6D !
+ESC &l3E !
+ESC &l60F !
 ESC &l1L !
 ESC &s0C
 ESC &s1C
@@ -5038,6 +5042,10 @@ Parser dispatch:
 - All host-fetched streams enter through byte fetch `0xa904`, parser wrapper
   `0xda9a`, and parser loop `0x11774`.
 - `ESC &l66P` and `ESC &l0P` dispatch to page-length handler `0xf9e8`.
+- `ESC &l#C` dispatches to VMI handler `0xcb00`.
+- `ESC &l#D` dispatches to LPI handler `0xc992`.
+- `ESC &l#E` dispatches to top-margin handler `0xece2`.
+- `ESC &l#F` dispatches to text-length handler `0xea9e`.
 - `ESC &l1L` dispatches to perforation-skip handler `0xee64`.
 - `ESC &s0C` and `ESC &s1C` dispatch to wrap-mode handler `0xedb0`.
 - The following printable byte `0x21` reaches `0xd04a`, then page-record
@@ -5054,6 +5062,20 @@ Command behavior:
   current root exists, optionally mirrors paper-source byte `0x782da6` to
   software-visible output byte `0x780e8f`, signals control word `0x780e26`,
   and selects the default page code from `0x780e97` or fallback code `2`.
+- `ESC &l#C` converts an absolute 1/48-inch VMI value using 75 packed
+  subunits per unit. Values whose converted VMI is zero leave the prior value
+  unchanged; accepted values write `0x783160` and refresh vertical cursor
+  `0x782c8e`.
+- `ESC &l#D` accepts the ROM's LPI set, maps it to packed VMI `0x783160`,
+  marks modified-layout byte `0x782ee1`, and refreshes vertical cursor
+  `0x782c8e`.
+- `ESC &l#E` scales top-margin lines through current VMI `0x783160`, rejects
+  zero VMI and positions at or beyond page extent `0x782dba`, writes top
+  offset `0x782dce`, restores default text length, and refreshes vertical
+  cursor.
+- `ESC &l#F` scales text-length lines through VMI, rejects lengths beyond the
+  remaining page below current top margin, writes bottom/text-length limit,
+  and restores the default bottom when selector `0` is used.
 - `ESC &l1L` sets perforation-skip byte `0x783191 = 1`. Selector `0` clears
   it; selectors outside `0..1` leave the prior byte unchanged.
 - `ESC &s0C` sets end-of-line wrap flag `0x783190 = 1`. `ESC &s1C` clears
@@ -5073,6 +5095,9 @@ Downstream consumers:
   with `cursor_y > 0x782dc2` calls modeled page-eject helper `0xf124`,
   increments page finalization, clears pending text, recomputes y from top
   offset and VMI, and returns `D7 = 0`.
+- Cursor and vertical movement handlers consume `0x783160`, `0x782dce`,
+  `0x782dd2`, and the derived text-bottom/perforation limit when computing
+  printable y coordinates and page-boundary decisions.
 - The `ESC &l1L !` and `ESC &l66P !` streams prove that these delayed layout
   controls reach visible page-record output when followed by printable data.
   The perforation-skip stream pins the `0xee64` writer plus the following
@@ -5092,6 +5117,18 @@ Layout command-to-output matrix:
   current root, can mirror paper-source state to `0x780e8f` / `0x780e26`,
   and then restores the default page code. Its immediate visible output, when
   a root exists, is the pre-command page publication.
+- `ESC &l#C` VMI and `ESC &l#D` LPI:
+  handlers `0xcb00` and `0xc992` write line advance `0x783160`, then refresh
+  pending vertical cursor state. Later LF/FF, `ESC &a#R`, `ESC =`, VFC, page
+  length, and printable placement consume the new line advance.
+- `ESC &l#E` top margin:
+  handler `0xece2` writes top offset `0x782dce`, restores default text
+  length, and refreshes cursor y. Following printable bytes consume the new
+  y origin; VFC and overflow helpers consume it for page-boundary math.
+- `ESC &l#F` text length:
+  handler `0xea9e` writes the bottom/text-length limit used to derive
+  `0x782dc2`. It changes later vertical overflow and perforation decisions
+  rather than queueing a page object immediately.
 - `ESC &l#L` perforation skip:
   handler `0xee64` writes byte `0x783191` for selectors `0` and `1`. It is
   consumed by vertical overflow helper `0xf36c`, which either leaves the
@@ -5109,12 +5146,15 @@ Layout command-to-output matrix:
 
 Output effect:
 
-- Page-length, wrap-mode, and perforation-skip commands do not create glyph
-  pixels by themselves in the covered streams.
+- Page-length, VMI/LPI, top-margin, text-length, wrap-mode, and
+  perforation-skip commands do not create glyph pixels by themselves in the
+  covered streams.
 - Page length changes later printable placement and page geometry. The
   nonzero fixture proves the `ESC &l66P !` stream queues the following
   printable at compact coordinate `0x9001` after the handler recomputes
   vertical extent and cursor-derived state.
+- VMI/LPI, top-margin, and text-length commands change later vertical cursor,
+  page-boundary, and following-printable placement decisions.
 - Wrap mode changes whether later horizontal overflow is rejected or recovered
   into a new-line retry before queueing.
 - Perforation skip changes whether later vertical overflow performs a page
@@ -5124,6 +5164,7 @@ State classification for this path:
 
 - Canonical state:
   page length/vertical extent `0x782dba`, VMI `0x783160`,
+  top offset `0x782dce`, bottom/text-length state `0x782dd2`,
   end-of-line wrap flag `0x783190`, perforation-skip byte `0x783191`,
   current cursor x/y `0x782c8a` / `0x782c8e`, page code/default selection
   bytes, paper-source byte `0x782da6`, and software-visible output/control
@@ -5133,8 +5174,9 @@ State classification for this path:
   recomputed page geometry, bucket selection, and render-band caches created
   after `0x1ed84`.
 - Parser scratch:
-  six-byte command records for `ESC &l#P`, `ESC &l#L`, and `ESC &s#C`,
-  parser cursor `0x78299e`, and host-ring drain state from `0xa904`.
+  six-byte command records for `ESC &l#P`, `ESC &l#C`, `ESC &l#D`,
+  `ESC &l#E`, `ESC &l#F`, `ESC &l#L`, and `ESC &s#C`, parser cursor
+  `0x78299e`, and host-ring drain state from `0xa904`.
 - Firmware bookkeeping:
   pending publication latches, current-root clear state, pending text latch,
   page-finalization counters, and scheduler progress words after a later
@@ -5156,14 +5198,25 @@ Evidence for this path is in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). Key
 supporting listings are
 `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+`generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
 `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
 `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
-The fixtures cited by those notes are:
+The top-margin and text-length handler evidence is carried by
+`generated/analysis/ic30_ic13_direct_control_code_flow.md` and
+[direct-control-codes.md](direct-control-codes.md). The fixtures cited by
+those notes are:
 
 - "0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
   page code"
 - "0xf9e8 ESC &l#P stream reaches page-length handler"
+- "0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical cursor"
+- "0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified"
+- "0xea9e ESC &l#F sets text length bottom or restores default"
+- "0xece2 ESC &l#E sets top margin, default text length, and pending cursor"
+- "0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
+  handlers"
+- "vertical layout parser trace feeds page-record queue"
 - "mixed page-length stream refreshes cursor before printable page-record
   queue"
 - "0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only"

@@ -386,8 +386,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   shapes, orientation split, bridge shape, and rendered rows because each has
   disassembly support plus fixture checks.
   No unresolved ROM-local middle edge remains for this pending-span-to-page
-  object handoff; remaining work is broader selected-font combinations and
-  byte streams that expose different ROM-local state.
+  object handoff; remaining work is selected-font or byte-stream variants that
+  change source-object fields, unflagged/flagged metric fields, pending span
+  bounds, `0x12714` page-extent acceptance, orientation branch, page-object
+  fields, bridge roots, or rendered rows.
 - Page-root storage:
   The shared page-object state starts at current root pointer `0x78297a`.
   Canonical root fields are bucket heads `+0x1c` for compact text,
@@ -1153,9 +1155,13 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   branch-combination coverage that changes table base, active-context refresh,
   release-helper effect, copy status, or later page-record selector inside
   `0x16612..0x16870` and `0x15c4c..0x15d08`. Other remaining exact boundaries
-  are selected-font combinations that change context/map state before visible
-  output, and the exact ROM-local helper failures already named as bounded
-  edges: short compact
+  are selected-font combinations that change a concrete context/map boundary
+  before visible output: selected context longword, selected target
+  `0x7828de`, selected slot pointer `0x7828a8`, primary/secondary maps,
+  page-root context slots, source-object fields, HMI/cursor advance, compact
+  selector class, span metric fields, page-object fields, bridge roots, or
+  rendered rows. The remaining exact ROM-local helper failures are already
+  named as bounded edges: short compact
   fallback indices above `0x1fe76` valid index `128` where the unchecked table
   read enters code bytes at `0x2008e`, low wrapped width bytes that target
   non-row-copy helpers, segmented-wide span-31 fallback source offset
@@ -2164,9 +2170,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   bookkeeping is stream allocator cursors `0x782a70`, `0x782a72`,
   `0x782a76`, page-root retry flag `+0x14.0`, publication flag `0x782996`,
   and render-progress fields after publication. The remaining unknown state is
-  bounded to byte streams that change source-object fields, selected maps,
-  compact selector class, bridge state, helper dispatch, fallback splitting, or
-  rendered rows.
+  bounded to byte streams that change source-object fields, selected-map
+  results, HMI/cursor advance, compact selector class, bridge context slots,
+  helper dispatch, fallback splitting, or rendered rows.
   Confidence is high for source field meanings, paired writer behavior,
   `0x12f2e` short/segmented object shapes, selector bits, queue no-room retry,
   compact subdispatch, and row output for the cited fixtures. It remains

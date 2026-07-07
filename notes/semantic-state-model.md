@@ -2112,8 +2112,11 @@ their disassembly reads of `0x783190`.
   Spans`; descriptor metric producer formulas are documented from `0x17430`,
   `0x1757a`, `0x1762a`, and `0x1719c`. Additional legal descriptor metric
   values are cross-products of those formulas and the documented consumer
-  gates; remaining work is broader selected-font state combinations and
-  external/manual naming for consumed-but-not-staged validation fields, as
+  gates. Remaining selected-font work must change a concrete span boundary:
+  unflagged `+0x2b/+0x2c/+0x2d`, flagged `+0x16/+0x18/+0x1a`,
+  `0x783184..0x78318a`, `0x12714` page-extent acceptance,
+  segment-list/fixed-list fields, orientation branch, or rendered rows.
+  External/manual naming for consumed-but-not-staged validation fields remains
   tracked in `notes/font-context-metrics.md`.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore, control
   filtering, printable re-entry, and fixed-space output are composed in
@@ -2957,8 +2960,9 @@ object shapes or visible rows.
   with fixtures `0x12714 allocation failure publishes page and retries
   span`, `0x1354a portrait text span split queues adjacent buckets`, and
   `0x12714 landscape span inserts into nonempty fixed list`. The remaining
-  unresolved edge here is broader selected-font state combinations that feed
-  those span metrics, not legal metric value behavior or the earlier paired
+  unresolved edge here is selected-font state that changes the consumed
+  metric fields, pending span fields, segment-list/fixed-list object bytes, or
+  rendered rows, not legal metric value behavior or the earlier paired
   short-text source-handoff allocation failure path.
 - `0x12f2e..0x1306e`: short, wide, segmented, and segmented-wide producer
   shapes are fixture-backed through both modeled object bytes and addressed
@@ -5065,8 +5069,10 @@ install events.
 - `0xc580..0xc428`: the common-refresh branch cluster is now modeled for
   dirty-1 install/reuse/full/selector-mismatch paths and dirty-2
   selector-match/mismatch paths. The remaining risk is not which branch writes
-  page-root context slots; it is broader command combinations that reach those
-  branches with different selected contexts before visible output.
+  page-root context slots; it is command combinations that reach those
+  branches with different selected context longwords, page-root slots,
+  selected-map results, HMI/cursor advance, or source-object fields before
+  visible output.
 - `0x782ee6 +0x00..+0x0f` into `0xc68a..0xc428..0xc4fc..0xd04a..0x1393a`
   and `0x782ef6 +0x00..+0x0f` into
   `0xc6b8..0xc428..0xc4fc..0xd04a..0x1393a`: primary and secondary selected
@@ -5079,8 +5085,10 @@ install events.
   and `font-ID inline/downloaded selection feeds visible page-record rows`
   close the bit-30-clear final-`X` paths from `ESC (4660X!` and
   `ESC )4660X SO !` through `0x120be..0x17708..0x14c64..0xd04a`. Remaining
-  risk is broader command combinations that dirty or reuse those selected RAM
-  fields before the printable consumer.
+  risk is command combinations that dirty or reuse those selected RAM fields
+  and then change selected context longword, selected-map result,
+  page-root font slot, HMI/cursor advance, source-object fields, or rendered
+  rows before the printable consumer.
 - Other primary/secondary font-selection combinations and fallback/error
   branches still need the same visible-output treatment; the exact covered
   remembered/fallback boundaries are `ESC (1234U ESC (s0p10h12v0s0b3T!!`
@@ -10297,9 +10305,9 @@ state combinations that have not yet been tied to concrete byte streams.
 - `0x12f2e..0x1f264`: compact built-in and downloaded glyph object rendering
   is composed for selector classes `0x0003`, `0x1003`, `0x2003`, and
   `0x3003`, including current-band/fallback splitting and the downloaded
-  width/row matrices. Remaining work starts from selected-font combinations or
-  wrapped-width streams that change source object bytes, selector class,
-  helper dispatch, fallback split, or rendered rows.
+  width/row matrices. Remaining work starts from selected-font or
+  wrapped-width streams that change source object bytes, selected-map result,
+  selector class, helper dispatch, fallback split, or rendered rows.
 - `0x12714..0x1f812` / `0x1f756`: pending text-span output is connected for
   both orientation branches. Portrait state `0x783184..0x78318a` is packaged
   by `0x12714`, inserted through `0x13520` / `0x1354a` / `0x135f0` as

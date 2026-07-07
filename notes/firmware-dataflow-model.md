@@ -1849,8 +1849,8 @@ State classification for this path:
   no unresolved middle edge remains for the documented source classes,
   selector modes, precheck outcomes, high-byte normalization cases, no-room
   retries, or compact renderer dispatch. Remaining work starts from byte
-  streams that change source-object fields, selected maps, compact selector
-  class, bridge state, or rendered rows.
+  streams that change source-object fields, selected-map results, HMI/cursor
+  advance, compact selector class, bridge context slots, or rendered rows.
 
 Evidence for this path is in
 [semantic-state-model.md](semantic-state-model.md), section
@@ -2374,10 +2374,10 @@ State classification:
 - Unknown:
   no unresolved middle edge remains for the documented producer formulas,
   legal selected forms, `0xd4ac` / `0xd8fc` consumer gates, or segment-list
-  render handoff. Remaining work is broader selected-font cross-products or
-  manual-facing names for consumed validation fields, unless a new stream
-  changes copied metric fields, selected context form, span object bytes, or
-  rendered rows.
+  render handoff. Remaining work is selected-font cross-products only when a
+  new stream changes copied metric fields, selected context form, pending span
+  fields, span object bytes, or rendered rows; manual-facing names for
+  consumed validation fields remain external.
 
 Output effects:
 
@@ -3114,9 +3114,12 @@ State classification for this path:
   no unresolved ROM-local middle edge remains for the documented underline
   stream, CR/margin/vertical-cursor span flushes, portrait split, landscape
   fixed-list insertion, or allocation-failure retry. Remaining span work is
-  broader selected-font combinations or byte streams that change source-object
-  fields, fixed-list objects, bridge roots, or rendered rows, not the
-  pending-span-to-page-object handoff.
+  selected-font or byte-stream variants that change concrete consumed fields:
+  source object `+0x00/+0x04/+0x0b/+0x10/+0x16`, unflagged metric bytes
+  `+0x2b/+0x2c/+0x2d`, flagged metric words `+0x16/+0x18/+0x1a`, pending span
+  state `0x783184..0x78318a`, `0x12714` page-extent acceptance, orientation
+  branch, fixed-list/segment-list object fields, bridge roots, or rendered
+  rows. It is not the pending-span-to-page-object handoff.
 
 Evidence for this path is in
 [direct-control-codes.md](direct-control-codes.md),

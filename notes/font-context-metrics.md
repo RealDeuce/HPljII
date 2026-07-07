@@ -1355,8 +1355,13 @@ Unresolved middle edges:
   Additional legal metric values remain cross-products rather than new
   semantic edges.
 - `0xd4ac..0xd992`: disabled, lower-bound, page-extent, high-x, exact extent,
-  and visible span branches are fixture-backed. Remaining risk is broader
-  selected-font combinations, not the consumer contract for the copied fields.
+  and visible span branches are fixture-backed. Remaining risk is selected
+  source/metric combinations that change one of the consumed fields or branch
+  products: unflagged `+0x2b/+0x2c/+0x2d`, flagged
+  `+0x16/+0x18/+0x1a`, span enable `0x783184`, pending bounds
+  `0x783186..0x78318a`, `0x12714` page-extent gate, orientation branch, or
+  resulting segment-list/fixed-list object fields. The consumer contract for
+  the copied fields is documented.
 - Manual descriptor labels: several consumed-but-not-staged fields are named
   by ROM effect only; external HP documentation correlation remains open.
 
@@ -1439,10 +1444,15 @@ A byte-stream reproduction must preserve these behaviors:
   `parsed secondary selection current-font RAM feeds SO visible rows` tie
   host-fetched font-selection bytes to those RAM handoff fixtures and matching
   visible rows for existing page roots.
-  Remaining handoff risk is broader command combinations that change
-  `0x13eb8` refresh state, selected context, page-root slot install, map
-  rebuild, compact object bytes, or rendered rows, not the listed
-  parser-to-printable edges.
+  Remaining handoff risk is exact selected-font field combinations, not an
+  unknown parser-to-printable edge. New work must show a different value or
+  branch for at least one documented boundary: `0x13eb8` refresh state,
+  selected context longword `0x782ee6` / `0x782ef6`, selected target
+  `0x7828de`, selected slot pointer `0x7828a8`, page-root font slot
+  `0x78297e`, page-root context slots `+0x2c..+0x68`, primary/secondary maps
+  `0x782f32` / `0x783032`, source-object fields
+  `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, compact selector class,
+  HMI/cursor advance, or rendered rows.
 - Broader metric producer work is now selected-font state expansion, not an
   unresolved parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering,

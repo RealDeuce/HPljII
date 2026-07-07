@@ -2113,6 +2113,31 @@ Page-root context install:
 - Live secondary fixture `SO !!` proves seeded current-font RAM
   `0x782ef6 = 0xc00ae122` installs page-root context slot `1`.
 
+Font-selection command-to-output matrix:
+
+- Attribute selection `ESC (s...T` / `ESC )s...T`:
+  lowercase finals write request fields; uppercase final `T` calls
+  `0xc7e0 -> 0xc580`. The visible effect is delayed until `0xc580` /
+  `0x13eb8` / `0x144d2` / `0x14c64` select a context and rebuild the map
+  consumed by later printable bytes.
+- Symbol-set finals through `0x120be` / `0x1be22`:
+  normal finals write requested symbol word `0x782ef4 + 0x10 * slot` and
+  refresh through `0xc580`. They change the map selection and glyph patching
+  used by later `0x1393a`, not any already queued compact objects.
+- Final `@` default-symbol forms:
+  `0x120be` subdispatches to the ROM default-symbol table helpers. The
+  resulting active/remembered symbol words feed the same `0xc580` and map
+  rebuild path before later printable bytes become page objects.
+- Final `X` font-ID forms:
+  `0x120be` calls `0x17708`. Successful paths write active symbol/context
+  selection state and dispatch `0x14c64`; documented non-selected exits stop
+  before map rebuild, so following printable bytes continue from the prior
+  context.
+- SI/SO controls:
+  `0xc68a` selects primary slot `0`, and `0xc6b8` selects secondary slot `1`.
+  They affect the next printable byte's map/context choice through
+  `0x782f06`; they do not alter compact objects already queued on the page.
+
 Printable and page-object effect:
 
 - In the primary stream, the two printable `!` bytes route through `0xd04a`

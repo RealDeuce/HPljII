@@ -208,6 +208,116 @@ variable `0x783972`, stores payload-base pointer `0x784c40` in variable
 `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst` and fixture
 `0x164a initializes heap allocator bitmap and payload base`.
 
+## Startup Baseline Composition Checkpoint
+
+This checkpoint names the ROM-local baseline that later host-byte, parser,
+page-record, and render notes assume exists before a supported PCL byte stream
+is interpreted. It is the power-on/default-state counterpart to the software
+reset checkpoint in [reset-default-environment.md](reset-default-environment.md).
+
+Field groups:
+
+- Canonical startup memory fields:
+  `0x780e59`, `0x780e5a`, `0x780e60`, and `0x780e4c` describe startup memory
+  and strap/config state derived by `0x02b2..0x031e`, `0x071c`, and optional
+  probe `0x05ba`. `0x780efa` and `0x780efe` are heap start/count inputs from
+  `0x0b18`; `0x7810b4` and `0x7810b8` are the startup resource/fallback window
+  base and size-minus-two.
+- Canonical heap and resource allocation state:
+  `0x780e86`, `0x783972`, `0x783976`, `0x78397a`, `0x78397e`, `0x783982`,
+  `0x783986`, and `0x783988` are written by `0x164a` and consumed by
+  allocation/free helpers `0x170c`, `0x1710`, and `0x18b4`.
+- Canonical byte I/O state:
+  `0x783e54..0x783e8e` and `0x7821c4` are the host ring/LIFO byte-source
+  buffers initialized by `0x3178` and later consumed by `0xa904`.
+  `0x783ed2`, `0x783ed4`, and `0x783ed8` are the 64-byte interface-output FIFO
+  initialized by `0x31d6` and consumed by `0xb022`, `0xb090`, and `0xb0c0`.
+- Canonical scheduler state:
+  wait-object records `0x780182..0x780262` are built by `0x0c24` from table
+  `0x15d0`; their links, priorities, private stacks, restart PCs, and saved
+  stack pointers are consumed by `0x1036`, `0x108e`, `0x123a`, and the copied
+  trap handlers.
+- Derived/cache state:
+  MMIO shadows `0x7828fa`, `0x7828f9`, and `0x7828f6`; timer/status divider
+  bytes `0x78017f`, `0x780180`, and `0x780181`; debounce/output bytes
+  `0x782900`, `0x7828fe`, `0x783edc`, and `0x783edd`; and render-work selector
+  seeds `0x7820bc`, `0x7820c0`, `0x7820c8`, and `0x78212c`.
+- Parser scratch:
+  none in the reset-entry startup block. Parser records and payload scratch are
+  initialized by parser/reset paths such as `0xe146` and `0x11774`.
+- Firmware bookkeeping:
+  RAM trampoline stubs `0x780000..0x780173`, startup-test gate `0x783eee`,
+  retained/default-environment startup bytes `0x780e44..0x780e58`, and the
+  wait-object private stack frames created by `0x0c24`.
+- Hardware/external state:
+  early MMIO writes and reads at `$8000`, `$8c01`, `$a200`, `$a400`, `$a601`,
+  `$a801`, `$aa01`, `$ff8000`, `$fffe0001`, and `$ffff3800` are hardware
+  boundaries. The software-visible RAM fields written from those probes are
+  documented here; board-level signal names remain outside this ROM-local
+  checkpoint.
+- Unknown:
+  no unresolved software field ownership remains for the startup baseline
+  fields listed above. Unknowns are physical MMIO/device naming, optional
+  extension contents, and the physical memory-map continuation after the
+  verified built-in resource pair.
+
+Writers and readers:
+
+- `0x0110..0x0240` masks interrupts, performs early hardware writes, runs RAM
+  tests through `0x08a2` and `0x08dc`, and copies the RAM trampoline table
+  through `0x0298`.
+- `0x02b2..0x031e`, `0x071c`, and `0x05ba` write startup memory/config fields
+  consumed by `0x0b18`, heap setup, and optional resource scans.
+- `0x2c84` seeds default-environment startup fields and is semantically owned
+  by `Default Environment Record Producers` in
+  [semantic-state-model.md](semantic-state-model.md).
+- `0x073a..0x0c22` verifies ROM/RAM/resource windows, computes heap/resource
+  bounds through `0x099e` / `0x0b18`, and supplies `0x164a` and `0x2feb6`.
+- `0x164a` consumes `0x780efa` / `0x780efe` and writes heap allocator state for
+  later parser, macro, page-object, raster, and downloaded-font allocations.
+- `0x2feb6` consumes the resource/fallback window once, seeds render work
+  selectors, and clears paired render header words before active rendering.
+- `0x3178` initializes the host byte-source buffers; `0x31d6` initializes the
+  host-output FIFO.
+- `0x0c24` builds the wait-object scheduler ring and tail-enters priority
+  switch `0x1266`.
+
+Output effect:
+
+- Startup does not parse PCL bytes and does not create page objects. Its output
+  effect is the initialized baseline for later reproduction: byte-source
+  buffers are empty, host-output FIFO is empty, heap allocation state is ready,
+  render work alternators are seeded, wait objects have restart PCs, and
+  default-environment fields are available for reset/page layout consumers.
+- Later visible output depends on these fields: `0xa904` needs the byte-source
+  buffers, page/raster/font/macro allocation needs `0x164a` heap state,
+  publication-to-render scheduling needs `0x2feb6` and `0x0c24`, and host
+  status responses need the `0x31d6` FIFO.
+
+Evidence and unresolved boundary:
+
+- Detailed semantic composition is mirrored in
+  [semantic-state-model.md](semantic-state-model.md) under `Firmware Startup
+  And Allocator`.
+- Focused disassembly:
+  `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`,
+  `generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`,
+  `generated/disasm/ic30_ic13_startup_config_init_00071c.lst`,
+  `generated/disasm/ic30_ic13_startup_config_probe_0005ba.lst`,
+  `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`,
+  `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`,
+  `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`,
+  `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`,
+  `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`, and
+  `generated/disasm/ic30_ic13_startup_scheduler_bootstrap_000c24.lst`.
+- Generated evidence:
+  `generated/analysis/ic30_ic13_vectors.txt` and
+  `generated/analysis/ic30_ic13_startup_tables.txt`.
+- Remaining edges are exact hardware/resource boundaries, not ROM-local
+  startup field gaps: direct MMIO bit-to-signal naming, optional `PROG`
+  extension contents at `0x200000` / `0x400000`, and the physical decode policy
+  for resource continuation `0x0c0000..0x0c0321`.
+
 ## Startup `0x0078xxxx` Write Cross-Reference
 
 This section is the startup-state write ledger for the ROM paths above. It

@@ -10166,6 +10166,11 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
     `generated/analysis/ic30_ic13_render_expansion_fixtures.md` pin example
     expansions such as `0x55 -> 0x3333`, `0xaa -> 0xcccc`, and cascaded
     `0xaa -> 0xf0f0f0f0`.
+  - encoded raster row pointers: `0x1f88e` copies the byte-pair offset from
+    `0x1f3d4` into `A3`, then modes `1..3` derive adjacent current-band row
+    pointers from `0x783a1c` or fallback row pointers from
+    `0x7810b4 + byte_pair_offset` according to the high word of the
+    `0x1f414` split.
 - Parser scratch:
   - none in this shared dispatch layer. Parser-family scratch has already been
     converted into page-record objects by upstream producers such as
@@ -10205,6 +10210,8 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
 - `0x1f812` consumes segment-list objects and writes counted mask spans.
 - `0x1f88e` consumes encoded raster objects and selects helpers `0x1f8da`,
   `0x1f8e6`, `0x1f920`, or `0x1f9c6` from object byte `+0x05 & 0x03`.
+  It reads object word `+0x06` as payload byte count, object word `+0x08` as
+  packed coordinate, and object `+0x0a..` as payload.
 - `0x1f446` consumes rule-list objects from render `+0x1c`.
 - `0x1f756` consumes fixed-list objects from render `+0x20` on five-band
   boundaries.
@@ -10265,14 +10272,20 @@ words starting with `0x8080`, and mutates the continuation height field to
 
 Encoded raster output is pinned at the same destination layer. Mode `0`
 copies literal payload words through `0x1f8da`; mode `1` expands each payload
-byte through `0x30914` and writes the same word to two row/band destinations;
-mode `2` expands payload bytes through `0x30b14` while advancing by two bytes
-per lookup; and mode `3` expands through `0x30914` twice to produce one
-longword written across four row/band destinations. The fixtures named
-`0x1f88e mode-0 raster object renders queued literal row` through
-`0x1f88e mode-3 raster object expands queued bytes into four rows`, plus
+byte through `0x30914` and writes the same word to the current row plus one
+adjacent current or fallback row; mode `2` runs shared loop `0x1f9a0` once for
+even-indexed payload bytes and again for odd-indexed payload bytes, expanding
+each selected byte through `0x30b14` and writing the longword to three
+current/fallback row destinations; and mode `3` expands through two levels of
+`0x30914` to produce one longword written across four current/fallback row
+destinations. The fixtures named `0x1f88e mode-0 raster object renders queued
+literal row` through `0x1f88e mode-3 raster object expands queued bytes into
+four rows`, plus
 `generated/analysis/ic30_ic13_render_expansion_fixtures.md`, tie those table
-semantics to rendered rows and compact expansion vectors.
+semantics to rendered rows and compact expansion vectors. The detailed
+instruction boundary is documented in
+[page-raster-imaging.md](page-raster-imaging.md#encoded-raster-span-mode-behavior)
+from disassembly `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
 
 ### Confidence
 

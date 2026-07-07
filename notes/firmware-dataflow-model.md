@@ -7205,11 +7205,15 @@ Transfer gate behavior at `0x105d0`:
 Mode and row-object variants:
 
 - `ESC *t150R` selects scale `2`, encoded mode `1`, and later renders through
-  `0x1f88e -> 0x1f8e6`.
+  `0x1f88e -> 0x1f8e6`, expanding each payload byte through word table
+  `0x30914` into two current/fallback row writes.
 - `ESC *t100R` selects scale `3`, encoded mode `2`, and later renders through
-  `0x1f88e -> 0x1f920`.
+  `0x1f88e -> 0x1f920`, running even-indexed and odd-indexed payload-byte
+  passes through longword table `0x30b14` into three current/fallback row
+  writes.
 - `ESC *t75R` selects scale `4`, encoded mode `3`, and later renders through
-  `0x1f88e -> 0x1f9c6`.
+  `0x1f88e -> 0x1f9c6`, expanding each byte through two levels of table
+  `0x30914` into four current/fallback row writes.
 - While active byte `+0x12` is set, a later `ESC *t75R` is ignored; after
   `ESC *rB`, a later `ESC *t150R` updates mode and scale again.
 - Consecutive uppercase `ESC *b2W` transfers restore independent records,

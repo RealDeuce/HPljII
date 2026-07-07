@@ -1752,20 +1752,123 @@ Encoded raster span mode behavior:
 
 - 0
   - Target: `0x1f8da`
-  - Payload behavior: copy literal words from payload to destination
+  - Payload behavior: copy literal words from payload to consecutive
+    destination words
 - 1
   - Target: `0x1f8e6`
   - Payload behavior: expand each payload byte through word table
-    `0x30914` and write the result to two adjacent row/band destinations
+    `0x30914` and write the result to the current row plus one adjacent
+    current or fallback row
 - 2
   - Target: `0x1f920`
-  - Payload behavior: expand payload bytes through longword table
-    `0x30b14` and write to up to three row/band destinations, with row
-    selection driven by clipped `D3` state
+  - Payload behavior: expand even-indexed and odd-indexed payload bytes
+    through longword table `0x30b14` in two passes and write each longword to
+    up to three current/fallback row destinations, with row selection driven
+    by clipped `D3` state
 - 3
   - Target: `0x1f9c6`
   - Payload behavior: expand each payload byte through table `0x30914`
-    into a longword and write to four row/band destinations
+    twice to form one longword, then write to four current/fallback row
+    destinations
+
+Encoded raster mode disassembly contract:
+
+- `0x1f88e..0x1f8c8` is the shared encoded-raster object consumer. `A1`
+  arrives at object byte `+4`; the helper advances a payload cursor `A2` to
+  byte `+5`, masks `object[5] & 0x03` into mode `D4`, reads object word `+6`
+  into byte count `D5`, sets initial row count `D3 = mode + 1`, reads object
+  word `+8` into packed coordinate `D1`, then calls `0x1f3d4` and `0x1f414`.
+  The byte-pair offset preserved by `0x1f3d4` is copied to `A3` before the
+  band split so fallback row pointers can use `0x7810b4 + A3`.
+- `0x1f8da..0x1f8e4` is literal mode `0`. If byte count `D2` is nonzero, it
+  repeatedly copies one word from payload cursor `A2` to destination `A1`,
+  advances both pointers by two bytes, subtracts two from `D2`, and loops
+  while the unsigned result remains positive. The ROM does not have a separate
+  odd-byte tail path in this helper.
+- `0x1f8e6..0x1f91e` is mode `1`. It builds row pointer `A4` as
+  `A1 + 0x783a1c` when all two scaled rows fit the current band; if the split
+  word from `0x1f414` has a nonzero high word, it instead sets
+  `A4 = 0x7810b4 + A3`. It then reads each payload byte, indexes word table
+  `0x30914`, and writes the expanded word to both `A1` and `A4`.
+- `0x1f920..0x1f9c4` is mode `2`. It uses the high word of split `D3` as a
+  fallback-row count to choose three row pointers: all current rows, row 2 in
+  fallback, rows 1..2 in fallback, or fallback rows beginning at
+  `0x7810b4 + A3`. Shared loop `0x1f9a0..0x1f9c4` reads every other payload
+  byte, indexes longword table `0x30b14`, writes the longword to `A1`, `A4`,
+  and `A5`, then advances each row pointer by six bytes. After the first pass,
+  `0x1f96c..0x1f98a` advances destination pointers by two or four bytes based
+  on the low nibble of `$a001`, rewrites `$a001` with bit `0x10` set, skips
+  the payload cursor by one byte, and runs the same loop for the odd-indexed
+  payload bytes when any remain.
+- `0x1f9c6..0x1fa5a` is mode `3`. It chooses four row pointers from the split
+  high word: all current rows, row 3 in fallback, rows 2..3 in fallback, or
+  rows 1..3 in fallback beginning at `0x7810b4 + A3`. For each payload byte,
+  it reads `0x30914[byte]`, expands the high and low bytes of that word
+  through `0x30914` again to form one longword, writes that longword to `A1`,
+  `A4`, `A5`, and `A6`, and advances each row pointer by four bytes.
+
+Encoded raster field groups:
+
+- Canonical object fields:
+  - object byte `+0x04`: class byte `0x80..0xff`, dispatching to `0x1f88e`
+    through the bucket walker.
+  - object byte `+0x05`: encoded mode in bits `0..1`.
+  - object word `+0x06`: payload byte count consumed as `D5` / `D2`.
+  - object word `+0x08`: packed coordinate consumed by `0x1f3d4`.
+  - object `+0x0a..`: payload bytes or literal words consumed by the selected
+    mode helper.
+- Derived/cache state:
+  - `0x783a1c`: row stride used to derive adjacent current-band row pointers.
+  - `0x783a20`, `0x783a28`, `0x7839f8..`, and `$a001`: destination state
+    consumed or updated through `0x1f3d4` / `0x1f414`.
+  - `0x7810b4 + byte_pair_offset`: fallback row base used by modes `1..3`
+    when split `D3` reports rows beyond the current band.
+  - ROM tables `0x30914` and `0x30b14`: expansion tables for modes `1` / `3`
+    and mode `2`, respectively.
+- Parser scratch:
+  - none in the mode helpers. The delayed `ESC *b#W` command record has
+    already been reduced to encoded raster object fields by `0x105d0` /
+    `0x13070` / `0x13250`.
+- Firmware bookkeeping:
+  - mode `2` rewrites `$a001` between its even-byte and odd-byte passes so
+    the second pass uses the shifted subbyte phase.
+- Unknown:
+  - no ROM-local mode dispatch or row-pointer branch remains unknown for
+    `0x1f88e..0x1fa5a`. Physical engine consumption of the rendered band is
+    outside this helper family.
+
+Writers and consumers:
+
+- Writers are raster producers `0x13070` / `0x13250` / `0x138de`, which create
+  object bytes `+0x04..+0x0a` from raster state and copied payload bytes.
+- Consumers are `0x1efc2`, which dispatches the `0x80..0xff` object class,
+  `0x1f88e`, which parses the object and selects the mode helper, and helpers
+  `0x1f8da`, `0x1f8e6`, `0x1f920`, `0x1f9a0`, and `0x1f9c6`, which perform
+  the actual destination stores.
+- Output effect is direct stores to current-band or fallback destinations in
+  the order selected by the bucket chain. The encoded raster helpers do not
+  read destination words before writing expanded payload data.
+
+Evidence and boundaries:
+
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst` at
+  `0x1f88e..0x1fa5a`.
+- ROM table evidence:
+  `generated/analysis/ic30_ic13_render_expansion_fixtures.md` for decoded
+  examples from `0x30914` and `0x30b14`.
+- Fixture evidence:
+  encoded-raster fixtures named `0x1f88e mode-0 raster object renders queued
+  literal row`, `0x1f88e mode-1 raster object expands queued bytes into two
+  rows`, `0x1f88e mode-2 raster object expands queued byte pair into three
+  rows`, `0x1f88e mode-2 raster object renders sub-byte shifted expanded
+  rows`, `0x1f88e mode-2 raster object clips current-band rows and continues
+  in fallback buffer`, and `0x1f88e mode-3 raster object expands queued bytes
+  into four rows`.
+- Unresolved boundary:
+  streams that change accepted payload count or object splitting before
+  `0x1f88e` start back at `0x105d0..0x13250`; streams that reach
+  `0x1f88e` with the same object fields use the helper contract above.
 
 The generated fixture report
 `generated/analysis/ic30_ic13_render_expansion_fixtures.md` now pins

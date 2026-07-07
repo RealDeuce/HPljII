@@ -610,12 +610,24 @@ record bucket object. The bridge and renderer consume it later:
 
 Encoded raster modes:
 
-| Mode | Target | Behavior |
-| ---: | --- | --- |
-| `0` | `0x1f8da` | copy literal payload words |
-| `1` | `0x1f8e6` | expand each byte through word table `0x30914` into two rows |
-| `2` | `0x1f920` | expand byte pairs through long table `0x30b14` into three rows |
-| `3` | `0x1f9c6` | expand each byte through `0x30914` cascaded into four rows |
+- Mode `0`, target `0x1f8da`:
+  copy literal payload words.
+- Mode `1`, target `0x1f8e6`:
+  expand each byte through word table `0x30914` into two current/fallback
+  rows.
+- Mode `2`, targets `0x1f920` and shared loop `0x1f9a0`:
+  expand even and odd payload bytes through long table `0x30b14` into three
+  current/fallback rows.
+- Mode `3`, target `0x1f9c6`:
+  expand each byte through two levels of `0x30914` into four current/fallback
+  rows.
+
+The exact row-pointer and payload-consumption contract for these helpers is in
+[page-raster-imaging.md](page-raster-imaging.md#encoded-raster-span-mode-behavior):
+`0x1f88e` parses object byte `+5`, word `+6`, word `+8`, and payload
+`+0x0a..`; `0x1f3d4` preserves the fallback byte-pair offset in `A3`; and
+modes `1..3` choose current-band versus `0x7810b4 + byte_pair_offset` row
+pointers from the `0x1f414` split word.
 
 For the primary mode-0 object above, the rendered row is:
 

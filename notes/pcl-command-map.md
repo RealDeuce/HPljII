@@ -459,9 +459,52 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x780e97` or fallback `2`. Paper source writes `0x782da6`, sets pending
   header byte `0x782998`, and may signal `0x780e8f` / `0x780e26`. Copies
   `0xeef0` only writes `0x782da4`; a later FF/reset/publication copies it
-  into published root word `+0x0c`. VMI/LPI/top/text/perforation commands
-  update `0x783160`, `0x782dce`, `0x782dd2`, and `0x783191`, which are later
-  consumed by LF/FF, VFC jumps, printable placement, and page-overflow helpers.
+  into published root word `+0x0c`. Vertical-layout terminals share the same
+  parser family but do not create page objects by themselves. `ESC &l#C`
+  handler `0xcb00` rewinds the parsed record, scales accepted 1/48-inch VMI
+  values by `75` into packed line advance `0x783160`, rejects converted values
+  beyond page extent `0x782dba`, and refreshes pending cursor y
+  `0x782c8e = 0x782dce + VMI * 18 / 25` when pending byte `0x782a6d` is set.
+  `ESC &l#D` handler `0xc992` maps selector `0` to `12`, accepts only
+  `1,2,3,4,6,8,12,16,24,48`, converts to `3600 / LPI`, writes
+  `0x783160`, sets modified-layout byte `0x782ee1`, and uses the same pending
+  cursor refresh. `ESC &l#E` handler `0xece2` scales top-margin lines through
+  current VMI, rejects zero-VMI or beyond-page positions, subtracts physical
+  top offset `0x782dbe`, writes canonical top offset `0x782dce`, recomputes
+  default text length through `0xea16`, refreshes line caches through
+  `0xfe54`, and rebuilds the default VFC table through `0x12b96`. `ESC &l#F`
+  handler `0xea9e` scales text-length lines through VMI, rejects lengths that
+  do not fit below the current top offset, writes text-bottom state
+  `0x782dd2`, or restores the default bottom through `0xea16` for selector
+  `0`. `ESC &l#L` handler `0xee64` writes perforation-skip byte `0x783191`
+  only for selectors `0` and `1`; shared consumer `0xf36c` calls page-eject
+  helper `0xf124` only when cursor y `0x782c8e` is beyond nonzero limit
+  `0x782dc2` and `0x783191` is set.
+
+  Field grouping for this layout edge is explicit. Canonical state is VMI
+  `0x783160`, top offset `0x782dce`, text bottom `0x782dd2`, derived
+  page/perforation limit source `0x782dc2`, cursor y `0x782c8e`,
+  perforation byte `0x783191`, page extent `0x782dba`, pending cursor byte
+  `0x782a6d`, and modified-layout byte `0x782ee1`. Parser scratch is the
+  six-byte `ESC &l` terminal record at `0x78299e`, including parsed integer
+  and fraction words. Firmware bookkeeping is cache rebuild through `0xfe54`,
+  default-VFC rebuild through `0x12b96`, and default-bottom helper `0xea16`.
+  The output effect is delayed: LF/FF, VFC channel jumps, absolute row
+  positioning, vertical overflow, and later printable text consume these
+  fields; for example `ESC &l1L!` writes `0x783191` and then the following
+  printable still queues through the normal `0xd04a -> 0x12f2e` compact-text
+  path, while the perforation byte affects only later `0xf36c -> 0xf124`
+  page-eject decisions. Evidence is
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`, fixtures
+  `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical cursor`,
+  `0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified`,
+  `0xea9e ESC &l#F sets text length bottom or restores default`,
+  `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`,
+  `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`,
+  `0xf36c perforation skip gates vertical overflow page eject`, and
+  `vertical layout parser trace feeds page-record queue`.
   FF and reset use direct terminals `0xf0f0` and `0xcc52`. Owner notes:
   [publication-commands.md](publication-commands.md),
   [direct-control-codes.md](direct-control-codes.md), and

@@ -96,6 +96,9 @@ handlers, and render helpers that produce those rows.
 - [symbol-set-selection.md](symbol-set-selection.md) - documented
   `ESC (` / `ESC )` symbol-set, final-`@`, and final-`X` paths into
   font-context refresh and glyph-map selection.
+- [symbol-map-patching.md](symbol-map-patching.md) - documented
+  `0x14f16` Roman-8 map patching, hard-coded `0E` / `0U` cases, and the
+  `0x14fce` patch table consumed before printable glyph mapping.
 - [built-in-resource-scan.md](built-in-resource-scan.md) - documented
   IC32/IC15 resource scan, candidate windows, built-in record filters, and
   glyph-row evidence.

@@ -2168,6 +2168,10 @@ Symbol and map behavior:
   `0x14d9c` or the bit-30-clear inline/downloaded path `0x14e24` /
   `0x14eb6`, then applies symbol patcher `0x14f16` and snapshot helper
   `0x1440c`.
+- [symbol-map-patching.md](symbol-map-patching.md) documents the
+  `0x14f16` map mutation: the selected font must normalize to Roman-8
+  `0x0115`, after which active symbol words `0x783144` / `0x783146` select
+  hard-coded `0E` / `0U` behavior or a `0x14fce` patch table.
 - Primary fixture `ESC (1234U ESC (s0p10h12v0s0b3T!!` proves a requested
   symbol miss falls back to word `0x0115` before selecting the same primary
   context and rendering the same compact rows.

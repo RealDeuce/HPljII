@@ -22,6 +22,7 @@ Sources: `generated/analysis/ic30_ic13_page_geometry_tables.md`;
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`;
 `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`;
 `notes/symbol-set-selection.md`;
+`notes/symbol-map-patching.md`;
 `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`;
 `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`;
 `generated/disasm/ic30_ic13_orientation_handler_010220.lst`;
@@ -1700,14 +1701,11 @@ symbol-set finals compute PCL codes as `(parameter << 5) + suffix`, store
 requested words at `0x782ef4` / `0x782f04`, select through `0x156de`, and
 consume active words at `0x783144` / `0x783146`; final `X` is instead
 font-ID selection through `0x17708`, and final `@` dispatches `3@` plus
-firmware-supported table variants backed by `0x782f1c/20/24/28`. The
-generated `ic30_ic13_symbol_set_patch_tables.md` report decodes all 18
-`0x14fce` patch entries as `map[dst] = map[src]` byte-copy pairs and
-labels them from the Technical Reference: ISO 2 IRV, ISO 4 United
-Kingdom, ISO 25/69 French, HP/ISO German, ISO 15 Italian, ISO 14 JIS
-ASCII, ISO 57 Chinese, ISO 10/11 Swedish, HP/ISO Spanish, ISO 16/84
-Portuguese, and ISO 60/61 Norwegian. It also documents hard-coded `0E`
-HP Roman Extension and `0U` ISO 6 ASCII cases.
+firmware-supported table variants backed by `0x782f1c/20/24/28`.
+Checked-in note [symbol-map-patching.md](symbol-map-patching.md)
+documents `0x14f16`: the ROM gates patching on selected Roman-8 font word
+`0x0115`, handles hard-coded `0E` HP Roman Extension and `0U` ISO 6 ASCII
+cases, and applies `0x14fce` patch-table pairs as `map[dst] = map[src]`.
 
 Downloaded-font host command state is anchored in
 `generated/analysis/ic30_ic13_font_control_flow.md`: `ESC *c#D` writes

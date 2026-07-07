@@ -317,6 +317,12 @@ Fixture-pinned secondary result:
 - bit-30 clear / fixed-record form: rebuilds through `0x14e24` and
   `0x14eb6`, then applies the same `0x14f16` / `0x1440c` tail.
 
+The `0x14f16` patcher is documented in
+[symbol-map-patching.md](symbol-map-patching.md). It gates on the selected
+font's normalized Roman-8 word, then uses active symbol words
+`0x783144` / `0x783146` to select hard-coded half-map behavior or one of the
+`0x14fce` patch tables.
+
 The snapshot is the cache key for skipping redundant map rebuilds. Helper
 `0x13a48` selects `0x783148` or `0x783152` from `0x7828de`, loads selected
 candidate slot `0x7828a8`, and compares the selected record against the

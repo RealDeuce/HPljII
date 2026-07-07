@@ -11,6 +11,7 @@ Sources: `generated/roms/ic32_ic15.bin`;
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`;
 `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`;
 `notes/symbol-set-selection.md`;
+`notes/symbol-map-patching.md`;
 `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`;
 `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`;
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`;
@@ -791,17 +792,13 @@ case remains a fixed-record isolation control through `0x14e24` /
 selected font's normalized symbol is `0x0115` (`8U`, Roman-8), using
 active symbol-set words at `0x783144` / `0x783146`.
 
-The generated `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`
-report decodes the `0x14fce` table into 18 patch records. Each record is
-keyed by a PCL symbol-set code and Technical Reference name: ISO 2 IRV
-(`2U`), ISO 4 United Kingdom (`1E`), ISO 25/69 French (`0F`/`1F`),
-HP/ISO German (`0G`/`1G`), ISO 15 Italian (`0I`), ISO 14 JIS ASCII
-(`0K`), ISO 57 Chinese (`2K`), ISO 10/11 Swedish (`3S`/`0S`), HP/ISO
-Spanish (`1S`/`2S`/`6S`), ISO 16/84 Portuguese (`4S`/`5S`), and ISO
-60/61 Norwegian (`0D`/`1D`). The patch records contain byte pairs
-applied as `map[dst] = map[src]`. Special active values `0x0005` (`0E`,
-HP Roman Extension) and `0x0015` (`0U`, ISO 6 ASCII) use hard-coded
-half-map behavior instead of a patch table.
+Checked-in note [symbol-map-patching.md](symbol-map-patching.md) documents
+the `0x14f16` branch contract: `0x0005` (`0E`, HP Roman Extension) copies the
+upper map half down and clears the upper half, `0x0015` (`0U`, ISO 6 ASCII)
+preserves the lower half and clears the upper half, and `0x14fce` table hits
+apply byte pairs as `map[dst] = map[src]`. The generated
+`generated/analysis/ic30_ic13_symbol_set_patch_tables.md` report remains the
+full extracted pair list for all 18 table records.
 The same report now adds a verified built-in symbol inventory and real
 map samples from the scanned resource records. The 24 built-ins expose
 six records each for `0N` (`0x000e`, ISO 100: ECMA-94 / Latin 1), `8U`

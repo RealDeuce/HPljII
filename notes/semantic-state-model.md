@@ -4430,13 +4430,14 @@ selector mismatch only copies the remembered word and installs no context.
     `0x000cb8/0x00ac1c/0x014f5c` for `0N`,
     `0x000418/0x00a37c/0x0146b4` for `10U`, and
     `0x000868/0x00a7cc/0x014b08` for `11U`.
-  - `0x14f16` Roman-8 map patch path: entered only when the selected built-in
-    font normalizes to active word `0x0115` (`8U`). Requested active words
-    `0x0005` (`0E`) copy upper-half map bytes down and clear the upper half;
-    `0x0015` (`0U`) preserves the lower half and clears the upper half;
-    table hits under `0x14fce` apply `(dst, src)` byte pairs as
-    `map[dst] = map[src]`; misses keep the map initialized by
-    `0x14d9c`/`0x14e24`.
+  - `0x14f16` Roman-8 map patch path:
+    [symbol-map-patching.md](symbol-map-patching.md) documents the exact
+    branch contract. The path is entered only when the selected font normalizes
+    to active word `0x0115` (`8U`). Requested active words `0x0005` (`0E`)
+    copy upper-half map bytes down and clear the upper half; `0x0015` (`0U`)
+    preserves the lower half and clears the upper half; table hits under
+    `0x14fce` apply `(dst, src)` byte pairs as `map[dst] = map[src]`; misses
+    keep the map initialized by `0x14d9c`/`0x14e24`.
   - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
     `selected-symbol-not-roman8`.
   - `0x783032` for non-Roman secondary selection: rebuilt map with patch kind
@@ -5062,7 +5063,8 @@ install events.
 - `generated/analysis/ic30_ic13_font_context_bridge.md`: selected candidate
   to current-font record, page-root slot, render slot, and `0x1f354` context
   interpretation.
-- `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`: `0x14f16`
+- [symbol-map-patching.md](symbol-map-patching.md) and
+  `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`: `0x14f16`
   Roman-8-only patch path, `0x14fce` patch-table index, and `(dst, src)`
   map-copy pairs for the PCL symbol sets documented there.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`: printable

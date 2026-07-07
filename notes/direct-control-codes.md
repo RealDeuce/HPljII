@@ -18,7 +18,10 @@ renderer-facing documentation checkpoint.
 - `generated/analysis/ic30_ic13_text_cursor_span_flow.md`
 - `generated/analysis/ic30_ic13_page_record_bridge.md`
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
+- `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`
 - `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`
+- `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`
+- `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`
 - `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`
 - `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`
 - `notes/pcl-command-map.md`
@@ -494,6 +497,50 @@ Page-length handler boundary:
   selector value `2`, then returns. This makes page-length changes part of the
   same environment-reset family that can invalidate overlay publication state.
 
+Vertical-layout and mode handler boundaries:
+
+- `0xcb00..0xcb7c` handles `ESC &l#C`. It rewinds the parser record, uses the
+  absolute parsed integer/fraction words, rejects values above `0x150`, scales
+  the value by `75`, converts it to packed line advance, rejects advances
+  beyond current page extent `0x782dba`, and writes VMI `0x783160`.
+- `0xcb82..0xcbca` is the `ESC &l#C` pending-cursor side effect. If pending
+  byte `0x782a6d` is set, it computes `VMI * 18 / 25 + top_offset` and writes
+  refreshed cursor y `0x782c8e`. A converted VMI of zero does not set modified
+  layout byte `0x782ee1`; nonzero values set it.
+- `0xc992..0xca0e` handles `ESC &l#D` selector admission. It rewinds the
+  parser record, takes the absolute value, maps selector `0` to `12`, and
+  accepts only `1`, `2`, `3`, `4`, `6`, `8`, `12`, `16`, `24`, and `48`.
+- `0xca0e..0xca82` converts accepted LPI to packed line advance as
+  `3600 / LPI`, rejects advances beyond page extent `0x782dba`, optionally
+  refreshes pending cursor y by the same `VMI * 18 / 25 + top_offset` rule,
+  writes `0x783160`, and sets modified-layout byte `0x782ee1`.
+- `0xea9e..0xeb26` handles `ESC &l#F`. It rewinds the parser record, takes the
+  absolute text-length line count, converts through current VMI, rejects zero
+  VMI, computes the usable page region below current top offset `0x782dce`, and
+  exits if the requested length does not fit.
+- `0xeb2e..0xeb56` is the text-length commit path. Selector zero restores the
+  default bottom through `0xea16`; nonzero accepted lengths write bottom state
+  `0x782dd2 = top_offset + text_length`. Both branches refresh line caches
+  through `0xfe54` and rebuild the default VFC table through `0x12b96`.
+- `0xece2..0xed54` handles `ESC &l#E`. It rewinds the parser record, scales the
+  absolute top-margin line count through current VMI, rejects zero VMI and
+  top positions at or beyond page extent `0x782dba`, subtracts physical top
+  offset `0x782dbe`, and writes top offset `0x782dce`.
+- `0xed5a..0xedae` completes top-margin handling. It recomputes default text
+  length through `0xea16`, optionally refreshes pending cursor y with the
+  `VMI * 18 / 25 + top_offset` rule, refreshes line caches through `0xfe54`,
+  and rebuilds the default VFC table through `0x12b96`.
+- `0xedb0..0xedf6` handles `ESC &s#C`. It rewinds the parser record, takes the
+  absolute selector, writes wrap byte `0x783190 = 1` for selector `0`, clears
+  it for selector `1`, and leaves it unchanged for other selectors.
+- `0xee64..0xeeaa` handles `ESC &l#L`. It rewinds the parser record, takes the
+  absolute selector, clears perforation byte `0x783191` for selector `0`, sets
+  it for selector `1`, and leaves it unchanged for other selectors.
+- `0xf36c..0xf39c` is the shared perforation consumer. It calls page-eject
+  helper `0xf124` and returns `D7 = 0` only when cursor y `0x782c8e` is beyond
+  nonzero limit `0x782dc2` and perforation byte `0x783191` is set. Otherwise
+  it returns `D7 = 1` without publication.
+
 Downstream consumers:
 
 - Printable prechecks `0xd28a` and `0xd6bc` read wrap byte `0x783190` before
@@ -518,7 +565,7 @@ Output boundary:
   paper-source mirroring through `0x780e8f` / `0x780e26` when the current and
   previous source bytes differ.
 - The chained vertical-layout stream reaches `0xcb00`, `0xc992`, `0xece2`, and
-  `0xea9e` before the following printable object proves the stored VMI,
+  `0xea9e` before the following printable object records that stored VMI,
   top-margin, and text-length state is consumed by page-record queueing.
 - `ESC &l1L!` writes `0x783191 = 1`; the following printable still uses the
   normal compact page-record path, while later vertical overflow decisions use

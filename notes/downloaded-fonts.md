@@ -590,6 +590,33 @@ The parser trace fixtures show the same dispatch path for `ESC )s0W`,
 `ESC )s80W`, and `ESC )s2193W`: handlers
 `0x11eb6,0x12008,0x11ff6,0x11f96` with modes `1,4,13,0`.
 
+`ESC *c#F` reaches dispatcher `0x16df6`. The handler rewinds
+`0x78299e` by six bytes at `0x16dfa`, reads parsed word `+2` at
+`0x16e00..0x16e0a`, and jumps through the table at `0x16db6` with helper
+`0x33298`. The table routes values as follows:
+
+- `0 -> 0x16e16`: if `0x782a92 != 2`, call `0x179da(1)` to walk all 32
+  current records and release/delete each matching record through `0x187fe`.
+- `1 -> 0x16e34`: if `0x782a92 != 2`, call `0x179da(0)` for the same
+  all-record walk with alternate release argument.
+- `2 -> 0x16e4c`: if `0x782a92 != 2`, call `0x187fe(1)` for current font id
+  `0x782f2e`.
+- `3 -> 0x16e68`: if `0x782a92 != 2`, call `0x17b5c`, which uses current font
+  id `0x782f2e` and current character word `0x782f30`.
+- `4 -> 0x16e7e`: call `0x17150` to unmark the current downloaded-font
+  record.
+- `5 -> 0x16e86`: call `0x17108` to mark the current downloaded-font record.
+- `6 -> 0x16e8e`: if `0x782a92 != 2`, call `0x18180` and then `0x1b04c` for
+  active/current resource housekeeping.
+- Other values route to `0x16eaa`, which returns without changing
+  downloaded-font state.
+
+The mode byte `0x782a92 == 2` suppresses values `0`, `1`, `2`, `3`, and
+`6`, but not values `4` and `5`. The latter always reach `0x17150` /
+`0x17108`; those helpers move one record between unmarked/current count
+`0x782782` and marked/current count `0x782786` when the current record exists
+and its bit-6 state actually changes.
+
 `0x15d0a` treats zero-count `W` as a descriptor packet, not as an empty skip:
 
 - `0x15d12..0x15d3a`: rewinds `0x78299e`, reads the parsed count, and stores

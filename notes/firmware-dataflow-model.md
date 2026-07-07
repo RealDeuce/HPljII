@@ -2056,6 +2056,27 @@ Render path:
 .........################..################...###
 ```
 
+Reproduction rule:
+
+- Treat font-selection commands as canonical text-state writers, not page
+  object writers. The parsed `ESC (s...T` / `ESC )s...T` streams update
+  request fields and dirty flags, then `0xc580`, `0x13eb8`, `0x144d2`, and
+  `0x14c64` select a context record and rebuild the primary or secondary map.
+- Preserve the selected context until a printable byte consumes it. The
+  visible handoff is the later printable path:
+  `0xd04a -> 0x1393a -> 0xd3b2/0xd824 -> 0x12f2e`, which writes compact
+  page objects and marks the page-root context slot live.
+- Publication must copy both sides of that state: `0xff1e` publishes the
+  compact bucket root, while `0x1edc6` copies page-root context slots
+  `+0x2c..+0x68` to render-record slots `+0x24..+0x60`. A reproducer that
+  copies glyph bytes without these context slots cannot reproduce selected
+  font rows.
+- SI/SO are render-affecting because they choose which installed slot the
+  following printable byte uses; they do not change already queued compact
+  object bytes. The selected slot is represented by `0x782f06` and
+  page-root slot byte `0x78297e`, then consumed as compact object context slot
+  `+0x05` and render context cache `0x783a2c`.
+
 State classification for this path:
 
 - Canonical state:

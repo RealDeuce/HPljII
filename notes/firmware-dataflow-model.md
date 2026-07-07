@@ -26,15 +26,16 @@ family or object producer.
 
 Rows named in this documentation are ROM-derived rows: bytes produced by
 following ROM disassembly, decoded resource data, page-record fields, and
-render helpers. Future device output is not part of the evidence standard.
-Fixtures can check that a documented byte stream reaches the documented ROM
-state and that helper transcriptions are internally consistent; they cannot
-substitute for ROM tracing. When an unresolved item asks for a fixture, the
-fixture is only a branch/path driver; the semantic documentation still has to
-trace the ROM handlers, field writes, page objects, and render helpers that
-generate the rows. No future fixture or physical capture is required to upgrade
-a ROM-local claim; the upgrade comes from documenting the missing disassembly
-edge.
+render helpers. Future device output is not part of the evidence standard, and
+there is no independent rendered-row oracle. Fixtures can check that a
+documented byte stream reaches the documented ROM state and that helper
+transcriptions are internally consistent; they cannot substitute for ROM
+tracing or compare pixels against a separate truth image. When an unresolved
+item asks for a fixture, the fixture is only a branch/path driver; the semantic
+documentation still has to trace the ROM handlers, field writes, page objects,
+and render helpers that generate the rows. No future fixture or physical
+capture is required to upgrade a ROM-local claim; the upgrade comes from
+documenting the missing disassembly edge.
 
 ## Reader Path Index
 

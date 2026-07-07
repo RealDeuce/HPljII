@@ -586,12 +586,13 @@ Evidence and confidence:
 - Confidence is high for the ROM-local split algorithm and object fields
   because the branch boundaries, field writes, and static large-payload
   walkthrough are direct disassembly. Pixel output is documented by tracing the
-  ROM render helpers and deriving rows from the queued object bytes; there is
-  no external row image to compare against, and parser-fed fixtures only prove
-  branch reachability. Broader dense-row documentation remains open only where
-  tracing a new byte stream changes accepted count or drain result, allocator
-  pre-state, split capacity, copy-stop behavior, packed-key advance, bridge
-  bucket root, or the `0x1f88e` mode-specific row-construction path.
+  ROM render helpers and deriving rows from the queued object bytes. There is
+  no external rendered-row image to compare against; parser-fed fixtures are
+  only branch/path drivers and state-shape checks. Broader dense-row
+  documentation remains open only where a byte stream changes accepted count or
+  drain result, allocator pre-state, split capacity, copy-stop behavior,
+  packed-key advance, bridge bucket root, or the `0x1f88e` mode-specific
+  row-construction path that the notes have not yet traced.
 
 ## Render Dispatch
 

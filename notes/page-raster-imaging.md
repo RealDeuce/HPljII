@@ -21,6 +21,7 @@ Sources: `generated/analysis/ic30_ic13_page_geometry_tables.md`;
 `generated/analysis/ic30_ic13_text_cursor_span_flow.md`;
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`;
 `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`;
+`notes/symbol-set-selection.md`;
 `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`;
 `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`;
 `generated/disasm/ic30_ic13_orientation_handler_010220.lst`;
@@ -1693,12 +1694,12 @@ in `0x156de`; the remembered pass rejects slot `0x782324` / record
 selection reaches context `0xc00ae122`, map `0x783032`, SO handler `0xc6b8`,
 compact object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and row
 digest `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
-The generated `ic30_ic13_active_symbol_set_flow.md` report traces
-`ESC (` / `ESC )` through `0x120be` and `0x1be22`: normal symbol-set
-finals compute PCL codes as `(parameter << 5) + suffix`, store requested
-words at `0x782ef4` / `0x782f04`, select through `0x156de`, and consume
-active words at `0x783144` / `0x783146`; final `X` is instead font-ID
-selection through `0x17708`, and final `@` dispatches `3@` plus
+Checked-in note [symbol-set-selection.md](symbol-set-selection.md)
+documents `ESC (` / `ESC )` through `0x120be` and `0x1be22`: normal
+symbol-set finals compute PCL codes as `(parameter << 5) + suffix`, store
+requested words at `0x782ef4` / `0x782f04`, select through `0x156de`, and
+consume active words at `0x783144` / `0x783146`; final `X` is instead
+font-ID selection through `0x17708`, and final `@` dispatches `3@` plus
 firmware-supported table variants backed by `0x782f1c/20/24/28`. The
 generated `ic30_ic13_symbol_set_patch_tables.md` report decodes all 18
 `0x14fce` patch entries as `map[dst] = map[src]` byte-copy pairs and

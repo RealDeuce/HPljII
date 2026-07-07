@@ -10,6 +10,7 @@ Sources: `generated/roms/ic32_ic15.bin`;
 `generated/analysis/ic30_ic13_text_glyph_index_flow.md`;
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`;
 `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`;
+`notes/symbol-set-selection.md`;
 `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`;
 `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`;
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`;
@@ -837,12 +838,11 @@ Secondary streams `ESC )0N ESC )s0p16h8v0s0b0T SO !!`,
 Printer compact entries from context slot `1`, and render row digest
 `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
-The generated `generated/analysis/ic30_ic13_active_symbol_set_flow.md`
-report traces those active words back to the host parser. `ESC (` uses
-setup handler `0x1201e` and slot word `0`; `ESC )` uses `0x12008` and
-slot word `1`; both terminal paths call `0x120be`, which calls `0x1be22`
-and then the common refresh `0xc580`. For normal symbol-set finals,
-`0x1be22` computes the PCL word as
+Checked-in note [symbol-set-selection.md](symbol-set-selection.md) traces
+those active words back to the host parser. `ESC (` uses setup handler
+`0x1201e` and slot word `0`; `ESC )` uses `0x12008` and slot word `1`; both
+terminal paths call `0x120be`, which calls `0x1be22` and then the common
+refresh `0xc580`. For normal symbol-set finals, `0x1be22` computes the PCL word as
 `(parameter << 5) + final_byte - 0x40`, so `ESC (8U` becomes requested
 word `0x0115` at `0x782ef4`, while the secondary slot uses `0x782f04`.
 Final `X` restores the previous requested symbol word and calls

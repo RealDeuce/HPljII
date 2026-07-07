@@ -2359,6 +2359,7 @@ State classification for this path:
 
 Evidence for this path is in
 [font-context-metrics.md](font-context-metrics.md),
+[symbol-set-selection.md](symbol-set-selection.md),
 [built-in-resource-scan.md](built-in-resource-scan.md),
 [pcl-command-map.md](pcl-command-map.md),
 [page-record-storage.md](page-record-storage.md),

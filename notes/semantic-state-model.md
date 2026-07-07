@@ -11506,7 +11506,8 @@ leaves those names unresolved.
   caller `0x01a3c2` and resume sequence `0x1a2e4..0x1a3f4`.
 - `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`:
   `0x9bee` generic status-bit OR helper.
-- `generated/analysis/ic30_ic13_active_symbol_set_flow.md` and
+- [symbol-set-selection.md](symbol-set-selection.md),
+  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`, and
   `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`: current
   evidence for shared `0x1b04c` refresh behavior in sibling contexts.
 

@@ -276,7 +276,7 @@ Evidence:
 `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`,
 `generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst`,
 `generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and
-`generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+[symbol-set-selection.md](symbol-set-selection.md).
 
 Control-Z terminal behavior is table-dependent. In the normal parser table,
 `0x120d2` handles nested `0x1a`: it checks selected context byte

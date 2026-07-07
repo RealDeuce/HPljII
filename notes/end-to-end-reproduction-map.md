@@ -2628,6 +2628,8 @@ Evidence:
   [page-record-storage.md](page-record-storage.md),
   [page-raster-imaging.md](page-raster-imaging.md), and
   [semantic-state-model.md](semantic-state-model.md).
+- Checked-in command-family detail:
+  [symbol-set-selection.md](symbol-set-selection.md).
 - Focused listings and extracts:
   `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
   `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,

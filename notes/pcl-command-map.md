@@ -1059,8 +1059,10 @@ word and calls `0x17708` for `ESC (#X` / `ESC )#X` font-ID selection;
 final `@` runs a numeric table where `3@` is the documented default-font
 command and `@0..@2` are firmware-supported table/copy variants. The
 active selected words later consumed by glyph-map patching are `0x783144`
-and `0x783146`; this path is detailed in
-`generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+and `0x783146`; this path is documented in
+[symbol-set-selection.md](symbol-set-selection.md), with
+`generated/analysis/ic30_ic13_active_symbol_set_flow.md` retained as a
+supporting generated table/cross-reference report.
 
 The `ESC (7X` special-case fixture now exposes the upstream split before
 common refresh: final `X` restores the previous requested word, sets

@@ -2557,6 +2557,27 @@ Other parser artifacts and unimplemented rows:
   chaining; it does not write page environment, page objects, or render state
   by itself.
 
+Reproduction rule:
+
+- Treat explicit zero-handler rows as table decisions, not missing
+  disassembly. Normal mode-zero `0x00`, `0x07`, and `0x0b` run the terminal
+  parser cleanup path and do not fall through to printable text or direct
+  control handling.
+- Preserve the delayed-payload boundary even for no-output rows. A terminal
+  zero-handler row can call `0x12218` before scratch reset, so a renderer must
+  not collapse it to a simple byte skip when a delayed handler is pending.
+- In alternate/data mode, zero-handler C0 rows are stored input, not ignored
+  output: `0x11930..0x11ab8` appends them through `0xe002` before the
+  terminal reset path. They can later become visible only if macro/data-chain
+  replay feeds those stored bytes back through `0xa904`.
+- Only unmatched normal mode-zero bytes reach the printable fallback, and only
+  when the active font-context predicate at `0x782f06` / `0x782eeb` allows
+  `0xd04a`. If the predicate rejects, the byte is ignored without page-object
+  production.
+- Treat `ESC ?`, display-reader `ESC Z`, and `ESC &lT/t` as parser artifacts
+  or unimplemented rows unless a later byte stream reaches a documented
+  command-family handler. They are not hidden drawing commands.
+
 State classification for this path:
 
 - Canonical state:

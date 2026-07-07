@@ -269,6 +269,11 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   Related parser artifacts are bounded separately: `ESC ?` is consumed in
   wrapper `0xda9a`, `ESC Z` terminates the direct display-functions reader,
   and `ESC &lT/t` has no standalone page-output effect.
+  Reproduction rule: do not treat all skipped bytes alike. Explicit normal
+  zero-handler rows still preserve the `0x12218` delayed-restore boundary;
+  alternate/data zero-handler rows preserve bytes through `0xe002`; unmatched
+  normal bytes only become printable when the `0x782f06` / `0x782eeb`
+  predicate allows the `0xd04a` fallback.
 - Transparent print data:
   ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
   plus disassembly

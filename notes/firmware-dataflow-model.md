@@ -2144,6 +2144,14 @@ Font request and candidate selection:
 - The primary fixture follows
   `0x148f8 -> 0x1569c -> 0x156de -> 0x153c6 -> 0x1519a -> 0x147b2 ->
   0x14758 -> 0x14398 -> 0x144d2 -> 0x14c64`.
+- The candidate windows consumed here come from the built-in resource scan
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be`. For the verified IC32/IC15 image, that
+  scan contributes 24 `HEAD`-path font records, split into 12 class-zero and
+  12 class-one low-window candidates.
+- Primary refresh copies class-zero window `0x7827ac` / `0x782798` to active
+  pointer/count `0x78287c` / `0x7827b8`, giving `0x782354` / `12`.
+  Secondary refresh copies class-one window `0x7827a0` / `0x782790`, giving
+  `0x782324` / `12`.
 - Symbol filtering keeps primary slots `0x782354`, `0x782364`, and
   `0x782374`; later pitch, height, and stroke filters select slot
   `0x782354`, record `0x00004c`, and context longword `0xc008004c`.
@@ -2164,6 +2172,9 @@ Symbol and map behavior:
   `0x782ef4 + 0x10 * slot` and call `0xc580`.
 - `0x156de` consumes requested, remembered, and fallback symbol words while
   filtering the active candidate list.
+- For the verified built-ins, that active list is the concrete class-zero or
+  class-one window above; [symbol-set-selection.md](symbol-set-selection.md)
+  records the resulting non-Roman survivors and selected resource records.
 - `0x14c64` rebuilds the selected map from either the bit-30 resource path
   `0x14d9c` or the bit-30-clear inline/downloaded path `0x14e24` /
   `0x14eb6`, then applies symbol patcher `0x14f16` and snapshot helper

@@ -2524,6 +2524,14 @@ Font selection and map rebuild:
   path runs
   `0x148f8 -> 0x1569c -> 0x156de -> 0x153c6 -> 0x1519a -> 0x147b2 ->
   0x14758 -> 0x14398 -> 0x144d2 -> 0x14c64`.
+- The built-in candidate window consumed by that path is created earlier by
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be`. For the verified IC32/IC15 resources,
+  that scan accepts 24 `HEAD`-path font records, with 12 class-zero and
+  12 class-one candidates in the low built-in resource window.
+- Primary selection copies class-zero window `0x7827ac` / `0x782798` into
+  active pointer/count `0x78287c` / `0x7827b8`, giving `0x782354` / `12`.
+  Secondary selection copies class-one window `0x7827a0` / `0x782790`,
+  giving `0x782324` / `12`.
 - Symbol, pitch, height, and stroke filtering select slot `0x782354`, record
   `0x00004c`, and context longword `0xc008004c`.
 - `0x144d2` writes primary current-font context record `0x782ee6`.
@@ -2594,10 +2602,13 @@ State classification:
   `0x782f08/0x782f0a`, selected page-root slot `0x78297e`, page-root context
   slots, compact text objects, and render-record context slots.
 - Derived/cache:
-  candidate survivor lists, selected candidate slot `0x7828a8`, selected
-  target `0x7828de`, snapshot records `0x783148/0x783152`, HMI `0x78315c`,
-  transient selected context `0x782992`, current font id `0x782f2e`, compact
-  coordinates, glyph-entry pointers, and render-band fields.
+  candidate counts/cursors `0x78278e`, `0x782790..0x78279e`, and
+  `0x7827a0..0x7827b4`, active candidate pointer/count
+  `0x78287c` / `0x7827b8`, candidate survivor lists, selected candidate slot
+  `0x7828a8`, selected target `0x7828de`, snapshot records
+  `0x783148/0x783152`, HMI `0x78315c`, transient selected context
+  `0x782992`, current font id `0x782f2e`, compact coordinates,
+  glyph-entry pointers, and render-band fields.
 - Parser scratch:
   setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
   records, dirty flags `0x782f2c/0x782f2d` while refresh is pending, and the

@@ -747,10 +747,10 @@ source and rows` extends the same retry contract to tall/segmented text
 objects. The unflagged rows-`0x81` case retries bucket words `9` and
 `1`; the flagged tall built-in space-glyph case retries all nine bucket
 indexes `0..64`. Selected published and retried buckets render the same
-ROM-derived rows through `0x1effe`. The remaining uncertainty is broader selector-mode
-cross-products that change source fields, allocator retry behavior, bucket
-shapes, or visible rows, not the paired no-room return semantics or row
-contract for these source families.
+ROM-derived rows through `0x1effe`. The remaining uncertainty is selector-mode
+cross-products only when they change source fields, allocator retry behavior,
+bucket shapes, helper dispatch, fallback split, or visible rows; it is not the
+paired no-room return semantics or row contract for these source families.
 
 The segmented retry contract is also exact:
 
@@ -1508,8 +1508,13 @@ Unresolved middle edges:
   variants that change encoded object fields, bridge state, packed-key advance,
   copy-stop behavior, or rendered rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
-  pinned for the selector fixtures above; the remaining work is a broader
-  selector/page-visible matrix that changes ROM-visible object or render state.
+  pinned for the selector fixtures above. Remaining work must change a
+  concrete ROM-visible field or branch: clipped source record `0x782a88`,
+  rule object `+0x05/+0x06/+0x08/+0x0a/+0x0c`, fixed-list object
+  `+0x04/+0x05/+0x06/+0x08/+0x0a/+0x0c/+0x0d`, bridge-normalized
+  rule/fixed roots, selector dispatch between `0x1f596` and `0x1f4e0`,
+  fixed-list band gating in `0x1f756`, continuation mutation, or rendered
+  rows.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
   compact glyph row-copy checkpoint below. The downloaded row-count family now
   renders parser-produced rows `0x0001..0x00ff`; segmented-wide high-row

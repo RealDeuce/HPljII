@@ -2949,9 +2949,10 @@ object shapes or visible rows.
   the fixture proves the old published bucket prefix, fresh-root allocation,
   retried object pointer/bytes, `0x1effe` dispatch, and row digest match
   for flagged `0xd824` and unflagged `0xd3b2` short and segmented/tall
-  objects. Remaining risk is broader selector-mode cross-products that change
-  allocator topology, object bytes, dispatch, or rendered rows, not the paired
-  failure-return semantics for these object families.
+  objects. Remaining risk is selector-mode cross-products only when they
+  change source fields, allocator topology, object bytes, helper dispatch,
+  fallback split, or rendered rows, not the paired failure-return semantics
+  for these object families.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers
@@ -9478,10 +9479,11 @@ Replay`.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
   `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
   fixtures through compact text, bridge normalization, `0x1f446`, and
-  `0x1f4e0`. Remaining rectangle selector risk is broader cross-feature
-  combinations with font selection, downloaded glyphs, geometry changes, and
-  new ROM-derived rows, not the selector mapping or page-record render
-  dispatch itself.
+  `0x1f4e0`. Remaining rectangle selector risk is cross-feature only when it
+  changes cursor/geometry inputs, clipped source record, rule object bytes,
+  bridge-normalized selector/key fields, helper dispatch, continuation
+  mutation, or ROM-derived rows; it is not the selector mapping or
+  page-record render dispatch itself.
 
 ## Mixed Text/Rule/Raster Page Record
 
@@ -10326,8 +10328,13 @@ state combinations that have not yet been tied to concrete byte streams.
   modes `0..3`; remaining work is byte-stream variants that change encoded
   object fields, bridge state, or rendered rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
-  pinned for the cited selectors. Remaining work is broader selector/page
-  combinations that change ROM-visible object or render state.
+  pinned for the cited selectors. Remaining work must change a concrete
+  ROM-visible field or branch: clipped source record `0x782a88`, rule object
+  `+0x05/+0x06/+0x08/+0x0a/+0x0c`, fixed-list object
+  `+0x04/+0x05/+0x06/+0x08/+0x0a/+0x0c/+0x0d`, bridge-normalized
+  rule/fixed roots, selector dispatch between `0x1f596` and `0x1f4e0`,
+  fixed-list band gating in `0x1f756`, continuation mutation, or rendered
+  rows.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
   compact glyph row-copy checkpoint. Rows `0x0001..0x00ff` in the
   parser-produced downloaded row-count family are now page-visible, and

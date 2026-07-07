@@ -424,11 +424,15 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
 - Underline/text-attribute commands:
   `ESC &d` dispatches terminal handler `0x12622` directly from the `ESC &`
   family. It tokenizes the local `&d` form, writes underline/span selector
-  state `0x783185` for covered selectors such as `3D`, and can flush pending
-  text span state through the same `0xf34a -> 0x12714` path used by cursor
-  moves. Its visible effect is delayed until the span machinery or following
-  printable text consumes the updated selector; it creates no standalone page
-  object without that downstream consumer. Owner note:
+  state `0x783185` for covered selectors such as `3D`, and uses the pending
+  span block `0x783184` / `0x783186` / `0x783188` / `0x78318a`. Printable
+  text updates that span block through selected-font metric consumers
+  `0xd4ac` / `0xd8fc`; CR, margin, vertical-cursor, and underline terminal
+  commands can flush it through `0xf34a -> 0x12714 -> 0x126e2`. The flush
+  materializes a selector-`0x4000` segment-list object under the current page
+  root before following text continues. Its visible effect is therefore
+  delayed until printable text or a flush boundary consumes the selector; the
+  `ESC &d` command alone only changes span state. Owner note:
   [direct-control-codes.md](direct-control-codes.md).
 - Page layout, VFC, and publication commands:
   `&l` enters mode `10` through `0x11eda`. Page-size, VMI/LPI, margin, paper,

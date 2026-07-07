@@ -196,7 +196,8 @@ Unknown:
   encoded-span objects before `0x138de` copies payload bytes.
 - `0x133aa` writes rectangle/rule nodes under root `+0x24` using the
   ordering algorithm documented below.
-- `0x136d2` writes ordered fixed-rule nodes under root `+0x28`.
+- `0x136d2` writes fixed-list nodes under root `+0x28` using the ordering
+  algorithm documented below.
 - `0xff1e` copies root fields into a published pool record, writes published
   state, clears the current root, and preserves command-specific pool header
   fields such as copy-count word `+0x0c`.
@@ -259,6 +260,74 @@ higher, and equal-key examples; fixture
 `0x133aa no-room return preserves rule-list head` for the zero-allocation
 branch; and fixture `0x1edc6 page-record bridge normalizes rule and fixed
 lists` for the root-to-render bridge.
+
+## Fixed-List Insertion Order
+
+Landscape text-span storage enters through `0x1366c`: it calls `0x137a2` to
+normalize the local span source and derive keys, then calls `0x136d2` to link
+the fixed-list object.
+
+`0x137a2` writes both source fields and derived/cache state:
+
+- source byte `+1` becomes `3` when its low bit was clear, or `6` when its low
+  bit was set;
+- source word `+2` is rewritten as `source word +2 + 0x782dc0`;
+- `0x782a7a = 0x40` and `0x782a7b = 0`, matching the segment-list selector
+  state used by the portrait sibling;
+- `0x782a7c = source word +4 >> 4`;
+- `0x782a7e = (source word +4 << 12)
+  | (((source word +2 + 0x782dc0) & 0x0f) << 8)
+  | ((source word +2 + 0x782dc0) >> 4)`, truncated to the stored word.
+
+If root `+0x28` is empty, `0x136d2` allocates 14 bytes through `0x1381c`,
+stores the new object as the root `+0x28` head, and clears its next pointer.
+If allocation fails at `0x136f8..0x13700`, it returns zero without modifying
+root `+0x28`.
+
+For a nonempty list, `0x136d2` first calls `0x13690(head, local_status)`.
+`0x13690` walks existing object byte `+4` values against key `0x782a7c`:
+
+- when it finds the first object whose byte `+4` is greater than the key, it
+  returns the predecessor pointer, or zero when that object was the head, with
+  status nonzero;
+- when it reaches a tail whose byte `+4` is less than or equal to the key, it
+  returns that tail with status zero.
+
+Only after that search does `0x136d2` allocate the new object. If allocation
+fails at `0x1371a..0x13734`, the prior search has no visible page effect:
+root `+0x28`, existing nodes, and stream bookkeeping remain unchanged. On
+success, `0x136d2` links by the search result:
+
+- status zero appends after the returned tail and clears `new.+0`;
+- status nonzero with a zero predecessor inserts at the head by copying the
+  old root `+0x28` into `new.+0` and storing the new object as root `+0x28`;
+- status nonzero with a nonzero predecessor inserts after that predecessor by
+  copying `predecessor.+0` into `new.+0` and writing `predecessor.+0 = new`.
+
+After linking, `0x136d2` fills the canonical fixed-list object:
+
+- object `+4` gets byte `0x782a7d`, the low byte of derived key
+  `0x782a7c`;
+- object `+5` gets normalized source byte `+1`;
+- object `+6` gets word `0x782a7e`;
+- object `+8` gets source word `+6`.
+
+Output effect: `0x1edc6` copies root `+0x28` to render `+0x20` and writes
+fixed-list continuation fields before `0x1f756` consumes the bridged list on
+five-band boundaries. The fixed-list order therefore controls the order of
+landscape span objects presented to `0x1f756`.
+
+Evidence: `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+`0x1366c..0x1381a` for key normalization, search, allocation, link cases, and
+object writes; fixture
+`0x136d2 address-aware fixed-list insertion uses 0x1381c storage` for lower,
+higher, and equal-key list cases; fixture
+`0x136d2 no-room return preserves fixed-list head after search` for the
+post-search allocation-failure branch; fixture
+`0x12714 landscape span inserts into nonempty fixed list` for parser-fed
+landscape insertion; and fixture
+`0x1edc6 page-record bridge normalizes rule and fixed lists` for the
+root-to-render bridge.
 
 ## Readers And Consumers
 

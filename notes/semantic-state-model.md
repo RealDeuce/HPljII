@@ -11918,8 +11918,14 @@ ownership, not a separate renderer.
   `0x1381c` returns zero at `0x133c2..0x133d0`, fixture
   `0x133aa no-room return preserves rule-list head` proves root `+0x24`,
   the existing node, and stream bookkeeping are unchanged.
-- `0x136d2` writes root `+0x28` and inserts fixed-rule objects with the
-  same ordered-list contract. Fixture
+- `0x136d2` writes root `+0x28` and inserts fixed-list objects using
+  search helper `0x13690`. The helper returns the predecessor before the
+  first object whose byte `+4` is greater than key `0x782a7c`, or returns
+  the tail when the tail byte is less than or equal to the key. `0x136d2`
+  then allocates the 14-byte object, links it at head, after predecessor,
+  or after tail, writes byte `+4` from `0x782a7d`, byte `+5` from
+  normalized source byte `+1`, word `+6` from `0x782a7e`, and word `+8`
+  from source word `+6`. Fixture
   `0x136d2 no-room return preserves fixed-list head after search` proves
   the non-empty list search at `0x13690` happens before the failing
   `0x1381c` call at `0x1371a..0x13734`, and root `+0x28` plus existing
@@ -11975,6 +11981,15 @@ the 14-byte object under root `+0x24` according to the three `0x13472` status
 cases described above. `0x1edc6` copies that rule-list root to render
 `+0x1c`, so `0x1f446` consumes the same ordered list after bridge
 normalization.
+
+For successful fixed-list insertion, `0x1366c` calls `0x137a2`, which rewrites
+the source mode byte to `3` or `6`, adds `0x782dc0` into source word `+2`, sets
+selector bytes `0x782a7a/0x782a7b = 0x40/0`, derives key `0x782a7c` from
+source word `+4 >> 4`, and derives packed key `0x782a7e` from source words
+`+2/+4`. `0x136d2` links the 14-byte object under root `+0x28` according to
+the `0x13690` predecessor/tail result. `0x1edc6` copies that fixed-list root
+to render `+0x20`, so `0x1f756` consumes the same ordered list on its
+five-band boundary.
 
 The `addressed page-record writers share 0x1381c across chunk rollover`
 fixture composes those allocator facts into one page-record state block:

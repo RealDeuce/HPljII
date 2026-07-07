@@ -300,7 +300,14 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xc780`, `0xc840`, and `0xc7e0`; uppercase wrappers reach `0x12082`,
   `0x12096`, `0x12046`, `0x1206e`, `0x120aa`, and `0x1205a`. Font/download
   `W/w` reaches `0x11f96`, which schedules `0x15d0a` for count `0` and
-  `0x16c14` for nonzero counts. Owner notes:
+  `0x16c14` for nonzero counts. Successful downloaded-character payloads
+  install records through `0x16498`; following printable bytes consume the
+  selected glyph through `0xd04a` / `0x1393a` / `0x12f2e`, publish through
+  `0xff1e`, and render through `0x1ed84` / `0x1ef6a`. Row-count streams have
+  a documented selector boundary: low-byte rows `0x0001..0x00ff` are
+  reproducible through the compact helpers, while high-row short compact
+  siblings `0x0101..0x0103` stop at the unchecked `0x1fe76` fallback
+  jump-table read. Owner notes:
   [font-context-metrics.md](font-context-metrics.md) and
   [downloaded-fonts.md](downloaded-fonts.md).
 - Macro definition, replay, and overlay:
@@ -458,7 +465,9 @@ documented in the owner notes.
   and `t` -> `0xc7e0`. The uppercase `P/H/V/S/B/T` wrappers call the same
   writer family and then common refresh `0xc580`.
 - `ESC (s#W` / `ESC )s#W`, handler `0x011f96`: delayed
-  font/downloaded-character payload selector.
+  font/downloaded-character payload selector. Count `0` schedules
+  `0x15d0a`; nonzero counts schedule `0x16c14`; successful glyph payloads
+  later become printable page objects through `0x16498 -> 0x12f2e`.
 
 ## First Handler Observations
 

@@ -72,6 +72,64 @@ strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
+## Stream Trace Procedure
+
+Use this procedure when starting from a concrete supported host byte stream.
+It keeps the controlling artifact byte/dataflow oriented while preserving the
+command-family and page-image structure:
+
+1. Normalize the byte source:
+   start at [host-byte-fetch.md](host-byte-fetch.md) and classify which
+   `0xa904` source produces each parser byte: live/ring/direct host input,
+   pushback stack, data-chain replay, or macro replay. If the stream includes
+   delayed payload bytes, keep the payload reader's direct `0xa904` calls
+   separate from parser-wrapper bytes.
+2. Classify each admitted byte:
+   use [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes)
+   to decide whether the byte is printable, alternate/data append, explicit
+   no-output parser behavior, syntax/prefix state, a state-only terminal, a
+   delayed-payload arming byte, a page-object producer, a publication/render
+   boundary, or a host/status side channel.
+3. Follow parser records and dispatch:
+   for command bytes, use [pcl-parser-core.md](pcl-parser-core.md) to track
+   parser mode `0x782999`, parser record cursor `0x78299e`, the six-byte
+   record fields, delayed-payload scratch `0x782a1a/0x782a1c/0x782a20..`,
+   normal table `0x112a4`, and alternate/data table `0x116f6`. Then jump to
+   the owner note named by
+   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+4. Record command state effects:
+   in the owner note, capture the canonical fields written by the handler,
+   parser scratch consumed, derived/cache fields, firmware bookkeeping,
+   readers/consumers, and no-output side effects. State-only commands remain
+   in this step until a later byte consumes their changed fields.
+5. Map page/image objects:
+   when a command creates page content, use
+   [page-record-storage.md](page-record-storage.md) and its renderer-facing
+   object class map to identify the page-root field written by the producer:
+   compact/segment/raster buckets under root `+0x1c`, rule list under root
+   `+0x24`, fixed list under root `+0x28`, and context slots under root
+   `+0x2c..+0x68`.
+6. Cross the publication and scheduler boundary:
+   use [publication-commands.md](publication-commands.md),
+   [page-record-storage.md](page-record-storage.md), and
+   [active-render-scheduler.md](active-render-scheduler.md) to follow
+   `0xff1e`, pool cursors `0x780ea6/0x780eaa/0x780eae`, render-work pointer
+   `0x783a18`, active copy `0x1ed84`, and bridge `0x1edc6`. If the stream is
+   not published yet, the visible output remains pending page-record state.
+7. Derive pixels from ROM render helpers:
+   use [page-raster-imaging.md](page-raster-imaging.md) and the Bitmap Render
+   Dispatch Contract in [semantic-state-model.md](semantic-state-model.md) to
+   follow `0x1ef6a` into compact text/downloaded glyph helpers, segment-list
+   helper `0x1f812`, rule helpers `0x1f4e0` / `0x1f596`, fixed-list helper
+   `0x1f756`, or encoded raster helper `0x1f88e`. Row vectors are derived
+   from those ROM helpers, object fields, and ROM/resource bitmap bytes, not
+   from an external print comparison.
+8. State any unresolved boundary exactly:
+   if the trace stops, classify the stop as ROM-local unknown,
+   hardware/MMIO boundary, missing external resource data, or optional
+   physical correlation. Name the exact address range and the state or byte
+   whose value is not proven.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

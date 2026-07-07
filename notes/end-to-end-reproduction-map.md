@@ -5658,6 +5658,41 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   derived output exists only as stored macro/data input in alternate/data
   mode. No ROM-local page-object, publication, or render edge remains for
   these rows.
+- Host/status side-channel streams are covered for the ROM-local model-ID
+  response and outbound status FIFO. Evidence:
+  [errors-and-status.md](errors-and-status.md),
+  [host-byte-fetch.md](host-byte-fetch.md),
+  [pcl-command-map.md](pcl-command-map.md), and fixture
+  `0x12034/0x122be model-ID response emits FIFO literal`.
+  The concrete model-response stream is `ESC *r1K 0x11`; the `ESC *s#^`
+  sibling reaches the same wrapper. Parser bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`, then `ESC *r#K` reaches mode `7` and
+  `ESC *s#^` reaches mode `6`. Both dispatch wrapper `0x12034`, which calls
+  `0x11efe` to append a synthetic setup record with word `+2 = 1`, then enters
+  `0x122be`.
+  Producer `0x122be..0x12326` rewinds parser record cursor `0x78299e`, fetches
+  the following query byte through `0xda9a`, and emits literal `33440A\r\n`
+  from ROM string `0x12280..0x12288` only when the query byte is `0x11` and
+  the active record word is `1` or `-1`. Each literal byte is enqueued through
+  `0xb090`, which retries FIFO writer `0xb0c0` and waits on wait object
+  `0x7801e2` if FIFO count `0x783ed2` is full. FIFO consumers
+  `0xae2c` / `0xaece` later drain bytes using read/write pointers
+  `0x783ed4` / `0x783ed8` and storage `0x783e92..0x783ed1`.
+  This family has no page-object or pixel effect: it does not create a current
+  page root, does not call `0xff1e`, and does not feed `0x1ed84` /
+  `0x1ef6a`. Its reproduction effect is protocol-visible bytes and possible
+  parser stalling when the host-output FIFO is full. A closed byte-stream
+  renderer can ignore the response only when the host script does not consume
+  backchannel bytes to choose later input.
+  Canonical state is FIFO count/pointers/storage `0x783ed2`, `0x783ed4`,
+  `0x783ed8`, `0x783e92..0x783ed1`, output backend selector `0x780e40`, and
+  literal bytes `0x12280..0x12288`. Parser scratch is the synthetic six-byte
+  setup record and the fetched query byte. Firmware bookkeeping is wait object
+  `0x7801e2`, pending status count `0x780e22`, bridge-service byte
+  `0x783e61`, and status-byte fields consumed by `0xaece`. Hardware/external
+  state is the physical output backend behind `0xfffe0001` / `0xfffe0003` or
+  `0xfffee005` / `0xfffee003`; physical protocol naming for the `0x11` query
+  remains external, not a ROM-local parser/page/render gap.
 - Transparent print data streams are covered for printable bytes,
   default-filtered C0/high-control bytes, nonzero-filtered C0/high-control
   bytes, `1a 58` and non-`0x58` probe handling, primary high-control samples

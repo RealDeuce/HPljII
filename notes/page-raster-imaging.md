@@ -1326,6 +1326,68 @@ selected-bucket indexing from render-record word `+0x10` into the
 `+0x18` bucket array, and verifies the compact, segment-list, and
 encoded-span class branches plus compact/encoded subtable targets.
 
+The rule-list disassembly contract is:
+
+- `0x1f446` reads render-record rule-list root `+0x1c`. A zero root exits the
+  rule pass.
+- Like fixed-list rendering, it reads render word `+0x10`, divides by `5`, and
+  runs only when the remainder is zero. Non-five-band render rows do not
+  consume or mutate rule objects.
+- For an active five-band row, it walks the linked rule list and filters each
+  object by `object[4] <= render_band + 4`.
+- Objects with continuation word `+0x0c <= 0` are ignored. Otherwise
+  `object[4] - render_band` becomes row displacement `D2`, and
+  `object[5] & 0x0f` indexes dispatch table `0x1f4a0`.
+- Selector `7` dispatches to solid helper `0x1f596`. All other low-nibble
+  selectors in the table dispatch to patterned helper `0x1f4e0`.
+- Both helpers clear bridge flag bit `0x10` from object byte `+0x05`, derive
+  a draw count from the bridged form or continuation form, subtract that count
+  from continuation word `+0x0c`, and call destination helper `0x1f626`.
+- Pattern helper `0x1f4e0` uses mask helper `0x1f6ee`, selector table
+  `0x2fefe`, and row phase from the packed coordinate to write masked pattern
+  words. Solid helper `0x1f596` writes full `0xffff` words plus a trailing
+  mask from table `0x308be`.
+- When helper `0x1f626` reports fallback rows in the high word of `D3`, both
+  rule helpers restart at fallback buffer `0x7810b4 + A2` and continue the
+  same row-store loop.
+
+The exact rule-list instruction boundaries are:
+
+- `0x1f446..0x1f44e`: load render-record rule-list root `+0x1c`; a zero root
+  exits this render pass.
+- `0x1f450..0x1f460`: load render band word `+0x10`, divide it by `5`, and
+  exit unless the remainder is zero.
+- `0x1f462..0x1f470`: set the inclusive band window to `band + 4`, load the
+  current rule node, and stop the pass when node byte `+0x04` is beyond that
+  window.
+- `0x1f472..0x1f492`: skip nodes with continuation word `+0x0c <= 0`;
+  otherwise compute row displacement from node byte `+0x04 - band`, select a
+  helper from table `0x1f4a0` using node byte `+0x05 & 0x0f`, and call it.
+- `0x1f494..0x1f49a`: advance through the node `+0x00` link and repeat until
+  the list ends.
+- `0x1f4e0..0x1f514`: patterned-rule setup. It seeds draw count `0x50`, reads
+  packed coordinate word `+0x06`, clears bridge bit `0x10`, derives or
+  normalizes the draw count, mutates continuation word `+0x0c`, clips the
+  current draw count, and calls destination helper `0x1f626`.
+- `0x1f51a..0x1f55a`: read width word `+0x08`, call mask helper `0x1f6ee`,
+  clear `$a001`, load stride `0x783a1c`, select pattern source from table
+  `0x2fefe`, and prepare leading/full/trailing masks.
+- `0x1f55c..0x1f57a`: for each current-band row, read the next pattern word,
+  write its leading masked word, write any full middle words, write the
+  trailing masked word, then advance by stride.
+- `0x1f57e..0x1f590`: if helper `0x1f626` split rows into the fallback half of
+  `D3`, restart the same patterned row loop at `0x7810b4 + A2`.
+- `0x1f596..0x1f5ca`: solid-rule setup. It mirrors the bridge-bit,
+  draw-count, continuation-word, clipping, and destination-helper sequence
+  used by `0x1f4e0`.
+- `0x1f5d0..0x1f5f6`: derive full-word count from width word `+0x08`, map the
+  low-nibble tail through mask table `0x308be`, load full-word pattern
+  `0xffff`, load stride `0x783a1c`, and enter the current-band loop.
+- `0x1f5f8..0x1f60a`: for each current-band row, write zero or more full
+  `0xffff` words, write the trailing mask word, then advance by stride.
+- `0x1f60e..0x1f620`: if helper `0x1f626` split rows into the fallback half of
+  `D3`, restart the same solid row loop at `0x7810b4 + A2`.
+
 The segment-list disassembly contract is:
 
 - `0x1f812` receives `A1` at object byte `+4` for bucket class `0x40..0x7f`,
@@ -1419,8 +1481,10 @@ The exact fixed-list instruction boundaries are:
 
 The controlling evidence is
 `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst` at
-`0x1f756..0x1f810` for fixed-list rendering and `0x1f812..0x1f88c` for
-segment-list rendering. Fixtures named `0x1f812 segment-list object renders
+`0x1f446..0x1f620` for rule-list rendering, `0x1f756..0x1f810` for fixed-list
+rendering, and `0x1f812..0x1f88c` for segment-list rendering. Fixtures named
+`0x1f446/0x1f596 renders solid black rectangle rule pixels`, `0x1f4e0 renders
+gray and HP pattern selector matrix`, `0x1f812 segment-list object renders
 counted mask spans`, `0x1f756 fixed-width list renders bridged +0x20 object`,
 and `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
 order` are branch and transcription checks for this static contract.

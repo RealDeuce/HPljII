@@ -41,7 +41,7 @@ The parser initializes these fields at `0x11774` before entering the byte loop:
 | Address | Group | Meaning |
 | --- | --- | --- |
 | `0x782999` | canonical | Current parser mode. Cleared at parser start. |
-| `0x78299a` | firmware bookkeeping | Current state handler pointer. Starts as `0x11b8e`. |
+| `0x78299a` | firmware bookkeeping | State handler pointer; starts as `0x11b8e`. |
 | `0x78299e` | canonical | Cursor for six-byte parsed command records. |
 | `0x782a1a` | firmware bookkeeping | Delayed-payload pending flag. |
 | `0x782a1c` | firmware bookkeeping | Delayed-payload handler pointer. |
@@ -52,7 +52,7 @@ The parser initializes these fields at `0x11774` before entering the byte loop:
 | `0x782a42..` | parser scratch | Digits/sign/fraction bytes collected by tokenizer. |
 | `0x782a56` | firmware bookkeeping | Alternate-mode echo helper latch. |
 | `0x782c18` | canonical | Alternate/data-mode flag. Chooses alternate parser table. |
-| `0x783196..0x783199` | parser scratch | Small local accumulation buffer for matched bytes. |
+| `0x783196..0x783199` | parser scratch | Local matched-byte buffer. |
 
 The six-byte command record at `0x78299e` has this layout:
 
@@ -227,6 +227,70 @@ printable fallback.
 If no table entry matches in mode zero normal mode, the loop consults the active
 font-context state at `0x782f06` / `0x782eeb`. If that context byte is `1`, it calls
 `0xd04a` for the byte; otherwise it ignores the byte and fetches again.
+
+### Main Parser Branch Boundaries
+
+The `0x11774` loop is the first shared semantic route after normalized byte
+fetch. These ranges are the ROM-local decision points a reader should follow
+before jumping to a command-family owner note:
+
+- `0x11774..0x117c4`: parser-session initialization. The loop clears mode byte
+  `0x782999`, installs default callback `0x11b8e` in `0x78299a`, initializes
+  the six-byte command-record cursor to `0x7829a2`, clears delayed-payload
+  state `0x782a1a` / `0x782a1c`, resets byte and numeric scratch cursors
+  `0x782a26` / `0x782a3e`, clears `0x782a56`, and sets the local matched-byte
+  buffer to `0x783196..0x783199`.
+- `0x117d2..0x11818`: fetch one byte through `0xda9a`, copy it to `D5`, then
+  service two parser-external latches before ordinary dispatch. If
+  `0x780e3b == 1`, it clears that byte and repeatedly calls `0x10c8` with
+  `0x780202`. If macro/page state byte `0x782a92 == 0x63`, it rewrites it to
+  `1` and returns from the parser loop.
+- `0x1181a..0x11886`: mode-zero printable fast path. If `0x782999 == 0` and
+  `(D5 & 0x7f) >= 0x20`, normal mode delays for a short counter and calls
+  `0xd04a(D5)`. Alternate/data mode, selected by nonzero `0x782c18`, appends
+  the same byte through `0xe002(D5)` and fetches the next byte without calling
+  the printable handler.
+- `0x11840..0x118b2`: dispatch-table selection. Normal mode uses start/end
+  pointers from `0x112a4` / `0x112a8`, indexed by mode `0x782999`.
+  Alternate/data mode uses parallel pointers from `0x116f6` / `0x116fa`.
+  Each table entry is six bytes: match byte, next mode, handler longword.
+- `0x118b2..0x11910`: table scan and no-match split. A matching byte reaches
+  `0x11912`. If no entry matches, mode-zero normal parsing reaches
+  `0x118d6..0x11900`, where the selected font-context byte at
+  `0x782ee6 + 16 * 0x782f06 + 5` gates fallback printable output through
+  `0xd04a(D5)`. Mode-zero alternate/data no-match reaches `0x11b82`, which
+  appends through `0xe002(D5)`. Nonzero no-match reaches `0x11b32`, which
+  calls the active parser callback pointer in `0x78299a`.
+- `0x11912..0x119a4`: matched table entry with a nonzero handler. The handler
+  longword at entry `+2` is copied to `A5`. If local matched-byte buffer space
+  remains, the byte is stored in `0x783196..0x783199`. The same-mode marker at
+  the local end byte is set when the current mode already equals entry `+1`.
+  The handler is then called through `jsr (A5)`, and control falls into the
+  same terminal-state path used by zero-handler entries.
+- `0x119a6..0x119f4`: normal zero-handler terminal path. The parser resets
+  byte scratch, writes next mode byte `entry+1` to `0x782999`, and when that
+  next mode is zero calls `0x12218` before restoring the command-record cursor,
+  byte scratch cursor, numeric scratch cursor, alternate echo latch, and local
+  matched-byte buffer.
+- `0x11930..0x11ab8`: alternate/data zero-handler terminal path. The loop
+  still writes the next mode and can call the same `0x12218` delayed-payload
+  restore, but before terminal reset it preserves matched C0 and command bytes
+  by flushing byte scratch through `0x123ae`, numeric scratch through
+  `0x123de`, and appending the matched byte through `0xe002`.
+- `0x11af6..0x11b2e`: nonzero next-mode continuation after a state transition.
+  When the active callback is `0x11d0c` or `0x11dd2` and the byte is a
+  lowercase final in `0x60..0x7e`, the loop calls `0xdaf0` to continue command
+  combining in the same family before fetching another byte.
+- `0x11b32..0x11b7e`: callback no-match path for nonzero parser modes. The
+  current byte is passed to the callback in `0x78299a`. If the callback returns
+  with mode zero, the loop resets parser cursors and clears pending
+  delayed-payload byte `0x782a1a`; if mode remains nonzero, it fetches the
+  next byte.
+
+The important output boundary is that `0x11774` itself does not draw pixels.
+It either calls a semantic handler such as `0xd04a`, a command-family handler,
+or `0x12218` delayed-payload restore; appends bytes to alternate/data storage
+through `0xe002`; or resets parser scratch with no page-object producer.
 
 ## Stateful Parser Helpers
 

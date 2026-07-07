@@ -211,8 +211,8 @@ joining parser dispatch, valid-root publication, missing-root clearing,
 default-record producer outputs, VMI conversion, and compact-text render
 publication under `ESC E Reset And Default Environment`. Remaining
 reset/default work is external provenance: retained-storage identity,
-panel/service byte source, manual NVRAM-failure wording, and physical
-page-output comparison.
+panel/service byte source, manual NVRAM-failure wording, and optional
+physical correlation of reset/default behavior.
 
 Evidence: parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`,
 `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`; `ESC &k#G` stores
@@ -1286,8 +1286,8 @@ ROM work needed:
   [semantic-state-model.md](semantic-state-model.md). Remaining work is
   byte-stream/state variants that change the install-to-page header, installed
   record, drain status, following parser handler, page-object bytes, bucket
-  assignment, dispatch, or rows, plus broader cross-product validation and
-  comparison against physical/full-page output.
+  assignment, dispatch, or rows, plus broader cross-product validation when it
+  exposes new ROM-derived page-object or render behavior.
 - Use `notes/pcl-command-map.md` to prioritize page geometry, raster,
   rectangle, font, and macro handlers.
 - Record malformed/combined escape behavior that is not explicit in the

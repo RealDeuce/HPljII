@@ -9834,13 +9834,13 @@ bucket through `0x1387c`/`0x1381c` before publication.
   published rows`, `0x11774 parser path routes mixed publication streams`, and
   `0x11774 parser path routes geometry publication streams`.
 - Hardware/external state:
-  - physical printer output and engine timing after the ROM-visible render
-    rows are outside this publication-command checkpoint.
+  - engine timing after the ROM-visible render rows is outside this
+    publication-command checkpoint.
 - Unknown:
   - no ROM-local publication, bridge, or render-entry field remains unknown for
     the covered reset, FF, page-size, orientation, paper-source, and copies
-    streams. The remaining boundary is hardware/external physical output
-    timing, not parser or page-record behavior.
+    streams. The remaining boundary is hardware/external engine timing, not
+    parser or page-record behavior.
 
 ### Writers
 

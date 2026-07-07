@@ -4683,9 +4683,9 @@ State classification for this path:
   ROM-local proof.
 - Unknown:
   no unresolved ROM-local parser-to-publication or publication-to-render
-  middle edge remains for these streams. Remaining uncertainty is physical
-  device comparison and page-environment variants that produce different pool
-  header fields, geometry, bucket roots, bridge state, or rendered rows.
+  middle edge remains for these streams. Remaining uncertainty is limited to
+  page-environment variants that produce different pool-header fields,
+  geometry, bucket roots, bridge state, or rendered rows.
 
 Evidence for this path is in
 [publication-commands.md](publication-commands.md),
@@ -6434,7 +6434,7 @@ confuse canonical state with scratch or cached render values.
 
 Unresolved items should be written as exact boundaries, not broad caveats.
 Each one should state whether it is ROM-local, hardware/MMIO, missing external
-resource data, or unverified physical output behavior.
+resource data, or optional physical correlation outside the ROM-derived model.
 
 Current top-level boundaries include:
 

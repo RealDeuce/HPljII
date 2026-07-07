@@ -2432,6 +2432,129 @@ Evidence:
   `generated/analysis/ic30_ic13_font_context_bridge.md`, and
   `generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
 
+## Minimal Built-In Glyph Resource Walkthrough
+
+This section documents where built-in text pixels come from after font
+selection has chosen a context and `0x1393a` has mapped a host byte to a glyph
+byte. Font-selection state answers which context and map are active; this
+resource path answers which IC32/IC15 bytes become row-copy input.
+
+Representative upstream streams:
+
+```text
+ESC (s0p10h12v0s0b3T ! !
+ESC )s0p16h8v0s0b0T SO ! !
+```
+
+Resource address and context form:
+
+- The IC32/IC15 resource image maps file offset `N` to firmware resource
+  address `0x80000 + N`.
+- Built-in context longwords carry flag bits plus that firmware address. The
+  primary selected context `0xc008004c` points at built-in record offset
+  `0x00004c` after flag masking; generated resource extraction lists the same
+  record as context `0x4008004c`. The secondary selected context
+  `0xc00ae122` points at record offset `0x02e122`.
+- Bit 30 selects the offset-table form in renderer helper `0x1f354`. In that
+  form, `0x1f354` masks the context base to the resource address, reads the
+  selected record's offset table, adds the long relative table entry to the
+  record base, and interprets the resulting glyph-entry header.
+
+Host byte to glyph entry:
+
+- `0x14c64` rebuilds primary map `0x782f32` or secondary map `0x783032` before
+  text is queued. For bit-30 offset-table resources, `0x14d9c` builds a base
+  map from selected record words `+0x0e` and `+0x10`; `0x14f16` applies
+  symbol-set patches when the selected symbol path requires them.
+- `0x1393a` selects primary map/context when `0x782f06 == 0`, or secondary
+  map/context when `0x782f06 != 0`.
+- `0x1393a` stores the mapped byte as the low byte at text object `+0x0b` and
+  copies the selected context longword into text object `+0`.
+- `0x12f2e` copies text object byte `+0x0b` as the first byte of each compact
+  payload entry. That payload byte, not necessarily the original host byte, is
+  the glyph index later consumed by `0x1f354`.
+
+Renderer-side glyph fields:
+
+- Publication and bridge preserve the page-root context slots:
+  `0xff1e -> 0x1ed84 -> 0x1edc6`.
+- Compact dispatch reaches
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354`.
+- `0x1f008` loads the selected render-record context slot into active context
+  cache `0x783a2c` before `0x1f354` resolves the glyph.
+- For built-in offset-table entries, `0x1f354` consumes glyph-entry byte `+4`
+  as bitmap delta, byte `+5` as mode/plane value, word `+6` as row count, and
+  word `+8` as pixel width.
+- The generated built-in payload extract confirms this formula across `24`
+  scanned records, `5730` table slots, and `5310` extracted payloads. Records
+  include `(unnamed)` record `0x00004c`, first `COURIER` record `0x000418`,
+  first `LINE_PRINTER` record `0x0146b4`, and secondary selected
+  `LINE_PRINTER` record `0x02e122`.
+
+Output and page-image effect:
+
+- Primary selection stream `ESC (s0p10h12v0s0b3T ! !` queues compact object
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, bridges context
+  `0xc008004c`, and renders Courier rows through compact helper `0x1fe76`.
+- Secondary selection stream `ESC )s0p16h8v0s0b0T SO ! !` queues compact object
+  prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, bridges context
+  `0xc00ae122`, and renders secondary Line Printer rows through helper
+  `0x207ac`.
+- The pixel provenance for those rows is:
+  host byte -> active map byte -> compact payload glyph byte -> render-record
+  context slot -> IC32/IC15 glyph-entry fields -> row-copy helper bytes.
+
+State classification:
+
+- Canonical:
+  IC32/IC15 resource bytes, built-in font records, offset tables, glyph-entry
+  fields, primary/secondary current-font contexts `0x782ee6` / `0x782ef6`,
+  active character maps `0x782f32` / `0x783032`, page-root context slots, compact
+  payload glyph bytes, and render-record context slots.
+- Derived/cache:
+  selected candidate slot `0x7828a8`, selected context longword, active context
+  cache `0x783a2c`, masked resource base, relative glyph offset, `A2` bitmap
+  pointer, optional `A3` trailing-plane pointer, span `D1`, rows `D3`, and
+  row-copy table target.
+- Parser scratch:
+  font-selection command records, active symbol-set request words, dirty flags
+  `0x782f2c/0x782f2d`, and original host bytes before `0x1393a` maps them.
+- Firmware bookkeeping:
+  candidate-window scans, map snapshot state `0x783148/0x783152`, page-root
+  font-slot scan state in `0xc4fc`, publication flag `0x782996`, and render-work
+  progress.
+- Hardware/external:
+  none for the verified IC32/IC15 built-in record bytes used by the cited
+  primary and secondary streams.
+- Unknown:
+  the built-in glyph field layout and selected-resource-to-renderer path are not
+  unresolved for the cited streams. The separate resource-data boundary remains
+  secondary segment-57 continuation after verified firmware address
+  `0x0bffff`, where the ROM path is known but the physical/resource-window
+  decode after `0x0c0000` is not verified.
+
+Evidence:
+
+- Checked-in explanations:
+  [resource-rom.md](resource-rom.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  `Built-In Font Selection To Visible Text` in
+  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Font
+  Selection To Visible Glyphs` / `Worked Path: Compact Glyph Row-Copy Helpers`
+  in [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Generated extracts:
+  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`,
+  `generated/analysis/ic32_ic15_font_records.md`,
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
+  `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`.
+- Focused listings:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`,
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`, and
+  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`.
+
 ## Minimal Raster Payload Walkthrough
 
 This is the smallest top-level raster byte-to-pixel spine for an accepted

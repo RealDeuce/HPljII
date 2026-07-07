@@ -198,6 +198,69 @@ For a closed byte-stream renderer that ignores backchannel responses, these
 status/backchannel paths are protocol and service-scheduling state, not
 bitmap-composition state.
 
+### Aggregate Status Helper `0x36e4`
+
+The aggregate helper is the ROM-local join point for service/status longwords
+before host-output status bytes or external-ready teardown consumers see them.
+It is not a parser handler and it does not create page records, but its return
+value and side effects feed the host/status side channel documented above.
+
+Writers and formulas:
+
+- `0x36ec..0x36fe` writes aggregate error/service longword
+  `0x780e12 = 0x780e32 | 0x780e2e | 0x780e36`.
+- `0x3704..0x3710` writes aggregate warning/service longword
+  `0x780e0e = 0x780e12 | 0x780e2a`.
+- `0x3716` calls helper `0x15a6` before active-status folding.
+- `0x371c..0x372a` writes active-status longword
+  `0x780e0a = byte(0x780e68) | 0x780e12`.
+- `0x3730..0x3742` mirrors active status back into byte `0x780e68`: nonzero
+  `0x780e0a` writes `0xff`, and zero `0x780e0a` writes `0`.
+- `0x3748` calls helper `0x15ac`, then `0x374e..0x3752` copies
+  `0x780e0a` into `0x780e1a`.
+
+Forced-status branch:
+
+- `0x3758..0x37a8` takes the special branch only when all predicates pass:
+  `0x7821a8 != 0`, `0xbb84()` returns nonzero, `0x72d4()` returns nonzero,
+  `0x72a2()` returns nonzero, `0x780e36 == 0`, `(0x780e32 & 0x0f) == 0`,
+  `(0x780e2a & 0x09) == 0`, `0x782272 == 0`, and `0x7822dc == 0`.
+- When those predicates pass, `0x37aa..0x37ca` forces
+  `0x780e0a = 1`, `0x780e0e = 1`, clears `0x780e12`, writes
+  `0x780e1a = 1`, and returns `D7 = 0x10`.
+- This branch is status-side behavior. It does not imply a page-object or
+  render effect. It can only affect byte-stream reproduction indirectly through
+  host/status protocol or service scheduling.
+
+Normal return encoding:
+
+- If the forced branch is not taken, `0x37cc..0x37f2` builds the return value
+  in `D7` from three aggregate fields:
+  bit `7` is set when `0x780e0a == 0`, bit `0` is set when `0x780e0e != 0`,
+  and bit `1` is set when `0x780e12 != 0`.
+- The same fields feed outbound status byte construction in `0xaece`:
+  `0x780e12` or `0x780e90` sets host-status bit `0`, `0x780e2a` sets bit `1`,
+  `0x780e0a` sets bit `2`, and `0x783e60` is ORed into the base `0x30` byte.
+
+Field classes:
+
+- Canonical status inputs:
+  `0x780e32`, `0x780e2e`, `0x780e36`, `0x780e2a`, `0x780e68`,
+  `0x7821a8`, panel/menu progress `0x782272`, and menu latch `0x7822dc`.
+- Derived/cache status:
+  `0x780e12`, `0x780e0e`, `0x780e0a`, and `0x780e1a`.
+- Firmware bookkeeping:
+  helper predicates `0xbb84`, `0x72d4`, and `0x72a2`, plus helper calls
+  `0x15a6` and `0x15ac`.
+- Hardware/external:
+  the physical sources behind helper predicates are not named by this listing.
+  `0xbb84` is documented in
+  [external-ready-service.md](external-ready-service.md) as consuming
+  `$fffee00b.7`.
+- Unknown:
+  user-facing names for the folded status categories remain unresolved; the
+  arithmetic, return-bit encoding, and no-page-output boundary are ROM-local.
+
 ### Confidence And Evidence
 
 Confidence is high for FIFO capacity/order, output mode selection, outbound

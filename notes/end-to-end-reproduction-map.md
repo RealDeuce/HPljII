@@ -1674,7 +1674,7 @@ Evidence:
   [page-raster-imaging.md](page-raster-imaging.md),
   [publication-commands.md](publication-commands.md),
   [pcl-command-map.md](pcl-command-map.md),
-  `Worked Path: Publication Commands To Rendered Page Records` and
+  `Worked Path: Publication Commands To ROM-Derived Page Rows` and
   `Worked Path: Page Length, Wrap, And Perforation Controls` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md),
   and `Page Geometry And Direct Layout State` in
@@ -1933,7 +1933,7 @@ Evidence:
 
 - Checked-in explanations:
   `Worked Path: Reset And Default Environment`, `Worked Path: FF
-  Publication`, `Worked Path: Publication Commands To Rendered Page Records`,
+  Publication`, `Worked Path: Publication Commands To ROM-Derived Page Rows`,
   and `Worked Path: Published Record To Active Bands` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md),
   [publication-commands.md](publication-commands.md),
@@ -2167,9 +2167,9 @@ Evidence:
   [publication-commands.md](publication-commands.md),
   `ESC &l#H` and `ESC &l#X` in
   [pcl-command-map.md](pcl-command-map.md),
-  `Worked Path: Publication Commands To Rendered Page Records` in
+  `Worked Path: Publication Commands To ROM-Derived Page Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and
-  `Publication Commands To Rendered Page Records` in
+  `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md).
 - Focused listings:
   `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
@@ -4839,10 +4839,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   missing page root without publication`, and `host-fetched copies publication
   preserves 0xeef0 pool header word`.
   Checked-in evidence is [publication-commands.md](publication-commands.md),
-  `Publication Commands To Rendered Page Records` in
+  `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Reset
   And Default Environment`, `Worked Path: FF Publication`, and `Worked Path:
-  Publication Commands To Rendered Page Records` in
+  Publication Commands To ROM-Derived Page Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Confidence is high for parser handler order, pre-command object preservation,
   reset/FF/geometry/paper-source/copies side-effect ordering, pool-header
@@ -5722,7 +5722,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   [page-raster-imaging.md](page-raster-imaging.md),
   [publication-commands.md](publication-commands.md),
   [pcl-command-map.md](pcl-command-map.md), `Page Geometry And Direct Layout
-  State` and `Publication Commands To Rendered Page Records` in
+  State` and `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md), fixtures
   `0x9d16/0x9d4e/0x9d86/0x9dbe page geometry lookups mask page code`,
   `ROM page geometry tables match manual logical dimensions`,
@@ -5993,7 +5993,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0x129c6..0x12af8`, `0x12a22..0x12a78`, and `0x129ee..0x12b5a`.
   Related publication evidence is checked in under
   [publication-commands.md](publication-commands.md) and
-  `Publication Commands To Rendered Page Records` in
+  `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md), with supporting reports
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md` and
   `generated/analysis/ic30_ic13_page_root_finalization.md`.

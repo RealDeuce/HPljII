@@ -82,7 +82,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Page publication, page environment changes, and active render scheduling:
   `Worked Path: Reset And Default Environment`,
   `Worked Path: FF Publication`,
-  `Worked Path: Publication Commands To Rendered Page Records`,
+  `Worked Path: Publication Commands To ROM-Derived Page Rows`,
   `Worked Path: Page Length, Wrap, And Perforation Controls`,
   `Worked Path: Shared Page-Record Storage And Allocator`,
   `Worked Path: Published Record To Active Bands`,
@@ -4915,7 +4915,7 @@ Publication and output effect:
   before reset`, `mixed printable/reset page-record finalization publishes
   bridged record`, and `addressed printable reset publishes rendered page
   record` prove the valid-root `! ESC E` path through compact bucket storage,
-  `0xff1e` publication, bridge, and rendered rows.
+  `0xff1e` publication, bridge, and ROM-derived row construction.
 - Fixtures `ESC E stream clears missing page root without publication` and
   `host-fetched ESC E clears missing page root without publication` prove the
   missing-root path from parser dispatch to reset with no page output.
@@ -4958,7 +4958,7 @@ Evidence:
 - Detail note: [reset-default-environment.md](reset-default-environment.md).
 - Publication note: [publication-commands.md](publication-commands.md).
 - Semantic checkpoint: `Reset And Default Environment` and
-  `Publication Commands To Rendered Page Records` in
+  `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md).
 - Fixture evidence:
   - `ESC E stream publishes valid page root and resets environment/parser state`
@@ -5082,7 +5082,7 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
 
-## Worked Path: Publication Commands To Rendered Page Records
+## Worked Path: Publication Commands To ROM-Derived Page Rows
 
 This path covers page-environment publication commands whose visible pixels
 come from already queued page objects, while the command itself changes page
@@ -5239,7 +5239,7 @@ State classification for this path:
   no unresolved ROM-local parser-to-publication or publication-to-render
   middle edge remains for these streams. Remaining uncertainty is limited to
   page-environment variants that produce different pool-header fields,
-  geometry, bucket roots, bridge state, or rendered rows.
+  geometry, bucket roots, bridge state, or row-construction inputs.
 
 Evidence for this path is in
 [publication-commands.md](publication-commands.md),

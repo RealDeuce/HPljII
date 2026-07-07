@@ -9743,12 +9743,13 @@ allocator transitions, object fields, bridge state, or visible rows.
   the fixture-backed per-band bitmap merge for compact text, mode-0 raster,
   and a crossing rule.
 
-## Publication Commands To Rendered Page Records
+## Publication Commands To ROM-Derived Page Rows
 
 Status: composed for six host-facing publication streams that carry an
 already queued compact text object through parser dispatch, `0xff1e`
-publication, `0x1ed84`/`0x1edc6` render-record copy, and `0x1ef6a` final row
-rendering. The low-level queue and render mechanics are shared with
+publication, `0x1ed84`/`0x1edc6` render-record copy, and `0x1ef6a`
+ROM-derived row construction. The low-level queue and render mechanics are
+shared with
 `Mixed Text/Rule/Raster Page Record`; this section names the command-family
 publication contract.
 
@@ -9986,9 +9987,10 @@ create a published page record.
 
 High for parser handler order, `0xa904` host-fetch draining, published pool
 header fields, command-specific page-size/orientation/copies/paper-source
-side effects, render-record bridge fields, render-entry call order, and final
-rows, including addressed allocator state for all six publication streams,
-because each is fixture-pinned.
+side effects, render-record bridge fields, render-entry call order, and
+ROM-derived row construction, including addressed allocator state for all six
+publication streams, because each cited edge has handler, field, or render-helper
+evidence; fixtures exercise the documented paths.
 
 ### Fixtures
 

@@ -1367,6 +1367,34 @@ The fixed-width list disassembly contract is:
   advancing by stride `0x783a1c`. If the split count has fallback rows, it
   restarts at `0x7810b4 + A2` and continues the same stores.
 
+The exact fixed-list instruction boundaries are:
+
+- `0x1f756..0x1f75e`: load render-record fixed-list root `+0x20`; a zero root
+  exits this render pass.
+- `0x1f760..0x1f770`: load render band word `+0x10`, divide it by `5`, and
+  exit unless the remainder is zero. Fixed-list objects are therefore consumed
+  only on five-band boundaries.
+- `0x1f772..0x1f780`: set the inclusive band window to `band + 4`, load the
+  current fixed-list node, and stop the pass when node byte `+0x04` is beyond
+  that window.
+- `0x1f782..0x1f7a4`: skip nodes with remaining word `+0x0a <= 0`; otherwise
+  compute row displacement from node byte `+0x04 - band`, select the pattern
+  longword from table `0x308de` using node byte `+0x05 & 0x0f`, and call
+  `0x1f7b0`.
+- `0x1f7a4..0x1f7aa`: advance through the node `+0x00` link and repeat until
+  the list ends.
+- `0x1f7b4..0x1f7dc`: fixed writer setup. It copies the selected pattern
+  longword into `D4`, reads packed coordinate word `+0x06`, clears bridge flag
+  bit `0x10` in node byte `+0x05`, and derives the current draw count from
+  either the initial bridged form or the already-normalized continuation form.
+- `0x1f7dc..0x1f7e6`: subtract the draw count from remaining-row word `+0x0a`
+  and clip the current draw count when the subtraction crosses zero.
+- `0x1f7e6..0x1f7fc`: call destination helper `0x1f626`, then write the low
+  pattern word to the current-band destination once per row, stepping by
+  stride `0x783a1c`.
+- `0x1f7fc..0x1f80c`: if helper `0x1f626` split rows into the fallback half of
+  `D3`, restart the same pattern stores at fallback buffer `0x7810b4 + A2`.
+
 The controlling evidence is
 `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst` at
 `0x1f756..0x1f810` for fixed-list rendering and `0x1f812..0x1f88c` for

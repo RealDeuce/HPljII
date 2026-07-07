@@ -4836,6 +4836,14 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0xff1e` writes page/control pool state byte `+4 = 2`, copies the current
   root into the published pool, writes pool-head pointer `0x780ea6`, sets
   publication flag `0x782996`, and clears current-root pointer `0x78297a`.
+  It also composes pending header flags before marking the root ready:
+  page-size/page-length flag `0x782997` sets root byte `+0x0a.0` and clears
+  `0x780e99`; remaining status/header byte `0x780e99` sets root byte
+  `+0x08`; paper-source/layout flag `0x782998` sets root byte `+0x0a.1`.
+  Every non-early publication copies paper-source/environment byte `0x782da6`
+  to root byte `+0x07` and copy count `0x782da4` to root word `+0x0c`.
+  Evidence is in [publication-commands.md](publication-commands.md), section
+  `Published Header Flags`, from `0xffd2..0x1005a`.
   The checked command-family streams are `! ESC E`, `ESC &k2G! FF`,
   `! ESC &l1A`, `! ESC &l1O`, `! ESC &l2H`, and `! ESC &l2X FF`.
   Their writers are reset handler `0xcc52` / `0xcc70`, FF handler `0xf0f0`,
@@ -4847,6 +4855,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   state; FF publishes after the `ESC &k2G` line-termination mode applies its
   CR-style x reset; copies stores `0x782da4` before the following FF
   publication copies it into pool-header word `+0x0c`.
+  Page-size `0xfc74`, page-length `0xf9e8`, reset-default helper `0xcda2`,
+  and paper-source handler `0xef62` are the ROM-local writers for the pending
+  header bytes consumed by `0xff1e`.
   Parser scratch is temporary command records and the modeled `0xa904` host
   ring bytes; after the handlers queue page objects, publication consumes
   page-root fields rather than parser records.
@@ -4855,8 +4866,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   published record.
   Firmware bookkeeping includes stream allocator state
   `0x782a70/0x782a72/0x782a76`, publication flag `0x782996`, transient byte
-  `0x782990`, pool header defaults, and command-specific header copies such
-  as copy count `+0x0c`.
+  `0x782990`, pool header defaults, pending header flags `0x782997` /
+  `0x782998`, status/header byte `0x780e99`, and command-specific header
+  copies such as copy count `+0x0c`.
   Downstream consumers are active-record bridge `0x1ed84`, page-record bridge
   `0x1edc6`, and render entry `0x1ef6a`; the covered streams dispatch the
   preserved compact Line Printer `!` object through compact renderer

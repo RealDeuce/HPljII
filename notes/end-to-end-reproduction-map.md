@@ -588,6 +588,134 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
 
+## Minimal Overlay Publication Walkthrough
+
+This is the smallest top-level overlay replay spine. It differs from macro
+execute replay because the stored bytes are consumed by page finalization
+before publication, not by a live `ESC &f2X` parser command.
+
+Setup stream:
+
+```text
+ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X
+```
+
+Publication-time effect:
+
+```text
+current page content -> 0xff1e overlay detour -> replay ! CR
+-> page-root publication -> normal render dispatch
+```
+
+Macro record and overlay state:
+
+- `ESC &f123Y` reaches `0xe112` and writes current macro id `0x783164`.
+- `ESC &f0X` reaches `0xdd08`, selects record id `123` through `0xe0a4`,
+  and starts definition mode through selector `0`.
+- Payload bytes `21 0d` append through `0xe002` into the selected macro
+  record. They do not run `0xd04a` or `0xf02c` during definition.
+- `ESC &f1X` stops the definition through selector `1`, normalizes the stored
+  payload count, and leaves the nonempty record selectable.
+- `ESC &f4X` reaches selector `4`, resolves the current record, writes
+  overlay state byte `0x782a92`, and copies the selected macro id to
+  `0x782a94`.
+
+Publication detour:
+
+- Page finalization reaches `0xff1e`. When overlay state is enabled, the
+  selected overlay record exists, and current page-root retry bit `+0x14.0`
+  is clear, `0xff1e` / `0xff8e` reselects id `0x782a94` through `0xe0a4`.
+- `0xe4f4` builds a non-replay frame at `0x782d4c`, snapshots the active
+  page/parser environment, saves cursor longword `0x782c92`, and refreshes
+  layout through `0xe5e2`.
+- The frame copies macro record `+0x00/+0x04` to frame `+0x00/+0x04`, writes
+  byte `+0x08 = 4`, writes frame kind `+0x09 = 4`, and writes snapshot pointer
+  `+0x0a = 0`.
+- If the frame has payload bytes, `0xe4f4` sets host gate bit 1 in
+  `0x780e66`. `0xa904` then gives this frame priority over live host input.
+- Stored overlay bytes `21 0d` re-enter parser loop `0x11774` as ordinary
+  bytes. `0x21` routes to `0xd04a`; `0x0d` routes to `0xf02c`.
+- At the frame-end marker, `0xa904` calls `0xe22c`. For frame kind `4`,
+  `0xe22c` restores page/parser state, sets overlay/page-parser state
+  `0x782a92 = 0x63`, and resumes the publication path.
+
+Page-object and render effect:
+
+- Replayed `0xd04a` uses the same text source and compact object path as live
+  byte `0x21`: `0xd550 -> 0xd824 -> 0x12f2e -> 0x1387c`.
+- The replayed compact object is added to the current page root before the
+  root is published. Overlay replay therefore composes with any existing base
+  page objects, such as selector-7 rule objects, rather than rendering into a
+  separate bitmap.
+- After replay cleanup, `0xff1e` publishes the page root. `0x1ed84` and
+  `0x1edc6` copy bucket, rule, fixed-list, and context roots into the active
+  render record.
+- `0x1ef6a` renders the composed record through the same compact, rule,
+  fixed-list, segment-list, and raster helpers used by live host bytes. Overlay
+  replay has no overlay-specific pixel writer.
+
+State classification:
+
+- Canonical:
+  macro record pool `0x782a98`, selected record pointer `0x782d7a`, overlay
+  state `0x782a92`, saved overlay id `0x782a94`, current page root
+  `0x78297a`, page-root retry flag `+0x14.0`, non-replay frame fields at
+  `0x782d4c`, replayed payload bytes, page-root object roots, published
+  source record, and render-record roots.
+- Derived/cache:
+  normalized macro payload count, replay-derived compact coordinates, rule
+  decoder mutations when a base rule is present, render-band fields
+  `0x783a20`, `0x783a22`, and `0x783a28`, and any cursor/layout values
+  recomputed by `0xe5e2`.
+- Parser scratch:
+  mode-17 macro command records, alternate/data definition state, stored
+  overlay payload bytes while the non-replay frame is active, replayed parser
+  bytes `21 0d`, and delayed-payload records for overlay variants that replay
+  transparent or raster commands.
+- Firmware bookkeeping:
+  macro chunk allocation, frame kind `+0x09 = 4`, frame stride byte
+  `+0x08 = 4`, host gate bit 1 in `0x780e66`, saved cursor longword
+  `0x782c92`, environment snapshots, `0xe22c` cleanup, publication flag
+  `0x782996`, and scheduler/render progress fields.
+- Hardware/external:
+  the physical source that supplied the setup stream and the formatter/DC
+  timing events that later cause publication and active-band rendering. Once
+  the macro record and overlay state exist, the overlay replay bytes are
+  ROM-local data-chain bytes.
+- Unknown:
+  no ROM-local middle edge is unresolved for the documented overlay `!\r`
+  publication path. Overlay variants matter only when they change replay-frame
+  fields, skip-gate state, parser/delayed-payload dispatch, page-object
+  fields, bridge roots, continuation fields, or ROM-derived row construction.
+
+Skip-gate boundaries:
+
+- Disabled overlay mode, missing selected record from `0xe0a4(0x782a94)`, and
+  current page-root retry bit `+0x14.0` all skip `0xe4f4` and publish the base
+  page without overlay replay.
+- These are output-affecting parser/page boundaries, not hardware boundaries:
+  they decide whether replayed bytes mutate the current page root before
+  publication.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Macro Overlay Replay Publication` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [macro-data-chain.md](macro-data-chain.md),
+  [publication-commands.md](publication-commands.md),
+  [host-byte-fetch.md](host-byte-fetch.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`, and
+  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

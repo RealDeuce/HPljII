@@ -5881,6 +5881,29 @@ Parser dispatch and macro selection:
   record as selectable only when record head pointer `+0x00` is nonzero, and
   it compares the requested id against record word `+0x08`.
 
+Macro selector dataflow matrix:
+
+- Selector `0` starts definition mode through `0xdd86`. Later payload bytes
+  are stored by `0xe002` into macro-record chunks instead of running normal
+  text, control, or page-object handlers.
+- Selector `1` stops definition through `0xddfc`. It normalizes the raw
+  chunk count in record `+0x04`, clears empty or auto-prefix-only records,
+  and leaves nonempty records selectable for replay.
+- Selector `2` executes the selected record through `0xde7c -> 0xe418`.
+  The replay frame has kind byte `+9 = 2`; `0xa904` later feeds the stored
+  payload bytes back to `0x11774` as parser input.
+- Selector `3` calls the selected record through `0xdea2 -> 0xe418`.
+  The replay frame has kind byte `+9 = 3` and pushes a macro context entry
+  before the same `0xa904` data-chain byte-source replay.
+- Selector `4` enables overlay through `0xdec8`: it stores overlay state
+  `0x782a92`, copies the selected id into `0x782a94`, and leaves actual
+  replay to the later `0xff1e -> 0xe4f4` publication path.
+- Selector `5` disables overlay through `0xdef4`; selectors `6`, `7`, and
+  `8` delete all, temporary, or selected records; selectors `9` and `10`
+  mark the selected record temporary or permanent. These record-management
+  selectors affect future replay eligibility but do not directly create page
+  objects or pixels.
+
 Definition storage:
 
 - Selector `0` reaches `0xdd86`, starts definition mode, and makes ordinary

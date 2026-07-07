@@ -552,6 +552,151 @@ Evidence:
   `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and
   `generated/analysis/ic30_ic13_direct_control_code_flow.md`.
 
+## Minimal Text Span/Underline Walkthrough
+
+This is the smallest top-level path for pending text-span output. It covers
+underline/text-attribute state, the printable metric consumers that update
+pending span bounds, and the flush points that turn those bounds into
+page-record objects. The printable glyph still uses the compact text path; the
+span is a separate page object rendered by the segment-list or fixed-list
+renderer.
+
+Representative stream:
+
+```text
+ESC &d3D ! ESC &d@
+```
+
+Parser and span-state dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- `ESC &d3D` dispatches to underline/text-attribute tokenizer `0x12622`.
+- For the documented selector, `0x12622` writes underline/text-attribute
+  selector byte `0x783185 = 1`.
+- Printable byte `0x21` then reaches `0xd04a` and follows the ordinary
+  source-object and compact queue path.
+- Final `ESC &d@` dispatches to `0x12622` again and takes the terminal flush
+  path through `0x12714`, followed by `0x126e2` span re-arm work.
+
+Pending span update:
+
+- `0xd04a` calls `0x1393a` to build source object `0x782d7e` from the
+  selected font context.
+- In the covered flagged built-in path, `0xd550 -> 0xd824` queues the compact
+  glyph through `0x12f2e` and marks page-root live-font state.
+- After the compact glyph queues, `0xd824` calls span consumer `0xd8fc` when
+  span updates are enabled.
+- `0xd8fc` reads selected context fields `+0x16`, `+0x18`, and `+0x1a`.
+  Because `0x783185` is set, it uses alternate offset word `+0x1a` to update
+  the high-y span bound.
+- The pending span lives in `0x783184`, `0x783186`, `0x783188`, and
+  `0x78318a` until a flush point runs. It is not a page object before
+  `0x12714`.
+
+Page-object creation:
+
+- `0x12714` clears pending flag `0x783184`, packages an 8-byte local source
+  from the pending bounds, ensures current root `0x78297a` through `0x10084`,
+  gates the source against page extent `0x782db6`, and calls `0x13520`.
+- `0x13520` derives selector/key state through `0x137a2` and branches on
+  orientation byte `0x782da3`.
+- In portrait, `0x13520 -> 0x1354a -> 0x135f0` inserts class-`0x40`
+  segment-list objects under page-root bucket array `+0x1c`.
+- The documented underline stream flushes this portrait object:
+
+```text
+00 00 00 00 40 00 00 01 3a 00 03 00 00 12
+```
+
+- Its class byte `+0x04 = 0x40` selects segment-list rendering, count word
+  `+0x06 = 1` says one six-byte entry follows, entry key is `0x3a00`, y is
+  `3`, and extent is `18`.
+- In landscape, the same pending-span source routes to fixed-list insertion
+  `0x136d2` under page-root `+0x28`; bridge and rendering then consume it as
+  a fixed-list object rather than a bucket-chain segment-list object.
+
+Flush producers:
+
+- CR handler `0xf02c` can flush pending span through
+  `0xf34a -> 0x12714 -> 0x126e2` before cursor reset and line advance.
+- Left-margin handler `0xeb58` can flush the same pending span before moving
+  horizontal cursor `0x782c8a`.
+- Vertical cursor handler `0xf560` can flush the span before moving vertical
+  cursor `0x782c8e`.
+- The documented CR/margin/cursor sibling object is:
+
+```text
+00 00 00 00 40 00 00 01 32 00 03 00 00 10
+```
+
+- That is a bucket-chain segment-list object with selector word `0x4000`,
+  one entry, packed key `0x3200`, y `3`, and extent `16`.
+
+Bridge and render effect:
+
+- Publication `0xff1e` preserves both the compact glyph object and any flushed
+  span object under the current page root.
+- Bridge `0x1edc6` copies source bucket root `+0x1c` to render-record
+  `+0x18` for portrait segment-list spans and copies fixed-list root `+0x28`
+  to render-record `+0x20` for landscape fixed-list spans.
+- `0x1ef6a -> 0x1efc2` dispatches class-`0x40` segment-list objects to
+  `0x1f812`. `0x1f812` consumes the six-byte entries and calls `0x1f862`,
+  which writes counted mask spans using full words plus a trailing mask from
+  table `0x308f2`.
+- Fixed-list span objects render through `0x1f756` / `0x1f7b0` / `0x1f626`.
+  The fixed-list bridge initializes continuation bytes so later bands can
+  resume remaining rows.
+
+State classification:
+
+- Canonical:
+  underline/text-attribute selector `0x783185`, pending span enable
+  `0x783184`, span bounds `0x783186`, `0x783188`, and `0x78318a`, selected
+  font context, source object `0x782d7e`, orientation byte `0x782da3`,
+  current page root `0x78297a`, compact glyph object, segment-list span
+  objects under root `+0x1c`, and fixed-list span objects under root `+0x28`.
+- Derived/cache:
+  packed span keys such as `0x3a00` and `0x3200`, producer bucket/key fields
+  `0x782a7c..0x782a7e`, selected font metric offsets, segment-list masks from
+  `0x308f2`, fixed-list pattern words from `0x308de`, and render-band fields.
+- Parser scratch:
+  six-byte `ESC &d3D` and `ESC &d@` records rooted at `0x78299e`, parser mode
+  state, and the printable byte between the two commands.
+- Firmware bookkeeping:
+  page-root live-font flags, span re-arm work in `0x126e2`, allocation
+  cursors for `0x13520` / `0x135f0` / `0x136d2`, retry/finalization bits,
+  publication flag `0x782996`, scheduler cursors, and render-work progress.
+- Hardware/external:
+  none for the ROM-local span/underline contract.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented underline
+  stream, CR/margin/vertical-cursor span flushes, portrait segment-list
+  insertion, landscape fixed-list insertion, or allocation-failure retry.
+  Remaining span work starts from selected-font or byte-stream variants that
+  change concrete metric fields, pending span bounds, orientation branch,
+  fixed/segment object fields, bridge roots, or ROM-derived row construction.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Text Span Flush And Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_text_span_flush_012714.lst`,
+  `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`,
+  `generated/analysis/ic30_ic13_printable_text_path.md`, and
+  `generated/analysis/ic30_ic13_render_dispatch_tables.md`.
+
 ## Minimal Parser Dispatch Walkthrough
 
 This is the smallest top-level parser spine. It explains how normalized bytes

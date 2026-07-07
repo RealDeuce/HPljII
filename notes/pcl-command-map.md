@@ -493,7 +493,20 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xc780`, `0xc840`, and `0xc7e0`; uppercase wrappers reach `0x12082`,
   `0x12096`, `0x12046`, `0x1206e`, `0x120aa`, and `0x1205a`. Font/download
   `W/w` reaches `0x11f96`, which schedules `0x15d0a` for count `0` and
-  `0x16c14` for nonzero counts. Symbol/font designation writes requested
+  `0x16c14` for nonzero counts through delayed restore
+  `0x121cc -> 0x12218`. Zero-count `W` is a descriptor packet: `0x15d0a`
+  restores the command record, loads payload budget `0x783140`, consumes
+  descriptor bytes through helpers such as `0x1599c`, and routes current or
+  continuation records to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
+  Nonzero `W` is the resource/character payload path: `0x16c14` consumes
+  current font id `0x782f2e`, current character word `0x782f30`, current-record
+  slots, candidate counters, descriptor validator `0x16fae`, and allocator /
+  header copier `0x17026 -> 0x1719c`. Successful resource installs update
+  candidate/current-record state; successful character payloads install glyph
+  objects through `0x16498`. Validation, no-slot, mode `0x782a92 == 2`, and
+  allocation-failure exits drain or skip payload bytes and preserve the
+  following printable path unless they intentionally replace an existing
+  payload. Symbol/font designation writes requested
   primary/secondary words `0x782ef4` / `0x782f04` and dirty flags
   `0x782f2c` / `0x782f2d`; common refresh `0xc580` uses selected text slot
   `0x782f06` to decide whether to call candidate refresh `0x13eb8` and
@@ -505,11 +518,10 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   bytes consume the selected slot, map, and context through
   `0xd04a -> 0x1393a -> 0x12f2e`, mark the page-root font slot live, publish
   through `0xff1e`, and render through `0x1ed84` / `0x1edc6` / `0x1ef6a`.
-  Successful downloaded-character payloads install records through `0x16498`
-  for the same printable path. Row-count streams have a documented selector
-  boundary: low-byte rows `0x0001..0x00ff` are reproducible through the compact
-  helpers, while high-row short compact siblings `0x0101..0x0103` stop at the
-  unchecked `0x1fe76` fallback jump-table read. Owner notes:
+  Downloaded glyph row-count streams have a documented selector boundary:
+  low-byte rows `0x0001..0x00ff` are reproducible through the compact helpers,
+  while high-row short compact siblings `0x0101..0x0103` stop at the unchecked
+  `0x1fe76` fallback jump-table read. Owner notes:
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and

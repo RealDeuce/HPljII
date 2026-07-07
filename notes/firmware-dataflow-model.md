@@ -5550,6 +5550,41 @@ Bucket object classes:
   `0x1f88e`. These objects are produced by raster row queue path
   `0x13070 -> 0x13250`.
 
+Render-root to pixel-writer matrix:
+
+- Render root `+0x18`, compact bucket objects:
+  `0x1efc2` selects the active bucket from render work word `+0x10` and
+  dispatches class byte `+0x04 & 0xc0 == 0` to `0x1effe`. Subdispatch bits
+  `0x10` and `0x20` select short compact `0x1f034`, wide compact `0x1f0d2`,
+  segmented compact `0x1f1f0`, or segmented-wide compact `0x1f264`. These
+  writers resolve glyph/resource bitmap state through `0x1f354` and store
+  generated row bytes or words into the active band or fallback buffer.
+- Render root `+0x18`, segment-list bucket objects:
+  `0x1efc2` dispatches class byte `+0x04 & 0xc0 == 0x40` to
+  `0x1f812 -> 0x1f862`. The renderer consumes six-byte span entries and
+  writes full-mask words plus trailing masks for pending text spans.
+- Render root `+0x18`, encoded-raster bucket objects:
+  `0x1efc2` dispatches class byte `+0x04 & 0x80 != 0` to `0x1f88e`.
+  Object byte `+0x05 & 3` selects literal mode `0`, byte-expansion mode `1`,
+  byte-pair expansion mode `2`, or cascaded expansion mode `3`; each mode
+  expands payload bytes `+0x0a..` into generated destination words.
+- Render root `+0x1c`, rule-list objects:
+  `0x1f446` consumes bridged rule nodes. Selector `object[5] & 0x0f == 7`
+  reaches solid writer `0x1f596`; selectors `0..6` and `8..13` reach
+  patterned writer `0x1f4e0` through table `0x1f4a0`. Rule continuation
+  field `+0x0c` is firmware state consumed across later bands.
+- Render root `+0x20`, fixed-list objects:
+  `0x1f756` runs on five-band boundaries, consumes fixed-list fields
+  `+0x04..+0x0d`, selects pattern longwords from table `0x308de`, and writes
+  through `0x1f7b0` / `0x1f626`.
+
+This matrix is the final ROM-local pixel-production boundary. The inputs are
+render-record roots and object fields already copied by `0x1edc6`; parser
+records, command handlers, and payload cursors are no longer consulted here.
+The outputs are direct stores to the active band or fallback buffer in ROM
+call order. Physical transfer of those buffer bytes to the engine remains a
+formatter/DC timing boundary, not a parser or renderer-dispatch gap.
+
 Pixel-writing behavior:
 
 - `0x1f626` computes destination pointer `A1` from packed object

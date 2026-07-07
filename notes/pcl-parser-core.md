@@ -85,11 +85,42 @@ fetches one more byte:
 This wrapper is why the main parser sees `ESC` as a single dispatch byte even though
 `0xda9a` has already inspected the next host byte.
 
-Routine `0xdace` is a separate payload/control byte reader. It calls `0xa904`. If the
-byte is not `0x1a`, it returns that byte. If it sees `0x1a 0x58`, it calls `0xd99a` and
-returns `D7 = 0`. If the second byte is not `0x58`, it returns the second byte. Raster,
-font, transparent-text, and repeat readers use this routine because their payload bytes
-need this local control handling.
+The instruction-level wrapper flow is:
+
+- `0xda9a..0xdaa4` calls host-byte fetch `0xa904` and returns immediately
+  through `0xdacc` when the byte is not `ESC` (`0x1b`).
+- `0xdaa6..0xdab0` handles the `ESC` lookahead. It fetches one more byte
+  through `0xa904`; if that byte is not `?`, it goes to the pushback/log path.
+- `0xdab2..0xdabe` handles the `ESC ?` private pair. It fetches a third byte:
+  `0x11` is swallowed and restarts the wrapper at `0xda9a`; any other byte
+  rejoins the first-byte comparison at `0xdaa0`, so another `ESC` can be
+  treated as a fresh escape byte.
+- `0xdac0..0xdacc` logs or pushes back the non-`?` lookahead byte through
+  `0x9ec0`, then returns `D7 = 0x1b`. The parser loop therefore dispatches
+  on the `ESC` byte while the lookahead byte remains available through the
+  firmware's pushback/log source ordering.
+
+Routine `0xdace` is a separate payload/control byte reader. It calls `0xa904`.
+If the byte is not `0x1a`, it returns that byte. If it sees `0x1a 0x58`, it
+calls `0xd99a` and returns `D7 = 0`. If the second byte is not `0x58`, it
+returns the second byte. Generic delayed drains and several command-family
+payload consumers use this routine because their payload bytes need this local
+control handling. Transparent print data is a sibling counted reader with its
+own local `1a` probe, documented in
+[transparent-print-data.md](transparent-print-data.md), not a `0xdace` caller.
+
+The `0xdace` reader flow is:
+
+- `0xdace..0xdad8` calls `0xa904` and returns any byte other than `0x1a`.
+- `0xdada..0xdae4` fetches the probe byte after `0x1a`. A non-`0x58` probe is
+  returned as the payload byte; the leading `0x1a` is consumed by the probe.
+- `0xdae6..0xdaec` handles `1a 58`: it calls local helper `0xd99a`, clears
+  `D7`, and returns one normalized payload byte `0x00`.
+
+These two readers are intentionally different. Parser syntax bytes go through
+`0xda9a` so `ESC` can drive parser state while preserving the lookahead byte.
+Counted payload readers that call `0xdace` do not run the `ESC` lookahead
+logic; they only apply the local `1a 58 -> 00` payload-control rule.
 
 ## Tokenizer At 0xdb74
 

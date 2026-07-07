@@ -441,6 +441,12 @@ decimal value.
 
 ## Emulator Takeaways
 
+- Treat the appendix command names as entry points into the ROM dataflow, not
+  as the evidence source. The firmware evidence path for supported streams is
+  `0xa904` byte source, `0xda9a` / `0xdaf0` / `0xdb74` tokenizer,
+  `0x11774` parser table dispatch, command-family handler, page/root producer,
+  `0xff1e` publication when needed, `0x1ed84` / `0x1edc6` bridge, and
+  `0x1ef6a` render dispatch.
 - Build the parser around command syntax and environment mutation, not
   isolated strings.
 - Implement command combining correctly early; real drivers use it.
@@ -448,3 +454,158 @@ decimal value.
 - Internal positioning should use 1/3600 inch units if you want
   command-compatible cursor math.
 - Unsupported commands should consume the correct syntax and then no-op.
+
+## ROM Semantic Index For Quick Reference
+
+This checkpoint ties the manual quick-reference commands above to the
+checked-in firmware model. It does not replace the command-family notes; it
+names the first ROM boundary a reader should follow from a host byte stream.
+
+Field groups for this index:
+
+- Canonical parser state:
+  normalized byte `D7` from `0xa904`, mode byte `0x782999`,
+  alternate/data flag `0x782c18`, parser record cursor `0x78299e`, six-byte
+  command records under `0x78299e..`, delayed-payload flag and handler
+  `0x782a1a` / `0x782a1c`, saved delayed record `0x782a20..0x782a25`, and
+  payload budget `0x783140`.
+- Canonical print/page state:
+  cursor words `0x782c8a` / `0x782c8e`, HMI/VMI `0x78315c` /
+  `0x783160`, page geometry and margins `0x782da2..0x782dc0`,
+  `0x782dd2`, `0x782dd6`, `0x782dda`, copy count `0x782da4`, paper source
+  byte `0x782da6`, wrap/perforation flags `0x783190` / `0x783191`, page root
+  `0x78297a`, font contexts and maps rooted around `0x782ee6`,
+  `0x782f32`, and `0x783032`, raster state `0x783170..0x783182`,
+  rectangle state `0x783166..0x78316e`, and macro state
+  `0x783164`, `0x782a92`, `0x782a94`, `0x782a98`, and `0x782d76`.
+- Derived/cache state:
+  compact bucket/key state `0x782a7a..0x782a7e`, selected context slot
+  `0x78297e`, pending span watermarks `0x783184..0x78318a`, raster
+  mode/scale/capacity fields, rule-pattern selector state, render-band words
+  rooted at `0x783a20`, and row-helper products consumed by
+  `0x1effe`, `0x1f446`, `0x1f756`, `0x1f812`, and `0x1f88e`.
+- Parser scratch:
+  numeric scratch and matched-byte buffers used by `0xdb74` / `0xdaf0`,
+  lowercase chaining records rewound by `0x11f4c`, delayed binary-payload
+  snapshots, and alternate/data append bytes stored by `0xe002`.
+- Firmware bookkeeping:
+  current parser callback `0x78299a`, page-root retry flag `+0x14.0`,
+  allocator cursors `0x782a70`, `0x782a72`, `0x782a76`, publication/copy-stop
+  flag `0x782996`, macro heap chunks, data-chain frames, `0x12328` drain
+  state, and scheduler/work-record state after publication.
+- Hardware/external:
+  live host bus, direct host modes, host-output FIFO, retained-storage,
+  optional resource windows, and formatter/DC timing. These are outside this
+  command index unless the ROM has already reduced them to a byte, status
+  field, page object, or render input.
+- Unknown:
+  no ROM-local parser-table unknown remains for the quick-reference command
+  clusters listed below. Exact residuals are the secondary segment-57 physical
+  decode at `0x0c0000..0x0c0321`, compact downloaded-glyph helper targets
+  above the valid `0x1fe76` table, broader byte-stream variants that change a
+  named field/object/helper, and hardware/MMIO timing or physical naming.
+
+- Printable bytes and C0 controls:
+  mode-zero `0x11774` dispatches printable bytes to `0xd04a`; CR/LF/FF/HT/BS
+  use `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`. `0xd04a` /
+  `0x1393a` build text source state, `0x12f2e` writes compact bucket
+  objects, and controls mutate cursor and pending-span state. Compact text
+  reaches `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers.
+  Evidence:
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Reset, FF, page size, orientation, paper, and copies:
+  `ESC E` uses `0xcc52`, FF uses `0xf0f0`, and `ESC &l` mode `10` terminals
+  include `0xfc74`, `0x10220`, `0xef62`, and `0xeef0`. Reset/default
+  producers restore canonical environment; `0xef62` publishes before
+  paper-source changes; `0xeef0` writes `0x782da4`; page geometry writers
+  update `0x782da2..0x782dc0`. These commands either publish a queued page,
+  change later page defaults, or both. Evidence:
+  [publication-commands.md](publication-commands.md),
+  [reset-default-environment.md](reset-default-environment.md), and
+  `Worked Path: Publication Commands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Cursor, margins, HMI/VMI, line termination, wrap, underline, and cursor
+  stack:
+  `ESC &a` mode `12`, `ESC &k` mode `11`, `ESC *p` dot-position handlers, and
+  `ESC &f#S` `0xf75e` route to handlers `0xf39e`, `0xf416`, `0xf560`,
+  `0xf60a`, `0xeb58`, `0xec0c`, `0xca8c`, `0xc992`, `0xcb00`, `0xedf8`,
+  `0xedb0`, and `0xf75e`. They write cursor/layout flags and pending-span
+  state. Most are state-only until a following printable byte, span flush, VFC
+  jump, or publication consumes the updated state. Evidence:
+  [direct-control-codes.md](direct-control-codes.md) and
+  `Text Cursor And Direct Controls` in
+  [semantic-state-model.md](semantic-state-model.md).
+- VFC table definition, VFC channel jumps, and perforation skip:
+  `ESC &l#W` schedules `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`;
+  `ESC &l#V` uses `0x1280a`; `ESC &l#L` uses `0xee64`. The table loader
+  writes `0x782dde..0x782edd` and line caches; channel jumps consume VMI,
+  current y, top offset, and channel masks; perforation skip writes
+  `0x783191`. Output is cursor-only movement, page publication/recovery, or
+  later overflow page eject; no separate renderer exists. Evidence:
+  [vertical-forms-control.md](vertical-forms-control.md).
+- Transparent and display-function data:
+  `ESC &p#X` schedules `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
+  `ESC Y ... ESC Z` uses `0x12536` or alternate `0x12120`. The transparent
+  reader consumes counted bytes through `0xdace`, normalizes/filter-controls,
+  and re-enters printable/control paths; display readers append/report bytes
+  without ordinary page-state effects. Transparent bytes can become compact
+  text through the same `0xd04a` path. Display-functions are parser/input
+  behavior, not page imaging. Evidence:
+  [transparent-print-data.md](transparent-print-data.md) and
+  [display-functions.md](display-functions.md).
+- Raster graphics:
+  `ESC *t#R` uses `0x10808`, `ESC *r#A/#B` use `0x1075a` / `0x107fa`, and
+  delayed `ESC *b#W` uses
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Raster handlers write
+  `0x783170..0x783182`, gate transfer counts, allocate encoded-span objects
+  through `0x13070` / `0x13250`, and copy payload via `0x138de`. Encoded
+  raster objects publish through page roots and render via
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e`; dense split allocation is bounded at
+  `0x132b6..0x13382`. Evidence:
+  [raster-graphics.md](raster-graphics.md).
+- Rectangle/rule graphics:
+  `ESC *c` mode `16` routes width/height/fill writers `0x10e68`, `0x10e22`,
+  `0x10dce`, and fill command `0x10898`. Size/id handlers write
+  `0x783166..0x78316e`; `0x10898` clips the active rectangle and queues
+  rule-list objects through `0x13386` / `0x133aa`. Solid and patterned rules
+  render through `0x1f446`, `0x1f596`, and `0x1f4e0`, including
+  band-crossing continuation. Evidence:
+  [rectangle-graphics.md](rectangle-graphics.md).
+- Font selection and downloaded fonts:
+  primary/secondary setup `0x1201e` / `0x12008`, designation terminal
+  `0x120be`, attribute wrappers around `0xc930`, `0xc89c`, `0xc6ec`,
+  `0xc780`, `0xc840`, `0xc7e0`, and downloaded `W` handler `0x11f96` are the
+  first route boundaries. Selection updates requested fields and maps via
+  `0xc580`, `0x13eb8`, `0x144d2`, and `0x14c64`; downloaded
+  descriptors/payloads use `0x15d0a`, `0x16c14`, `0x1719c`, and `0x16498`.
+  Selected maps affect later printable bytes; downloaded glyphs install
+  records that later queue compact objects and render through `0x1effe` /
+  `0x1f0d2` / `0x1f1f0` / `0x1f264`. Evidence:
+  [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md), and
+  [downloaded-fonts.md](downloaded-fonts.md).
+- Macro definition, replay, overlay, and data-chain input:
+  `ESC &f#Y` uses `0xe112`, `ESC &f#X` uses `0xdd08`, alternate append uses
+  `0xe002`, execute/call frames come from `0xe418`, and overlay frame
+  production uses `0xe4f4` from `0xff1e`. Macro records live at `0x782a98`,
+  current id at `0x783164`, data-chain frames at `0x782d76`, and overlay
+  id/state at `0x782a94` / `0x782a92`; `0xa904` gives replay frames
+  byte-source priority. Stored bytes re-enter the same parser and renderer as
+  live bytes. Overlay can add text, transparent data, raster, rule/span
+  payloads before publication. Evidence:
+  [macro-data-chain.md](macro-data-chain.md).
+- Status/model side channels:
+  `ESC *r#K` and `ESC *s#^` route through `0x12034 -> 0x122be` and
+  host-output helper `0xb090`. They consume status/model predicates and output
+  bytes through the host FIFO. They emit host-visible response bytes such as
+  `33440A\r\n`; they do not create page roots or pixels. Evidence:
+  [errors-and-status.md](errors-and-status.md) and
+  [host-byte-fetch.md](host-byte-fetch.md).
+
+Confidence is high for this index as a routing map because it is backed by the
+checked-in parser table audit in [pcl-command-map.md](pcl-command-map.md) and
+the owning command-family notes named in the table. Pixel confidence for any
+specific stream still belongs to the owner note that traces the concrete
+fields, page objects, bridge records, and render helpers.

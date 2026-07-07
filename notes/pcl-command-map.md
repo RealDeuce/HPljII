@@ -416,7 +416,19 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   orientation, copies, and VFC terminals route to `0xfc74`, `0xcb00`,
   `0xc992`, `0xece2`, `0xea9e`, `0xef62`, `0xee64`, `0x10220`,
   `0xf9e8`, `0x1280a`, `0x11f6e`, and `0xeef0`. `ESC &l#W` is delayed:
-  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`. FF and reset use direct
+  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`, where the payload loads VFC
+  table state rooted at `0x782dde`. Page-size `0xfc74`, orientation `0x10220`,
+  and paper-source `0xef62` publish any current root through
+  `0xf34a -> 0xff1e` before changing the environment for later bytes.
+  Page-size writes page code `0x782da2`, sets pending header byte
+  `0x782997`, and rebuilds geometry; orientation writes `0x782da3` and
+  refreshes geometry, motion, and selected-font metrics; paper source writes
+  `0x782da6`, sets pending header byte `0x782998`, and may signal
+  `0x780e8f` / `0x780e26`. Copies `0xeef0` only writes `0x782da4`; a later
+  FF/reset/publication copies it into published root word `+0x0c`.
+  VMI/LPI/top/text/perforation commands update `0x783160`, `0x782dce`,
+  `0x782dd2`, and `0x783191`, which are later consumed by LF/FF, VFC jumps,
+  printable placement, and page-overflow helpers. FF and reset use direct
   terminals `0xf0f0` and `0xcc52`. Owner notes:
   [publication-commands.md](publication-commands.md) and
   [vertical-forms-control.md](vertical-forms-control.md).

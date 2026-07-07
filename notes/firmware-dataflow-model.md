@@ -6228,6 +6228,10 @@ Canonical table and layout writers:
   byte count, consumes payload through `0xdace`, writes channel words
   `0x782dde..0x782edd`, derives VFC bottom `0x782dc2`, copies text-bottom
   cache `0x782dd2`, and clears modified-layout flag `0x782ee1`.
+  The handler only installs even byte counts that fit the current VFC table
+  window; odd counts or counts beyond `2 * (0x782ede + 1)` are drained without
+  table writes. Accepted payloads write at most `0x100` bytes, with any excess
+  drained through `0xdace`.
 - `0x12b96` builds the default 128-word VFC table from cached line bounds.
   The default-table fixture pins the one-based channel convention: selector
   `n` maps to bit `1 << (n - 1)`.

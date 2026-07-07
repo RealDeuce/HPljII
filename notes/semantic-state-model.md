@@ -13082,9 +13082,12 @@ top-of-form page-eject path.
   the pending record while `0x782a1a` is already set.
 - `0x12cfe` is the VFC table payload handler. It rewinds parser scratch
   at `0x78299e`, reads the absolute byte count, consumes payload bytes
-  through `0xdace`, stores bytes into `0x782dde`, clears unused table
-  bytes, derives `0x782dc2`, copies it to `0x782dd2`, and clears
-  `0x782ee1`.
+  through `0xdace`, and installs table bytes only for accepted even counts.
+  Count `0` enters the default-table rebuild path. Odd counts and even
+  counts larger than `2 * (0x782ede + 1)` are drained without table writes.
+  Accepted counts write at most `0x100` bytes into `0x782dde..0x782edd`,
+  clear remaining table words, derive `0x782dc2`, copy it to `0x782dd2`, and
+  clear `0x782ee1`.
 - `0x12b96` builds the default VFC table from line-number divisibility
   and boundary rules. It writes `0x782dde` words and is called by
   `0x12cfe` zero-count/default handling and by page-geometry refresh

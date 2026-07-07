@@ -123,9 +123,42 @@ External/manual naming:
 - rewinds parser scratch at `0x78299e`;
 - reads the absolute byte count from the restored six-byte record;
 - consumes payload bytes through the `0xdace` data reader;
-- stores the payload into `0x782dde`;
-- clears unused table bytes;
+- stores accepted table payload bytes into `0x782dde`;
+- clears unused table words after the loaded payload;
 - derives `0x782dc2`, copies it to `0x782dd2`, and clears `0x782ee1`.
+
+The payload-count branch matrix at `0x12cfe..0x12f24` is part of the table
+definition contract:
+
+- Count `0`:
+  `0x12d38..0x12dc8` takes the default-table path when the VMI conversion
+  helper returns nonzero. It rebuilds top offset state, calls `0xea16`,
+  refreshes line-count caches through `0xfe54`, rebuilds the default VFC table
+  through `0x12b96`, and returns without consuming payload bytes.
+- Odd counts:
+  `0x12da0..0x12dca` rejects table installation for odd byte counts. It drains
+  exactly the absolute count through `0xdace` and returns without writing
+  `0x782dde` or changing the VFC bottom cache.
+- Even counts larger than the current table window:
+  after `0xfe54`, `0x12d92..0x12dae` computes
+  `2 * (0x782ede + 1)`. If the absolute count is larger than that window,
+  the handler drains the payload through `0xdace` and returns without writing
+  the table.
+- Even counts within the current table window:
+  `0x12de8..0x12e5c` stores payload bytes directly into the byte-addressed
+  VFC table at `0x782dde`. Counts up to `0x100` write at most 256 bytes, then
+  clear every remaining 16-bit table word from `count / 2` through index
+  `127`.
+- Even counts above `0x100`:
+  `0x12e0e..0x12f12` stores only the first `0x100` payload bytes into
+  `0x782dde..0x782edd` and drains any remaining payload bytes through
+  `0xdace` without storing them.
+
+After a successful nondefault table write, `0x12e5c..0x12f24` initializes
+`0x782dc2` from `0x782dba - 0x782dbe`, scans the loaded table for channel-2
+bit `0x0002` through line `0x782ee0`, converts the first matching line into a
+cursor limit through helpers `0x332ee`, `0x104d8`, and `0x10518`, copies
+`0x782dc2` to `0x782dd2`, and clears modified-layout flag `0x782ee1`.
 
 Fixture `ESC &l4W 00 00 00 02 !` proves that the four payload bytes are
 consumed before the following printable byte is parsed. It stores table prefix

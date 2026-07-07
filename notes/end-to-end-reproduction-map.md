@@ -3827,6 +3827,10 @@ Parser and delayed table payload:
   VFC table words rooted at `0x782dde`, clears unused table bytes, derives VFC
   bottom `0x782dc2`, copies text-bottom cache `0x782dd2`, and clears modified
   layout flag `0x782ee1`.
+- The payload bytes are installed as table data only for accepted even counts
+  within the current VFC table window. Odd counts and counts beyond
+  `2 * (0x782ede + 1)` are drained through `0xdace` without table writes;
+  accepted counts write at most `0x100` bytes and drain any excess.
 - In `ESC &l4W 00 00 00 02 !`, bytes `00 00 00 02` become the table prefix
   and are consumed before the following printable `!`.
 - The following `!` then returns to ordinary printable handler `0xd04a` and

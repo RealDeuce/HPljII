@@ -442,9 +442,20 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   same fields. `G` writes area-fill id `0x78316e`, and `P` consumes the size,
   fill, cursor, page-extent, orientation, and page-root state to clip and
   queue a rule object. Raster resolution `*t#R` uses mode `15` and handler
-  `0x10808`; raster start/end `*r#A/#B` use mode `7` and handlers
-  `0x1075a` / `0x107fa`; raster payload `*b#W` uses mode `14`,
-  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Owner notes:
+  `0x10808`; while raster-active byte `0x783182` is clear, it maps requested
+  resolution to raster scale `0x78317e` and encoded mode `0x783178`.
+  Raster start/end `*r#A/#B` use mode `7` and handlers `0x1075a` /
+  `0x107fa`: start sets `0x783182`, seeds origin/baseline fields from
+  horizontal cursor `0x782c8a` in portrait or vertical cursor `0x782c8e` in
+  landscape for selector `1`, and recomputes row byte limit `0x783180`; end
+  clears only `0x783182`. Raster payload `*b#W` uses mode `14`,
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. The delayed restore
+  materializes the six-byte command record before `0x105d0` reads the byte
+  count, writes transfer state in the `0x783170` block, drains out-of-range
+  rows through `0xdace`, queues accepted rows through
+  `0x10084 -> 0x13070 -> 0x13250`, and leaves encoded raster objects under
+  page-root bucket `+0x1c` for publication/render dispatch through `0x1ed84`,
+  `0x1edc6`, `0x1ef6a`, `0x1efc2`, and `0x1f88e`. Owner notes:
   [rectangle-graphics.md](rectangle-graphics.md) and
   [raster-graphics.md](raster-graphics.md).
 - Downloaded-font current-state controls in the `*c` family:

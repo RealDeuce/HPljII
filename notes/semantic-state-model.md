@@ -11908,10 +11908,14 @@ ownership, not a separate renderer.
   producer inputs from `0x12f2e`, the selector/capacity comparison at
   `0x138a2..0x138b2`, new-head insertion at `0x138b6..0x138ca`, and shared
   chunk accounting in `0x1381c`.
-- `0x133aa` writes root `+0x24` and inserts rectangle/rule objects by
-  bucket byte order. Equal bucket bytes insert after the existing equal
-  node in the fixture. If `0x1381c` returns zero at
-  `0x133c2..0x133d0`, fixture
+- `0x133aa` writes root `+0x24` and inserts rectangle/rule objects using
+  the helper status returned by `0x13472`. Status `1` inserts after the
+  returned predecessor, status `2` appends after the tail, and status `0`
+  inserts at the head. The search compares existing object byte `+4` with
+  derived key `0x782a7c`; `0x133aa` then writes the new object's byte `+4`
+  from `0x782a7d`, byte `+5` from the low byte of source word `+8`, word
+  `+6` from `0x782a7e`, and dimensions from source words `+4/+6`. If
+  `0x1381c` returns zero at `0x133c2..0x133d0`, fixture
   `0x133aa no-room return preserves rule-list head` proves root `+0x24`,
   the existing node, and stream bookkeeping are unchanged.
 - `0x136d2` writes root `+0x28` and inserts fixed-rule objects with the
@@ -11962,6 +11966,15 @@ returns zero before modifying root `+0x24`, and
 zero after the `0x13690` search but before modifying root `+0x28`. Both
 paths leave the existing visible page objects unchanged for later
 publication/rendering.
+
+For successful rule insertion, the storage order is ROM-defined before any
+renderer sees the object. `0x13386` calls `0x134d6`, which derives search key
+`0x782a7c` from source word `+2 >> 4` and packed object key `0x782a7e` from
+source words `+0/+2` plus horizontal offset `0x782dc0`. `0x133aa` then links
+the 14-byte object under root `+0x24` according to the three `0x13472` status
+cases described above. `0x1edc6` copies that rule-list root to render
+`+0x1c`, so `0x1f446` consumes the same ordered list after bridge
+normalization.
 
 The `addressed page-record writers share 0x1381c across chunk rollover`
 fixture composes those allocator facts into one page-record state block:

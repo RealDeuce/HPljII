@@ -194,7 +194,8 @@ Unknown:
   `+0x1c`. Helper `0x132b6` selects each raster object's payload capacity
   from `0x782a70` / `0x782a76` and can split a dense row across multiple
   encoded-span objects before `0x138de` copies payload bytes.
-- `0x133aa` writes ordered rectangle/rule nodes under root `+0x24`.
+- `0x133aa` writes rectangle/rule nodes under root `+0x24` using the
+  ordering algorithm documented below.
 - `0x136d2` writes ordered fixed-rule nodes under root `+0x28`.
 - `0xff1e` copies root fields into a published pool record, writes published
   state, clears the current root, and preserves command-specific pool header
@@ -202,6 +203,62 @@ Unknown:
 - `0x1ed84` writes active render-record header words from the selected source
   record, then delegates queue/list/context copying to `0x1edc6`.
 - `0x1edc6` writes render-record bucket, rule, fixed-list, and context roots.
+
+## Rule-List Insertion Order
+
+`0x13386` is the rectangle/rule storage entry. It first calls `0x134d6` on the
+source record, then calls `0x133aa` to allocate and link the page object.
+
+The key builder at `0x134d6` writes derived/cache state, not canonical page
+state:
+
+- `0x782a7c = source word +2 >> 4`; this is the search key consumed by
+  `0x13472`.
+- `0x782a7e = (source word +2 << 12)
+  | (((source word +0 + 0x782dc0) & 0x0f) << 8)
+  | ((source word +0 + 0x782dc0) >> 4)`, truncated to the stored word.
+
+`0x133aa` allocates a 14-byte object through `0x1381c`. If allocation fails at
+`0x133c2..0x133d0`, it returns zero before modifying root `+0x24`, the
+existing rule list, or stream bookkeeping. If root `+0x24` is empty, it stores
+the new object as the head and clears object `+0`.
+
+For a nonempty list, `0x133aa` calls `0x13472(head, local_status)`.
+`0x13472` compares each existing object's byte `+4` with key `0x782a7c` and
+returns both a candidate pointer in `D7` and a status word:
+
+- status `1`: at least one earlier object byte was below the key. `0x133aa`
+  inserts the new object after the returned predecessor by writing
+  `new.+0 = predecessor.+0` and `predecessor.+0 = new`.
+- status `2`: the scan reached the tail and the tail byte is less than or
+  equal to the key. `0x133aa` appends after the returned tail and clears
+  `new.+0`.
+- status `0`: no earlier predecessor is accepted. `0x133aa` inserts at the
+  head by writing `new.+0 = root.+0x24` and `root.+0x24 = new`.
+
+After the link is chosen, `0x133aa` fills the canonical rule object:
+
+- object `+4` gets byte `0x782a7d`;
+- object `+5` ORs in the low byte of source word `+8`;
+- object `+6` gets word `0x782a7e`;
+- object `+8` gets source word `+4`;
+- object `+0x0a` gets source word `+6`.
+
+Output effect: the order of root `+0x24` is preserved through publication and
+bridge. `0x1edc6` copies root `+0x24` to render `+0x1c`, and `0x1f446`
+traverses that bridged list when drawing rule objects. The documented
+algorithm, rather than any physical paper comparison, is the reproduction
+contract for overlapping or same-band rules.
+
+Evidence: `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+`0x13386..0x13470` for allocation, link cases, and object writes;
+`0x13472..0x134d4` for the status-returning search; `0x134d6..0x1351e` for
+derived key writes; fixture
+`0x133aa address-aware rule-list insertion uses 0x1381c storage` for lower,
+higher, and equal-key examples; fixture
+`0x133aa no-room return preserves rule-list head` for the zero-allocation
+branch; and fixture `0x1edc6 page-record bridge normalizes rule and fixed
+lists` for the root-to-render bridge.
 
 ## Readers And Consumers
 

@@ -687,6 +687,19 @@ The same fixture pins all four route polarities:
 In each fixture case the remaining budget reaches `0` at the route/drain
 boundary, so the next parser byte is not consumed by the descriptor route.
 
+The two bit-30-clear legs are fixed-record resource-object routes rather than
+downloaded-character object routes. The current-record leg enters
+`0x15e3c..0x15e46 -> 0x16606`; the continuation leg enters
+`0x15e5c..0x15e68 -> 0x15c4c`. Both mutate the fixed-record payload selected
+by the current or saved payload pointer, then rely on later font-map refresh
+and printable text to make pixels. The detailed state map is in
+`Downloaded Resource Object And Rendering`: `0x16606` owns stale-continuation
+clear, character/type admission, fixed-record table addressing, object-prefix
+validation, bitmap allocation/copy, continuation-save, and active-context
+refresh; `0x15c4c` reloads the saved table entry, resumes the copy through
+`0x16874`, and either preserves continuation status `2`, clears status `1`,
+or releases/replaces the entry on status `0`.
+
 Fixture values:
 
 - descriptor `04 00 aa bb` with current id `0x1234` routes to current-record

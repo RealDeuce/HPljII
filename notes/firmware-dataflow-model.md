@@ -24,6 +24,14 @@ This file is intentionally top-down. It names the state handoffs a renderer or
 emulator must preserve, then points to the detail notes that own each command
 family or object producer.
 
+Rows named in this documentation are ROM-derived rows: bytes produced by
+following ROM disassembly, decoded resource data, page-record fields, and
+render helpers. They are not compared to an external rendered-page oracle, and
+future device output is not part of the evidence standard. Fixtures can check
+that a documented byte stream reaches the documented ROM state and that helper
+transcriptions are internally consistent; they cannot prove behavior by
+comparison to unavailable printer output.
+
 ## Reader Path Index
 
 Use these worked paths as entry points for the byte-stream-to-pixel model:

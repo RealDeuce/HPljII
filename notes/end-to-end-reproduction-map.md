@@ -2666,6 +2666,7 @@ boundaries only when new evidence changes the documented state or pixel output.
    font-selection, VFC, macro, or publication streams only to produce another
    digest.
 5. Final physical correlation remains separate from ROM-local documentation.
-   The current model derives rows from ROM disassembly and resource bytes. A
-   representative physical print, if one is ever used, can only correlate that
-   model with a device; it is not a substitute for static ROM evidence.
+   The current model derives rows from ROM disassembly, resource bytes,
+   page-record fields, and render helpers. A representative physical print, if
+   one is ever used, can only correlate that model with a device; it is not an
+   oracle for the documentation and is not a substitute for static ROM evidence.

@@ -9108,16 +9108,17 @@ High for parser handler order, delayed snapshot bytes, delayed scratch layout,
 direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
 root boundary for beyond-extent versus negative rows, encoded object layout,
 bridge preservation, mode dispatch helpers, and ROM-derived row construction
-because those are supported by disassembly addresses and exercised by named
-harness fixtures:
+because those are supported by disassembly addresses and exercised as path
+drivers by named harness fixtures:
 `0x121cc..0x12262`, `0x105e4..0x106cc`, `0x10084..0x10218`,
 `0x13070..0x13250`, and `0x132b6..0x13382`. High for the covered raster-state
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
 selection, consecutive transfers, and lowercase same-family `*b` chaining
 because each has parser-dispatch, restored-record, object, and render-entry
 fixtures. Broader dense parser-produced page variants inside
-`0x105d0..0x13250` remain future work only when they expose new gate outcomes,
-encoded object fields, bridge fields, or rendered rows.
+`0x105d0..0x13250` remain future documentation work only when they expose new
+ROM gate outcomes, encoded object fields, bridge fields, or row-construction
+branches.
 
 ### Fixtures
 
@@ -9446,12 +9447,12 @@ High for parser handler order, dimension/fill selector mapping, clipping and
 ignore gates, rule object bytes, ordered insertion, bridge normalization,
 solid and pattern dispatch, continuation mutation across bands, no-room retry
 output, and the covered mixed text/rule/raster publication streams because
-each is fixture-pinned. Medium only for new byte-stream variants that change a
-pixel-affecting boundary outside those covered clusters: clipped source
-record, `0x1381c` allocation/rollover state, retry publication fields, rule
-object bytes, bridge state, render dispatch, or rendered rows. The shared
-heap/free-list contract is documented in `Macro Definition And Data-Chain
-Replay`.
+the disassembly and fixtures identify the ROM state path. New byte-stream
+variants matter only when they change a pixel-affecting ROM boundary outside
+those covered clusters: clipped source record, `0x1381c` allocation/rollover
+state, retry publication fields, rule object bytes, bridge state, render
+dispatch, or row-construction branch. The shared heap/free-list contract is
+documented in `Macro Definition And Data-Chain Replay`.
 
 ### Fixtures
 
@@ -10268,9 +10269,10 @@ semantics to rendered rows and compact expansion vectors.
 High for render-root ownership, `0x1ef6a` call order, bucket class split,
 compact subdispatch, segment-list layout, encoded raster mode split,
 rule-list selector dispatch, fixed-list consumption, destination pointer
-arithmetic, row-copy table targets, raster expansion tables, and row-level
-output for the cited fixtures. Medium for broader compact downloaded-glyph
-state combinations that have not yet been tied to concrete byte streams.
+arithmetic, row-copy table targets, raster expansion tables, and ROM-derived
+row output for the cited paths. Broader compact downloaded-glyph state
+combinations remain open only where they have not yet been tied to concrete
+byte streams and ROM row-construction branches.
 
 ### Fixtures
 

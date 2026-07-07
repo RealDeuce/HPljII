@@ -54,8 +54,9 @@ means `0xa904..0xabf0` and the cited disassembly/model checks define which
 firmware byte source feeds parser `0xda9a` / `0xdaf0` / `0xdb74`; it does not
 mean every physical bus signal has been named. Render coverage means
 `0x1ed84` / `0x1edc6` / `0x1ef6a` plus the compact, segment-list, rule,
-fixed-list, and raster helpers define the byte-to-bitmap state for the cited
-fixtures; it does not require formatter/DC timing proof.
+fixed-list, and raster helpers explain how ROM state is converted into bitmap
+bytes. Those bitmap bytes are the ROM-derived result being documented; there is
+no later external rendered-row image to compare against.
 
 The physical timing boundary is separate from ROM-local reproduction
 coverage. Timing-sensitive surfaces are host fetch/polling

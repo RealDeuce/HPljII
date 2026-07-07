@@ -301,6 +301,161 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+## Minimal Direct-Control Walkthrough
+
+This is the smallest top-level control/cursor spine. The control bytes and
+cursor commands do not draw by themselves. They mutate line-termination,
+cursor, margin, HMI/VMI, or pending-span state; later printable bytes consume
+that state and create the page objects that render pixels.
+
+Line-termination stream:
+
+```text
+ESC &k1G ! CR !
+```
+
+Cursor-placement stream:
+
+```text
+ESC &a2c+1R !
+```
+
+Parser and direct-control dispatch:
+
+- All bytes enter through host source `0xa904`, parser wrapper `0xda9a`, and
+  parser loop `0x11774`.
+- `ESC &k1G` dispatches to handler `0xedf8`.
+- `0xedf8` rewinds command-record cursor `0x78299e`, normalizes selector `1`,
+  and writes line-termination byte `0x78318f = 0x80`.
+- The first printable `!` reaches normal printable handler `0xd04a` and
+  queues a compact text object through `0xd824 -> 0x12f2e -> 0x1387c`.
+- CR byte `0x0d` is a normal mode-zero table entry and reaches handler
+  `0xf02c`.
+- `0xf02c` calls CR helper `0xf06e`, which copies left/default margin
+  `0x782dd6` into horizontal cursor `0x782c8a`.
+- `0xf02c` then calls span flush helper `0xf34a`.
+- Because `0x78318f.7` is set, `0xf02c` also calls LF helper `0xf0b2`, which
+  advances vertical cursor `0x782c8e` by VMI `0x783160`.
+- The second printable `!` returns to `0xd04a` and consumes the post-CR/LF
+  cursor position.
+
+Cursor command dispatch:
+
+- `ESC &a#C` dispatches to horizontal column handler `0xf39e`.
+- Lowercase final `c` keeps parser mode `12` active, so chained relative row
+  command `+1R` reaches vertical row handler `0xf560`.
+- `0xf39e` converts column units through current HMI `0x78315c`, then commits
+  through `0xf4ca`, which applies the relative flag, clamps against page
+  width `0x782db8`, updates right-limit state, clears pending text, and
+  refreshes active span state.
+- `0xf560` converts row units through current VMI `0x783160`. Absolute row
+  moves add top offset `0x782dce` plus the ROM fractional row bias; relative
+  row moves add to the current vertical cursor.
+- `0xf560` commits through `0xf6e2`, which ensures a page root, clears or
+  flushes pending text state, clamps vertical bounds, and writes
+  `0x782c8e`.
+- The following printable `!` reaches `0xd04a` after those writes.
+
+Page-object effects:
+
+- `ESC &k#G`, CR, LF, HT, BS, and `ESC &a` cursor commands do not queue
+  compact glyph objects directly.
+- Their visible effect is the cursor and pending-span state consumed by later
+  printable bytes or by FF publication.
+- In `ESC &k1G!\r!`, handler sequence
+  `0xedf8 -> 0xd04a -> 0xf02c -> 0xd04a` allocates one page root, reuses
+  compact bucket `0`, and queues the second glyph at compact coordinate
+  `0x3b00`.
+- The LF sibling `ESC &k2G!\n!` writes mode byte `0x60`; LF handler `0xf08c`
+  applies CR+LF before the second glyph and queues the same compact coordinate
+  `0x3b00`.
+- The HT/BS sibling `ESC &k0G HT BS !` routes through `0xedf8`, `0xf1cc`,
+  `0xf2a8`, and `0xd04a`; HT advances x to `21`, BS backs up to `20`, and
+  the glyph queues at compact coordinate `0x0a01`.
+- `ESC &a2C!`, `ESC &a1R!`, and `ESC &a2c+1R!` route cursor handlers into
+  following printable output at compact coordinates `0x0a02`, `0x1001`, and
+  `0x1a02`.
+- Cursor stack stream `ESC &f0S ESC &a2C ESC &f1S!` routes through
+  `0xf75e`, `0xf39e`, and `0xf75e`; the pop restores the original cursor
+  before the printable queues at compact coordinate `0x0001`.
+
+Span-flush siblings:
+
+- Cursor-changing handlers that call `0xf34a` can materialize pending span
+  state before moving the cursor.
+- `ESC &a6L!` moves `0x782c8a` from packed `10` to packed `108`; the flush
+  path writes selector-`0x4000` segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10`.
+- `0x126e2` re-arms span bounds to x `108`, and the following printable
+  queues compact coordinate `0x0207`.
+- `ESC &a1R!` proves the vertical-cursor sibling: handler `0xf560` flushes
+  pending state, moves y to packed `95.1`, and the following printable queues
+  compact coordinate `0xa001` in bucket `4`.
+- Segment-list span objects render through `0x1f812`; landscape fixed-width
+  siblings use render root `+0x20` and `0x1f756`.
+
+Render path:
+
+- Publication uses the ordinary current-root boundary through `0xff1e`.
+- `0x1ed84` and `0x1edc6` bridge compact bucket, span, and context roots into
+  render-record roots.
+- The shifted compact glyphs render through `0x1ef6a -> 0x1efc2 -> 0x1effe`
+  and the compact row-copy helpers.
+- Span-flush objects bridge as selector-`0x4000` segment-list bucket objects
+  and render through `0x1efc2 -> 0x1f812`.
+
+State classification:
+
+- Canonical:
+  line-termination mode `0x78318f`, horizontal cursor `0x782c8a`, vertical
+  cursor `0x782c8e`, left margin `0x782dd6`, right margin `0x782dda`, page
+  width `0x782db8`, HMI `0x78315c`, VMI `0x783160`, current page root
+  `0x78297a`, compact bucket objects, and selector-`0x4000` span objects.
+- Derived/cache:
+  compact coordinates such as `0x3b00`, `0x0a02`, `0x1a02`, `0xa001`, and
+  `0x0001`, packed unit conversions, right-limit comparisons, span source
+  bounds, bucket keys, and render-band fields.
+- Parser scratch:
+  parser mode `12` for lowercase-final chaining, command-record cursor
+  `0x78299e`, six-byte command records, parsed relative-flag bit `0`, numeric
+  parameter buffers, direct control byte `0x0d`, and resumed parser state for
+  following printable bytes.
+- Firmware bookkeeping:
+  right-limit latch `0x782a57`, pending-width latch `0x782a58`, pending-text
+  latch `0x782a6d`, span-flush enable `0x783184`, span re-arm fields
+  `0x783186` / `0x783188`, allocation cursors, publication flag `0x782996`,
+  scheduler cursors, and render-work progress words.
+- Hardware/external:
+  none for the ROM-local cursor-to-page-object contract beyond the physical
+  source that supplied normalized bytes to `0xa904` and later engine timing.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented
+  `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a1R!`, `ESC &a2c+1R!`, HT/BS, or
+  cursor-stack streams. Remaining work starts from variants that change
+  compact object bytes, span object shape, bucket selection, bridge state, or
+  ROM-derived rows.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Mixed Direct Controls`, `Worked Path: Cursor And Margin
+  Placement`, and `Worked Path: Text Span Flush And Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [pcl-command-map.md](pcl-command-map.md),
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`,
+  `generated/analysis/ic30_ic13_printable_text_path.md`, and
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`.
+
 ## Minimal Publication Walkthrough
 
 This is the smallest top-level page-boundary spine. Publication commands do

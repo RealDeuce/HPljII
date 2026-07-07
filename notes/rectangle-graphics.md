@@ -276,6 +276,38 @@ Fixture-pinned selector examples:
 `0x10b80` converts current cursor, stored dimensions, page extents, and
 orientation into the source record at `0x782a88`.
 
+The instruction-level flow is:
+
+- `0x10b80..0x10b9e` clears the saved negative-origin compensation slots,
+  loads current x from `0x782c8a` into `D4`, and loads current y from
+  `0x782c8e` into `D3`.
+- `0x10ba0..0x10bcc` computes the last valid x coordinate from
+  `0x782db8 - 1`. Starts to the right of that coordinate return immediately.
+  Negative starts are accepted only when `x + width >= 0`; accepted negative
+  starts save the original x in the local compensation slot and continue with
+  effective x `0`.
+- `0x10bd4..0x10c0e` repeats the same reject/negative-crossing test for y
+  using `0x782db6 - 1` and rectangle height `0x783166`. Accepted negative y
+  starts save the original y and continue with effective y `0`.
+- `0x10c10..0x10c40` prepares the shared source record and branches on
+  orientation byte `0x782da3`. Zero selects the portrait queue path; nonzero
+  selects the landscape queue path.
+- `0x10c42..0x10d0a` is the portrait path. It writes clipped x/y to
+  `0x782a88+0/+2`, subtracts any negative-origin compensation from stored
+  width/height, clips right and bottom edges against page extents, rejects
+  empty results, then writes width/height to `+4/+6`.
+- `0x10c74..0x10dcc` is the landscape path. It writes queued x from the
+  clipped portrait y axis, derives queued y from the clipped portrait right
+  edge, swaps the effective height into queued width and effective width into
+  queued height, and applies the same empty-result rejection before queueing.
+- `0x10d0a..0x10d1e` ensures a page root through `0x10084` and queues
+  `0x782a88` through `0x13386`. A nonzero return exits with the object linked
+  under page-root rule list `+0x24`.
+- `0x10d22..0x10d3e` is the allocation retry path. A zero return from
+  `0x13386` sets page-root flag `+0x15.0`, publishes the current root through
+  `0xff1e`, ensures a fresh root through `0x10084`, and retries the same
+  already-clipped source record.
+
 Portrait path:
 
 - Reject if start x is beyond `page_width - 1`.

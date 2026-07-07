@@ -396,6 +396,13 @@ record. If no delayed payload is already pending, it writes:
 0x782a20..25  six-byte command record snapshot
 ```
 
+The pending check is part of the ROM contract. Disassembly
+`0x121cc..0x12210` always rewinds the active record cursor before testing
+`0x782a1a`, but it only writes the pending flag, handler pointer, and saved
+record when the flag was clear. A second arming call while a delayed payload is
+already pending therefore does not replace the saved handler or saved six-byte
+record.
+
 Known scheduler callers:
 
 - `0x11f82` schedules raster transfer handler `0x105d0`.
@@ -419,6 +426,22 @@ absolute value, and calls `0x12328`. `0x12328` consumes that many bytes through
 `0xdace`. It returns `D7 = -1` if `0xdace` reports `-1`; otherwise it returns `D7 = 1`
 when the count has been consumed.
 
+Alternate/data mode wrapper `0x12358` has two branches:
+
+- If saved handler `0x782a1c` equals the wrapper argument, `0x12358` calls
+  `0x1228a`. This preserves the generic counted-drain behavior for stateful
+  `W/w` payloads that were explicitly armed with `0x1228a`.
+- If the saved handler differs from the wrapper argument, `0x12358` does not
+  call that saved handler. It rewinds the restored record by six, reads signed
+  word `+2`, and returns immediately for nonpositive counts. For positive
+  counts it drains bytes through `0xdace` and echoes each normalized byte
+  through `0xe002` until the count is consumed or `0xdace` returns `-1`.
+
+Thus alternate/data mode turns non-wrapper delayed payloads into echoed data
+rather than normal command-family effects. Raster `0x105d0`, transparent text
+`0x12452`, and font handlers do not run from this branch unless the parser has
+returned to normal mode before `0x12218` dispatches them.
+
 Fixtures `0x121cc snapshots delayed payload handler and parsed record` and
 `0x12218 restores delayed parsed record and dispatches saved handler` pin the
 bookkeeping fields: pending flag `0x782a1a`, handler pointer `0x782a1c`, saved
@@ -427,6 +450,9 @@ clear after dispatch. Fixture `0x1228a consumes absolute delayed payload count
 without echo` proves generic wrapper `0x1228a` uses the absolute value of
 record word `+2`, drains bytes through `0x12328` / `0xdace`, and does not echo
 payload bytes through the alternate/data append path.
+Fixture `0x12358 direct alternate path echoes positive payload bytes only`
+proves the non-wrapper alternate/data branch above: positive counts are echoed
+through `0xe002`, while nonpositive counts return without consuming payload.
 
 The downloaded-font delayed handlers use the same drain contract after their
 own install work. In `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
@@ -438,16 +464,6 @@ The alternate `0x15b9a`, `0x15c4c`, and `0x16606` branches also join the same
 `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`, nonzero
 `ESC )s#W` resource installs converge on `0x16c68`, which likewise calls
 `0x12328` with `0x783140` before returning to the parser loop.
-
-`0x12358` is the alternate/data-mode path. If the saved handler pointer equals the
-argument passed to `0x12358`, it calls `0x1228a`. Otherwise it consumes a positive count
-through `0xdace` and echoes each normalized byte through `0xe002`.
-
-Fixture `0x12358 direct alternate path echoes positive payload bytes only`
-pins that alternate/data split. Positive counts are consumed through `0xdace`
-and appended through `0xe002`; zero and negative counts do not append bytes.
-When the saved handler matches the wrapper argument, the path delegates to
-`0x1228a` instead of echoing bytes itself.
 
 Transparent print data is the direct parser-core delayed-payload sibling at
 `0x11f5a`. It schedules handler `0x12452` through `0x121cc`; after

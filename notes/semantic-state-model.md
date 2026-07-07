@@ -1250,7 +1250,10 @@ payload consumption.
   font-state refresh helper `0xc580` before terminal processing.
 - `0x121cc` writes the pending flag, handler pointer, and saved command
   record; `0x12218` clears the pending flag and restores that record before
-  dispatching the saved handler.
+  dispatching the delayed payload path. In alternate/data mode, `0x12218` routes
+  through `0x12358`: a saved `0x1228a` wrapper drains through `0x1228a`, while
+  non-wrapper saved handlers are not called and positive record counts are
+  drained through `0xdace` and echoed through `0xe002`.
 
 ### Readers And Consumers
 
@@ -1263,7 +1266,7 @@ payload consumption.
   descriptor/resource records before installing or rejecting font data.
 - Macro definition mode and alternate/data mode consume parser records but
   redirect payload bytes through `0xe002` / `0x12358` rather than immediate
-  imaging.
+  imaging unless the delayed handler is the generic `0x1228a` wrapper.
 
 ### Output Effect
 

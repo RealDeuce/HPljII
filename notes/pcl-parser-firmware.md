@@ -195,8 +195,12 @@ Writers and readers:
   saved handler directly in normal mode or routes through alternate/data
   wrappers `0x1228a` / `0x12358`.
 - Count drains `0x1228a`, `0x12328`, and `0x12358` consume payload bytes after
-  restore. `0x12328` uses `0xdace`, so its `0x1a 0x58` normalization is local
-  to that consumer and must not be treated as global `0xa904` behavior.
+  restore. In alternate/data mode, `0x12358` calls `0x1228a` only when saved
+  handler `0x782a1c` equals the wrapper argument; otherwise it drains positive
+  counts through `0xdace` and echoes each normalized byte through `0xe002`
+  instead of calling the saved raster, transparent-text, or font handler.
+  `0x12328` uses `0xdace`, so its `0x1a 0x58` normalization is local to that
+  consumer and must not be treated as global `0xa904` behavior.
 
 Output effect:
 

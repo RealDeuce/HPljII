@@ -854,9 +854,12 @@ Command-record and delayed-payload behavior:
   pending byte `0x782a1a`, stores handler pointer `0x782a1c`, and saves the
   six-byte record at `0x782a20..0x782a25`.
 - Terminal restore `0x12218` later copies the saved record back to the active
-  cursor and calls the saved handler. This is why a stream such as
-  `ESC *b2W c3 3c` is two-stage: parser syntax records byte count `2`, then
-  raster handler `0x105d0` consumes payload bytes after restore.
+  cursor. In normal mode it calls the saved handler; in alternate/data mode it
+  routes through `0x12358`, which calls saved wrapper `0x1228a` only when that
+  exact wrapper was armed and otherwise echoes positive payload counts through
+  `0xe002`. This is why a normal stream such as `ESC *b2W c3 3c` is
+  two-stage: parser syntax records byte count `2`, then raster handler
+  `0x105d0` consumes payload bytes after restore.
 - Other delayed consumers use the same restore boundary: transparent data
   `0x12452`, VFC table load `0x12cfe`, downloaded descriptor path `0x15d0a`,
   downloaded payload path `0x16c14`, and generic counted wrapper `0x1228a`.
@@ -4460,10 +4463,12 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   append through `0xe002` before the same terminal reset path instead of
   running normal BS/HT/LF/FF/CR/SO/SI handlers. The alternate/data table is
   not a blanket ignore: most immediate page-state commands have blank
-  handlers or lowercase `0x11f4c` rewind entries, while payload/storage
-  families such as transparent data, VFC table payloads, raster rows,
-  downloaded-font payloads, and macro control still execute so macro/data
-  bytes remain reproducible. `ESC E` still reaches reset handler `0xcc52`.
+  handlers or lowercase `0x11f4c` rewind entries, while macro/data storage
+  bytes remain reproducible through append paths. Delayed payload restore in
+  alternate/data mode follows `0x12358`: generic wrapper `0x1228a` drains as
+  a wrapper, while non-wrapper raster, transparent-text, VFC, and font saved
+  handlers are not called from that branch. `ESC E` still reaches reset
+  handler `0xcc52`.
   Related parser artifacts are bounded separately: `ESC ?` is consumed in
   wrapper `0xda9a`, `ESC Z` terminates the direct display-functions reader,
   and `ESC &lT/t` has no standalone page-output effect.

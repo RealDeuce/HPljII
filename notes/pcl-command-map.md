@@ -588,9 +588,40 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   objects through `0x16498`. Validation, no-slot, mode `0x782a92 == 2`, and
   allocation-failure exits drain or skip payload bytes and preserve the
   following printable path unless they intentionally replace an existing
-  payload. Symbol/font designation writes requested
-  primary/secondary words `0x782ef4` / `0x782f04` and dirty flags
-  `0x782f2c` / `0x782f2d`; common refresh `0xc580` uses selected text slot
+  payload. Symbol/font designation commands first use setup wrappers
+  `0x1201e` / `0x12008` to append synthetic slot records for primary slot
+  `0` or secondary slot `1`; final bytes `@..^` then reach shared wrapper
+  `0x120be -> 0x1be22 -> 0xc580`. For ordinary finals, `0x1be22` rewinds
+  command-record cursor `0x78299e`, reads final byte `+1`, integer word `+2`,
+  and setup slot word, computes requested symbol word
+  `(abs(parameter) << 5) + final - 0x40`, writes `0x782ef4` or `0x782f04`,
+  and sets dirty flags `0x782f2c` / `0x782f2d`. Final `X` restores the old
+  requested word instead of accepting that provisional symbol word, sets
+  marker `0x78287b`, calls font-id selector `0x17708(slot, parameter)`, and
+  enters `0xc580` with dirty flag `2`; successful `0x17708` paths select
+  built-in or inline/downloaded records and rebuild maps through `0x14c64`,
+  while documented non-selected exits stop before map rebuild and preserve
+  prior printable output. Final `@` dispatches the numeric parameter through
+  table `0x1bde2`: `@0` copies `0x782f1c + 8*orientation + 4*slot`, `@1`
+  copies `0x782f1c + 8*orientation`, `@2` restores the previous primary word
+  or copies primary request `0x782ef4` to secondary, `@3` runs the default-font
+  path through `0x1b250` / `0x1ad66` and `0x1b2fe`, and other values restore
+  the old requested word unchanged. The ROM therefore gives `@0..@2`
+  concrete table/copy behavior in addition to the documented `3@` default-font
+  command.
+
+  Field grouping for the designation edge is explicit. Canonical state is
+  requested words `0x782ef4` / `0x782f04`, active words
+  `0x783144` / `0x783146`, remembered words `0x782f08` / `0x782f0a`,
+  selected slot `0x782f06`, selected contexts `0x782ee6` / `0x782ef6`,
+  maps `0x782f32` / `0x783032`, and current page-root context selector
+  `0x78297e`. Parser scratch is the setup slot record plus terminal
+  six-byte record at `0x78299e`. Derived/cache state is candidate-window
+  selection, selected candidate pointer `0x7828a8`, and transient context
+  `0x782992`. Firmware bookkeeping is dirty flags `0x782f2c` /
+  `0x782f2d`, side-effect marker `0x78287b`, page-root live-font flags
+  `0x78297f..0x78298e`, and context-slot scan/install helpers
+  `0xc4fc` / `0xc428`. Common refresh `0xc580` consumes selected text slot
   `0x782f06` to decide whether to call candidate refresh `0x13eb8` and
   page-root context install `0xc428`. Candidate refresh resolves active symbol
   words `0x783144` / `0x783146`, writes current-font contexts `0x782ee6` /
@@ -600,6 +631,20 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   bytes consume the selected slot, map, and context through
   `0xd04a -> 0x1393a -> 0x12f2e`, mark the page-root font slot live, publish
   through `0xff1e`, and render through `0x1ed84` / `0x1edc6` / `0x1ef6a`.
+  Evidence is `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+  `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`, fixtures
+  `symbol-set parser trace covers X and @ special cases`,
+  `font-ID built-in selection feeds visible page-record rows`,
+  `font-ID non-selected exits keep prior visible rows`,
+  `real default-table caller stream uses ROM-backed words`, and
+  `real final-@ default-table streams select visible built-ins`.
+  No unresolved middle edge remains for ordinary symbol finals, final `X`, or
+  final `@` inside the documented primary/secondary built-in and
+  inline/downloaded paths; remaining font-selection work must change a
+  concrete candidate, context, map, page-root slot, compact object, or
+  row-construction input.
   Downloaded glyph row-count streams have a documented selector boundary:
   low-byte rows `0x0001..0x00ff` are reproducible through the compact helpers,
   while high-row short compact siblings `0x0101..0x0103` stop at the unchecked

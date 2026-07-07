@@ -160,6 +160,7 @@ Concrete software contracts already exist for these renderer components:
   `Worked Path: Pitch Mode To Font Refresh`,
   `Worked Path: Firmware Font Sample Page`,
   `Worked Path: Downloaded Glyph`,
+  `Worked Path: Downloaded Glyph Rule/Raster Composition`,
   `Worked Path: Nonzero Resource Payload`,
   `Worked Path: Fixed-Record Resource Object`, and
   `Worked Path: Selected Font Metrics To Span Output` in
@@ -186,7 +187,8 @@ Concrete software contracts already exist for these renderer components:
   `Worked Path: Compact Glyph Row-Copy Helpers`,
   `Worked Path: Rectangle Rule Selectors And Clipping`,
   `Worked Path: Raster Transfer Gates And Modes`,
-  `Worked Path: Mixed Text/Rule/Raster Page Record`, and
+  `Worked Path: Mixed Text/Rule/Raster Page Record`,
+  `Worked Path: Downloaded Glyph Rule/Raster Composition`, and
   `Worked Path: Render Dispatch And Pixel Composition` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [page-raster-imaging.md](page-raster-imaging.md),

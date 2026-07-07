@@ -570,7 +570,13 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `X/x` reaches macro-control handler `0xdd08`; `S/s` reaches cursor-stack
   handler `0xf75e`. Normal and alternate/data tables both keep `X/x` active
   so selector `1` can stop macro definition while payload controls are
-  appended rather than executed. `0xe112` writes current macro id
+  appended rather than executed. Cursor-stack `S/s` is placement state, not a
+  macro record operation: selector `0` pushes horizontal cursor `0x782c8a` and
+  vertical cursor plus top physical offset `0x782dbe` into stack
+  `0x782c96..0x782d36`; selector `1` pops when above base `0x782c96`, restores
+  x/y with active-extent clamps, clears pending/right-limit latches, and can
+  flush pending spans. Following printable text consumes the restored cursor
+  through `0xd04a -> 0x12f2e`. `0xe112` writes current macro id
   `0x783164`; `0xdd08` resolves that id through the 32-entry pool at
   `0x782a98` and dispatches selector `0` start-definition, `1`
   stop-definition, `2` execute, `3` call, `4`/`5` overlay on/off, `6` delete

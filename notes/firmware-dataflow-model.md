@@ -6395,8 +6395,11 @@ State classification:
   no unresolved ROM-local parser, gate, object layout, bridge, mode dispatch,
   or dense-row branch target remains for the covered raster streams. Remaining
   raster work is byte-stream variants that expose different gate outcomes,
-  accepted counts, allocator pre-state, object bytes, bridge state, rendered
-  rows, copy-stop behavior, or packed-key advance.
+  accepted counts or drains, allocator state `0x782a70/0x782a72/0x782a76`,
+  split capacity `0x782a80`, encoded object bytes
+  `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte
+  `0x782996`, packed-key advance through `0x332ee`, or mode-specific
+  `0x1f88e` rows.
 
 Output effect:
 

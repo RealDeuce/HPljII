@@ -645,9 +645,12 @@ Unresolved middle edges:
   `0x132b6..0x13382`, including the static `0x00f2 + 0x003a`
   capped-new-chunk chain and `0x000a` current-tail capacity example in
   [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint).
-  The remaining closure boundary is byte streams that change the
-  `0x105d0 -> 0x10084 -> 0x13070` gate result, encoded-row fields,
-  copy-stop behavior, packed-key advance, or rendered output.
+  The remaining closure boundary is byte streams that change a concrete
+  raster field or branch: accepted count or drain result at `0x105d0`,
+  encoded object fields `+0x04/+0x05/+0x06/+0x08/+0x0a..`, split allocator
+  state `0x782a70/0x782a72/0x782a76/0x782a80`, bridge bucket roots,
+  copy-stop byte `0x782996`, packed-key advance through `0x332ee`, or
+  mode-specific `0x1f88e` rows.
 - `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes, and local no-room returns are
   fixture-backed for both root `+0x24` and root `+0x28`. The parser-produced
@@ -1504,9 +1507,12 @@ Unresolved middle edges:
   dispatch.
 - `0x13070..0x1f88e`: raster mode producers and encoded renderers are
   connected for modes `0..3`; dense split object-chain rules are documented for
-  capped-new-chunk and current-tail allocation. Remaining work is mixed-page
-  variants that change encoded object fields, bridge state, packed-key advance,
-  copy-stop behavior, or rendered rows.
+  capped-new-chunk and current-tail allocation. Remaining work must change a
+  concrete raster boundary: accepted count or drain result at `0x105d0`,
+  encoded object fields `+0x04/+0x05/+0x06/+0x08/+0x0a..`, split allocator
+  state `0x782a70/0x782a72/0x782a76/0x782a80`, bridge bucket roots,
+  copy-stop byte `0x782996`, packed-key advance, or mode-specific `0x1f88e`
+  rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the selector fixtures above. Remaining work must change a
   concrete ROM-visible field or branch: clipped source record `0x782a88`,

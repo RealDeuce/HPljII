@@ -461,8 +461,10 @@ Field grouping for this dense-row split:
 - unknown: no instruction-level split branch remains unlocated at `0x132b6`.
   Capped-new-chunk and current-tail object-chain derivations are documented
   below. Remaining dense-row work starts from byte streams that change accepted
-  count, allocator pre-state, copy-stop behavior, packed-key advance, bridge
-  bucket roots, or encoded-renderer row construction.
+  count or drain result, allocator pre-state `0x782a70/0x782a72/0x782a76`,
+  split capacity `0x782a80`, copy-stop byte `0x782996`, packed-key advance
+  through `0x332ee`, bridge bucket roots, or mode-specific `0x1f88e` row
+  construction.
 
 ### Dense-Row Split Composition Checkpoint
 
@@ -563,9 +565,11 @@ Field classification:
   allocator return pointer, and publication/copy-stop byte `0x782996`.
 - Unknown: no branch target or state field is unknown inside
   `0x13070..0x13382`. The remaining dense-row work is byte streams that change
-  accepted count, allocator pre-state, copy-stop behavior, packed-key advance,
-  bridge bucket roots, or encoded-renderer row construction beyond the static
-  split cases above.
+  accepted count or drain result at `0x105d0`, allocator pre-state
+  `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, copy-stop byte
+  `0x782996`, packed-key advance through `0x332ee`, bridge bucket roots, or
+  mode-specific `0x1f88e` row construction beyond the static split cases
+  above.
 
 Evidence and confidence:
 
@@ -585,8 +589,9 @@ Evidence and confidence:
   the documented transcription reaches the same object chain; pixel output must
   still be documented from the ROM render helpers and derived row construction.
   Broader dense-row documentation remains open only where a new byte stream
-  changes the accepted count, allocator pre-state, packed-key advance, bridge
-  bucket root, or `0x1f88e` mode-specific row construction.
+  changes accepted count or drain result, allocator pre-state, split capacity,
+  copy-stop behavior, packed-key advance, bridge bucket root, or `0x1f88e`
+  mode-specific row construction.
 
 ## Render Dispatch
 
@@ -783,10 +788,10 @@ A byte-stream reproduction must preserve these behaviors:
   [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
 - Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
   `0x132b6` should target new byte streams that change the raster chain,
-  object bytes, bridge state, copy-stop behavior, packed-key advance, or
-  rendered rows. Canonical output state is documented as the page-root `+0x1c`
-  raster chain and object bytes written by `0x13070`/`0x13250`; derived/cache
-  state is the bucket/key and
+  encoded object bytes, allocator state, bridge bucket roots, copy-stop byte
+  `0x782996`, packed-key advance, or mode-specific `0x1f88e` rows. Canonical
+  output state is documented as the page-root `+0x1c` raster chain and object
+  bytes written by `0x13070`/`0x13250`; derived/cache state is the bucket/key and
   render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed
   `80 57 ...` command record, snapshot, payload offset, and drained payload
   bytes; firmware bookkeeping is the modeled allocation result and

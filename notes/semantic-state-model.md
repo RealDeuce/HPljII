@@ -9219,8 +9219,11 @@ encoded object fields, bridge fields, or rendered rows.
   record and `0x105d0` re-reading it from `0x78299e - 6`. The remaining work is
   dense parser-produced byte streams that change the
   `0x105d8..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, or
-  `0x132b6..0x13382` gate outcomes, allocation fields, object bytes, bridge
-  state, copy-stop behavior, packed-key advance, or rendered rows.
+  `0x132b6..0x13382` gate outcomes, allocation fields `0x782a70` /
+  `0x782a72` / `0x782a76` / `0x782a80`, encoded object bytes
+  `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte
+  `0x782996`, packed-key advance through `0x332ee`, or mode-specific
+  `0x1f88e` rows.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as
@@ -10325,8 +10328,12 @@ state combinations that have not yet been tied to concrete byte streams.
   gate, segment-list/fixed-list object fields, bridge roots, or render
   dispatch.
 - `0x13070..0x1f88e`: raster producers and encoded renderers are connected for
-  modes `0..3`; remaining work is byte-stream variants that change encoded
-  object fields, bridge state, or rendered rows.
+  modes `0..3`. Remaining work must change a concrete raster boundary:
+  accepted count or drain result at `0x105d0`, encoded object fields
+  `+0x04/+0x05/+0x06/+0x08/+0x0a..`, split allocator state
+  `0x782a70/0x782a72/0x782a76/0x782a80`, bridge bucket roots, copy-stop
+  behavior via `0x782996`, packed-key advance, or mode-specific `0x1f88e`
+  rows.
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the cited selectors. Remaining work must change a concrete
   ROM-visible field or branch: clipped source record `0x782a88`, rule object

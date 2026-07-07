@@ -1342,6 +1342,28 @@ The segment-list disassembly contract is:
   trailing mask from `D3`. It advances to the next destination row by the
   stride and does not read the prior destination word.
 
+The exact segment-list instruction boundaries are:
+
+- `0x1f812..0x1f81e`: copy the bucket object pointer to `A4`, advance past
+  object bytes `+0x04/+0x05`, read object word `+0x06` as entry count, and
+  exit when the decremented count is negative.
+- `0x1f820..0x1f82c`: consume one six-byte segment entry: coordinate word
+  into `D1`, row-count/phase byte into `D2`, one skipped byte, and span-width
+  word into `D3`; then call helper `0x1f836` and writer `0x1f862`.
+- `0x1f836..0x1f840`: preserve the outer object-entry counter in `D4`, move
+  the row-count/phase byte through `D4`, and call destination helper
+  `0x1f3d4`.
+- `0x1f840..0x1f85c`: restore the row-count/phase byte into `D2`, derive the
+  number of rows from its low nibble, split the span-width word into full-word
+  count and low-nibble tail, and map that tail through mask table `0x308f2`
+  into the high word of `D3`.
+- `0x1f862..0x1f872`: load stride `0x783a1c`, seed destination base in `D7`,
+  and set full-word fill pattern `0xffff`.
+- `0x1f874..0x1f884`: for each output row, write `D3` low-word count full
+  `0xffff` words, then write the trailing-mask high word of `D3`.
+- `0x1f886..0x1f88c`: decrement the row counter, advance the destination base
+  by stride, and loop until all segment rows are written.
+
 The fixed-width list disassembly contract is:
 
 - `0x1f756` reads render-record list `+0x20`. If it is zero, the fixed-list

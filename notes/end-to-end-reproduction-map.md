@@ -411,6 +411,147 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+## Minimal Text Placement Walkthrough
+
+This extends the printable path to stateful placement commands. The placement
+commands do not draw by themselves in the covered streams. They write cursor,
+margin, HMI/VMI, or dot-position state; the following printable byte consumes
+that state and queues a compact text object at the derived coordinate.
+
+Representative streams:
+
+```text
+ESC &k6H !!
+ESC &a6l9M !
+ESC &a2c+1R !
+ESC *p30x30Y !
+ESC &f0S ESC &a2C ESC &f1S !
+```
+
+Parser and command dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- `ESC &k#H` reaches HMI handler `0xca8c`.
+- `ESC &a#L` reaches left-margin handler `0xeb58`; lowercase `l` keeps
+  parser mode `12` active so the following `#M` reaches right-margin handler
+  `0xec0c`.
+- `ESC &a#C` and `ESC &a#H` reach horizontal cursor handlers `0xf39e` and
+  `0xf416`; `ESC &a#R` and `ESC &a#V` reach vertical cursor handlers
+  `0xf560` and `0xf60a`.
+- Lowercase `c` in `ESC &a2c+1R` keeps parser mode `12` active so the
+  relative row command reaches `0xf560` before the printable byte.
+- `ESC *p#X` and `ESC *p#Y` reach dot-position handlers `0xf48c` and
+  `0xf692`; lowercase `x` keeps parser mode `18` active for the chained
+  vertical dot-position final.
+- `ESC &f#S` reaches cursor-stack handler `0xf75e`.
+- The following printable byte falls through the ordinary printable route
+  `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`.
+
+Placement behavior:
+
+- `0xca8c` writes accepted HMI values to `0x78315c`. In the documented
+  `ESC &k6H!!` stream it stores packed advance `15`, so the second printable
+  byte queues at compact coordinate `0x0501` instead of the default
+  `0x0201`.
+- `0xeb58` converts the left-margin column through HMI `0x78315c`, writes
+  accepted values to `0x782dd6`, and may move horizontal cursor `0x782c8a`.
+- `0xec0c` converts `abs(parameter) + 1` columns through HMI, writes right
+  margin `0x782dda`, sets right-limit latch `0x782a57`, and may clamp current
+  horizontal cursor left.
+- `0xf39e` converts column units through HMI; `0xf416` converts horizontal
+  decipoints through five packed subunits per decipoint. Both commit through
+  `0xf4ca`, which applies the relative flag, clamps against page width
+  `0x782db8`, updates right-limit state, and writes horizontal cursor
+  `0x782c8a`.
+- `0xf560` converts row units through VMI `0x783160`; `0xf60a` converts
+  vertical decipoints through five packed subunits per decipoint. Both commit
+  through `0xf6e2`, which applies relative or top-offset base, clamps vertical
+  bounds, and writes vertical cursor `0x782c8e`.
+- `0xf48c` and `0xf692` shift whole-dot parameters into the packed coordinate
+  domain, then share the same `0xf4ca` / `0xf6e2` commit helpers.
+- `0xf75e` pushes or pops cursor-stack entries in `0x782c96..0x782d36`. The
+  documented push/move/pop stream restores the original cursor before the
+  following printable queues at compact coordinate `0x0001`.
+
+Page-object and render effect:
+
+- The placement commands themselves queue no compact glyph object in the
+  covered streams.
+- The following printable byte consumes cursor `0x782c8a/0x782c8e`, HMI
+  `0x78315c`, selected font context, and pending-width state in `0xd04a`.
+- `0xd824 -> 0x12f2e` turns the positioned source into compact object entries;
+  `0x1387c` stores or appends those entries under current page-root bucket
+  `+0x1c`.
+- Documented streams route `ESC &a6l9M!` to compact coordinate `0x0207`,
+  `ESC &a2c+1R!` to `0x1a02`, and `ESC *p30x30Y!` to `0x9402`.
+- Publication, bridge, scheduler, and render are the same as the printable
+  path: `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a -> 0x1efc2`.
+
+Span-flush sibling:
+
+- Cursor-changing handlers can force pending span publication before they
+  overwrite cursor/span state.
+- `ESC &a6L!` reaches `0xeb58`, moves horizontal cursor from packed `10` to
+  packed `108`, and materializes selector-`0x4000` segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10` through
+  `0xf34a -> 0x12714 -> 0x126e2` before the following printable queues.
+- `ESC &a1R!` reaches `0xf560`, flushes the same pending span state, moves
+  vertical cursor to packed `95.1`, and queues the following printable at
+  compact coordinate `0xa001`.
+
+State classification:
+
+- Canonical:
+  horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, HMI
+  `0x78315c`, VMI `0x783160`, left margin `0x782dd6`, right margin
+  `0x782dda`, page width `0x782db8`, vertical bounds
+  `0x782dc6/0x782dca`, top offset `0x782dce`, cursor stack
+  `0x782c96..0x782d36`, current page root `0x78297a`, compact text objects,
+  and selector-`0x4000` span objects.
+- Derived/cache:
+  packed unit conversions, compact coordinate words, bucket/key fields, right
+  limit comparisons, pending span bounds `0x783186/0x783188`, and render-band
+  fields after publication.
+- Parser scratch:
+  parser modes `12` and `18` for lowercase-final chaining, six-byte command
+  records rooted at `0x78299e`, parsed relative-flag bit, numeric parameters,
+  and the resumed parser state for the following printable byte.
+- Firmware bookkeeping:
+  right-limit latch `0x782a57`, pending-width latch `0x782a58`,
+  pending-text/cursor latch `0x782a6d`, span-flush enable `0x783184`,
+  allocation cursors, publication flag `0x782996`, scheduler cursors, and
+  render-work progress.
+- Hardware/external:
+  none for the ROM-local placement contract.
+- Unknown:
+  no unresolved ROM-local middle edge remains for the documented HMI,
+  margin-to-printable, cursor-to-printable, dot-position-to-printable,
+  cursor-stack, or span-flush streams. Remaining placement work starts from
+  streams that change selected font context, pending-width behavior, span
+  object shape, compact object bytes, bucket selection, bridge roots, or
+  ROM-derived row construction.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Cursor And Margin Placement` and `Worked Path: Text Span
+  Flush And Underline Objects` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [pcl-command-map.md](pcl-command-map.md),
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`.
+
 ## Minimal Parser Dispatch Walkthrough
 
 This is the smallest top-level parser spine. It explains how normalized bytes

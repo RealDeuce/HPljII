@@ -1312,7 +1312,8 @@ fallback, final-`@` table consumption, final-`X` success/non-selected exits,
 selected context writes, map rebuilds, and visible primary/secondary text
 output because those are fixture-backed and cited in
 [semantic-state-model.md](semantic-state-model.md). Medium for manual
-metadata names and physical sample-page comparison.
+metadata names; physical sample pages, if available, are optional
+correlation.
 
 Fixtures:
 
@@ -1359,6 +1360,7 @@ Unresolved middle edges:
   parser-to-visible primary and secondary output is covered. Remaining useful
   ROM work is new selection/filter cases that change selected context, map
   rebuild, page-object bytes, or rendered rows.
-- physical sample-page comparison is still needed to assign manual-facing
-  baseline/cell names and validate paper placement outside the ROM-internal
-  rendered-surface digest.
+- manual-facing baseline/cell names remain open. Physical sample pages, if
+  available, can correlate paper placement with the ROM-internal rendered
+  surface digest, but they are not evidence required for the ROM-derived
+  pixel model.

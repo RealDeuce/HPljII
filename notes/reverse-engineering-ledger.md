@@ -655,7 +655,7 @@ linear-segmented, rows-`0x20` short, rows-`0x40` short, row-count-matrix short r
 `0x83..0xff`, rows-`0x82` segmented, rows-`0x0102` low-byte-truncated publication,
 split-plane segmented, segmented-wide, even-span wide, payload-control wide,
 downloaded-character no-install, and status-`2` compact bucket variants, full
-live-parser raster edge cases, and final device-output page comparison. The
+live-parser raster edge cases, and optional final device-output correlation. The
 source-width wrap boundary is no longer a broad parser/render unknown: fixture
 `downloaded glyph width-byte boundary truncates page-record span` preserves canonical
 width words for `0x00ff`, every span `0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`,

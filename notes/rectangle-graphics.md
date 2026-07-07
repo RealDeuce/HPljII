@@ -697,10 +697,11 @@ A byte-stream reproduction must preserve these behaviors:
   bridge state, render dispatch, or rendered rows.
 - Pattern rendering is fixture-pinned for selectors, masks, shifted rows, and
   band crossing. The initial mixed text/rule/raster/FF byte stream now provides
-  a complete parser-produced page comparison with selector-7 rule output,
-  mode-0 raster output, compact text, publication, and render-entry rows;
+  a complete parser-produced page-record/render composition with selector-7
+  rule output, mode-0 raster output, compact text, publication, and
+  render-entry rows;
   `host-fetched alternate rectangle selectors feed full page records` adds
-  detailed page-record comparisons for gray selector `4` from `50g2P` and
+  detailed page-record fixtures for gray selector `4` from `50g2P` and
   portrait pattern selector `9` from `2g3P`, and `host-fetched rectangle
   selector matrix feeds full page records` extends that coverage to non-solid
   selectors `0..6` and `8..13` plus the landscape pattern remaps for ids
@@ -709,7 +710,7 @@ A byte-stream reproduction must preserve these behaviors:
   bucket chain;
   checked-in coverage also includes font-selection streams, downloaded-glyph
   FF publication, geometry-changing publication streams, and a parser-driven
-  downloaded-glyph/rule/raster page. The remaining comparison gap is broader
-  physical/reference-output validation and cross-feature full-page
-  combinations, not the software-visible rectangle selector ids or landscape
-  remap logic.
+  downloaded-glyph/rule/raster page. Remaining rectangle work is limited to
+  cross-feature full-page combinations that expose new ROM-derived page-object
+  fields, bridge state, render dispatch, continuation mutation, or rows; it is
+  not the software-visible rectangle selector ids or landscape remap logic.

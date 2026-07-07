@@ -9448,11 +9448,11 @@ Replay`.
   bridge state, render dispatch, or rendered rows.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
   `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
-  comparisons through compact text, bridge normalization, `0x1f446`, and
+  fixtures through compact text, bridge normalization, `0x1f446`, and
   `0x1f4e0`. Remaining rectangle selector risk is broader cross-feature
   combinations with font selection, downloaded glyphs, geometry changes, and
-  physical output, not the selector mapping or page-record render dispatch
-  itself.
+  new ROM-derived rows, not the selector mapping or page-record render
+  dispatch itself.
 
 ## Mixed Text/Rule/Raster Page Record
 

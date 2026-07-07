@@ -1699,8 +1699,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   no-room retry, addressed-storage, publication, and mixed text/rule/raster
   streams. Remaining work is limited to byte streams that change clipping
   output, `0x1381c` rollover/allocation state, retry publication fields, rule
-  object bytes, bridge state, render dispatch, rendered rows, or physical
-  device output beyond the ROM render buffer.
+  object bytes, bridge state, render dispatch, or rendered rows.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
   paths are covered through `0xff1e` for current modeled page records. VFC
   coverage includes `ESC &l#W` delayed table payloads, lowercase
@@ -1811,8 +1810,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   No ROM-local parser-to-publication, publication-to-render, VFC table-load,
   or VFC channel-jump middle edge remains for the documented streams.
   Remaining work is new byte streams that change page-record bucket shape,
-  pool-header fields, bridge state, VFC line/cache state, rendered rows, or
-  physical device output beyond the ROM render buffer.
+  pool-header fields, bridge state, VFC line/cache state, or rendered rows.
 - Macro replay streams are covered for definition, execute/call replay,
   mixed-control replay, overlay publication, repeated overlay publication,
   overlay skip gates, and overlay payloads that cross cursor, margin,
@@ -1939,8 +1937,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   cursor-position overlay, chained-margin overlay, raster overlay, multi-row
   raster overlay, span-flush overlay, transparent-data overlay, or overlay
   skip-gate middle edge remains for the documented streams. Remaining work is
-  broader overlay payload variants, over-deep context-stack physical failure
-  behavior, and physical device output beyond the ROM render buffer.
+  broader overlay payload variants that change replay frame state, page-object
+  fields, publication state, bridge roots, or rendered rows; over-deep
+  context-stack failure behavior remains a separate external/manual boundary.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.

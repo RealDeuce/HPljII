@@ -2647,10 +2647,11 @@ visible row.
 High for the covered parser-produced metric combinations because the type-0, type-1,
 type-2, metric-variant, clamped, lower-bound, upper-bound, legal matrix, boundary,
 low-nibble rounding, and byte-boundary rounding fixtures all start from host-fetched
-`ESC )s80W`, run through `0x16fae`/`0x1719c`, and compare page-visible `0xd4ac`/`0xd8fc`
-output effects. Medium for the full PCL soft-font grammar because the validation table
-is executable but not every predicate has a manual-facing semantic name, and not every
-legal metric combination has a parser-produced page comparison.
+`ESC )s80W`, run through `0x16fae`/`0x1719c`, and pin page-visible
+`0xd4ac`/`0xd8fc` output effects. Medium for the full PCL soft-font grammar because
+the validation table is executable but not every predicate has a manual-facing semantic
+name, and not every legal metric combination has a parser-produced page-record/render
+composition.
 
 Medium for bit-30-clear fixed-record dispatch from a `0x1719c` payload: the
 isolation fixture proves `0x14e24`/`0x14eb6` map construction and rendering,

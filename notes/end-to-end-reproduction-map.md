@@ -1059,7 +1059,7 @@ parser-side producer.
 Representative response stream:
 
 ```text
-ESC *r1K 11
+ESC *r1K 0x11
 ```
 
 Parser and response dispatch:
@@ -4445,7 +4445,7 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` and
   `Worked Path: Page Environment Status Bridge` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). This cluster has
-  no direct page-object or pixel effect: `ESC *r1K 11` and the `ESC *s#^`
+  no direct page-object or pixel effect: `ESC *r1K 0x11` and the `ESC *s#^`
   sibling enqueue literal `33440A\r\n` through host-output FIFO helpers, and
   status producers such as `0x2888` feed outbound status bytes through
   `0xaece`. Fixture

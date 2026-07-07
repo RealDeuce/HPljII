@@ -3340,8 +3340,8 @@ The continuation policy is physical/resource-window state:
 
 The exact unresolved boundary is therefore firmware range
 `0x0c0000..0x0c0321`. Closing it requires board or emulator memory-map
-evidence, a direct bus read around `0x0c0000`, live startup candidate counters,
-or an observed page result that matches one of the fallback-row policies.
+evidence, a direct bus read around `0x0c0000`, or live startup candidate
+counters.
 
 ## Worked Path: Downloaded Glyph
 

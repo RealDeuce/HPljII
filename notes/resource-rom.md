@@ -243,7 +243,7 @@ scanner reads. The separate `$8000.14` / `$8000.15` cartridge scan windows at
 `0x200000..0x5ffffe` do not explain the `0x0c0000` read. Closing the fallback
 rows therefore needs board/emulator evidence for that physical decode/window,
 live startup candidate counters after `0x1a2e4`, a direct bus read around
-`0x0c0000`, or physical output that selects one of the fallback-row digests.
+`0x0c0000`, or gate-array address-map evidence.
 
 Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains
 the other two local continuation hypotheses against the same startup scanner.
@@ -453,8 +453,7 @@ treated as semantic state, not just extraction columns:
 - Still-open manual/physical naming:
   - record words `+0x28/+0x2a` are decoded-height inputs for `0x1519a`
     through `0x13bca`, with `COURIER` grouped at `1200` and `LINE_PRINTER`
-    grouped at `850`; they still need correlation against observed
-    baseline/cell placement on a known printed font/self-test sample.
+    grouped at `850`; their manual-facing baseline/cell names remain open.
   - record bytes `+0x2f..+0x31` are same-class chooser tie-breakers consumed
     by `0x1428c`; their ROM role is pinned, but their HP/manual-facing names
     remain unknown.
@@ -488,9 +487,9 @@ same-class chooser tie-breakers after `0x14398` / `0x13c06`.
 Parser-produced downloaded metric payloads are tracked separately in
 [font-context-metrics.md](font-context-metrics.md), where the tested
 `0x1719c -> d4ac/d8fc` copied-field paths are closed by legal matrix and
-byte-boundary fixtures. The remaining boundary here is physical/manual
-naming of the built-in height/baseline/cell fields against a known printed
-font/self-test sample.
+byte-boundary fixtures. The remaining boundary here is manual-facing naming
+of the built-in height/baseline/cell fields; physical font samples would be
+optional correlation, not a ROM-derived pixel oracle.
 
 The `0x1c334..0x1c5e4` candidate traversal is now decoded through both
 internal-font source-group class passes. Fixture
@@ -724,14 +723,13 @@ totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`, and aggregate surface
 digest `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
 The modeled class-zero segments top out at row width `2219`; the modeled
 class-one segments top out at row width `4097`, so that width/baseline
-interpretation is now pinned but not yet validated against paper output.
+interpretation is now pinned as ROM-derived page-object state.
 
 The covered forced-continuation page-record objects now include internal and
 cartridge heading-preflight forms, class-zero row-overrun `I01`, class-one
 row-overrun `I16`, and alternate-row `I01` caller forms. Broader row-overrun
-cross-products and physical comparison of the rendered source/class surfaces
-against a known printed/self-test sample, including baseline and cell
-placement agreement after `0x1ed84`, remain open.
+cross-products remain open only when they expose a new page-record object form,
+render dispatch, continuation mutation, or ROM-derived row output.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -953,10 +951,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    source, first-glyph placement offsets are pinned through the `0xd824`
    path, `+0x28/+0x2a` are pinned as decoded-height inputs for `0x1519a`,
    and `+0x2f..+0x31` are pinned as `0x1428c` chooser tie-breakers. What
-   remains is their manual-facing baseline/cell terminology and agreement
-   with observed paper output.
-6. Compare the modeled font-printout surfaces against a known
-   printed/self-test sample. The `0x1c334..0x1c5e4` row traversal is decoded,
+   remains is their manual-facing baseline/cell terminology.
+6. Treat the modeled font-printout surfaces as ROM-derived documentation, not
+   physical-output validation. The `0x1c334..0x1c5e4` row traversal is decoded,
    including `0x1b50e` two-window candidate resolution, class filtering,
    continuation-page entry, row-index status writes, and the post-row
    recent-context scan. The verified internal-font mode-3 candidate sequence
@@ -974,8 +971,8 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    0x1ef6a` renders those eight segments through the bridge and band renderer,
    with aggregate surface digest
    `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-   The remaining work is physical baseline/header/cell correlation against
-   observed paper output, not ROM sample-run page-object construction.
+   The remaining work is manual-facing baseline/header/cell naming, not ROM
+   sample-run page-object construction.
 7. Broaden the now-named `0N` / `10U` / `11U` parser/font-selection/output
    cases only where new command combinations expose different state
    boundaries; primary and secondary visible-output byte streams are now

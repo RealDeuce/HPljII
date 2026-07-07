@@ -1428,9 +1428,10 @@ ROM work needed:
   glyph-entry `+0/+2` placement offsets are pinned through the `0xd824` path,
   record `+0x28/+0x2a` is consumed by `0x1519a` as decoded-height inputs
   before `0x13bca`, and record `+0x2f..+0x31` is consumed by `0x1428c` as
-  same-class chooser tie-breakers after `0x14398` / `0x13c06`. What remains
-  is the HP/manual-facing baseline/cell terminology and comparison against a
-  known printed font/self-test sample.
+  same-class chooser tie-breakers after `0x14398` / `0x13c06`. What remains is
+  the HP/manual-facing baseline/cell terminology; a known printed
+  font/self-test sample would be optional correlation, not a ROM evidence
+  source.
 - The parser-exposed `@0..@3` table/copy/default-font variants now have
   compatibility-facing documentation. The default-font candidate and caller
   path is real-record backed through `0x1b250`, `0x1b50e`, `0x1ab84`,

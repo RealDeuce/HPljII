@@ -2249,8 +2249,8 @@ or fixed-space helper `0xd0f0`.
     produce different fallback row digests in the harness. A simple full mirror
     would also duplicate `HEAD` scanner input; code-pair and zero-fill
     continuations would not. The proof targets are live startup candidate
-    counters, direct bus reads around `0x0c0000`, emulator gate-array decode,
-    or physical output matching one fallback digest. This is
+    counters, direct bus reads around `0x0c0000`, or emulator gate-array
+    decode. This is
     firmware-address-map state, not parser state: `data/rom_manifest.json`
     accounts for the installed ROMs as four 128K x 8 packages with a
     `0x40000`-byte `IC32,IC15` resource pair, while
@@ -3301,8 +3301,7 @@ rendered page-record segments. Forced continuation page-object variants are
 fixture-backed for heading-preflight, class-zero/class-one row-overrun, and
 alternate-row caller forms. Additional row-overrun streams are regression
 cross-products unless they expose a page-record object form outside the covered
-forms; physical comparison against a known font/self-test page remains
-separate.
+forms; physical font/self-test pages, if available, are optional correlation.
 
 Concept: the sample printout is firmware-generated text, not host input.
 Routine `0x1c204` checks whether font records exist, runs class-zero and

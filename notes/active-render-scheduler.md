@@ -110,6 +110,40 @@ Unknown:
 - Stable semantic name for `0x7839d4` beyond active-pool copy-window
   bookkeeping.
 
+## Band Render Model
+
+The ROM does not build one full-page bitmap before imaging. After publication,
+the scheduler selects a source page/control record and renders it in successive
+band calls:
+
+- `0xff1e` publishes the page/control record and leaves the page roots in pool
+  state under protected head `0x780ea6`.
+- `0x7ec6..0x7f90` and `0x7722..0x779a` promote a selectable pool record into
+  scheduler cursor `0x780eaa`; `0x1eb32..0x1eb50` copies it to active source
+  `0x780eae`.
+- `0x1ecd6..0x1ed76` selects one of the two render work records, writes active
+  render pointer `0x783a18`, initializes or reuses geometry, and calls
+  `0x1ed84`.
+- `0x1ed84 -> 0x1edc6` copies the source bucket/rule/fixed/context roots into
+  the active render record.
+- Active loop `0x1eba4..0x1ecd2` uses render work word `+0x10` as the current
+  band word. When capacity is sufficient, it calls `0x1ef6a`, then increments
+  `+0x10` and throttle word `+0x0e`.
+- `0x1ef86` derives per-band caches `0x783a20`, `0x783a22`, `0x783a28`, and
+  stride/offset state before object dispatch. These are derived render caches,
+  not page-record fields.
+- `0x1ef6a` renders that band in fixed order: bucket-chain dispatch
+  `0x1efc2`, rule-list dispatch `0x1f446`, then fixed-list dispatch
+  `0x1f756`.
+
+Continuation is explicit ROM state. Rule objects carry remaining rows in
+bridged field `+0x0c`; fixed-list objects carry remaining rows in `+0x0a`;
+compact glyph and encoded raster helpers may split rows between the current
+band and fallback buffer `0x7810b4 + D2`. The next scheduler band call resumes
+from those mutated object or fallback states. Physical formatter/DC timing can
+wake, stall, or pace this loop, but it does not create a different page-object
+model unless it changes the ROM-visible scheduler fields above.
+
 ## Writers
 
 - `0xff1e` publishes state byte `+4 = 2`, writes source root longword to

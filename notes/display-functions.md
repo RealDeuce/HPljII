@@ -177,6 +177,39 @@ Normal-route matrix:
 - A terminating `ESC Z` pair is still consumed as routed values before the
   local `ESC`/`Z` state ends the loop.
 
+Local Control-Z terminal behavior is table-dependent and comes from the
+mode-2 dispatch rows in
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
+`generated/analysis/ic30_ic13_pcl_command_map.md`:
+
+- Normal parser mode 0 sees byte `0x1a`, dispatches setup handler `0x11ea4`,
+  and enters mode 2. In mode 2, byte `0x1a` dispatches `0x120d2`; byte `X`
+  dispatches `0x1219e`.
+- Alternate/data parser mode 0 uses the same `0x11ea4` setup, but its mode-2
+  table dispatches byte `0x1a` to `0x1210c` and byte `X` to `0x121b2`.
+
+The four local terminal handlers do not share one global Control-Z meaning:
+
+- `0x120d2..0x1210a`: normal nested `0x1a`. The handler reads selected slot
+  byte `0x782f06`, calls `0x332ee(slot, 0x10)`, adds base `0x782eeb`, and tests
+  that context byte. Only value `1` calls `0xd04a(0x1a)` at
+  `0x120fc..0x12106`; other values return with no page object.
+- `0x1219e..0x121b0`: normal `0x1a X`. The handler calls `0xd04a(0x100)` and
+  returns. This is a printable-path synthetic value, not a byte appended to the
+  macro/data chain.
+- `0x1210c..0x1211e`: alternate/data nested `0x1a`. The handler calls
+  `0xe002(0x1a)` and returns, preserving the literal byte in the append sink.
+- `0x121b2..0x121ca`: alternate/data `0x1a X`. The handler calls `0xd99a`,
+  then `0xe002(0x7f)`, matching the `ESC Y` local normalization of `0x1a 0x58`
+  to `0x7f` in append-only contexts.
+
+The canonical state for this local family is the parser mode/table row plus
+the selected context byte used only by `0x120d2`. The derived/cache state is
+the slot product returned by `0x332ee`. Firmware bookkeeping is `0xd99a` on the
+alternate/data `0x1a X` terminal. Output effect is either printable-path entry
+through `0xd04a`, macro/data-chain append through `0xe002`, or no output for
+the false branch of `0x120d2`.
+
 Byte-stream example `ESC Y display-functions stream reaches page-record
 output` exercises the default-filter normal path for `ESC Y!\x05! ESC Z`:
 handler `0x12536` consumes values `21 05 21 1b 5a`, routes them

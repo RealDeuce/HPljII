@@ -1100,6 +1100,167 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
 
+## Minimal Downloaded Glyph Walkthrough
+
+This is the smallest top-level resource-installation spine that later changes
+pixel output. The font commands do not draw during payload installation; they
+mutate downloaded-font state. The visible output starts only when a later
+printable byte resolves through the installed downloaded glyph.
+
+Input stream:
+
+```text
+ESC *c4660d37e5F
+ESC )s2193W <0x0891 payload bytes>
+% FF
+```
+
+Font-control dispatch:
+
+- All stream bytes enter through host byte source `0xa904` and parser loop
+  `0x11774`.
+- `ESC *c4660d` routes through `0x11eb6`, `0x11ec8`, `0x11eda`, and
+  `0x15a56`. Handler `0x15a56` writes current downloaded-font id
+  `0x782f2e = 0x1234`.
+- `37e` remains in the same `*c` command family and reaches `0x15a18`.
+  Handler `0x15a18` writes current character word `0x782f30 = 0x25`.
+- `5F` reaches font-control handler `0x16df6`, then `0x16e86 -> 0x17108`.
+  The current downloaded-font record has flag bit `6` set, while counters
+  `0x782782/0x782786` move from `7/2` to `6/3`.
+
+Downloaded-character payload installation:
+
+- `ESC )s2193W` routes through `0x11eb6`, `0x12008`, `0x11ff6`, and
+  `0x11f96`.
+- Because the parsed `W` count is nonzero, `0x11f96` schedules delayed
+  handler `0x16c14` through shared delayed-payload path `0x121cc` /
+  `0x12218`.
+- `0x121cc` stores restored record `80 57 08 91 00 00`, pending flag
+  `0x782a1a`, and delayed-handler pointer `0x782a1c`.
+- `0x12218` restores the command record after parser mode returns to zero
+  and calls `0x16c14`.
+- `0x16c14` rewinds command-record cursor `0x78299e`, writes payload budget
+  `0x783140 = 0x0891`, resolves the current downloaded-font record by
+  `0x782f2e`, and enters the downloaded-character install path.
+- The installed character uses current character `0x25`, glyph-table entry
+  `0x00de`, character record delta `0x0500`, and bitmap offset `0x050c`.
+- The installed glyph record bytes are:
+
+```text
+00 00 00 00 0c 02 00 81 00 88 00 00
+```
+
+- The record describes mode byte `2`, rows `0x81`, width `0x88`, span
+  `0x11`, bitmap size `0x0891`, and split-plane payload layout.
+- Reader `0x16942` consumes payload bytes through `0xa904`, writes row-prefix
+  bytes through `A4`, writes trailing-plane bytes through `A3`, normalizes
+  `1a 58` through `0xd99a`, and records continuation state only if the byte
+  budget ends before the bitmap copy completes.
+- The success path returns through `0x15dc6 -> 0x16498 -> 0x15dcc ->
+  0x12328` with `0x783140 = 0`, so no payload bytes are drained before the
+  next parser handler.
+
+Printable use and page-object creation:
+
+- The following printable byte `%` reaches handler `0xd04a`.
+- `0xd04a` resolves host byte `0x25` through the installed downloaded
+  context. The documented source has glyph entry `0x0500`, rows `0x81`,
+  width byte `0x11`, x `22`, y `22`, and context slot `3`.
+- `0xd824 -> 0x12f2e -> 0x1387c` converts that positioned source into
+  segmented-wide compact page objects.
+- Selector `0x3003` splits the glyph into two segment objects:
+
+```text
+bucket 9: 00 00 00 00 30 03 00 01 25 01 66 01
+bucket 1: 00 00 00 00 30 03 00 01 25 00 66 01
+```
+
+Object fields:
+
+- `+0x04`: compact selector byte `0x30`, selecting segmented-wide rendering.
+- `+0x05`: downloaded context slot `3`.
+- `+0x06`: entry count `1`.
+- payload byte `0x25`: installed glyph id.
+- following byte `0x01` or `0x00`: segment number.
+- coordinate `0x6601`: positioned destination for the segment.
+
+Publication, scheduling, and pixels:
+
+- FF reaches handler `0xf0f0`, which finalizes the page through `0xff1e`.
+- `0xff1e` publishes the current page root, preserving bucket array entries
+  `9` and `1`, empty rule/fixed lists, and context slots `(0, 0, 0, 0)`.
+  It clears current page-root pointer `0x78297a` and sets publication flag
+  `0x782996`.
+- `0x1ed84` copies the published record into an active render work record.
+- `0x1edc6` preserves the bucket root and context slots for compact-renderer
+  dispatch.
+- Scheduler entry `0x1eba4` can produce band words `0..9` for the published
+  downloaded-glyph record and call `0x1ef6a` for each active band.
+- `0x1ef6a` runs `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`. This stream has
+  no rule or fixed-list objects, so visible output comes from bucket dispatch
+  `0x1efc2`.
+- `0x1efc2` sends compact selector `0x30` to `0x1effe`; the segmented-wide
+  row path reaches `0x1f1f0` / `0x1f264` and wide row-copy helpers.
+- The documented publication path renders bucket `9`, segment `1`, at page
+  row `86`; bucket `1`, segment `0`, is blank for that active band.
+
+State classification:
+
+- Canonical:
+  current downloaded-font id `0x782f2e`, current character `0x782f30`,
+  current downloaded-font records `0x782640..0x782776`, current-record flag
+  bit `6`, installed glyph-table entry `0x00de`, glyph record bytes, current
+  page root `0x78297a`, compact bucket objects, published source record, and
+  render-record bucket/context roots.
+- Derived/cache:
+  payload byte budget `0x783140`, parsed span `0x7827c2`, parsed row count
+  `0x7827c4`, bitmap byte count `0x7827be`, compact selector `0x3003`,
+  segment numbers, bucket indices, and render-band fields.
+- Parser scratch:
+  command-record cursor `0x78299e`, delayed-payload fields `0x782a1a`,
+  `0x782a1c`, `0x782a20..0x782a25`, staged descriptor scratch
+  `0x7827de..0x7827e9`, and continuation fields `0x7827c6..0x7827da`.
+- Firmware bookkeeping:
+  downloaded-record counters `0x782782` and `0x782786`, candidate counters and
+  cursors updated by `0x16c14`, heap allocation/release helpers, stream
+  allocator fields, publication flag `0x782996`, scheduler cursors, and
+  render-work progress words.
+- Hardware/external:
+  the physical host path that supplied bytes to `0xa904` and later formatter
+  timing outside the ROM-local page-record/render chain.
+- Unknown:
+  no unresolved ROM-local middle edge remains for this segmented-wide
+  install-to-print-to-publication path. Remaining downloaded-glyph boundaries
+  are broader row/span cross-products, short compact helper indices above
+  table entry `128` in `0x1fe76`, wrapped width low bytes selecting invalid
+  compact mode-0 helper targets through `0x1f034` / `0x1f08e`,
+  segmented-wide span-31 fallback source offset `+0xb50`, and the oversized
+  segmented-wide payload-count cap `0x7fff` before `0x16498`.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Downloaded Glyph` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  `End-To-End Downloaded Glyph Path` in
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [page-record-storage.md](page-record-storage.md),
+  [active-render-scheduler.md](active-render-scheduler.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_assign_font_id_015a56.lst`,
+  `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016880.lst`,
+  `generated/disasm/ic30_ic13_font_payload_descriptor_helpers_016a10.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  and `generated/analysis/ic30_ic13_font_control_flow.md`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

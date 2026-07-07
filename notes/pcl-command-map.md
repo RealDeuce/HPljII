@@ -517,17 +517,55 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
 - Downloaded-font current-state controls in the `*c` family:
   the same `ESC *` / `*c` parser route enters mode `16`, but finals
   `D/d`, `E/e`, and `F/f` are owned by the downloaded-font state block rather
-  than rectangle imaging. `D/d -> 0x15a56` writes current downloaded-font id
-  `0x782f2e`; `E/e -> 0x15a18` writes current character/code word
-  `0x782f30`; `F/f -> 0x16df6` dispatches selector values through the
-  `0x16db6` jump table. Selectors `0`, `1`, and `2` release all or current
-  records when macro/overlay byte `0x782a92 != 2`; selector `3` uses
-  `0x782f2e` plus `0x782f30`; selectors `4` and `5` unmark/mark the current
-  downloaded-font record through `0x17150` / `0x17108`; selector `6` runs
-  active/current resource housekeeping; other selectors return unchanged.
-  These commands create no page object by themselves. They select or mutate
-  the records later consumed by `ESC (s#W` / `ESC )s#W` descriptor and glyph
-  payload handlers. Owner note:
+  than rectangle imaging. A chained control stream such as
+  `ESC *c4660d37e5F` follows parser modes
+  `0 -> 1 -> 3 -> 16 -> 16 -> 0`: lowercase `d` keeps mode `16`,
+  writes current downloaded-font id `0x782f2e = 0x1234` through
+  `0x15a56`, lowercase `e` writes current character word
+  `0x782f30 = 0x25` through `0x15a18`, and final uppercase `F` returns to
+  mode zero after `0x16df6` dispatches selector `5` through
+  `0x16e86 -> 0x17108`. Handlers `0x15a56` and `0x15a18` rewind the
+  six-byte parser record, sign-extend parsed word `+2`, take its absolute
+  value, clamp `0x8000` to `0x7fff`, and store the normalized current id or
+  character word. `0x16df6` rewinds the same record cursor, reads the
+  normalized selector, and jumps through table `0x16db6`: selectors `0` and
+  `1` release all current records with alternate release arguments,
+  selector `2` releases the record for current id `0x782f2e`, selector `3`
+  clears the current character path using `0x782f2e` plus `0x782f30`,
+  selectors `4` and `5` unmark/mark the current record through
+  `0x17150` / `0x17108`, selector `6` runs active/current resource
+  housekeeping through `0x18180 -> 0x1b04c`, and other selectors return at
+  `0x16eaa` unchanged. Parser/device mode byte `0x782a92 == 2` suppresses
+  the destructive/resource-refresh selectors `0`, `1`, `2`, `3`, and `6`;
+  mark/unmark selectors `4` and `5` remain live and move records between
+  unmarked count `0x782782` and marked count `0x782786` only when the current
+  record exists and bit `6` actually changes.
+
+  Field grouping for this dispatch edge is explicit. Canonical state is the
+  current id `0x782f2e`, current character `0x782f30`, current-record pool
+  `0x782640..0x782776`, record flag bit `6`, and counts `0x782782` /
+  `0x782786`. Parser scratch is command-record cursor `0x78299e` plus the
+  parsed selector/value record restored by the main parser. Firmware
+  bookkeeping is the jump table at `0x16db6`, mode suppressor `0x782a92`, and
+  release/mark helpers `0x179da`, `0x187fe`, `0x17b5c`, `0x17150`,
+  `0x17108`, `0x18180`, and `0x1b04c`. These commands create no page object,
+  publication record, render work, or pixels by themselves. Their output
+  effect appears when later `ESC (s#W` / `ESC )s#W` descriptor or resource
+  payload handlers consume the selected current id/character state through
+  `0x15d0a`, `0x16c14`, `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`, after
+  which printable text can map the installed downloaded glyph and queue
+  compact objects through `0xd04a -> 0x12f2e`. Evidence is
+  `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+  `generated/analysis/ic30_ic13_font_control_flow.md`, fixtures
+  `0x11774 ROM dispatch table routes ESC *c font-control chain`,
+  `0x16df6-modeled font-control dispatch mark/unmark and suppression`,
+  `0x17108-modeled current font record mark/count transfer`,
+  `0x17150-modeled current font record unmark/count transfer`, and the
+  end-to-end `host-fetched font control stream feeds descriptor and character
+  payload state`. No ROM-local middle edge remains for this command edge; the
+  remaining downloaded-font boundaries are the descriptor/resource payload
+  variants and compact-renderer row forms called out in the owner note.
+  Owner note:
   [downloaded-fonts.md](downloaded-fonts.md).
 - Font selection and downloaded-font payloads:
   primary `ESC (` reaches prefix handler `0x1201e`; secondary `ESC )`

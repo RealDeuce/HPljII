@@ -1752,6 +1752,16 @@ Field groups:
     `0x27430`, `0x27850`, `0x27d84`, `0x283ba`, `0x289f0`, `0x29126`,
     `0x2985c`, `0x2a092`, `0x2a8c8`, `0x2b1fe`, `0x2bb34`, `0x2c56e`,
     `0x2cfa8`, `0x2dae2`, `0x2e62e`, and `0x2f27c`.
+  - Wrapped width-byte invalid targets are produced by the same mode-0 table
+    when the full span word is used as an index instead of a small byte-width
+    index. For span `0x0102`, `0x1f034` shifts `D5` left by two and reads
+    table entry `0x1f08e + 0x0408 = 0x1f496`; bytes `00 00 66 cc` jump to
+    `0x0066cc`. Listing
+    `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`
+    shows that address is unrelated control code (`tst.b $7821b9.l`,
+    scheduler/wait helper calls, and stack-frame unwind), not a row-copy
+    helper head. The compact renderer therefore has a precise invalid target
+    boundary for this low-byte case and no pixel contract after the jump.
   - row-count jump tables under each helper map `D3` rows to an unrolled copy
     tail. Fixture report
     `generated/analysis/ic30_ic13_render_row_copy_fixtures.md` decodes the

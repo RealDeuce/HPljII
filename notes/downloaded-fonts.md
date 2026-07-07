@@ -1681,7 +1681,14 @@ opcode `0x4a39`, not a decoded row-copy helper head; `0x0103`, `0x0104`,
 `0x0105..0x010b`, `0x010c`, `0x010d..0x0110`, and `0x020d` target
 out-of-firmware longwords `0x4cdf1030`, `0x4e750001`, `0xf4e00001`,
 `0xf5960001`, `0xf4e00001`, and `0x4e904cdf`. Those low-byte cases remain
-explicit non-pixel invalid-helper boundaries.
+explicit non-pixel invalid-helper boundaries. The in-firmware `0x0102`
+target is now tied to table bytes: compact mode-0 table `0x1f08e` is indexed
+with full span word `0x0102`, so `0x0102 << 2` selects entry `0x1f496`
+(`00 00 66 cc`) and jumps to `0x0066cc`. Generated disassembly
+`ic30_ic13_invalid_compact_mode0_target_0066c0.lst` shows `0x0066cc` starts
+with `tst.b $7821b9.l`, branches through scheduler/control helpers, and later
+unwinds a normal stack frame; it is not a row-copy helper entered with a
+renderer-compatible prologue.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`

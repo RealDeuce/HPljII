@@ -5808,6 +5808,12 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     `0x0103`, `0x0104`, `0x0105..0x010b`, `0x010c`, `0x010d..0x0110`, and
     `0x020d` leave firmware address space at `0x4cdf1030`, `0x4e750001`,
     `0xf4e00001`, `0xf5960001`, `0xf4e00001`, and `0x4e904cdf`.
+    The `0x0102` target is derived from table entry `0x1f496`, because
+    compact mode-0 helper `0x1f034` shifts full span word `0x0102` left by
+    two and indexes base `0x1f08e`. Entry bytes `00 00 66 cc` point into
+    unrelated firmware at `0x0066cc`; listing
+    `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`
+    shows scheduler/control code, not a row-copy helper prologue.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
     canonical width words `0x0088..0x0100`, row word `0x0081`, mode bytes

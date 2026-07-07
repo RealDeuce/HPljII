@@ -3927,6 +3927,17 @@ Producer and consumer behavior:
   `0x0104 -> 0x4e750001`, `0x0105..0x010b -> 0xf4e00001`,
   `0x010c -> 0xf5960001`, `0x010d..0x0110 -> 0xf4e00001`, and
   `0x020d -> 0x4e904cdf`.
+- The `0x0102` case is now pinned to the source table bytes, not just the
+  target. Compact mode-0 helper `0x1f034` indexes longword table `0x1f08e`
+  with the full span word in `D5`. Span `0x0102` shifts to offset `0x0408`,
+  so the lookup reads entry address `0x1f08e + 0x0408 = 0x1f496`, whose bytes
+  are `00 00 66 cc`. The target `0x0066cc` is the middle of an unrelated
+  firmware routine: `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`
+  shows it begins at `tst.b $7821b9.l`, can call scheduler/wait helpers
+  `0x10c8`, `0x15a6`, `0x15ac`, and `0x9ac2`, and later unwinds with
+  `movem.l (A7)+, D0/D5/A4-A5` / `unlk A6`. That is not a decoded row-copy
+  helper prologue, so no pixel-output contract is claimed beyond selecting
+  this invalid target.
 
 State classification:
 
@@ -3951,7 +3962,10 @@ State classification:
   ROM-local execution after the documented invalid compact mode-0 helper
   targets. The parser, installed glyph state, low-byte width source, selector
   choice, publication bucket, render bridge, and valid compact-wide pixel side
-  are documented.
+  are documented. The in-firmware invalid sibling `0x0102 -> 0x0066cc` is
+  bounded as an accidental computed jump into non-render control code under the
+  compact renderer's register and stack context, not as an unknown page-record
+  or render-dispatch edge.
 
 Output effect:
 
@@ -3972,6 +3986,7 @@ Evidence:
   `downloaded glyph wide-remainder matrix publishes and renders compact
   chunks`, and `0x16b1a descriptor width helper emits only mode 1/2`.
 - Disassembly evidence:
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`,
   `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
   `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,

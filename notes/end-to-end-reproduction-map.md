@@ -150,7 +150,13 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0x780e36 & 0x00000008`, and `0xc1c6` replaying pending buffer
   `0x782312` through `0x8c7a` when no status bits are active. This cluster
   is not a page-imaging producer, but it can stop or defer normal parsing
-  before page objects are generated. The teardown handoff through
+  before page objects are generated. The retained-storage service edge is
+  software-composed in [external-ready-service.md](external-ready-service.md):
+  commit/readback failure sets `0x780e39.3` through
+  `0x571e -> 0x9bee(0x780e36, 0x00000008)`, and `0xc1c6` consumes the same bit
+  as non-returning `68 SERVICE` through `0x85c0`. Startup retained-record load
+  is the separate `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284` path that reports
+  `67 SERVICE` when no active marker is found. The teardown handoff through
   `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded in
   [page-font-scheduler.md](page-font-scheduler.md) and
   `Page/Font Scheduler Handoff`: `0x19dd2` publishes scratch pointer
@@ -159,9 +165,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0x19f08` compare those scratch slots against canonical slots at
   `0x7828b6`, and the status branch can raise
   `0x9bee(0x780e2e, 0x00000200)` with byte `0x780e8d`. Remaining risk is the
-  board-level external-register identity, hardware/emulator evidence for
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, and physical optional-resource
-  contents for the changed optional-window scheduler sequence now modeled by
+  board-level external-register identity, the physical retained-storage
+  conditions that make `0x96c4` fail through all retries or leave no startup
+  active marker, and physical optional-resource contents for the changed
+  optional-window scheduler sequence now modeled by
   fixture
   `0x19dd2 optional-window change composes refresh helpers`. That fixture drives
   `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` and checks candidate-list,
@@ -2588,8 +2595,9 @@ boundaries only when new evidence changes the documented state or pixel output.
    HMI/VMI conversion, and addressed compact-bucket publication. Remaining work
    is external: the device or panel protocol behind `$8000.w`,
    retained-storage identity and board-level serial pins behind `$a400` /
-   `$8c01`, manual wording for retained-record failures, and physical
-   self-test placement.
+   `$8c01`, physical retained-storage failure/content conditions behind
+   `67 SERVICE` and `68 SERVICE`, manual wording for retained-record failures,
+   and physical self-test placement.
 3. Font metrics, font selection, downloaded-glyph row/span publication, and
    macro overlay replay are composed checkpoints. Treat additional cases as
    regression expansion unless a byte stream changes a named state boundary:

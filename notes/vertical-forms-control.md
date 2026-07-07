@@ -377,6 +377,7 @@ A byte-stream renderer must preserve:
 
 - None remaining for the documented VFC table-definition and channel-jump
   command-family contract.
-- Broader printer-output validation still needs representative full-page image
-  comparisons against known LaserJet II output, as noted in
-  `notes/end-to-end-reproduction-map.md`.
+- Broader physical-output correlation is outside this ROM-local VFC contract.
+  It can correlate the documented model with a device if physical samples ever
+  exist, but it is not a parser, table, page-record, or render-dispatch
+  dependency.

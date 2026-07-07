@@ -1335,10 +1335,11 @@ ROM work needed:
   `0x780e39.3` through `0x9bee(0x780e36, 0x00000008)` after `0x96c4` commit
   retries are exhausted. The fixture harness now covers the `0xc0ae`
   `$fffee005` status-bit publication boundary and the `0xc1c6` consumer
-  branches for `68 SERVICE` and pending external-ready message replay. The
-  unexecuted residual is the physical retained-storage failure path into
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, not the documented software
-  consumer branches. The external-ready teardown's normal-render handoff through
+  branches for `68 SERVICE` and pending external-ready message replay. No
+  ROM-local software edge remains for
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`; the residual boundary is the
+  physical retained-storage condition that makes `0x96c4` fail through all
+  retry attempts. The external-ready teardown's normal-render handoff through
   `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded by the
   `Page/Font Scheduler Handoff` semantic checkpoint: `0x19dd2` publishes
   `0x782894`, `0x19eb6` scans optional windows `0x200000..0x3ffffe` and

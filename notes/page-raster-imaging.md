@@ -1896,6 +1896,106 @@ Compact object mode behavior:
   - Current behavior: combines the `byte*0x80` plane adjustment with the
     wide-glyph chunk/remainder path and the same fallback rerun shape
 
+Compact object disassembly contract:
+
+- `0x1effe` enters with `A1` at compact object byte `+0x04`. It reads byte
+  `+0x04` as the compact mode selector, reads byte `+0x05` low nibble as a
+  render-record context-slot index, copies that slot from render
+  `+0x24 + 4*n` into active context cache `0x783a2c`, and dispatches through
+  table `0x1f024`.
+- Table `0x1f024` maps selector bits `+0x04 & 0x30` to four renderers:
+  `0x00 -> 0x1f034`, `0x10 -> 0x1f0d2`, `0x20 -> 0x1f1f0`, and
+  `0x30 -> 0x1f264`.
+- The four renderers all begin with object word `+0x06` as entry count. Each
+  entry resolves a glyph byte through `0x1f354`, reads a packed coordinate
+  word, calls `0x1f3d4` to compute the current-band destination, and calls
+  `0x1f414` to split rows into current-band and fallback counts.
+- Normal compact `0x1f034` and segmented compact `0x1f1f0` select row-copy
+  table `0x1f08e` using the span byte count returned by `0x1f354`.
+- Wide compact `0x1f0d2` and segmented-wide compact `0x1f264` split the span
+  into full 16-byte chunks rendered by `0x2f27c` and a remainder rendered by
+  table `0x1f1ac`.
+- Segmented modes `0x1f1f0` and `0x1f264` consume the extra segment byte in
+  each entry, move glyph source pointers by `segment * 0x80`, clamp the
+  segment row count to at most `0x80`, and then use the same normal or wide
+  row-copy path.
+- If `0x1f414` reports fallback rows in the high word of `D3`, the compact
+  renderer restarts the same row-copy path at fallback buffer `0x7810b4 + D2`.
+
+The exact compact-renderer instruction boundaries are:
+
+- `0x1effe..0x1f022`: compact object dispatch. It loads the context slot into
+  `0x783a2c`, maps selector bits `+0x04 & 0x30` through table `0x1f024`, and
+  calls the selected renderer.
+- `0x1f034..0x1f03e`: normal compact setup. It reads object word `+0x06` as
+  entry count, points `A4` at entries, and exits when the decremented count is
+  negative.
+- `0x1f040..0x1f066`: normal compact entry render. It resolves the glyph byte
+  through `0x1f354`, reads the packed coordinate word, calls `0x1f3d4` and
+  `0x1f414`, and dispatches through `0x1f08e[span]`.
+- `0x1f068..0x1f088`: normal compact fallback and loop. If split `D3` has
+  fallback rows, it restarts at `0x7810b4 + D2` and calls the same
+  `0x1f08e[span]` helper before advancing to the next entry.
+- `0x1f0d2..0x1f0dc`: wide compact setup. It reads object word `+0x06` as
+  entry count, points `A4` at entries, and exits when the decremented count is
+  negative.
+- `0x1f0e0..0x1f0f4`: wide compact entry setup. It resolves the glyph byte,
+  reads the packed coordinate word, and calls `0x1f3d4` and `0x1f414`.
+- `0x1f0f8..0x1f148`: wide compact chunk planning. It splits span count into
+  full 16-byte chunks and low-nibble remainder, then seeds
+  `0x783a40/42/44/48` when fallback rows require a resumed source pointer.
+- `0x1f148..0x1f180`: wide compact current-band writes. It clears phase
+  `0x783a46`, calls `0x2f27c` for each full chunk, advances phase by `0x10`,
+  and calls `0x1f1ac[remainder]` when a remainder exists.
+- `0x1f180..0x1f1a6`: wide compact fallback and loop. If split `D3` has
+  fallback rows, it restarts at `0x7810b4 + D2`, restores cached source state,
+  and repeats the chunk/remainder path before advancing to the next entry.
+- `0x1f1f0..0x1f204`: segmented compact setup and glyph resolution. It reads
+  entry count, resolves the glyph byte, and saves the returned span in `D5`.
+- `0x1f206..0x1f228`: segmented compact plane setup. It consumes the segment
+  byte, applies the `segment * 0x80` source-plane offset, clamps rows to
+  `0x80`, adjusts `A2/A3`, and reads the packed coordinate word.
+- `0x1f22a..0x1f25e`: segmented compact destination, current-band, fallback,
+  and loop. It calls `0x1f3d4` / `0x1f414`, dispatches through
+  `0x1f08e[span]`, reruns the helper at `0x7810b4 + D2` for fallback rows,
+  and advances to the next entry.
+- `0x1f264..0x1f27a`: segmented-wide setup and glyph resolution. It reads
+  entry count, resolves the glyph byte, and saves the returned span in `D5`.
+- `0x1f27c..0x1f298`: segmented-wide plane setup. It consumes the segment
+  byte, applies the `segment * 0x80` source-plane offset, clamps rows to
+  `0x80`, adjusts `A2/A3`, and reads the packed coordinate word.
+- `0x1f29a..0x1f2f2`: segmented-wide destination and chunk planning. It calls
+  `0x1f3d4` / `0x1f414`, splits span into full chunks and remainder, and seeds
+  wide-mode fallback caches.
+- `0x1f2f2..0x1f328`: segmented-wide current-band writes. It calls `0x2f27c`
+  for each full chunk, advances `0x783a46`, and calls `0x1f1ac[remainder]`
+  when a remainder exists.
+- `0x1f328..0x1f352`: segmented-wide fallback and loop. It restarts at
+  `0x7810b4 + D2` for fallback rows, restores cached source state, repeats the
+  chunk/remainder path, and advances to the next entry.
+
+The shared glyph resolver boundaries are:
+
+- `0x1f354..0x1f35e`: load active context cache `0x783a2c` and branch on
+  bit `30`.
+- `0x1f360..0x1f39e`: bit-30-set offset-table form. The resolver masks the
+  context base to 24 bits, uses context word `+0x08` as the glyph-offset table
+  base, indexes it by glyph byte, reads glyph fields `+0x04/+0x05/+0x06/+0x08`,
+  derives bitmap pointer `A2`, span count `D1`, row count `D3`, and optional
+  trailing-plane pointer `A3`.
+- `0x1f3a0..0x1f3d2`: bit-30-clear fixed-record form. The resolver uses
+  `context + 0x40 + 8*glyph`, reads inline row/span fields and the bitmap
+  offset, derives `A2`, and sets optional trailing-plane pointer `A3` for
+  multi-plane odd-span layouts.
+
+The controlling disassembly evidence is
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` at
+`0x1effe..0x1f022` and
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` at
+`0x1f024..0x1f3d2`. Row-copy table targets are decoded in
+`generated/analysis/ic30_ic13_render_row_copy_fixtures.md` and summarized in
+the compact glyph row-copy checkpoint below.
+
 Encoded raster span mode behavior:
 
 - 0

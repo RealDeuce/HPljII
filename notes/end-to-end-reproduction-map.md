@@ -1859,6 +1859,115 @@ Evidence:
   `generated/analysis/ic30_ic13_page_root_finalization.md`, and
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md`.
 
+## Minimal Reset Default Environment Walkthrough
+
+This is the top-level path from reset/default records into later byte-stream
+rendering. `ESC E` is both a publication boundary and an environment rebuild:
+it can publish already queued pixels, then reset the parser, page environment,
+font motion metrics, raster state, and default-derived fields that subsequent
+host bytes consume.
+
+Representative stream:
+
+```text
+! ESC E !
+```
+
+Reset dispatch and ordering:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- The first `!` reaches `0xd04a`, ensuring current page root `0x78297a` and
+  queuing a compact text object.
+- `ESC E` reaches handler `0xcc52`.
+- `0xcc52` calls reset helper `0xcc70`, metric refresh `0xcbd4`, and
+  parser/data-chain reset `0xe146`, then clears reset status byte `0x782a93`.
+- `0xcc70` flushes pending text through `0xf34a`, publishes a valid current
+  root through `0xff1e` or clears missing-root state, waits through `0x9ac2`,
+  clears orientation byte `0x782da3`, calls environment rebuild helper
+  `0xcda2`, and rebuilds raster/page-derived state.
+
+Default producer and consumer path:
+
+- Selected default backing records are loaded through `0x5e80`, using selector
+  `0x7822d5` to choose a record under `0x780eda`.
+- Backing record byte `+0` becomes canonical default byte `0x78219d`; backing
+  record word `+2` becomes default line-spacing word `0x78219e`; backing record
+  byte `+5` bit 2 derives default environment/paper byte `0x7821a2` as `0x80`
+  or `0`.
+- Menu/update handlers `0x5060`, `0x50be`, and `0x52ba` can update the backing
+  records and the canonical defaults before a later reset consumes them.
+- `0xcda2` consumes `0x78219d`, `0x78219e`, `0x7821a2`, reset gate
+  `0x7810b2`, and current-font context `0x782ee6`.
+- `0xcda2` copies `0x78219d` into reset environment word `0x782da4`, copies
+  `0x7821a2` into paper/environment byte `0x782da6` when the gate permits, and
+  derives reset VMI `0x783160` from `0x78219e` through `0xcfea`, `0xcf52`, and
+  `0x104d8`.
+- `0xcbd4` refreshes HMI `0x78315c` and active-symbol snapshots from current
+  font context `0x782ee6`.
+- `0xe146` clears parser/data-chain records, text accumulation bytes, and macro
+  context-stack records before subsequent host bytes are parsed.
+
+Output and page-image effect:
+
+- The pre-reset `!` is published before reset rebuilds the environment; it
+  renders through the ordinary path `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+- If no current page root exists, `ESC E` clears/rebuilds state without
+  synthesizing a page object or pixels.
+- The post-reset `!` is parsed after `0xcda2`, `0xcbd4`, and `0xe146` have
+  rebuilt HMI/VMI, current text slot, parser state, and raster state. Its
+  position and later page-object fields therefore depend on the reset-derived
+  defaults above.
+
+State classification:
+
+- Canonical:
+  selected default records under `0x780eda`, defaults `0x78219d`, `0x78219e`,
+  `0x7821a2`, reset environment word `0x782da4`, paper/environment byte
+  `0x782da6`, current page root `0x78297a`, published page/control record, and
+  parser/data-chain base records.
+- Derived/cache:
+  reset HMI `0x78315c`, reset VMI `0x783160`, top offset `0x782dce`, raster
+  state block `0x783170`, selected backing-record index from `0x7822d5`,
+  line-count conversion results, and render-band caches after publication.
+- Parser scratch:
+  `ESC E` command record, parser/data-chain records cleared by `0xe146`,
+  post-reset parser mode, and any following printable bytes.
+- Firmware bookkeeping:
+  retained/default dirty flags `0x780eba..0x780ed8`, readback buffer
+  `0x782252..0x782270`, publication flag `0x782996`, reset completion byte
+  `0x782a93`, reset pending bytes `0x782997/0x782998`, and retained-record
+  maintenance counters.
+- Hardware/external:
+  physical retained-storage device behind `$a400` / `$8c01`, the external
+  producer of `$8000.w` panel/service bytes, and physical conditions behind
+  retained-record failures.
+- Unknown:
+  no ROM-local middle edge remains for `ESC E` publication, missing-root reset,
+  default-record consumption by `0xcda2`, HMI/VMI refresh, or parser/data-chain
+  clearing. Remaining reset/default uncertainty is external retained-storage and
+  panel/service input provenance, plus manual-facing names for several latches.
+
+Evidence:
+
+- Checked-in explanations:
+  [reset-default-environment.md](reset-default-environment.md),
+  `Worked Path: Reset And Default Environment` and
+  `Default Environment Record Producers` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `ESC E Reset And Default Environment` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings:
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,
+  `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`,
+  `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
+  `generated/disasm/ic30_ic13_default_env_load_005e80.lst`,
+  `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`,
+  `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`,
+  `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`, and
+  `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`.
+
 ## Minimal Paper Source And Copies Walkthrough
 
 This is the smallest top-level path for the two `ESC &l` page-environment

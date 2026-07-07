@@ -30,7 +30,9 @@ render helpers. They are not compared to an external rendered-page oracle, and
 future device output is not part of the evidence standard. Fixtures can check
 that a documented byte stream reaches the documented ROM state and that helper
 transcriptions are internally consistent; they cannot prove behavior by
-comparison to unavailable printer output.
+comparison to unavailable printer output. When an unresolved item asks for a
+fixture, the fixture is only a branch/path driver; the semantic documentation
+still has to trace the ROM handlers and field writes that generate the rows.
 
 ## Reader Path Index
 

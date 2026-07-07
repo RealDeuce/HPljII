@@ -16,7 +16,10 @@ as hardware-emulation validation.
 Fixture row vectors are ROM-derived artifacts: they should be cited as
 documented consequences of decoded object fields, bitmap bytes, and render
 helpers. They are not comparisons against real printer output, an executed ROM,
-or any other external pixel oracle.
+or any other external pixel oracle. A fixture may prove that a byte stream
+reaches a documented branch or helper transcription, but it does not raise
+pixel confidence by comparing rows to an unavailable truth source; pixel claims
+must cite the ROM fields, handlers, and render helpers that produce those rows.
 
 ## Files
 

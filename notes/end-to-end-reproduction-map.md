@@ -89,6 +89,18 @@ edges or from a byte stream that changes a named field in the family sections.
   `0x1f354 -> 0x1f1f0`. The remaining input is resource-window data for
   firmware range `0x0c0000..0x0c0321` after verified bytes
   `0x0bfe22..0x0bffff`.
+- ROM-local downloaded-glyph helper boundaries:
+  `Boundary: Short Compact Downloaded-Glyph High Rows` documents the unchecked
+  `0x1fe76` fallback row-copy table read for short compact rows
+  `0x0101..0x0103`; valid entries end at index `128`, while fallback counts
+  `199..201` read code bytes as target pointers, with row `0x0102` reaching
+  `0x329ad3c0`. `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`
+  documents the low-byte width truncation that can send preserved installed
+  spans through compact mode-0 invalid targets such as `0x0102 -> 0x0066cc`.
+  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` documents the
+  span-31 fallback A2 source-read boundary at offset `+0xb50` after
+  `0x1f264` selected-segment dispatch. These are ROM-local byte-to-renderer
+  boundaries, not parser, publication, or bridge gaps.
 - Host physical interface:
   `0xa904..0xab8a` is documented as the normalized byte-source contract for
   parser reproduction. Remaining work is physical bus/MMIO naming for host

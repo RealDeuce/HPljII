@@ -26,13 +26,15 @@ family or object producer.
 
 Rows named in this documentation are ROM-derived rows: bytes produced by
 following ROM disassembly, decoded resource data, page-record fields, and
-render helpers. They are not compared to an external rendered-page oracle, and
-future device output is not part of the evidence standard. Fixtures can check
-that a documented byte stream reaches the documented ROM state and that helper
-transcriptions are internally consistent; they cannot prove behavior by
-comparison to unavailable printer output. When an unresolved item asks for a
-fixture, the fixture is only a branch/path driver; the semantic documentation
-still has to trace the ROM handlers and field writes that generate the rows.
+render helpers. Future device output is not part of the evidence standard.
+Fixtures can check that a documented byte stream reaches the documented ROM
+state and that helper transcriptions are internally consistent; they cannot
+substitute for ROM tracing. When an unresolved item asks for a fixture, the
+fixture is only a branch/path driver; the semantic documentation still has to
+trace the ROM handlers, field writes, page objects, and render helpers that
+generate the rows. No future fixture or physical capture is required to upgrade
+a ROM-local claim; the upgrade comes from documenting the missing disassembly
+edge.
 
 ## Reader Path Index
 
@@ -2954,6 +2956,39 @@ Related direct-control variants:
   second glyph to compact coord `0x0501` without changing downstream compact
   text storage or render dispatch.
 
+Direct-control command-to-output matrix:
+
+- `ESC &k#G` line termination:
+  handler `0xedf8` writes mode byte `0x78318f`. It creates no page object by
+  itself. Later CR/LF/FF direct-control handlers consume its bits and move the
+  cursor or publish the current root.
+- CR byte `0x0d`:
+  handler `0xf02c` calls `0xf06e` to copy left margin `0x782dd6` into
+  horizontal cursor `0x782c8a`, flushes pending span state through `0xf34a`,
+  and optionally calls LF helper `0xf0b2` when `0x78318f.7` is set. Its
+  output effect is the following printable object's x/y coordinate.
+- LF byte `0x0a`:
+  handler `0xf08c` calls `0xf0b2` to add VMI `0x783160` to vertical cursor
+  `0x782c8e`, with optional CR-style horizontal reset when `0x78318f.6` is
+  set. The moved cursor is consumed by later printable bytes.
+- FF byte `0x0c`:
+  handler `0xf0f0` applies the line-termination mode, then publishes the
+  current page root through `0xff1e` when one exists. Its visible output is
+  the pre-FF queued page objects.
+- HT and BS bytes `0x09` / `0x08`:
+  handlers `0xf1cc` and `0xf2a8` mutate horizontal cursor `0x782c8a` using
+  HMI `0x78315c`, tab-stop arithmetic, left-margin clamp, and previous-width
+  state. They do not queue page objects directly.
+- `ESC &k#H` HMI:
+  handler `0xca8c` writes packed HMI `0x78315c`; later printable, margin,
+  cursor, HT, and BS paths consume it for coordinate conversion and advance.
+- `ESC &s#C` wrap:
+  handler `0xedb0` writes wrap byte `0x783190`; printable prechecks
+  `0xd28a` and `0xd6bc` consume it before object queueing.
+- `ESC &f#S` cursor stack:
+  handler `0xf75e` pushes or pops cursor fields, including vertical offset
+  `0x782dbe`; a pop changes the following printable object's coordinate.
+
 State classification for this path:
 
 - Canonical state:
@@ -3088,6 +3123,32 @@ Span-flush sibling behavior:
   span object before moving y. `0xf560` flushes pending state, moves y to
   packed `95.1`, and the following printable queues compact coord `0xa001`
   in bucket `4`.
+
+Cursor/margin command-to-output matrix:
+
+- `ESC &a#L` left margin:
+  handler `0xeb58` converts columns through HMI `0x78315c`, writes accepted
+  values to `0x782dd6`, and may move horizontal cursor `0x782c8a`. The next
+  printable byte consumes that cursor and queues the visible compact object.
+- `ESC &a#M` right margin:
+  handler `0xec0c` writes right margin `0x782dda`, sets latch `0x782a57`,
+  and may clamp current horizontal cursor left. Its output effect is through
+  following printable placement and later wrap/reject decisions.
+- `ESC &a#C` and `ESC &a#H` horizontal cursor:
+  handlers `0xf39e` and `0xf416` convert column or decipoint units, then
+  commit through `0xf4ca` to `0x782c8a`. The following printable byte is the
+  visible consumer.
+- `ESC &a#R` and `ESC &a#V` vertical cursor:
+  handlers `0xf560` and `0xf60a` convert row or decipoint units, then commit
+  through `0xf6e2` to `0x782c8e`. If pending span state exists, the command
+  can materialize a span object before moving y.
+- `ESC *p#X` and `ESC *p#Y` dot cursor:
+  handlers `0xf48c` and `0xf692` shift whole-dot parameters into packed
+  coordinates and share the same `0xf4ca` / `0xf6e2` commit helpers.
+- Span-flush siblings:
+  cursor-changing handlers that call `0xf34a` can create selector-`0x4000`
+  segment-list objects through `0x12714` before the cursor write. Those span
+  objects and the following printable object are separate page-record effects.
 
 Render path:
 

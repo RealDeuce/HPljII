@@ -3463,8 +3463,9 @@ for how resource records become ordinary page-record text.
     alternate-row caller form. Additional row-overrun streams are regression
     cross-products unless they expose a page-record object form outside those
     covered forms; the remaining naming gap is HP/manual-facing baseline/cell
-    terminology. A known printed sample would be optional correlation, not a
-    rendered-row oracle. The internal-font class-zero
+    terminology. A known printed sample would be optional correlation, not
+    evidence required for ROM-local row documentation. The internal-font
+    class-zero
     source group is fixture-backed from
     request indexes `0..14`: `0x1b8ea`
     fast-probes class-zero row `I00`, `0x1b50e` scans later rows, `0x1c746`
@@ -3955,8 +3956,8 @@ for those measurements.
   unless they produce a page-record object form beyond the covered
   heading-preflight, internal/cartridge headings, class-zero row-overrun
   `I01`, class-one row-overrun `I16`, and alternate-row `I01` cases;
-  a known printed/self-test page would be optional device correlation, not a
-  required row oracle.
+  a known printed/self-test page would be optional device correlation, not
+  required evidence for ROM-local row documentation.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
   `0x13bca`; manual-facing baseline/cell naming remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by
@@ -4911,8 +4912,8 @@ metadata, HMI, compact object bytes, render context slot, and final rows
 because they are all fixture-pinned against ROM-derived helpers. High for the
 primary and secondary parser-to-printable state edge because the inline
 fixtures preserve one mixed-stream state from selection handlers through
-following printable source capture and row comparison. High for the direct
-no-dispatch refresh variants because
+following printable source capture and ROM-derived row construction. High for
+the direct no-dispatch refresh variants because
 `0x13eb8 no-dispatch exits keep prior visible rows` carries both the
 transient-context and cache-hit exits through printable/SO tails, prior
 contexts, bridged context slots, object prefixes, and row digests. Remaining
@@ -11696,7 +11697,7 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
   ROM-table writers.
 - `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
   for compact text. Physical-device page capture is optional correlation
-  outside this checkpoint, not a required row oracle.
+  outside this checkpoint, not required ROM-local evidence.
 
 ## Shared Page-Record Storage And Allocator
 

@@ -438,10 +438,11 @@ A byte-stream renderer must preserve:
 ## Confidence
 
 High for line-termination bits, CR/LF/FF/HT/BS cursor effects, HMI conversion,
-page-record compact coordinates, and representative rendered rows because
-the claims are backed by disassembly plus byte-stream fixtures that start at
-modeled host byte fetch and reach `0x1387c`, `0x1edc6`, `0x1ed84`, and
-`0x1ef6a`.
+page-record compact coordinates, and representative ROM-derived row
+construction because the claims are backed by disassembly plus byte-stream
+fixtures that start at modeled host byte fetch and reach `0x1387c`,
+`0x1edc6`, `0x1ed84`, and `0x1ef6a`. The fixtures drive ROM-local branches;
+they are not external rendered-output comparisons.
 
 High for `ESC 9`, `ESC =`, cursor-stack, underline/span, and perforation-skip
 representative output effects because each has a named parser/page-record

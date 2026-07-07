@@ -146,15 +146,15 @@ Firmware bookkeeping:
 
 Hardware/external state:
 
-- Physical engine timing and paper output after the rendered band leaves the
-  ROM-visible render path are outside this publication-command checkpoint.
+- Physical engine timing after the rendered band leaves the ROM-visible render
+  path is outside this publication-command checkpoint.
 
 Unknown:
 
 - No ROM-local publication, bridge, or render-entry field remains unknown for
   the covered reset, FF, page-size, orientation, paper-source, and copies
-  streams. The remaining boundary is hardware/external physical output timing,
-  not parser or page-record behavior.
+  streams. The remaining boundary is hardware/external engine timing after
+  ROM-visible rendering, not parser or page-record behavior.
 
 ## Command Streams
 

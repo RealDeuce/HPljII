@@ -244,4 +244,4 @@ retained-storage identity and board-level serial pin names behind `$a400` /
 - Remaining reset/default work is external: physical retained-storage identity,
   board-level serial pin names, the external producer of `$8000.w` panel/service
   bytes, reconciling manual NVRAM-failure wording with the ROM paths, and
-  physical/reference page-output comparison.
+  optional physical correlation of reset/default behavior.

@@ -2,8 +2,8 @@
 
 This note documents the `ESC &p#X` transparent print data path. It is an
 end-to-end parser cluster: a parsed PCL command schedules a delayed payload
-handler, the handler consumes raw host bytes, and printable payload bytes re-enter
-the normal text imaging path.
+handler, the handler consumes raw host bytes, and printable payload bytes
+re-enter the normal text imaging path.
 
 Evidence:
 
@@ -34,10 +34,19 @@ Evidence:
 2. Call the shared delayed-payload scheduler `0x121cc`.
 3. Return.
 
-`0x121cc` rewinds `0x78299e` by six, saves the current six-byte command
-record, and stores the delayed handler pointer in `0x782a1c`. Later, when the
-parser returns to mode zero, `0x12218` restores that saved record and calls
-`0x12452` in normal parser mode.
+The disassembly boundary is:
+
+- `0x11f5a..0x11f6c`: push longword `0x00012452` and call `0x121cc`.
+- `0x121cc..0x12210`: rewind `0x78299e` by six bytes, set pending byte
+  `0x782a1a`, store the delayed handler longword at `0x782a1c`, and copy the
+  six-byte command record into `0x782a20..0x782a25`.
+- `0x12218..0x12264`: when pending byte `0x782a1a` is set, clear it, copy the
+  saved six-byte record back to the live parser record at `0x78299e`, advance
+  `0x78299e` by six, and call the saved handler through `jsr (A2)` if
+  alternate/data flag `0x782c18` is clear.
+- `0x1226e..0x1227e`: if alternate/data flag `0x782c18` is set at restore
+  time, call `0x12358(0x1228a)` instead of directly calling `0x12452`, then
+  clear the saved handler longword.
 
 For `ESC &p2X`, the saved record is:
 
@@ -105,30 +114,29 @@ directly and implements its own handling for the `0x1a 0x58` host-control pair.
 
 Setup behavior:
 
-1. Rewind `0x78299e` by six.
-2. Read signed word record `+2`.
-3. Convert it to an absolute byte count in `D4`.
-4. Read selected context slot `0x782f06`.
-5. Call helper `0x332ee` with scale/count `0x10`.
-6. Read context byte at `0x782eea + scaled_slot`.
-7. If both `0x783132` and `0x783133` are clear, use byte `0x782efa` as the
-   local filtering word.
-8. Otherwise use the selected context byte as the local filtering word.
+- `0x1245a..0x12462`: reopen the restored six-byte command record by rewinding
+  `0x78299e` by six bytes.
+- `0x12468..0x12476`: read signed record word `+2`, sign-extend it, and
+  convert negative counts to their absolute value in `D4`.
+- `0x12476..0x12494`: read selected context slot `0x782f06`, scale it through
+  `0x332ee(0x10)`, and copy context byte `0x782eea + scaled_slot` into `D3`.
+- `0x12496..0x124b8`: if both high-character flags `0x783132` and `0x783133`
+  are clear, copy fallback byte `0x782efa` into local word `A6-2`; otherwise
+  copy selected context byte `D3` into `A6-2`.
 
 Loop behavior:
 
-1. If count `D4 <= 0`, return.
-2. Fetch one byte through `0xa904`.
-3. If the byte is `-1`, return early.
-4. If the byte is not `0x1a`, classify it.
-5. If the byte is `0x1a`, fetch one more byte through `0xa904`.
-6. If the second byte is `0x58`, call `0xd99a` and replace the payload value
-   with `0x7f`.
-7. If the second byte is not `0x58`, classify that second byte. The original
-   `0x1a` is consumed by the probe.
-8. Route the resulting value through either `0xd0f0` or `0xd04a`.
-9. Decrement `D4` once per routed payload value.
-10. Repeat until the absolute count is consumed or `0xa904` returns `-1`.
+- `0x124b8..0x124c2`: if count `D4 <= 0`, return; otherwise fetch one byte
+  through `0xa904` and copy `D7` to `D5`.
+- `0x124c4..0x124e8`: if `D5` is `0x1a`, fetch a second byte through
+  `0xa904`. A second byte of `0x58` calls `0xd99a` and replaces the routed
+  payload value with `0x7f`; any other second byte becomes the routed payload
+  value. The original `0x1a` is consumed by the probe.
+- `0x124e8..0x124f6`: if the routed value is `-1`, return early.
+- `0x124f8..0x12532`: route the value through the control/high-control filter
+  matrix documented below.
+- `0x12532..0x12534`: decrement `D4` once for each routed payload value and
+  loop back to `0x124b8`.
 
 The control probe matters for reproduction. A byte stream containing `1a 58`
 contributes one transparent payload value, `0x7f`, while consuming two host
@@ -139,11 +147,14 @@ bytes. A byte stream containing `1a 41` contributes `0x41`, not `0x1a`.
 After normalization, `0x12452` chooses between fixed-space/control handling and
 printable text handling:
 
-- Values `0x00..0x1f` call `0xd0f0` only when the selected context byte in `D3`
-  is zero. If `D3` is nonzero, they call `0xd04a`.
-- Values `0x80..0x9f` call `0xd0f0` only when the local filtering word at
-  `A6-2` is zero. If the local filtering word is nonzero, they call `0xd04a`.
-- All other values call `0xd04a`.
+- `0x124f8..0x1250a`: values `0x00..0x1f` call `0xd0f0` only when selected
+  context byte `D3` is zero. If `D3` is nonzero, they fall through toward
+  `0xd04a`.
+- `0x1250c..0x12528`: values `0x80..0x9f` call `0xd0f0` only when local
+  filtering word `A6-2` is zero. If `A6-2` is nonzero, they fall through to
+  `0xd04a`.
+- `0x1252a..0x1252c`: all other values, plus filtered C0/high-control values,
+  are passed to `0xd04a` as the printable payload byte.
 
 `0xd0f0` is the same fixed-space source-object path used by direct text
 handling. Disassembly `0xd0f0..0xd124` calls `0x1393a(0x20, 0x782d7e)`. In the
@@ -156,7 +167,7 @@ When `0x1393a(0x20)` returns an unflagged inline/fixed-record source, the same
 `0xd0f0` entry continues through `0xd140` and `0xd3b2`, so the substituted
 space can queue a normal unflagged compact text object.
 
-## Fixture Evidence
+## Byte-Stream Branch Examples
 
 The isolated transparent reader fixture uses saved record:
 
@@ -233,8 +244,8 @@ The control-payload page-record fixture uses stream:
 1b 26 70 34 58 21 05 85 21
 ```
 
-That is `ESC &p4X!\x05\x85!` under the default zero filtering state. It proves
-one command can mix both transparent routing exits:
+That is `ESC &p4X!\x05\x85!` under the default zero filtering state. It
+exercises one command that mixes both transparent routing exits:
 
 - restored record: `80 58 00 04 00 00`
 - raw payload: `21 05 85 21`
@@ -261,8 +272,8 @@ The unflagged fixed-record fixture uses stream:
 
 That is `ESC &p3X!\x05!` under the default zero filtering state, but with an
 inline/fixed-record font context where both host space and `!` are valid
-unflagged records. It proves the `0xd0f0` entry does not stop at cursor-only
-spacing for all source classes:
+unflagged records. It exercises the `0xd0f0` entry that continues past
+cursor-only spacing for this source class:
 
 - restored record: `80 58 00 03 00 00`
 - raw payload: `21 05 21`
@@ -291,7 +302,7 @@ The nonzero-filter fixture uses stream:
 ```
 
 That is `ESC &p4X!\x05\x80!` with selected context byte `1` and local
-filtering word `1`. It proves the other side of both filter branches:
+filtering word `1`. It exercises the other side of both filter branches:
 
 - restored record: `80 58 00 04 00 00`
 - raw payload: `21 05 80 21`
@@ -317,8 +328,8 @@ The high-control nonzero-filter fixture uses stream:
 
 That is `ESC &p3X!\x98!` with selected context byte `1` and local filtering
 word `1`. It keeps the high-control byte on the `0xd04a` printable path and
-proves that transparent data can queue a taller high-control glyph into a
-different bucket from surrounding printable bytes:
+records a taller high-control glyph in a different bucket from surrounding
+printable bytes:
 
 - restored record: `80 58 00 03 00 00`
 - raw payload: `21 98 21`
@@ -347,8 +358,8 @@ The upper-bound high-control fixture uses stream:
 ```
 
 That is `ESC &p3X!\x9f!` with selected context byte `1` and local filtering
-word `1`. It proves the top value in the filtered `0x80..0x9f` range stays on
-the same printable route as `0x98`, while selecting a different glyph:
+word `1`. It exercises the top value in the filtered `0x80..0x9f` range on the
+same printable route as `0x98`, while selecting a different glyph:
 
 - restored record: `80 58 00 03 00 00`
 - raw payload: `21 9f 21`
@@ -447,16 +458,17 @@ before the next `0x40000` probe. The same startup notes bound byte-sum
 self-test coverage to `0x080000..0x0bffff` for the resource pair, so the
 checksum proves the verified suffix but does not validate or reject the
 continuation bytes starting at `0x0c0000`. The mirror-scanner fixture below now
-proves a simple full mirror would be scanner-visible, but startup notes still
-do not prove whether the physical decode hides that mirror from scanner reads,
-zero-fills, exposes program ROM, or maps another source at `0x0c0000..0x0c0321`.
+exercises the scanner-visible result of a simple full mirror, but startup notes
+still do not prove whether the physical decode hides that mirror from scanner
+reads, zero-fills, exposes program ROM, or maps another source at
+`0x0c0000..0x0c0321`.
 
 Fixture `transparent secondary segment-57 continuation policies diverge after
 verified bytes` now makes the boundary policy-dependent rather than vaguely
 unknown. Rendering the bucket-456 compact payload `00 01 5f 39 1c 01` with
-three explicit continuation policies proves the first current-band rows are
-already fixed by verified bytes: mirror, code-pair continuation, and zero-fill
-all produce current-band digest
+three explicit continuation policies records that the first current-band rows
+are already fixed by verified bytes: mirror, code-pair continuation, and
+zero-fill all produce current-band digest
 `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
 fixture also pins the exact byte-source boundary: the read window is
 `0x0bfe22..0x0c0321`, the verified suffix is `478` bytes with digest
@@ -540,9 +552,13 @@ Field groups:
 
 Writers:
 
-- `0x121cc` writes the delayed snapshot.
-- `0x12218` restores the saved command record.
-- `0x12452` decrements the payload count and selects `0xd04a` or `0xd0f0`.
+- `0x121cc..0x12210` writes the delayed snapshot.
+- `0x12218..0x12264` restores the saved command record and directly calls the
+  delayed handler in normal parser mode.
+- `0x1226e..0x1227e` redirects restored delayed payloads through
+  `0x12358(0x1228a)` when alternate/data flag `0x782c18` is set.
+- `0x12452..0x12534` decrements the payload count and selects `0xd04a` or
+  `0xd0f0`.
 - `0xd04a`/`0xd824` write compact page-record text objects.
 - `0xd0f0` writes the source object for host space. In the flagged built-in
   path it clears source `+4` before `0xd550` advances spacing; in the covered
@@ -568,28 +584,24 @@ Output effect:
 - Nonzero filtered C0 and `0x80..0x9f` transparent bytes route through `0xd04a`
   and become normal compact text entries after symbol-set mapping.
 - Secondary-context high-control bytes follow the same `0x12452` route decision
-  after SO; fixture `SO ESC &p3X!\x80!` proves the downstream page-record form
-  can be segmented rather than a short compact object.
+  after SO. The `SO ESC &p3X!\x80!` fixture exercises the downstream
+  page-record form where the mapped glyph uses a segmented object rather than a
+  short compact object.
 - A non-`0x58` byte after `0x1a` is not lost and does not route as `0x1a`; it is
   the payload value consumed by `0xd04a` or `0xd0f0`.
 
-Confidence: high for the delayed payload boundary, transparent probe handling,
-both filtering polarities, printable output, and flagged fixed-space output
-because the claims are backed by disassembly `0x11f5a`, `0x12452`, `0xd0f0`,
-`0xd550`, and fixtures
-`0x11f5a/0x12452 transparent text restores and consumes counted bytes`,
-`transparent data parser trace feeds page-record queue`, `transparent non-0x58
-probe byte reaches page-record output`, `transparent data control payloads
-advance through fixed-space path`, `transparent default-filtered control enters
-unflagged fixed-record path`, `transparent nonzero filters route controls
-through printable path`, and
-`transparent nonzero high-control byte queues tall glyph bucket`, the interior
-sample fixture, and the upper-bound `0x9f` fixture. High for the secondary
-selector/routing/page-record boundary because fixture `transparent
-secondary high-control byte enters segmented page-record path` pins SO handler
-`0xc6b8`, source context `0xc00ae122`, segmented selector `0x2001`, bridge
-context slots, and a selected-bucket render digest. The render-prefix fixture
-pins buckets `0..448` and the first source-read boundary at bucket `456`.
+Confidence: high for the delayed payload boundary because
+`0x11f5a..0x11f6c`, `0x121cc..0x12210`, and `0x12218..0x1227e` explicitly show
+the handler pointer, saved command record, normal restore call, and
+alternate/data restore redirect. High for transparent probe handling and both
+filtering polarities because `0x12452..0x12534` contains the counted loop,
+`0x1a 0x58` replacement, `-1` exit, C0 filter, high-control filter, and
+`0xd04a` fallback. High for printable and fixed-space page effects where they
+flow through already documented `0xd04a`, `0xd0f0`, `0xd550`, and page-record
+queue paths. Fixtures named above exercise those branches against concrete
+byte streams and page-record forms; they are not an external rendered-output
+oracle. The secondary segmented fixtures identify the first source-read
+boundary at bucket `456`, not a physical continuation policy.
 
 Unresolved middle edges:
 
@@ -654,7 +666,7 @@ For `ESC &p#X`:
   `0x1393a(0x20, 0x782d7e)`, enters `0xd140` / `0xd3b2`, queues substituted
   host-space glyph `0`, and renders the selected bucket digest
   `89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
-- Broader nonzero-filtering coverage now includes primary high-control samples
+- Broader nonzero-filtering examples now include primary high-control samples
   `0x81`, `0x88`, `0x90`, and `0x97`, plus the tall primary bucket-crossing
   cases `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`. The secondary segmented
   mapping has a page-record boundary and renderable prefix. The remaining risk

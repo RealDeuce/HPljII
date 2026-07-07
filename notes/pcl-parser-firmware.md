@@ -138,6 +138,110 @@ payload restore in this mode routes through `0x12358`; the wrapper path
 direct `0x12358` path consumes only positive counts and echoes
 normalized bytes through `0xe002`.
 
+## Parser Core Composition Checkpoint
+
+This checkpoint is the ROM-local byte-to-handler contract before any command
+family owns page state. It composes the host-byte wrapper, six-byte parsed
+records, normal versus alternate/data table selection, delayed-payload
+snapshot/restore, and the first downstream command-family handoff.
+
+Field groups:
+
+- Canonical parser state: `0x782999` is the current parser mode byte written
+  by `0x11774` after matched table rows. `0x782c18` selects normal parser table
+  `0x112a4` / `0x112a8` or alternate/data table `0x116f6` / `0x116fa`.
+  `0x78299a` is the active tokenizer callback pointer set by parser setup rows
+  such as `0x11ea4`, `0x11eb6`, `0x11fda`, `0x11fec`, `0x12014`, and
+  `0x1202a`.
+- Parser scratch: `0x78299e` points at the active six-byte command record
+  rooted at `0x7829a2`; `0x782a26` points into byte scratch `0x782a2a`;
+  `0x782a3e` points into numeric text scratch `0x782a42`; `0x783196..0x783199`
+  is the local matched-byte accumulation region. Six-byte records store the
+  terminating byte at `+1`, integer word at `+2`, and fractional word at `+4`.
+- Delayed-payload parser scratch: `0x782a1a` is the pending delayed-handler
+  flag, `0x782a1c` is the saved handler pointer, and `0x782a20..0x782a25` is
+  the saved six-byte parsed record copied by `0x121cc` and restored by
+  `0x12218`.
+- Firmware bookkeeping: `0x782a56` is the alternate/data echo latch used around
+  `0x12358`; `0x783140` is the absolute payload byte budget used by
+  font/raster payload consumers after parser restore; macro/data-chain fields
+  `0x782d76`, `0x782d7a`, and `0x782c19` belong to the macro replay layer
+  rather than the generic parser record.
+- Hardware/external state: none inside this checkpoint after `0xa904` has
+  returned a normalized byte in `D7`. Host-source priority and MMIO boundaries
+  are owned by [host-byte-fetch.md](host-byte-fetch.md).
+- Unknown: no unresolved parser-record layout or delayed-restore middle edge
+  remains. Remaining unknowns after `0x12218` are command-family behavior,
+  payload consumer behavior, page-object state, or hardware/resource
+  boundaries owned by their family notes.
+
+Writers and readers:
+
+- `0xda9a` reads bytes through `0xa904`, swallows `ESC ? 0x11`, logs/pushes
+  non-question lookahead through `0x9ec0`, and returns the parser-visible byte
+  in `D7`.
+- `0xdaf0` / `0xdb74` write the active six-byte parsed record. The tokenizer
+  reads through `0xda9a`, skips leading spaces, handles sign, integer, and
+  fractional digits, stores the final byte at record `+1`, and returns
+  `D7 = 0` for `:` / `;` continuations.
+- `0x11774` reads `0x782999` and `0x782c18`, dispatches through the selected
+  parser table, writes the next mode from table byte `+1`, and calls `0x12218`
+  whenever a terminal transition returns to mode zero.
+- Setup handlers `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11fda`,
+  `0x11fec`, `0x12014`, and `0x1202a` prepare the tokenizer callback and
+  family state before later terminal handlers consume the parsed record.
+- `0x121cc` snapshots the current parsed record and handler pointer for
+  delayed payload families. `0x12218` restores that record and either calls the
+  saved handler directly in normal mode or routes through alternate/data
+  wrappers `0x1228a` / `0x12358`.
+- Count drains `0x1228a`, `0x12328`, and `0x12358` consume payload bytes after
+  restore. `0x12328` uses `0xdace`, so its `0x1a 0x58` normalization is local
+  to that consumer and must not be treated as global `0xa904` behavior.
+
+Output effect:
+
+- Printable normal-mode bytes leave this checkpoint through handler `0xd04a`,
+  then the text/source/page-record path decides page-object and pixel effects.
+- Direct controls leave through handlers such as `0xf02c`, `0xf08c`,
+  `0xf0f0`, `0xf1cc`, and `0xf2a8`; their cursor/page effects are documented
+  in [direct-control-codes.md](direct-control-codes.md).
+- Prefix and parameterized commands leave through terminal handlers listed in
+  [pcl-command-map.md](pcl-command-map.md), for example reset `0xcc52`, raster
+  transfer `0x105d0` after `0x121cc -> 0x12218`, transparent print `0x12452`,
+  font descriptor/resource handlers `0x15d0a` / `0x16c14`, macro handlers
+  `0xe112` / `0xdd08`, and rectangle/rule handlers under `0x10898`.
+- Alternate/data mode preserves parser mode transitions and delayed restore,
+  but many terminal effects are append/drain effects through `0xe002`,
+  `0x1228a`, or `0x12358` rather than page-object writes. The macro-definition
+  stream `ESC &f123Y ESC &f0X ! CR ESC &f1X` is the concrete example: payload
+  bytes append, normal CR is suppressed, and stop still reaches `0xdd08`.
+
+Evidence and unresolved boundary:
+
+- Detailed parser-core composition is in
+  [pcl-parser-core.md](pcl-parser-core.md); command-family ownership is in
+  [pcl-command-map.md](pcl-command-map.md).
+- Disassembly evidence:
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`, and
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+- Fixture evidence:
+  `0x11774 ROM dispatch table routes raster stream to delayed transfer`,
+  `0x121cc snapshots delayed payload handler and parsed record`,
+  `0x12218 restores delayed parsed record and dispatches saved handler`,
+  `transparent data parser trace feeds page-record queue`,
+  `resource payload stream ties ROM parser dispatch to 0x16c14 install`,
+  `downloaded character stream ties ROM parser dispatch to rendered object`,
+  and the macro-definition alternate/data fixture named above.
+- No parser-local middle edge remains between `0xa904` byte return,
+  `0xda9a` parser-byte normalization, six-byte record creation, table dispatch,
+  delayed-payload restore, and terminal handler entry for the covered command
+  families. Further parser work should start only when a new byte stream
+  changes a parsed record field, mode transition, delayed-restore route,
+  payload drain result, or downstream page/object state.
+
 ## Direct Control Codes
 
 See [direct-control-codes.md](direct-control-codes.md) for the composed

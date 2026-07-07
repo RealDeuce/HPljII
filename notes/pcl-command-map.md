@@ -158,6 +158,42 @@ is [firmware-dataflow-model.md](firmware-dataflow-model.md). The shorter
 coverage map and current target list are in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 
+## Inbound Byte Reading Contract
+
+To read any supported host byte stream from this map, follow the byte through
+these ROM-defined boundaries before jumping to command-family notes:
+
+1. `0xa904..0xab8a` chooses the next normalized byte source. Live host input,
+   ring-buffer input, data-chain replay, and direct hardware modes all reduce
+   to the same `D7` byte contract before the parser sees the byte. Source
+   priority and replay ownership are documented in
+   [host-byte-fetch.md](host-byte-fetch.md) and
+   [macro-data-chain.md](macro-data-chain.md).
+2. `0xda9a` / `0xdaf0` / `0xdb74` maintain parser state byte `0x782999`,
+   six-byte parser record `0x78299e..0x7829a3`, parser cursor
+   `0x78299a`, parsed numeric value fields, and delayed-payload restore
+   state. The parser core contract is in
+   [pcl-parser-core.md](pcl-parser-core.md).
+3. Parser loop `0x11774` indexes either normal table `0x112a4` or
+   alternate/data table `0x116f6`. Prefix rows change the command-family mode;
+   lowercase finals either keep the family mode or call rewind helper
+   `0x11f4c`; uppercase or terminal finals usually return to mode zero after
+   the handler or zero-handler terminal path runs.
+4. Terminal handlers in the matrix below are the handoff from syntax to
+   semantics. From that point, use the owner note named by the row to find
+   field writers, readers/consumers, page-object effects, publication effects,
+   render effects, confidence, and exact unresolved boundaries.
+5. Delayed binary payload commands are two-stage. The table handler records a
+   pending transfer (`0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`), then
+   restore path `0x121cc -> 0x12218` calls the payload consumer such as
+   `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`.
+
+This contract is intentionally ROM-local. It documents what the firmware does
+with admitted bytes and where those bytes become page/render state. Physical
+bus timing, external memory decode, and formatter/DC signal naming are only
+part of the command map when they change a ROM-visible byte, parser state,
+page object, scheduler field, or render input.
+
 ## Table Coverage Note
 
 The generated flat table in
@@ -1466,6 +1502,7 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
 - Continue active-render scheduler work only at the external device boundary.
   The software-visible scheduler, wait-object, trap, render-work, per-band
   merge, and page-record bridge states are already modeled. Remaining work is
-  correlation of the active-render/device handoff with the physical formatter
-  signals and final paper output, using the ROM/manual logical page and
-  printable-area dimensions already recorded in the reproduction map.
+  bounded to ROM-visible effects of the active-render/device handoff:
+  formatter-signal correlation only matters when it changes ready/busy
+  branches, wait-object wake order, selected page/control record, scheduler
+  band words, or render inputs already recorded in the reproduction map.

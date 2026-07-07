@@ -822,6 +822,48 @@ Parser handoff:
   payload readers either call `0xa904` directly or call a payload reader that
   does. Each reader owns its own negative-return and `0x1a` pair behavior.
 
+Host-source to parser-result matrix:
+
+- Service retry and no-byte gate:
+  `0xa904` first runs `0x10cc(0x780202)` and retries if service byte
+  `0x7821cd` is set. If buffered-source byte `0x780e66` and gate byte
+  `0x780e3b` are both set, it returns `D7 = -1` before consuming queued
+  bytes. Parser wrappers and payload readers see this as no byte; no parser
+  record or page object is produced by this branch.
+- First pushback stack:
+  count `0x783e8c` and pointer `0x783e8e` win over data-chain, second
+  pushback, ring, and direct hardware sources. The returned byte is
+  parser-visible exactly as if it came from the host stream; consumers such as
+  `0xda9a`, direct readers, or payload handlers own any later normalization.
+- Active data-chain frame:
+  pointer `0x782d76` wins after the first pushback stack. Frame `+0x00`
+  supplies payload bytes, frame `+0x04` supplies count or `-1` end marker,
+  byte `+0x08` is the observed stride/offset value, byte `+0x09` classifies
+  execute, call, or overlay/non-replay frames, and longword `+0x0a` holds the
+  execute/call snapshot pointer. End markers call `0xe22c` and retry; normal
+  bytes re-enter the same parser paths as live host bytes.
+- Second pushback stack:
+  count `0x783e76` and pointer `0x783e78` win after data-chain frames. This
+  path has the same parser-visible effect as the first pushback stack but a
+  lower source priority.
+- Ring-buffer input:
+  when selector byte `0x780e40` is zero, ring occupancy `0x783e54`, read
+  pointer `0x783e56`, write pointer `0x783e5a`, and buffer
+  `0x783a4c..0x783e53` supply live queued host bytes. The parser sees the
+  returned byte in `D7`; the ring path is sufficient for deterministic
+  byte-stream rendering from a fixed input.
+- Direct hardware input:
+  direct selector `0x780e40 == 1` polls `0x8e01` and reads `0x8801`; other
+  nonzero selector values poll `0xfffee005` and read `0xfffee001`. The
+  returned value is still just the next byte to parser callers. Register
+  names, connector mapping, and timing are hardware/MMIO boundaries unless a
+  live board interface is being modeled.
+
+The source matrix has no page-output effect by itself. Its output is either a
+parser-visible byte in `D7` or `D7 = -1`. Pixel-producing behavior begins only
+after callers such as `0xda9a`, `0x11774`, direct-reader loops, delayed
+payload handlers, or macro replay consumers interpret the byte.
+
 Direct-output stream effect:
 
 - With the primary ring stream above, `0xa904` supplies bytes to `0xda9a`.

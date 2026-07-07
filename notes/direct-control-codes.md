@@ -456,6 +456,44 @@ State handoff:
   ROM-visible output/control bytes `0x780e8f` / `0x780e26`; physical engine
   timing is outside this command-family checkpoint.
 
+Page-length handler boundary:
+
+- `0xf9e8..0xfa14` rewinds the six-byte parser record at `0x78299e`, reads
+  parsed word `+2`, takes its absolute value into `D4`, and reads current VMI
+  `0x783160`. A zero VMI exits immediately with no page geometry, publication,
+  or cursor change.
+- `0xfa26..0xfa48` handles nonzero line counts by multiplying current VMI by
+  `D4`, converting the packed 12-subunit result back to whole dots through
+  `0x104fe`, `0x332ee`, and `0x104d8`, and keeping that computed page extent
+  in `D4`.
+- `0xfa48..0xfb18` selects an internal page code from orientation-specific
+  thresholds. Portrait mode tests `0x782daa`, `0x782dae`, `0x782dac`, and
+  `0x782db0`, selecting codes `6`, `2`, `1`, or `5`. Landscape mode tests
+  `0x782daa`, `0x782dac`, and `0x782dae`, selecting codes `6`, `1`, or `2`.
+  If the computed extent exceeds every threshold, the handler exits without
+  changing page geometry.
+- `0xfa62..0xfaa6` is the zero-parameter branch. It flushes pending text
+  through `0xf34a`, publishes the current root through `0xff1e`, waits through
+  `0x9ac2`, compares current paper-source byte `0x782da6` with previous output
+  byte `0x780e8e`, and when they differ mirrors `0x782da6` to `0x780e8f` and
+  signals control word `0x780e26` through `0x9b5e`.
+- `0xfb20..0xfb5a` commits the selected page code. It marks layout refresh byte
+  `0x782997`, calls reset/layout helpers `0x15a6` and `0x15ac`, writes code
+  byte `0x782da2`, and either restores the default page length through local
+  helper `0xf9ac` for selector zero or writes the computed extent to
+  `0x782dba` for nonzero selectors. When no default code exists at `0x780e97`,
+  the zero branch falls back to page code `2`.
+- `0xfb60..0xfc52` recomputes derived page geometry. It writes table-derived
+  geometry words `0x782db2`, `0x782db4`, `0x782dc0`, refreshes orientation
+  companion state through `0xf87e`, adjusts `0x782db6` when the previous length
+  no longer fits, rebuilds top offset `0x782dce`, clears `0x782dd0`, restores
+  default text length through `0xea16`, clears margins through `0xe9ba`,
+  refreshes pending cursor through `0xf8fc`, updates line caches through
+  `0xfe54`, and rebuilds the default VFC table through `0x12b96`.
+- `0xfc58..0xfc6c` clears macro/overlay byte `0x782a92` unless it holds
+  selector value `2`, then returns. This makes page-length changes part of the
+  same environment-reset family that can invalidate overlay publication state.
+
 Downstream consumers:
 
 - Printable prechecks `0xd28a` and `0xd6bc` read wrap byte `0x783190` before
@@ -474,6 +512,11 @@ Output boundary:
 - `ESC &l66P!` writes page extent `0x782dba = 3300`, refreshes cursor-derived
   placement, then queues the following printable at compact coordinate
   `0x9001`.
+- `ESC &l0P` can publish the current page before restoring the default page
+  code. It has no glyph output by itself; when a root exists, the visible
+  effect is the pre-command page publication at `0xff1e`, plus ROM-visible
+  paper-source mirroring through `0x780e8f` / `0x780e26` when the current and
+  previous source bytes differ.
 - The chained vertical-layout stream reaches `0xcb00`, `0xc992`, `0xece2`, and
   `0xea9e` before the following printable object proves the stored VMI,
   top-margin, and text-length state is consumed by page-record queueing.

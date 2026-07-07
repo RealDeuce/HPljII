@@ -938,6 +938,150 @@ Evidence:
   `generated/analysis/ic30_ic13_direct_control_code_flow.md`, and
   `generated/analysis/ic30_ic13_page_geometry_tables.md`.
 
+## Minimal Page Geometry Walkthrough
+
+This is the smallest top-level page-size and orientation spine. It covers the
+geometry commands that rewrite page dimensions and placement state, and shows
+how those fields are consumed later by printable placement, raster bounds,
+rectangle clipping, publication, and rendering. These commands do not draw
+pixels directly.
+
+Representative streams:
+
+```text
+ESC &l1A
+ESC &l1O
+ESC &l1a1O
+! ESC &l1A
+! ESC &l1O
+```
+
+Parser and command dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- `ESC &l#A` reaches page-size handler `0xfc74`.
+- `ESC &l#O` reaches orientation handler `0x10220`.
+- Chained `ESC &l1a1O` stays in the same `&l` parser family: lowercase
+  page-size final `a` keeps the family active, then uppercase `O` terminates
+  the chain through the orientation handler.
+- If printable content already exists, the printable byte first reaches
+  `0xd04a` and queues a compact object under current page root `0x78297a`
+  before the geometry handler runs.
+
+Page-size behavior:
+
+- `0xfc74` maps PCL page-size parameters to internal page codes and writes
+  code byte `0x782da2`. The documented mappings are
+  `1 -> 6`, `2 -> 2`, `3 -> 5`, `26 -> 1`, `80 -> 0x88`, `81 -> 0x87`,
+  `90 -> 0x89`, and `91 -> 0x8a`.
+- The ROM table helpers `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe` mask the
+  internal code with `0x7f` and index eleven word entries. The generated
+  table report identifies the corresponding portrait/landscape logical
+  widths and lengths.
+- For letter `ESC &l1A`, the documented state after rebuild is internal code
+  `6`, active size `3030 x 2025`, portrait margin/extent input `3150`, top
+  offset `90`, printable extent `3090`, and half-page remainder `0x782dc0 =
+  11`.
+- PCL size `80` maps to internal code `0x88`, which masks to geometry-table
+  index `8`.
+
+Orientation behavior:
+
+- `0x10220` accepts orientation values below `2`. If the requested value
+  differs from orientation byte `0x782da3`, it publishes any queued current
+  page, writes the new orientation, rebuilds page geometry, updates VMI/HMI
+  related state, and reloads current font/metric state.
+- Shared geometry helpers choose active extents from the table outputs:
+  `0xf9ac` chooses portrait or landscape page length, `0xf87e` swaps
+  `0x782db2` / `0x782db4` into active extents `0x782db6` / `0x782db8`, and
+  `0x103ea` reloads orientation threshold values into
+  `0x782daa..0x782db0`.
+- For letter landscape `ESC &l1O`, the documented state is orientation `1`,
+  active extents `2025 x 3030`, landscape margin `2175`, printable extent
+  `2125`, top offset `100`, and threshold sequence
+  `2175, 2550, 2480, 2550`.
+
+Publication and later consumers:
+
+- `! ESC &l1A` and `! ESC &l1O` publish the already queued compact text object
+  before the new geometry takes effect. Page size uses the `0xfc74` /
+  `0xf34a` / `0xff1e` edge; orientation uses the `0x10220` /
+  `0xf34a` / `0xff1e` edge.
+- The published pre-command root flows through the ordinary render path:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`.
+- Following printable placement consumes geometry fields through the text path
+  `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`.
+- Raster-start and transfer paths consume active extents and orientation:
+  `0x1075a` chooses raster origin from `0x782c8a` in portrait or
+  `0x782c8e` in landscape, while transfer gates compare against active bounds
+  derived from geometry fields.
+- Rectangle source producer `0x10b80` consumes cursor, orientation
+  `0x782da3`, and page extents `0x782db8/0x782db6` to clip or reject rules
+  before it writes source record `0x782a88`.
+
+Output effect:
+
+- Isolated page-size or orientation commands update later placement state and
+  do not queue page objects.
+- When content is pending, page-size and orientation commands are page
+  boundaries: the pending page is published under the old geometry, then the
+  handler installs new geometry for following objects.
+- Pixel provenance remains the ordinary page-object path. Geometry affects
+  coordinates, clipping, bounds, and page-boundary ordering; it is not a
+  renderer and does not supply row data by itself.
+
+State classification:
+
+- Canonical:
+  page code `0x782da2`, orientation byte `0x782da3`, table outputs
+  `0x782db2` / `0x782db4`, active extents `0x782db6` / `0x782db8`, page
+  length/extent `0x782dba`, top offset `0x782dce`, text bottom
+  `0x782dd2`, cursor `0x782c8a/0x782c8e`, and current page root
+  `0x78297a`.
+- Derived/cache:
+  orientation-specific threshold sequence `0x782daa..0x782db0`, half-page
+  remainder `0x782dc0`, printable extent, refreshed pending cursor state,
+  compact bucket/key fields, raster byte limits, rectangle clipped source
+  fields, and render-band caches after publication.
+- Parser scratch:
+  `&l` parser mode, six-byte command records rooted at `0x78299e`, parsed
+  page-size/orientation parameters, and lowercase-chain state for
+  `ESC &l1a1O`.
+- Firmware bookkeeping:
+  publication flag `0x782996`, page-change/status flags, pending text flush
+  state, stream allocator cursors, and scheduler progress after publication.
+- Hardware/external:
+  none for the ROM-local geometry transformation. Physical engine timing after
+  publication remains outside this page-geometry contract.
+- Unknown:
+  no unresolved ROM-local parser-to-geometry or geometry-to-consumer middle
+  edge remains for the documented page-size, orientation, chained
+  page-size/orientation, and pending-publication streams. Remaining geometry
+  work starts from command combinations that expose different table indexes,
+  page-length thresholds, downstream placement, raster bounds, rectangle
+  clipping, bridge roots, or ROM-derived row construction.
+
+Evidence:
+
+- Checked-in explanations:
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [publication-commands.md](publication-commands.md),
+  [pcl-command-map.md](pcl-command-map.md),
+  `Worked Path: Publication Commands To Rendered Page Records` and
+  `Worked Path: Page Length, Wrap, And Perforation Controls` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  and `Page Geometry And Direct Layout State` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_page_geometry_tables_009d16.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/analysis/ic30_ic13_page_geometry_tables.md`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+
 ## Minimal Page Assembly Walkthrough
 
 This is the smallest top-level page-object spine. It starts after parser

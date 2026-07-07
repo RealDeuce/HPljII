@@ -5870,9 +5870,9 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   mode streams feed 0x1ed84 and 0x1ef6a`.
   Mixed composition evidence `host-fetched text rectangle and raster page
   record feeds 0x1ed84 and 0x1ef6a` and `addressed text/rule/raster field
-  groups reach publication and render entry` checks that encoded raster objects
-  share the same page-root, publication, bridge, and band-render path as
-  compact text and rule objects.
+  groups reach publication and render entry` exercises the documented
+  page-root, publication, bridge, and band-render path shared by encoded raster
+  objects, compact text, and rule objects.
   Confidence is high for delayed-record restore, `0x105d0` gate outcomes,
   root boundary, encoded object layout, bridge preservation, mode helpers,
   active-resolution behavior, lowercase `*b` chaining, dense

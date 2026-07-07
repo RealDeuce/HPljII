@@ -633,15 +633,16 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and second-chunk
-  rollover are documented with fixture checks. Remaining work here is dense
-  byte streams that expose a new page-root field, stream-allocation
-  transition, or object shape.
+  rollover are documented from the disassembly and exercised by fixtures.
+  Remaining work here is dense byte streams that expose a new page-root field,
+  stream-allocation transition, or object shape.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
   [raster-graphics.md](raster-graphics.md). Parser dispatch, delayed record
   restore, gate outcomes, addressed `0x13250` storage, and render-entry rows
-  are documented with fixture checks. The parser-to-handler record handoff is
-  disassembly-pinned through `0x121cc`, `0x12218`, and `0x105d0` re-reading
-  `0x78299e - 6`; the dense split branch rule is disassembly-pinned through
+  are documented by tracing the ROM path and exercised by fixtures. The
+  parser-to-handler record handoff is disassembly-pinned through `0x121cc`,
+  `0x12218`, and `0x105d0` re-reading `0x78299e - 6`; the dense split branch
+  rule is disassembly-pinned through
   `0x132b6..0x13382`, including the static `0x00f2 + 0x003a`
   capped-new-chunk chain and `0x000a` current-tail capacity example in
   [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint).

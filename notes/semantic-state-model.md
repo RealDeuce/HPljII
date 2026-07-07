@@ -9229,8 +9229,9 @@ branches.
 
 - `0x105d0..0x13250`: delayed record restore, gate outcomes, encoded object
   layout, rendered mode contracts, resolution-active interactions,
-  consecutive transfers, and same-family lowercase chaining are documented
-  with fixture checks. Parser scratch is the delayed `80 57 ...` record,
+  consecutive transfers, and same-family lowercase chaining are documented from
+  the disassembly and exercised by fixtures. Parser scratch is the delayed
+  `80 57 ...` record,
   `0x782a1a` pending byte, `0x782a1c` handler longword, `0x782a20..0x782a25`
   saved record, payload offset, and drained bytes; canonical output is the
   page-root `+0x1c` raster chain plus object bytes from `0x13070` /

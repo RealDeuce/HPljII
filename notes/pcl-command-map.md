@@ -406,12 +406,27 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   [direct-control-codes.md](direct-control-codes.md).
 - Direct ESC cursor helpers:
   `ESC 9` reaches handler `0xe9ba` directly from mode `1`, clears the left
-  margin state, resets the right margin from page width, and draws nothing
-  until later CR, printable text, rectangle, or raster paths consume the
-  updated margin/cursor state. `ESC =` reaches handler `0xf176` directly from
-  mode `1`; it ensures a page root, flushes pending span state, advances
-  vertical cursor `0x782c8e` by half of current VMI `0x783160`, and runs the
-  same vertical overflow helper used by LF. Owner note:
+  margin state `0x782dd6`, copies page width `0x782db8` to right margin
+  `0x782dda`, clears the fractional companion `0x782ddc`, and draws nothing
+  until later CR, HT, printable text, rectangle, or raster-start paths consume
+  the updated horizontal limits. `ESC =` reaches handler `0xf176` directly
+  from mode `1`; it ensures a page root, flushes pending span state through
+  `0xf34a`, advances vertical cursor `0x782c8e` by half of current VMI
+  `0x783160`, and runs the same vertical overflow/perforation helper used by
+  LF. Canonical state for this pair is margins `0x782dd6` / `0x782dda`,
+  page width `0x782db8`, vertical cursor `0x782c8e`, VMI `0x783160`, pending
+  span fields `0x783184..0x78318a`, and the current page root. Parser scratch
+  is only the mode-1 direct `ESC` terminal byte; neither command uses delayed
+  payload state. Output effect is delayed: fixture
+  `ESC 9 clear margins feeds CR and page-record output` drives
+  `ESC 9 CR !` through `0xe9ba`, `0xf02c`, and `0xd04a`, so CR consumes the
+  reset left margin and the printable queues compact coord `0x0600`; fixture
+  `ESC = half-line feed reaches shifted page-record output` drives
+  `ESC = !` through `0xf176` and `0xd04a`, so the half-line y advance makes
+  the printable queue at compact coord `0x1001`. Evidence is
+  [direct-control-codes.md](direct-control-codes.md),
+  [semantic-state-model.md](semantic-state-model.md), and those two fixtures.
+  Owner note:
   [direct-control-codes.md](direct-control-codes.md).
 - Dot-position commands:
   `ESC *` enters mode `3`, `*p` enters mode `18` through `0x11eda`, and

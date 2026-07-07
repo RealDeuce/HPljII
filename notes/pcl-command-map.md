@@ -367,8 +367,19 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   mode-zero printable bytes go from `0x11774` to `0xd04a` in normal mode.
   Direct controls use normal mode-zero rows: BS `0xf2a8`, HT `0xf1cc`,
   LF `0xf08c`, FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, and SI `0xc68a`.
-  Explicit blank rows `0x00`, `0x07`, and `0x0b` take the zero-handler reset
-  path through `0x12218` without page output. Owner notes:
+  `0xd04a` builds source scratch through `0x1393a`, consumes selected font
+  context/map state, cursor `0x782c8a` / `0x782c8e`, HMI `0x78315c`, and
+  pending-width latches, then queues compact text objects through
+  `0x12f2e`. CR resets horizontal cursor from left margin `0x782dd6` through
+  `0xf06e` and can apply LF through line-termination byte `0x78318f`; LF
+  advances vertical cursor by VMI `0x783160`; FF publishes through the
+  page-root path and marks pending page-eject byte `0x782a6d`. HT advances to
+  the next eight-column stop and clamps to page width; BS subtracts HMI or
+  previous-width state and sets pending-width latch `0x782a58`. SO/SI call
+  `0xc428(1)` / `0xc428(0)` and update selected text slot `0x782f06`, so
+  following printable bytes use the secondary or primary map/context. Explicit
+  blank rows `0x00`, `0x07`, and `0x0b` take the zero-handler reset path
+  through `0x12218` without page output. Owner notes:
   [pcl-parser-core.md](pcl-parser-core.md),
   [direct-control-codes.md](direct-control-codes.md), and
   [font-context-metrics.md](font-context-metrics.md).

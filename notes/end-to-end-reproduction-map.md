@@ -72,6 +72,46 @@ strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
+## Current Residual Edge Index
+
+Use this index before opening a new trace window. The supported stream
+families below already have checked-in parser, state, page-object, bridge, and
+render documentation; new work should start from one of these exact residual
+edges or from a byte stream that changes a named field in the family sections.
+
+- Pixel-affecting resource data:
+  `Boundary: Secondary Segment-57 Source` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) is the only current
+  documented byte-to-bitmap edge whose rows depend on unknown external
+  firmware-address data. The ROM path is traced through transparent payload
+  reader `0x12452`, printable/source object production, compact segmented
+  objects, bridge `0x1ed84` / `0x1edc6`, and compact renderer
+  `0x1f354 -> 0x1f1f0`. The remaining input is resource-window data for
+  firmware range `0x0c0000..0x0c0321` after verified bytes
+  `0x0bfe22..0x0bffff`.
+- Host physical interface:
+  `0xa904..0xab8a` is documented as the normalized byte-source contract for
+  parser reproduction. Remaining work is physical bus/MMIO naming for host
+  modes, not a parser or command-dispatch gap, unless a new trace changes the
+  normalized `D7` byte sequence delivered to `0xda9a`.
+- Formatter/DC physical timing:
+  `0x0f84..0x1282`, `0x1cf8..0x1ea8`, and `0x1eb2a..0x1ed84` are documented
+  as ROM-visible wait-object, copy-window, active-source, and band-scheduler
+  state machines. Remaining work is mapping external events and connector
+  signals to those observed state changes, not deriving pixels from page
+  objects.
+- ROM-local command variants:
+  new parser work should begin only when a byte stream changes a documented
+  field or branch boundary: selected font/context fields, transparent/display
+  filtering, downloaded-glyph install state, macro replay frame state, raster
+  gate/object fields, rectangle clipping/allocation, publication roots,
+  bridge roots, render dispatch, or helper row construction.
+- Checked-in documentation requirement:
+  generated reports and fixtures can support the items above, but completion
+  for any new edge means updating the relevant checked-in note with writers,
+  readers/consumers, field classification, output effect, evidence, and exact
+  unresolved boundary.
+
 ## Supported Stream Entry Points
 
 Use this index when starting from a concrete byte stream. Each entry points to

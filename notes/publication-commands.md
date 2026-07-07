@@ -121,8 +121,8 @@ Derived/cache fields:
 
 - `0x783a20`, `0x783a22`, and `0x783a28`: render-band outputs produced by
   `0x1ef86` after `0x1ed84` / `0x1edc6` bridge the published record.
-- Row SHA-256 values in selector and publication fixtures are output evidence,
-  not firmware state.
+- Row SHA-256 values in selector and publication fixtures are check artifacts,
+  not firmware state and not external printer-output evidence.
 - Page-size/orientation active extents, text-bottom values, and top offsets
   are derived from command state and page-geometry tables.
 
@@ -130,7 +130,7 @@ Parser scratch:
 
 - Host-fetched publication streams drain entirely from the modeled `0xa904`
   ring source and leave an empty ring.
-- `0x11774` parser traces prove the command handlers before publication; the
+- `0x11774` parser traces record the command handlers before publication; the
   parser records themselves are temporary inputs to those handlers.
 
 Firmware bookkeeping:
@@ -176,10 +176,70 @@ The canonical parser-to-publication streams are:
 
 Fixtures `publication streams tie parser handlers to page-record publication
 boundary` and `host-fetched publication streams reach parser and published
-rows` prove these handlers from modeled byte streams. Fixtures `0x11774 parser
-path routes mixed publication streams` and `0x11774 parser path routes
-geometry publication streams` pin the parser table route for the same command
-families.
+rows` exercise these handlers from modeled byte streams. Fixtures
+`0x11774 parser path routes mixed publication streams` and `0x11774 parser path
+routes geometry publication streams` record the parser table route for the
+same command families.
+
+## Publication Helper At 0xff1e
+
+`0xff1e` is the shared current-root publication boundary:
+
+- `0xff26..0xff40`: return after clearing `0x78297a` if there is no current
+  page root or if current root byte `+4` is not `1`.
+- `0xff40..0xffb0`: if page state byte `0x782a92` is `1`, root word `+0x14`
+  bit `0` is clear, and macro/data-chain state at `0x782d7a` is nonempty,
+  `0xff1e` calls `0xe0a4`, sets `0x782a92 = 2`, starts a data-chain frame
+  through `0xe4f4`, runs parser loop `0x11774`, and ensures a fresh root
+  through `0x10084` before continuing publication.
+- `0xffb0..0xffcc`: select current root `A5`, clear root-adjacent bytes
+  `0x78297e`, `0x782c72`, and `0x782c73`, clear root word `+0x18`, and copy
+  root word `+0x16` to `+0x1a`.
+- `0xffd2..0xfffe`: if pending byte `0x782997` is `1`, set root byte
+  `+0x0a.0`, clear `0x780e99`, and clear `0x782997`.
+- `0x10000..0x1001e`: if `0x780e99` is `1`, set root byte `+0x08 = 1`.
+- `0x10020..0x1003e`: if pending paper/layout byte `0x782998` is `1`, set
+  root byte `+0x0a.1` and clear `0x782998`.
+- `0x10044..0x1005a`: copy environment byte `0x782da6` to root byte `+0x07`
+  and copy count word `0x782da4` to root word `+0x0c`.
+- `0x10060..0x10080`: mark root byte `+0x04 = 2`, publish root next pointer
+  through `0x780ea6`, set publication flag `0x782996 = 1`, then branch to
+  `0xffa2` to clear current root pointer `0x78297a`.
+
+The helper does not construct pixels directly. It freezes the current page-root
+record so the `0x1ed84` / `0x1edc6` bridge can later copy buckets, rule lists,
+fixed lists, and context slots into a render record.
+
+## Command Handler Boundaries
+
+The publication-command handlers call the shared helper before mutating state
+that belongs to the next page or environment:
+
+- Reset `0xcc52..0xcc6e` calls `0xcc70`; `0xcc70..0xcc98` clears
+  alternate/data mode when allowed, flushes pending text through `0xf34a`, calls
+  `0xff1e`, and services status through `0x9ac2` before the broader reset
+  rebuild continues.
+- FF `0xf0f0..0xf122` optionally applies CR-style horizontal reset through
+  `0xf06e` when line-termination byte `0x78318f.5` is set, flushes pending
+  text through `0xf34a`, ensures a root through `0x10084`, calls `0xf124`, and
+  sets pending byte `0x782a6d = 0xff`. Helper `0xf124..0xf172` calls `0xff1e`
+  before computing the next top-of-form cursor position.
+- Page size `0xfc74..0xfe52` rewinds the six-byte parser record, takes the
+  absolute parameter, publishes through `0xf34a` / `0xff1e` on the explicit
+  change path, maps accepted page-size selectors to page code `D5`, then
+  rewrites page geometry and VFC-derived limits for the next page.
+- Orientation `0x10220..0x103e6` rewinds the parser record, rejects parameters
+  `>= 2` and unchanged orientation, publishes through `0xf34a` / `0xff1e`, then
+  writes `0x782da3` and rebuilds orientation-dependent geometry, VMI/HMI, font
+  context, and VFC tables.
+- Paper source `0xef62..0xf02a` rewinds the parser record, flushes and
+  publishes through `0xf34a` / `0xff1e`, maps selector values through the ROM
+  table at `0xef3a`, writes canonical paper-source byte `0x782da6`, and sets
+  pending publication byte `0x782998 = 1`.
+- Copies `0xeef0..0xef38` rewinds the parser record, takes the absolute
+  parameter, clamps values above `99` to `99`, ignores zero, and writes
+  `0x782da4`. It does not publish by itself; the following FF publication
+  copies that word into root `+0x0c` at `0x10052`.
 
 ## Writers
 
@@ -215,15 +275,21 @@ families.
 
 ## Output Effect
 
-All six covered publication streams render the same compact Line Printer `!`
-rows from the pre-command printable byte. Fixture `published page records feed
-0x1ed84 and 0x1ef6a render entry` asserts the full row set for reset, FF,
-page-size, orientation, paper-source, and copies. The addressed fixtures
-`addressed printable reset publishes rendered page record`, `addressed
-printable FF publishes rendered page record`, `addressed page geometry
-publications render page records`, and `addressed paper-source and copies
-publications render page records` prove those rows after materialized
-`0x1387c`/`0x1381c` storage and `0xff1e` publication.
+All six covered publication streams publish the compact Line Printer `!` object
+queued before the publication command. The ROM path is:
+
+```text
+0xd04a -> 0x1387c/0x1381c page-root storage
+       -> 0xff1e published root
+       -> 0x1ed84/0x1edc6 render-record bridge
+       -> 0x1ef6a compact bucket dispatch
+       -> 0x1effe text/compact render helper
+```
+
+The named byte-stream and addressed examples exercise that path for reset, FF,
+page-size, orientation, paper-source, and copies. Their row digests are checks
+of the documented ROM-derived row construction, not comparisons to external
+printer output.
 
 The mixed page-record fixtures separate command side effects from visible
 output. Reset queues `!` through `0x1387c` before `0xcc52` clears or rebuilds
@@ -249,14 +315,14 @@ The command-specific side effects are pinned at the same boundary:
 - `! ESC &l2X FF` stores `0x782da4 = 2` at `0xeef0`; the following FF
   publication through `0xf0f0` / `0xff1e` writes pool-header word
   `+0x0c = 2`. The addressed variant uses stream chunk `0x00d0d000`.
-- The synthetic nonzero `0xff1e` header fixture proves non-default
-  status/environment/root header fields can change without changing the
-  compact bucket root used by these row fixtures.
+- The synthetic nonzero `0xff1e` header example records that non-default
+  status/environment/root header fields can change without changing the compact
+  bucket root consumed by the render bridge.
 
-The missing-root reset fixture proves the opposite output boundary:
+The missing-root reset example records the opposite output boundary:
 `host-fetched ESC E clears missing page root without publication` reaches
-handler `0xcc52`, clears the missing current-root state, and does not create a
-published page record.
+handler `0xcc52`; `0xff1e` takes the `0xff26..0xff2c` no-root exit, clears the
+current-root state at `0xffa2`, and does not create a published page record.
 
 ## Reproduction Contract
 
@@ -276,14 +342,18 @@ A byte-stream renderer must preserve:
 - `0xff1e` pool-header defaults, publication flag, and current-root clearing;
 - `0x1ed84` / `0x1edc6` bridge preservation of compact bucket and context
   slot state;
-- the final rendered compact rows for reset, FF, page-size, orientation,
-  paper-source, and copies.
+- ROM-derived compact row construction through the same render helpers for
+  reset, FF, page-size, orientation, paper-source, and copies.
 
 ## Confidence
 
 High for parser handler order, host-byte draining, page-record storage,
-published pool headers, command side effects, render bridge fields, render
-entry call order, and final rows because each is fixture-pinned.
+published pool headers, command side effects, render bridge fields, and render
+entry call order because the claims are backed by handler ranges
+`0xcc52..0xcc98`, `0xf0f0..0xf172`, `0xfc74..0xfe52`,
+`0x10220..0x103e6`, `0xef62..0xf02a`, `0xeef0..0xef38`, publication helper
+`0xff1e..0x10080`, bridge helpers `0x1ed84` / `0x1edc6`, and the named
+byte-stream examples.
 
 Medium only for byte-stream variants that create a new publication-side field,
 bucket shape, bridge state, or rendered row outside the six command streams

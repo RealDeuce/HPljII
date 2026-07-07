@@ -716,6 +716,151 @@ Evidence:
   `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`, and
   `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
 
+## Minimal Rectangle Rule Walkthrough
+
+This is the smallest top-level rectangle/rule spine. It covers a page object
+that is not stored in the compact/raster bucket array: the producer writes a
+rule-list object under page-root `+0x24`, the bridge copies it to render
+`+0x1c`, and the renderer dispatches it through `0x1f446`.
+
+Input stream:
+
+```text
+ESC *c12a5b0P
+```
+
+Input bytes:
+
+```text
+1b 2a 63 31 32 61 35 62 30 50
+```
+
+Parser and command dispatch:
+
+- Host bytes are normalized by `0xa904`, pass through parser wrapper
+  `0xda9a`, and enter parser loop `0x11774`.
+- The parser walks modes `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0`. Prefix setup
+  handlers `0x11eb6`, `0x11ec8`, and `0x11eda` keep the `ESC *c` family
+  active while chained parameters are parsed.
+- `ESC *c12a` produces a six-byte command record consumed by handler
+  `0x10e68`.
+- `5b` stays in the same `*c` family and calls handler `0x10e22`.
+- `0P` terminates the family and calls fill handler `0x10898`.
+
+Rectangle state and rule source:
+
+- `0x10e68` rewinds command-record cursor `0x78299e` and writes dot width
+  `12` to rectangle width field `0x78316a`.
+- `0x10e22` rewinds the next command record and writes dot height `5` to
+  rectangle height field `0x783166`.
+- `0x10898` rewinds the final command record and maps fill parameter `0` to
+  selector `7`, the solid black rule selector.
+- `0x10898` calls `0x10b80` when width and height are nonzero. `0x10b80`
+  consumes current cursor fields `0x782c8a/0x782c8e`, orientation byte
+  `0x782da3`, page extents `0x782db8/0x782db6`, and pending
+  width/height/fill state.
+- `0x10b80` clips or rejects the rectangle, ensures a current page root
+  through `0x10084`, and writes source record `0x782a88`. For this primary
+  stream the source record represents x `10`, y `20`, width `12`, height `5`,
+  and selector `7`.
+
+Rule-list object construction:
+
+- `0x13386` consumes source record `0x782a88` and derives rule bucket/key
+  fields through `0x134d6`.
+- `0x133aa` allocates a 14-byte rule object through `0x1381c` and inserts it
+  in ascending object byte `+0x04` order under current page-root list `+0x24`.
+- The primary object before bridge is:
+
+```text
+00 00 00 00 01 07 4a 00 00 0c 00 05 00 00
+```
+
+Object fields:
+
+- `+0x00`: next pointer `0`.
+- `+0x04`: bucket byte `1`.
+- `+0x05`: fill selector `7`.
+- `+0x06`: packed key `0x4a00`.
+- `+0x08`: width `12`.
+- `+0x0a`: height `5`.
+- `+0x0c`: render continuation height, still `0` before bridge.
+
+Publication, bridge, and render:
+
+- The rule object remains pending under current page-root list `+0x24` until
+  publication.
+- `0xff1e` publishes the page root. `0x1ed84` seeds the active render record
+  from selected source `0x780eae`.
+- `0x1edc6` copies source root `+0x24` to render-record `+0x1c`. During that
+  copy it ORs object byte `+0x05` with `0x10` and copies height `+0x0a` to
+  continuation word `+0x0c`.
+- The bridged object is:
+
+```text
+00 00 00 00 01 17 4a 00 00 0c 00 05 00 05
+```
+
+- `0x1eba4` calls `0x1ef6a` for an active band. `0x1ef6a` calls `0x1ef86`,
+  then bucket-chain dispatcher `0x1efc2`, then rule-list dispatcher
+  `0x1f446`, then fixed-list dispatcher `0x1f756`.
+- `0x1f446` walks render-record rule list `+0x1c`. The bridged selector byte
+  `0x17` has low nibble `7`, so `0x1f446` dispatches to solid helper
+  `0x1f596`.
+- `0x1f596` decodes key `0x4a00` as x `10`, y `20`, width `12`, rows `5`,
+  and partial mask `0xfff0`. It writes the generated solid rule rows into the
+  active band buffer.
+
+State classification:
+
+- Canonical:
+  rectangle width `0x78316a`, rectangle height `0x783166`, area-fill id
+  `0x78316e`, cursor/page geometry fields consumed by `0x10b80`, source
+  record `0x782a88`, current page root `0x78297a`, rule-list root `+0x24`,
+  rule object bytes, published source record, and render-record rule list
+  `+0x1c`.
+- Derived/cache:
+  rule bucket/key fields `0x782a7c`, `0x782a7d`, and `0x782a7e`, horizontal
+  phase `0x782dc0`, bridged selector bit `0x10`, continuation word `+0x0c`,
+  render-band fields `0x783a20`, `0x783a22`, and `0x783a28`, and destination
+  phase/cache fields used by `0x1f596`.
+- Parser scratch:
+  parser mode byte, command-record cursor `0x78299e`, and the six-byte
+  command records consumed by `0x10e68`, `0x10e22`, and `0x10898`.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70/0x782a72/0x782a76`, page-root retry bit
+  `+0x15.0` for no-room retry, publication flag `0x782996`, pool cursors,
+  render-work pointer `0x783a18`, and scheduler progress fields.
+- Hardware/external:
+  the physical source that supplied the normalized `ESC *c12a5b0P` bytes to
+  `0xa904`, plus later formatter/DC timing events that allow publication and
+  active-band rendering. These do not change the ROM-local rule object or
+  `0x1f596` pixel construction.
+- Unknown:
+  no ROM-local selector-7 rule object, bridge, or solid-render dispatch edge
+  is unresolved for this path. Remaining rectangle work starts only when a
+  stream changes clipping output, allocation rollover, retry publication
+  fields, rule object bytes, bridge state, render dispatch, or row
+  construction.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Rectangle Rule` and `Worked Path: Rectangle Rule Selectors
+  And Clipping` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [rectangle-graphics.md](rectangle-graphics.md),
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  and `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.
+
 ## Current Residual Edge Index
 
 Use this index before opening a new trace window. The supported stream

@@ -167,6 +167,72 @@ The printable path then consumes this derived map:
 Thus a symbol-set command changes future glyph selection and row bytes. It
 does not mutate compact text objects already queued on a page.
 
+## Concrete Candidate Windows
+
+The requested word above is resolved against the firmware candidate lists,
+not against a flat font table. The checked-in resource notes now pin the
+verified built-in window that the symbol-set refresh consumes.
+
+`0x1a2e4 -> 0x1a616 -> 0x1a9be` scans the `IC32,IC15` resource image and builds the
+candidate pointer list at `0x782324`. For the verified built-ins, `0x1a9be` accepts 24
+`HEAD`-path records: 12 class-zero records and 12 class-one records in the low built-in
+resource window. The resulting candidate counters and cursors are documented in
+[resource-rom.md](resource-rom.md) and
+[built-in-resource-scan.md](built-in-resource-scan.md):
+
+- total accepted candidate count `0x78278e = 24`;
+- class-one low/range count `0x782792 = 12`, extension count
+  `0x782794 = 0`;
+- class-zero low/range count `0x78279a = 12`, extension count
+  `0x78279c = 0`;
+- cursor windows `0x7827a0 = 0x782324`, `0x7827a4 = 0x782354`,
+  `0x7827a8 = 0x782354`, `0x7827ac = 0x782354`,
+  `0x7827b0 = 0x782384`, and `0x7827b4 = 0x782384`.
+
+Refresh helper `0x1569c` then chooses the active window. With
+`0x782da3 == 0`, class-zero selection copies pointer/count
+`0x7827ac` / `0x782798` into `0x78287c` / `0x7827b8`, giving
+`0x782354` / `12` for the verified built-ins. With nonzero `0x782da3`,
+class-one selection copies `0x7827a0` / `0x782790`, giving
+`0x782324` / `12`. `0x156de` filters that active window by the requested,
+remembered, or fallback symbol word, clears rejected active bits, writes the
+retained count back to `0x7827b8`, and leaves selected candidate slot
+`0x7828a8` for the chooser path.
+
+The concrete primary parser streams `ESC (0N`, `ESC (10U`, and `ESC (11U`
+write requested words `0x000e`, `0x0155`, and `0x0175` at `0x782ef4`.
+Over the verified class-zero window, `0x156de` keeps survivor record starts:
+
+- `0x000cb8`, `0x00ac1c`, `0x014f5c` for `0N`;
+- `0x000418`, `0x00a37c`, `0x0146b4` for `10U`;
+- `0x000868`, `0x00a7cc`, `0x014b08` for `11U`.
+
+The chooser chain `0x14398` / `0x13c06` selects records `0x000cb8`,
+`0x000418`, and `0x000868` for those primary streams. `0x144d2` writes the
+primary current-font context, and `0x14c64` rebuilds primary map `0x782f32`
+through the selected-symbol-not-Roman-8 path. These selections are distinct
+built-in resource records; they are not Roman-8 record `0x00004c` plus a
+`0x14f16` patch.
+
+The checked-in visible-output fixture composes the same selection with later
+font-selection and printable bytes. Primary streams
+`ESC (0N ESC (s0p10h12v0s0b3T!!`,
+`ESC (10U ESC (s0p10h12v0s0b3T!!`, and
+`ESC (11U ESC (s0p10h12v0s0b3T!!` select contexts `0xc0080cb8`,
+`0xc4080418`, and `0xc4080868`, then queue Courier compact entries from the
+selected context. Secondary streams `ESC )0N`, `ESC )10U`, and `ESC )11U`
+follow the same parser formula through `0x782f04`, select class-one contexts
+`0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`, cross SO handler `0xc6b8`,
+and queue Line Printer compact entries from page-root context slot `1`.
+
+That closes this semantic edge for the verified built-in resource window:
+host symbol-set bytes produce canonical requested words, the candidate-window
+scan supplies concrete selectable records, refresh selects current-font
+contexts and derived maps, and later printable bytes consume those maps and
+contexts. Cartridge or other external resource windows remain bounded by the
+same `0x1a9be`, `0x1569c`, `0x156de`, `0x14398`, and `0x14c64` addresses, but
+their record contents are not present in the dumped built-in ROM image.
+
 ## Field Groups
 
 Canonical state:
@@ -187,6 +253,10 @@ Derived/cache state:
   by `0x14c64`.
 - `0x783148` / `0x783152`: selected-font snapshot/cache records used by map
   reuse checks.
+- `0x78278e`, `0x782790..0x78279e`, and `0x7827a0..0x7827b4`: candidate-list
+  count/cursor state derived by the resource scanner before selection.
+- `0x78287c` / `0x7827b8`: active candidate-window pointer/count derived by
+  `0x1569c` and narrowed by `0x156de`.
 
 Parser scratch:
 
@@ -206,8 +276,11 @@ Unknown:
 
 - no parser-to-symbol-word middle edge remains for normal `ESC (` / `ESC )`,
   ordinary finals, final `X`, or final `@`;
-- remaining uncertainty is limited to candidate-window/resource-data variants
-  that change `0x13eb8`, `0x156de`, `0x17708`, or `0x14c64` outcomes.
+- the verified built-in candidate-window path is pinned for primary and
+  secondary `0N`, `10U`, `11U`, and fallback cases named above;
+- remaining uncertainty is limited to absent cartridge/external resource data
+  or untraced variants that change `0x13eb8`, `0x156de`, `0x17708`, or
+  `0x14c64` outcomes.
 
 ## Writers, Readers, And Output Effect
 
@@ -219,12 +292,17 @@ Writers:
   the provisional `X` symbol word.
 - `0x1be22 -> 0x1bec8` handles final-`@` table/default-font variants.
 - `0x156de` writes active symbol words `0x783144` / `0x783146`.
+- `0x1a9be` writes the candidate pointer-list count/cursor state consumed by
+  symbol refresh over built-in resources.
+- `0x1569c` writes the active candidate-window pointer/count.
 - `0x144d2` writes current-font context records.
 - `0x14c64` rebuilds maps `0x782f32` / `0x783032`.
 
 Readers and consumers:
 
 - `0xc580` consumes the dirty flags and parser slot after `0x120be`.
+- `0x1569c` consumes candidate-list cursors and counts to select a class
+  window.
 - `0x156de` consumes requested/remembered/fallback words.
 - `0x14f16` consumes active words while patching maps.
 - [symbol-map-patching.md](symbol-map-patching.md) documents the patcher

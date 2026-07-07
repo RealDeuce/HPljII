@@ -1945,8 +1945,10 @@ VMI state before object queueing, then cross the same `0x1387c`,
 
 High for the command-family mapping, field roles, conversion effects,
 page-record compact coordinates, and bridge/render-entry effects because
-they are covered by generated disassembly reports plus executable
-fixtures that start at `0xa904` and reach rendered rows. Medium for the
+they are covered by generated disassembly reports plus executable fixtures
+that start at `0xa904` and exercise the documented page-record/render-helper
+path. The derived rows are consequences of the traced ROM helpers, not an
+external pixel oracle. Medium for the
 exact names of pending-text latches and every internal write between
 `0xd04a` and `0x12f2e`, because several page-object fixtures still use
 modeled source/object structures rather than parser-produced page/control
@@ -2931,8 +2933,8 @@ object shapes or visible rows.
   the primary high-bit mask wrapper, either high-character flag preserving
   a high byte, and selected secondary slot masking without the primary
   wrapper. Remaining risk is broader high-byte values that change the
-  normalization result, source-object fields, selected map, or rendered rows,
-  not these specific normalization outcomes.
+  normalization result, source-object fields, selected map, or ROM-derived
+  row-construction inputs, not these specific normalization outcomes.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
   are fixture-backed for the paired result semantics of `0x782a6e`: ordinary
   continue, horizontal reject with queue suppression, horizontal wrap recovery
@@ -2951,8 +2953,8 @@ object shapes or visible rows.
   for flagged `0xd824` and unflagged `0xd3b2` short and segmented/tall
   objects. Remaining risk is selector-mode cross-products only when they
   change source fields, allocator topology, object bytes, helper dispatch,
-  fallback split, or rendered rows, not the paired failure-return semantics
-  for these object families.
+  fallback split, or ROM-derived row construction, not the paired
+  failure-return semantics for these object families.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers
@@ -2963,8 +2965,8 @@ object shapes or visible rows.
   `0x12714 landscape span inserts into nonempty fixed list`. The remaining
   unresolved edge here is selected-font state that changes the consumed
   metric fields, pending span fields, segment-list/fixed-list object bytes, or
-  rendered rows, not legal metric value behavior or the earlier paired
-  short-text source-handoff allocation failure path.
+  ROM-derived row-construction inputs, not legal metric value behavior or the
+  earlier paired short-text source-handoff allocation failure path.
 - `0x12f2e..0x1306e`: short, wide, segmented, and segmented-wide producer
   shapes are fixture-backed through both modeled object bytes and addressed
   `0x1381c` allocator storage. The addressed selector-mode matrix proves
@@ -2972,8 +2974,8 @@ object shapes or visible rows.
   share page-record storage, bridge/render dispatch through `0x1effe`, and
   stable row digests. Remaining risk is dense parser-produced allocator
   variants and broader legal font descriptor cross-products that change object
-  bytes, bridge state, dispatch, or rendered rows, not the selector-mode object
-  production contract.
+  bytes, bridge state, dispatch, or ROM-derived row construction, not the
+  selector-mode object production contract.
 
 ## Built-In Resource Scan And Candidate Windows
 
@@ -9500,14 +9502,14 @@ documented in `Macro Definition And Data-Chain Replay`.
   [rectangle-graphics.md](rectangle-graphics.md). Remaining ROM-local work is
   limited to byte streams that change clipping output, `0x1381c`
   rollover/allocation state, retry publication fields, rule object bytes,
-  bridge state, render dispatch, or rendered rows.
+  bridge state, render dispatch, or ROM-derived row construction.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
   `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
   fixtures through compact text, bridge normalization, `0x1f446`, and
   `0x1f4e0`. Remaining rectangle selector risk is cross-feature only when it
   changes cursor/geometry inputs, clipped source record, rule object bytes,
   bridge-normalized selector/key fields, helper dispatch, continuation
-  mutation, or ROM-derived rows; it is not the selector mapping or
+  mutation, or ROM-derived row construction; it is not the selector mapping or
   page-record render dispatch itself.
 
 ## Mixed Text/Rule/Raster Page Record
@@ -9517,8 +9519,9 @@ Status: anchored as a parser-to-render composition checkpoint. The byte stream
 host fetch through addressed page-record storage, `0xff1e` publication,
 `0x1ed84`/`0x1edc6` render-record bridge, and `0x1ef6a` render dispatch. The
 remaining boundary is byte streams that change parser-created text, rule, or
-raster objects, allocator transitions, bridge state, or rendered rows, not
-discovery of the page-record fields already asserted by fixtures.
+raster objects, allocator transitions, bridge state, or ROM-derived row
+construction, not discovery of the page-record fields already asserted by
+fixtures.
 
 Concept: page output is not a direct raster operation per command. The
 parser first builds typed page-record lists under the current page root,

@@ -7121,7 +7121,8 @@ State classification for this path:
 - Unknown:
   no unresolved ROM-local object layout or dispatch edge remains for this
   primary path. Remaining raster work is byte-stream variants that change gate
-  outcomes, dense-row splitting, bridge fields, or rendered rows.
+  outcomes, dense-row splitting, bridge fields, or ROM-derived row
+  construction.
 
 Evidence for the path is in [raster-graphics.md](raster-graphics.md),
 [page-record-storage.md](page-record-storage.md),
@@ -7137,10 +7138,11 @@ Evidence for the path is in [raster-graphics.md](raster-graphics.md),
 ## Worked Path: Raster Transfer Gates And Modes
 
 This path composes the raster command-family variants that change parser
-handoff, transfer acceptance, object bytes, or rendered rows. It builds on the
-primary `Raster Row` stream above and promotes the broader fixture-backed
-contract from [raster-graphics.md](raster-graphics.md) and `Raster Transfer
-Gate And Encoded Rows` in [semantic-state-model.md](semantic-state-model.md).
+handoff, transfer acceptance, object bytes, or ROM-derived row construction. It
+builds on the primary `Raster Row` stream above and promotes the broader
+fixture-backed contract from [raster-graphics.md](raster-graphics.md) and
+`Raster Transfer Gate And Encoded Rows` in
+[semantic-state-model.md](semantic-state-model.md).
 
 Parser and delayed-transfer contract:
 

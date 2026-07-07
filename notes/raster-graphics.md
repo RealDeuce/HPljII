@@ -587,12 +587,13 @@ Evidence and confidence:
   because the branch boundaries, field writes, and static large-payload
   walkthrough are direct disassembly. Pixel output is documented by tracing the
   ROM render helpers and deriving rows from the queued object bytes. There is
-  no external rendered-row image to compare against; parser-fed fixtures are
-  only branch/path drivers and state-shape checks. Broader dense-row
-  documentation remains open only where a byte stream changes accepted count or
-  drain result, allocator pre-state, split capacity, copy-stop behavior,
-  packed-key advance, bridge bucket root, or the `0x1f88e` mode-specific
-  row-construction path that the notes have not yet traced.
+  no external rendered-row image to compare against. Parser-fed fixtures are
+  only branch/path drivers and state-shape checks; they do not establish pixel
+  truth beyond the ROM helper behavior they exercise. Broader dense-row
+  documentation remains open only where static tracing has not yet tied a byte
+  stream to its accepted count or drain result, allocator pre-state, split
+  capacity, copy-stop behavior, packed-key advance, bridge bucket root, or the
+  `0x1f88e` mode-specific row-construction path.
 
 ## Render Dispatch
 

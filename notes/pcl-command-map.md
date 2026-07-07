@@ -445,15 +445,21 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xf34a -> 0xff1e` before changing the environment for later bytes.
   Page-size writes page code `0x782da2`, sets pending header byte
   `0x782997`, and rebuilds geometry; orientation writes `0x782da3` and
-  refreshes geometry, motion, and selected-font metrics; paper source writes
-  `0x782da6`, sets pending header byte `0x782998`, and may signal
-  `0x780e8f` / `0x780e26`. Copies `0xeef0` only writes `0x782da4`; a later
-  FF/reset/publication copies it into published root word `+0x0c`.
-  VMI/LPI/top/text/perforation commands update `0x783160`, `0x782dce`,
-  `0x782dd2`, and `0x783191`, which are later consumed by LF/FF, VFC jumps,
-  printable placement, and page-overflow helpers. FF and reset use direct
-  terminals `0xf0f0` and `0xcc52`. Owner notes:
-  [publication-commands.md](publication-commands.md) and
+  refreshes geometry, motion, and selected-font metrics. Page length
+  `0xf9e8` converts nonzero line counts through VMI `0x783160`, writes
+  vertical extent `0x782dba`, sets pending header byte `0x782997`, and
+  refreshes geometry/default text length for later printable placement;
+  selector `0P` flushes/publishes first, can mirror paper-source byte
+  `0x782da6` to `0x780e8f` / `0x780e26`, and restores page code from
+  `0x780e97` or fallback `2`. Paper source writes `0x782da6`, sets pending
+  header byte `0x782998`, and may signal `0x780e8f` / `0x780e26`. Copies
+  `0xeef0` only writes `0x782da4`; a later FF/reset/publication copies it
+  into published root word `+0x0c`. VMI/LPI/top/text/perforation commands
+  update `0x783160`, `0x782dce`, `0x782dd2`, and `0x783191`, which are later
+  consumed by LF/FF, VFC jumps, printable placement, and page-overflow helpers.
+  FF and reset use direct terminals `0xf0f0` and `0xcc52`. Owner notes:
+  [publication-commands.md](publication-commands.md),
+  [direct-control-codes.md](direct-control-codes.md), and
   [vertical-forms-control.md](vertical-forms-control.md).
 - Transparent/display payload readers:
   `ESC &p#X` enters modes `5 -> 9`, reaches `0x11f5a`, and restores delayed

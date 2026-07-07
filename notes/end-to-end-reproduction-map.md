@@ -1226,13 +1226,16 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   downloaded-font checkpoints in
   [semantic-state-model.md](semantic-state-model.md), `Downloaded Font Support`
   in [font-context-metrics.md](font-context-metrics.md), and worked paths
-  `Downloaded Glyph`, `Nonzero Resource Payload`, and `Fixed-Record Resource
-  Object` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  `Downloaded Glyph`, `Downloaded Glyph Rule/Raster Composition`,
+  `Nonzero Resource Payload`, and `Fixed-Record Resource Object` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Confidence is high for descriptor dispatch, current-record state,
   zero-drain success boundaries, resource allocation, candidate insertion,
   selected map consumption, short/wide/segmented downloaded glyph rendering,
-  FF publication, and mixed rule/raster/downloaded-glyph composition for the
-  cited fixtures.
+  FF publication, and mixed rule/raster/downloaded-glyph composition in the
+  cited ROM paths. The fixtures named above drive those parser branches and
+  check internal helper transcriptions; the semantic claims come from the
+  checked-in handler, field, page-object, bridge, and render-helper notes.
   Resolved middle boundaries include `0x15dc6 -> 0x16498 -> 0x15dcc ->
   0x12328`, `0x16c14..0x16c68 -> 0x12328`, fixed-record current and
   continuation routes through `0x16606` and `0x15c4c`, resource-header
@@ -1251,8 +1254,8 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   `0x7828de`, selected slot pointer `0x7828a8`, primary/secondary maps,
   page-root context slots, source-object fields, HMI/cursor advance, compact
   selector class, span metric fields, page-object fields, bridge roots, or
-  rendered rows. The remaining exact ROM-local helper failures are already
-  named as bounded edges: short compact
+  ROM-derived row construction. The remaining exact ROM-local helper failures
+  are already named as bounded edges: short compact
   fallback indices above `0x1fe76` valid index `128` where the unchecked table
   read enters code bytes at `0x2008e`, low wrapped width bytes that target
   non-row-copy helpers, segmented-wide span-31 fallback source offset

@@ -241,9 +241,10 @@ therefore not be only a local row-source detail: it would be visible to
 candidate discovery unless hardware or gate-array state hides the mirror from
 scanner reads. The separate `$8000.14` / `$8000.15` cartridge scan windows at
 `0x200000..0x5ffffe` do not explain the `0x0c0000` read. Closing the fallback
-rows therefore needs board/emulator evidence for that physical decode/window,
-live startup candidate counters after `0x1a2e4`, a direct bus read around
-`0x0c0000`, or gate-array address-map evidence.
+rows therefore needs static board/emulator/gate-array memory-map evidence for
+that physical decode/window. The ROM/disassembly evidence names the address
+range and the candidate continuations, but it cannot select the actual byte
+source at `0x0c0000`.
 
 Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains
 the other two local continuation hypotheses against the same startup scanner.

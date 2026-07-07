@@ -2604,8 +2604,8 @@ layers through `0x1ed84`/`0x1ef6a`.
 
 The mixed text/rule/raster/FF fixture is now the first complete byte-stream
 page-image contract through host fetch, parser handlers, addressed
-page-record storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and final
-row comparison. The suite has since been broadened with font
+page-record storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and
+ROM-derived row construction. The suite has since been broadened with font
 selection and downloaded-glyph page-image cases: primary/secondary
 font-selection streams render visible compact rows, downloaded-glyph FF
 publication renders through `0xff1e` / `0x1ed84` / `0x1ef6a`, and

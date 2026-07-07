@@ -488,8 +488,10 @@ by fixture `0x41a HEAD scanner would duplicate records under simple resource
 mirror`: a full `IC32,IC15` mirror at `0x0c0000` would make scanner `0x41a`
 walk a second `HEAD` chain and `48` typed records, and `0x1a2e4` sets
 candidate-scan bounds through `0x0ffffe`. The exact unresolved boundary is
-`0x0c0000..0x0c0321`: closing it requires board/emulator memory-map evidence,
-live startup candidate counters, or a direct bus read around `0x0c0000`.
+`0x0c0000..0x0c0321`: closing it requires a static board, emulator, or
+gate-array memory-map explanation. The ROM/disassembly evidence can name the
+candidate continuations and their consequences, but it cannot choose which
+byte source the formatter address bus sees at `0x0c0000`.
 Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains
 the other two continuation hypotheses at the same scanner boundary:
 code-pair-after-resource presents marker `0x00800000` at probe offset

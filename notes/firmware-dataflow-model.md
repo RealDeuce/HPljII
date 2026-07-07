@@ -3751,9 +3751,10 @@ The continuation policy is physical/resource-window state:
   dumping row-level logs on success.
 
 The exact unresolved boundary is therefore firmware range
-`0x0c0000..0x0c0321`. Closing it requires board or emulator memory-map
-evidence, a direct bus read around `0x0c0000`, or live startup candidate
-counters.
+`0x0c0000..0x0c0321`. Closing it requires static board, emulator, or gate-array
+memory-map evidence; ROM/disassembly evidence can document the candidate
+continuations and their consequences, but cannot select the physical byte
+source at `0x0c0000`.
 
 ## Worked Path: Downloaded Glyph
 

@@ -2253,9 +2253,8 @@ or fixed-space helper `0xd0f0`.
     remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
     produce different fallback row digests in the harness. A simple full mirror
     would also duplicate `HEAD` scanner input; code-pair and zero-fill
-    continuations would not. The proof targets are live startup candidate
-    counters, direct bus reads around `0x0c0000`, or emulator gate-array
-    decode. This is
+    continuations would not. Selecting the actual continuation policy requires
+    static board, emulator, or gate-array memory-map evidence; this is
     firmware-address-map state, not parser state: `data/rom_manifest.json`
     accounts for the installed ROMs as four 128K x 8 packages with a
     `0x40000`-byte `IC32,IC15` resource pair, while
@@ -2502,7 +2501,7 @@ for manual names for the filter bytes.
   `transparent secondary segment-57 continuation policies diverge after verified
   bytes` proves mirror, code-pair continuation, and zero-fill all produce the
   same current-band digest but different fallback row digests, so the remaining
-  requirement is board or emulator memory-map evidence for
+  requirement is static board, emulator, or gate-array memory-map evidence for
   `0x0c0000..0x0c0321`. Tool `tools/probe_resource_window.py --quiet` makes the
   local byte-side evidence reproducible outside `generated/`: it verifies the
   ignored ROM hashes, the `478`-byte suffix, the `802`-byte mirror/code-pair/
@@ -10068,8 +10067,8 @@ evidence; fixtures exercise the documented paths.
 
 - `0xff1e..0x1ed84`: final rows are ROM-derived for all six publication
   commands by tracing publication, bridge, and render helpers.
-  Physical-device comparison is optional correlation outside the ROM-internal
-  reproduction contract, not a required oracle.
+  Physical-device comparison is outside the current static ROM evidence
+  standard and is not an oracle for these rows.
 
 ## Bitmap Render Dispatch Contract
 

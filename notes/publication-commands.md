@@ -294,8 +294,8 @@ this ROM-internal publication contract.
 
 - `0xff1e..0x1ed84`: final rows are ROM-derived for all six publication
   commands by tracing publication, bridge, and render helpers.
-  Physical-device comparison is optional correlation outside the ROM-internal
-  reproduction contract, not a required oracle.
+  Physical-device comparison is outside the current static ROM evidence
+  standard and is not an oracle for these rows.
 - No parser-to-publication or publication-to-render ROM middle edge remains for
   the covered reset, FF, page-size, orientation, paper-source, and copies
   streams. Additional ROM work should target streams that change page-record

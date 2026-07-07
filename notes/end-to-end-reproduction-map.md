@@ -3632,8 +3632,9 @@ State classification:
   physical ROM/resource decode for firmware address `0x0c0000..0x0c0321`.
 - Unknown:
   the exact byte source for `0x0c0000..0x0c0321`. Closing this boundary requires
-  board or emulator memory-map evidence, a direct bus read around `0x0c0000`, or
-  startup candidate counters that identify the actual continuation policy.
+  static board, emulator, or gate-array memory-map evidence. ROM/disassembly
+  evidence can document the candidate continuation policies, but cannot select
+  the physical byte source.
 
 Evidence:
 
@@ -6869,12 +6870,12 @@ boundaries only when new evidence changes the documented state or pixel output.
    [transparent-print-data.md](transparent-print-data.md) and the Transparent
    Print Data section above. The unresolved input is physical/resource-window
    data for firmware range `0x0c0000..0x0c0321`, after verified resource-pair
-   suffix `0x0bfe22..0x0bffff`. Useful next evidence is board/emulator decode
-   for that range, startup candidate counters after `0x1a2e4`, direct bus reads
-   around `0x0c0000`, or a board-level memory-map explanation for which
-   continuation policy the ROM address bus actually sees. Do not re-trace `0x12452`,
-   transparent filtering, secondary buckets through `448`, or compact renderer
-   arithmetic unless new decode evidence contradicts the current boundary.
+   suffix `0x0bfe22..0x0bffff`. Useful next evidence is static
+   board/emulator/gate-array decode for that range, or a board-level memory-map
+   explanation for which continuation policy the ROM address bus actually sees.
+   Do not re-trace `0x12452`, transparent filtering, secondary buckets through
+   `448`, or compact renderer arithmetic unless new decode evidence contradicts
+   the current boundary.
 2. Reset/default provenance is no longer a ROM-local parser/page/render gap.
    [reset-default-environment.md](reset-default-environment.md) and
    `Default Environment Record Producers` cover the reset consumer, default

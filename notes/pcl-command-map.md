@@ -493,14 +493,23 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xc780`, `0xc840`, and `0xc7e0`; uppercase wrappers reach `0x12082`,
   `0x12096`, `0x12046`, `0x1206e`, `0x120aa`, and `0x1205a`. Font/download
   `W/w` reaches `0x11f96`, which schedules `0x15d0a` for count `0` and
-  `0x16c14` for nonzero counts. Successful downloaded-character payloads
-  install records through `0x16498`; following printable bytes consume the
-  selected glyph through `0xd04a` / `0x1393a` / `0x12f2e`, publish through
-  `0xff1e`, and render through `0x1ed84` / `0x1ef6a`. Row-count streams have
-  a documented selector boundary: low-byte rows `0x0001..0x00ff` are
-  reproducible through the compact helpers, while high-row short compact
-  siblings `0x0101..0x0103` stop at the unchecked `0x1fe76` fallback
-  jump-table read. Owner notes:
+  `0x16c14` for nonzero counts. Symbol/font designation writes requested
+  primary/secondary words `0x782ef4` / `0x782f04` and dirty flags
+  `0x782f2c` / `0x782f2d`; common refresh `0xc580` uses selected text slot
+  `0x782f06` to decide whether to call candidate refresh `0x13eb8` and
+  page-root context install `0xc428`. Candidate refresh resolves active symbol
+  words `0x783144` / `0x783146`, writes current-font contexts `0x782ee6` /
+  `0x782ef6`, and rebuilds character maps `0x782f32` / `0x783032`. `0xc428`
+  selects a current page-root context slot `0x78297e` under root `+0x2c`.
+  These commands create no text object by themselves; following printable
+  bytes consume the selected slot, map, and context through
+  `0xd04a -> 0x1393a -> 0x12f2e`, mark the page-root font slot live, publish
+  through `0xff1e`, and render through `0x1ed84` / `0x1edc6` / `0x1ef6a`.
+  Successful downloaded-character payloads install records through `0x16498`
+  for the same printable path. Row-count streams have a documented selector
+  boundary: low-byte rows `0x0001..0x00ff` are reproducible through the compact
+  helpers, while high-row short compact siblings `0x0101..0x0103` stop at the
+  unchecked `0x1fe76` fallback jump-table read. Owner notes:
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and

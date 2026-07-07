@@ -151,6 +151,150 @@ commands change this state until another command or reset. Current
 cursor position and cursor stack are not part of the modified print
 environment.
 
+## ROM Panel-Default Record Path
+
+The manual "user defaults" above are backed in ROM state by compact default
+records. This path matters for rendering because software reset consumes the
+canonical defaults produced here before rebuilding page geometry, copy count,
+paper-source defaults, and VMI.
+
+Entry and dispatch:
+
+- `0xa3ca` is the immediate panel/service byte source found in the ROM. It
+  reads `$8000.w & 0xff`, waits through `0x8bea(0x14)`, rereads the same
+  hardware word, and loops until the two samples match.
+- Service dispatcher `0x3dae` uses `0x7821aa` as the last-byte gate and reaches
+  the default-store family through table entries including `0xef -> 0x3ef8`,
+  `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`.
+- Menu commit handler `0x4922` checks service/menu latches `0x7821b2`,
+  `0x780e2d.3`, `0x7822dc`, and progress byte `0x782272`. When
+  `0x782272.4` is set it calls default updater `0x4fb0` directly. Otherwise
+  it stages the current selection through the handler table rooted at
+  `0x782274 + 0x12`, advances selector index `0x782278`, copies staged value
+  `0x782280 + 4*index` into `0x78227c`, and clears `0x782272` after index
+  `0x14`.
+- If no staged progress is active, `0x4922` waits for the debounced input byte
+  to remain equal to `0x7821aa` for timer delta `0x2a`, sets temporary flag
+  `0x7822d4`, calls `0x4162`, clears `0x7822d4` / `0x7822dc`, and sets
+  `0x780e6a = 1`.
+
+Default-record model:
+
+- Active default bank selector `0x7822d5` is scaled through
+  `0x332ee(selector, 3)`. The selected backing record base is
+  `0x780eda + 2 * scaled_selector`.
+- Loader `0x5e80` copies the selected record into runtime defaults. Record
+  byte `+0` becomes staged byte `0x782280` and canonical default
+  `0x78219d`. Record byte `+5` bit 2 becomes staged long `0x782284` and
+  canonical byte `0x7821a2`, with value `0x80` when set and `0` when clear.
+  Record word `+2` becomes staged line-spacing value `0x782290` and canonical
+  word `0x78219e`.
+- The same loader derives byte `0x7821a3 = 0x87 + (record byte +4 low
+  nibble)`, mirrors it to `0x780e97`, and sets `0x780e55 = 2`.
+- Active-record validator `0x56c2` scans word-2 entries at
+  `0x780eda + 2*D5` for `D5 = 2, 5, 8, ...` until it finds bit 15 set. It
+  writes the corresponding compact bank number to `0x7822d5`. If no active
+  record is found after `D5 > 8`, it calls `0x1284(0xe2, 0x21)`, which selects
+  string `0xb44b` (`67 SERVICE`) in the generated string table.
+
+Menu/default writers:
+
+- `0x4fb0` compares current candidate `0x78227c` against staged table entry
+  `0x782280 + 4*0x782278`. Selector `2` also compares `0x78219b`, selector
+  `3` compares `0x78219c`, and selector `4` converts the candidate through
+  `0xcf52` before comparing with `0x78219e`. On change it writes the staged
+  table entry, calls `0x56c2`, dispatches the selected update handler from
+  `0x782274 + 0x12`, and calls maintenance helper `0x571e`.
+- Update handler `0x5060` writes selected-record byte `+0`, mirrors it to
+  `0x78219d`, and marks dirty word `0x780eba + 2*scaled_selector`.
+- Update handler `0x50be` rewrites selected-record byte `+5` bit 2 from
+  `0x782284`, mirrors the bit as `0x7821a2 = 0x80` or `0`, and marks dirty
+  word `0x780ebe + 2*scaled_selector`.
+- Update handler `0x52ba` converts staged line-spacing value `0x782290`
+  through `0xcf52`, writes selected-record word `+2`, mirrors it to
+  `0x78219e`, and marks dirty word `0x780ebc + 2*scaled_selector`.
+
+Retained-record maintenance:
+
+- Startup helper `0x5a16` forces all 16 dirty/read-mask words
+  `0x780eba..0x780ed8` to `1`, calls read helper `0x97e4`, and then clears
+  all 16 flags. This bulk-load path has no explicit success return inspected
+  by its caller.
+- Commit helper `0x96c4` writes only dirty retained words. It sends command
+  byte `0x84`, then for each dirty index sends
+  `((index << 3) | 0x83) << 16 | word`, sends `0x81`, delays, sends `0x80`,
+  snapshots the written image, calls `0x97e4` for readback, restores the write
+  image, and compares dirty readback words against the pre-read snapshot.
+- Read helper `0x97e4` sends command byte `0x85`, then for each dirty/read-mask
+  index sends command class `0x86` and shifts `$8c01.1` into the corresponding
+  `0x780eda` word.
+- Serial helper `0x9a4a` changes the low three bits of shadow `0x7828f6` and
+  writes the result to `$a400`. Observed retained-storage callers use phase
+  pair `1 -> 3` for zero bits, `5 -> 7` for one bits, and `1 -> 0` for
+  deassert.
+- Maintenance helper `0x571e` clears dirty flags, copies three-word record
+  groups between active banks, advances `0x7822d5`, updates packed maintenance
+  counter `0x780ef0`, clears auxiliary flags `0x780eb8`, and retries
+  `0x96c4`. Exhausted commit retries call `0x9bee(0x780e36, 0x00000008)`,
+  which sets bit 3 of byte `0x780e39`; the service/status path consumes that
+  bit as the `68 SERVICE` condition.
+- Helper `0x5a62` clears all 16 backing records and marks all dirty flags when
+  the service byte is `0xde`. Otherwise it reloads records from ROM fallback
+  tables `0xba3e` and `0xba44`, then calls `0x571e`.
+
+Field classes:
+
+- Canonical state:
+  selected default bank `0x7822d5`, backing records `0x780eda..`, canonical
+  defaults `0x78219d`, `0x78219e`, and `0x7821a2`, and active/default bytes
+  `0x78219b`, `0x78219c`, `0x7821a0`, `0x7821a3`, and `0x780e97`.
+- Derived/cache state:
+  staged menu values `0x782280`, `0x782284`, `0x782288`, `0x78228c`,
+  `0x782290`, `0x782294`, and `0x782298`, plus maintenance counter
+  `0x780ef0`.
+- Parser/service scratch:
+  last panel byte `0x7821aa`, progress byte `0x782272`, handler-table pointer
+  `0x782274`, selector index `0x782278`, current candidate `0x78227c`, and
+  temporary commit flag `0x7822d4`.
+- Firmware bookkeeping:
+  dirty/read-mask flags `0x780eba..0x780ed8`, auxiliary flags
+  `0x780eb8`, status bytes `0x780e36..0x780e39`, serial shadow
+  `0x7828f6`, and menu/service latches `0x7821b2`, `0x7822dc`, and
+  `0x780e6a`.
+- Hardware/external:
+  service/panel byte source `$8000.w`, retained-storage output/control
+  register `$a400`, and retained-storage input/status register `$8c01`.
+- Unknown:
+  the ROM identifies the immediate registers and software protocol above, but
+  not the external panel protocol behind `$8000.w` or the physical retained
+  storage device and pins behind `$a400` / `$8c01`.
+
+Output effect:
+
+- These handlers do not draw pixels directly. Their output effect is default
+  state: `ESC E` reset consumes `0x78219d`, `0x78219e`, and `0x7821a2`
+  through `0xcda2`; paper-source handler `0xef62` can consume `0x7821a2` as a
+  default fallback; later page, text, and raster handlers consume the rebuilt
+  VMI, paper/default byte, copy count, and environment fields. For a renderer
+  that starts from canonical defaults, the backing records are provenance. For
+  a renderer that models panel reset, cold reset, or power-cycle behavior, the
+  backing records, dirty flags, retained-storage serial path, and fallback
+  tables become part of the initial page environment.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`
+- `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`
+- `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`
+- `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`
+- `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`
+- `generated/disasm/ic30_ic13_default_env_load_005e80.lst`
+- `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`
+- `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`
+- `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`
+- Reset consumers are documented in
+  [reset-default-environment.md](reset-default-environment.md).
+
 ## Reset Types
 
 ### Software Reset: `ESC E`

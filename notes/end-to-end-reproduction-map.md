@@ -444,6 +444,165 @@ Evidence:
   `generated/analysis/ic30_ic13_page_root_finalization.md`, and
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md`.
 
+## Minimal Render Dispatch Walkthrough
+
+This is the smallest top-level renderer spine after publication. It starts
+after parser commands and page-object producers have already materialized
+objects, `0xff1e` has published a page/control record, and `0x1ed84` /
+`0x1edc6` have copied page roots into a render work record. At this layer,
+parser records and payload cursors are no longer inputs; render roots and
+object bytes are.
+
+Representative mixed stream:
+
+```text
+! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF
+```
+
+The stream queues compact text, a selector-7 rectangle rule, and a mode-0
+encoded raster object under one page root. FF publishes that root, then the
+render path composes the bucket and rule roots in fixed ROM order.
+
+Render-record inputs:
+
+- `0xff1e` has already copied the current page root into a published
+  page/control record and cleared `0x78297a`.
+- Scheduler selection promotes a page/control pool record into active source
+  pointer `0x780eae`.
+- `0x1ed84` copies active source header fields into the selected render work
+  record and calls `0x1edc6`.
+- `0x1edc6` copies source bucket root `+0x1c` to render root `+0x18`,
+  source rule-list root `+0x24` to render root `+0x1c`, source fixed-list
+  root `+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to
+  render slots `+0x24..+0x60`.
+- Active render pointer `0x783a18` selects the render work record consumed by
+  `0x1ef6a`.
+
+Scheduler and render entry:
+
+- Active loop `0x1eba4..0x1ecd2` reads active and paired work-record fields
+  `+0x06`, `+0x0c`, `+0x0e`, `+0x10`, and `+0x16`.
+- If capacity is sufficient, it calls `0x1ef6a`, then increments active band
+  word `+0x10` and throttle word `+0x0e`.
+- If cleanup, throttle, or capacity-wait predicates fire, the loop updates
+  wait-object and scheduler state without calling `0x1ef6a`.
+- `0x1ef6a` uses fixed call order:
+
+```text
+0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756
+```
+
+- `0x1ef86` computes current-band caches.
+- `0x1efc2` walks bucket-chain objects from render root `+0x18`.
+- `0x1f446` walks rule-list objects from render root `+0x1c`.
+- `0x1f756` walks fixed-list objects from render root `+0x20`.
+
+Bucket, rule, and fixed dispatch:
+
+- Bucket object byte `+0x04` in range `0x00..0x3f` enters compact dispatch
+  `0x1effe`. Bits `0x10` and `0x20` select short compact `0x1f034`, wide
+  compact `0x1f0d2`, segmented compact `0x1f1f0`, or segmented-wide compact
+  `0x1f264` through table `0x1f024`.
+- Bucket object byte `+0x04` in range `0x40..0x7f` enters segment-list
+  renderer `0x1f812 -> 0x1f862`.
+- Bucket object byte `+0x04` in range `0x80..0xff` enters encoded-raster
+  renderer `0x1f88e`. Object byte `+0x05 & 3` selects literal mode `0`,
+  byte-expansion mode `1`, byte-pair expansion mode `2`, or cascaded
+  expansion mode `3`.
+- Rule-list dispatcher `0x1f446` sends selector `object[5] & 0x0f == 7` to
+  solid writer `0x1f596`; selectors `0..6` and `8..13` reach patterned writer
+  `0x1f4e0` through table `0x1f4a0`.
+- Fixed-list dispatcher `0x1f756` runs on five-band boundaries, consumes
+  render root `+0x20`, selects pattern longwords from table `0x308de`, and
+  writes rows through `0x1f7b0` / `0x1f626`.
+
+Destination and pixel writes:
+
+- Destination helper `0x1f626` computes destination pointer `A1` from packed
+  object coordinates, band state `0x783a20`, destination base `0x783a28`,
+  offset table `0x7839f8..`, stride `0x783a1c`, and fallback base
+  `0x7810b4`.
+- Compact glyph helpers resolve the render context copied at
+  `+0x24..+0x60`; object byte `+0x05` low nibble selects the slot, and
+  `0x1f008` writes active context cache `0x783a2c` before `0x1f354` resolves
+  glyph bitmap pointers, span width, and row count.
+- Compact row-copy tables `0x1f08e` and `0x1f1ac` select unrolled writers for
+  byte widths `1..16`; wide compact modes use `0x2f27c` for full 16-byte
+  chunks and the remainder table for trailing bytes.
+- Segment-list renderer `0x1f812 -> 0x1f862` consumes six-byte entries and
+  writes full-mask words plus a trailing mask from table `0x308f2`.
+- Encoded raster renderer `0x1f88e` expands object payload bytes `+0x0a..`
+  according to the selected mode table.
+- The shared pixel operation is direct destination storage in ROM call order.
+  The documented helpers do not apply an implicit OR/XOR/AND blend against
+  existing destination words. Later stores can overwrite earlier stores.
+
+Mixed-page composition:
+
+- In the representative mixed stream, the published bucket root contains the
+  compact text object and the mode-0 raster object. The published rule root
+  contains the selector-7 rectangle object.
+- `0x1efc2` dispatches the mode-0 raster object to `0x1f88e` and the compact
+  text object to `0x1effe`.
+- `0x1f446` then renders the selector-7 rule through solid helper `0x1f596`.
+- The visible result is order-dependent composition of queued objects, not
+  immediate drawing by `ESC *c`, `ESC *b`, or FF command bytes.
+- Rule and fixed-list helpers mutate continuation fields such as rule `+0x0c`
+  and fixed-list `+0x0a`, so later render bands resume the same object rather
+  than reparsing the host stream.
+
+State classification:
+
+- Canonical:
+  render roots `+0x18`, `+0x1c`, and `+0x20`, render context slots
+  `+0x24..+0x60`, bucket object fields `+0x04`, `+0x05`, `+0x06`, `+0x08`,
+  payload `+0x0a..`, rule-list fields `+0x05`, `+0x06`, `+0x08`, `+0x0a`,
+  `+0x0c`, and fixed-list fields `+0x04..+0x0d`.
+- Derived/cache:
+  active render pointer `0x783a18`, band split count `0x783a20`, band
+  remainder `0x783a22`, destination base `0x783a28`, stride `0x783a1c`,
+  offset table `0x7839f8..`, compact context cache `0x783a2c`, wide-mode
+  caches `0x783a40..0x783a48`, and fallback base `0x7810b4 + D2`.
+- Parser scratch:
+  none at this layer. Parser records, delayed payload state, and payload
+  source positions have already become page-record objects.
+- Firmware bookkeeping:
+  render continuation fields, object-chain next pointers, compact row-copy
+  phase `0x783a46`, active-band progress words, active flags
+  `0x780ea4/0x780ea5`, and wait-object state.
+- Hardware/external:
+  physical consumption of rendered band buffers by the formatter/DC engine is
+  outside this ROM-local pixel-composition contract.
+- Unknown:
+  no unresolved shared render-dispatch edge remains for the documented compact,
+  segment-list, encoded-raster, rule-list, or fixed-list object classes.
+  Remaining work starts from byte streams that create different object fields,
+  selected contexts, helper targets, continuation state, fallback splits, or
+  ROM-derived rows.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Published Record To Active Bands`, `Worked Path: Render
+  Dispatch And Pixel Composition`, and `Worked Path: Mixed Text/Rule/Raster
+  Page Record` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [active-render-scheduler.md](active-render-scheduler.md),
+  [page-record-storage.md](page-record-storage.md),
+  [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,
+  `generated/analysis/ic30_ic13_page_record_bridge.md`,
+  `generated/analysis/ic30_ic13_render_path_references.md`, and
+  `generated/analysis/ic30_ic13_render_dispatch_tables.md`.
+
 ## Minimal Font Selection Walkthrough
 
 This is the smallest top-level font-selection spine that changes later text

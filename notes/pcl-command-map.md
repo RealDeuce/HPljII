@@ -267,6 +267,46 @@ ROM parser state, command records, delayed-payload state, and page/render
 fields that the class writes, then derive rows from the ROM-defined object and
 render helper paths.
 
+State at this classification boundary:
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data flag `0x782c18`, six-byte command
+  records at `0x78299e..`, delayed-payload pending flag `0x782a1a`, delayed
+  handler pointer `0x782a1c`, saved delayed record `0x782a20..0x782a25`, and
+  the normalized byte returned by `0xa904` / `0xda9a` / `0xdace`.
+- Canonical page/render state:
+  none is implied by classification alone. It begins only when the selected
+  terminal handler writes cursor/layout/font state, queues a page object under
+  current root `0x78297a`, publishes through `0xff1e`, emits a host/status
+  response, or appends data through `0xe002` for later replay.
+- Parser scratch:
+  numeric and nonnumeric scratch cursors `0x782a3e` and `0x782a26`, scratch
+  buffers `0x782a42..` and `0x782a2a..`, matched-byte buffer
+  `0x783196..0x783199`, and command-record flag/final/value bytes while
+  `0xdb74` and `0xdaf0` are still combining a command family.
+- Firmware bookkeeping:
+  current parser callback pointer `0x78299a`, table ranges rooted at
+  `0x112a4` / `0x116f6`, logging/pushback helper `0x9ec0`, delayed restore
+  boundary `0x12218`, generic payload drains `0x1228a` / `0x12328`,
+  alternate append sink `0xe002`, and payload-control side-effect helper
+  `0xd99a`.
+- Hardware/external state:
+  outside this classification. Host source selection and direct hardware modes
+  have already been normalized by `0xa904`; formatter/DC timing only matters
+  here if it changes the admitted byte or returns `D7 = -1`.
+- Unknown:
+  no ROM-local unknown remains for assigning an admitted byte to one of these
+  classes. Residuals belong to the owner notes for the selected command family
+  or to external physical naming/timing when `0xa904` cannot admit a byte.
+
+Evidence for this classifier is the parser table extract
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md`, generated command map
+`generated/analysis/ic30_ic13_pcl_command_map.md`, focused listings
+`generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+`generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`, and checked-in parser
+semantics in [pcl-parser-core.md](pcl-parser-core.md).
+
 ## Table Coverage Note
 
 The generated flat table in

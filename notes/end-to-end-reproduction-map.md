@@ -1157,7 +1157,10 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
   read enters code bytes at `0x2008e`, low wrapped width bytes that target
   non-row-copy helpers, segmented-wide span-31 fallback source offset
   `+0xb50`, and downloaded-glyph payloads that exceed the `0x7fff` parser
-  count cap before renderer entry.
+  count cap before renderer entry. The cap boundary is arithmetic, not an
+  open renderer edge: segmented-wide spans start at `17`, so
+  `floor(0x7fff / 17) = 0x0787`; `0x0788*17` stops before `0x16498` can
+  install a glyph or any page object can reach `0x1f264`.
 
 ## Reproducible Byte-Stream Families
 

@@ -358,10 +358,13 @@ Expected remaining validation and boundary work:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
   `Boundary: Downloaded-Glyph Payload Count Cap` for oversized segmented-wide
   high-row streams that exceed the restored `ESC )s#W` count cap `0x7fff`.
-  Adjacent below-cap products render through `0x1f264`; oversized products
-  stop before installed glyph publication or render dispatch. Continue only
-  with payload shapes that change the restored count, drain status, next
-  parser handler, publication, or render entry.
+  The exact minimum-span limit is `floor(0x7fff / 17) = 0x0787`, so
+  `0x0788*17` stops before `0x16498`, page-object publication, or `0x1f264`
+  renderer entry. Adjacent below-cap products render through `0x1f264`;
+  oversized products stop before installed glyph publication or render
+  dispatch. Continue only with payload shapes that change parser budget,
+  restored count, drain status, next parser handler, or post-stop command
+  recovery.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

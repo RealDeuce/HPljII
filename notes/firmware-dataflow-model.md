@@ -6528,9 +6528,10 @@ Current top-level boundaries include:
   `Boundary: Downloaded-Glyph Payload Count Cap` documents oversized
   segmented-wide high-row streams that exceed the restored `ESC )s#W` count
   cap `0x7fff`. Adjacent below-cap row/span products reach `0x16498`,
-  selector `0x3003`, and renderer `0x1f264`; oversized products such as
-  `0x0788*17` stop at the recorded parser payload offset before installed
-  glyph publication or render dispatch.
+  selector `0x3003`, and renderer `0x1f264`. Because segmented-wide spans
+  start at `17`, `floor(0x7fff / 17) = 0x0787`; oversized products such as
+  `0x0788*17` require `0x7ff8` bytes and stop at the recorded parser payload
+  offset before installed glyph publication or render dispatch.
 - ROM-local variant boundaries rather than generic gaps:
   parser-fed raster streams that change the documented `0x132b6..0x13382`
   current-tail or capped-new-chunk object-chain derivation; dense page/object

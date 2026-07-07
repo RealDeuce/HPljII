@@ -301,6 +301,149 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
 
+## Minimal Publication Walkthrough
+
+This is the smallest top-level page-boundary spine. Publication commands do
+not create pixels from their own command bytes. They preserve already queued
+page objects, copy them into a published page/control record through
+`0xff1e`, clear or mutate current-page state, and let the scheduler/render
+bridge consume the published record later.
+
+FF stream:
+
+```text
+ESC &k2G ! FF
+```
+
+Reset stream:
+
+```text
+! ESC E
+```
+
+Parser and command dispatch:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
+  `0x11774`.
+- `ESC &k2G` reaches line-termination handler `0xedf8`, which writes
+  line-termination mode `0x78318f`.
+- Printable `!` reaches `0xd04a`, ensures current page root `0x78297a`
+  through `0x10084`, and queues a compact text object through
+  `0x12f2e -> 0x1387c`.
+- FF byte `0x0c` is a normal-table direct control and reaches handler
+  `0xf0f0`.
+- `ESC E` reaches software-reset handler `0xcc52`.
+
+Current page before publication:
+
+- The queued compact object is under current page-root bucket array `+0x1c`.
+- The context slot at page-root `+0x2c` is preserved as `0x440946b4` in the
+  documented FF/reset streams.
+- The compact bucket object published by the FF and reset streams is:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+Publication behavior:
+
+- FF handler `0xf0f0` applies line-termination side effects, flushes pending
+  text, finalizes the valid current root through `0xff1e`, marks page eject
+  with pending text byte `0xff`, and clears the current root.
+- Reset handler `0xcc52` calls `0xcc70`, which flushes pending text, calls
+  `0xff1e` when a current page root exists, waits through `0x9ac2`, clears
+  orientation byte `0x782da3`, rebuilds the default environment through
+  `0xcda2`, refreshes HMI through `0xcbd4`, and clears parser/data-chain
+  state through `0xe146`.
+- Missing-root `ESC E` is a no-publication boundary: it clears reset state
+  without inventing a page object or published record.
+- `0xff1e` writes page/control pool state byte `+4 = 2`, preserves the bucket
+  root and context slots, writes published pool pointer `0x780ea6`, sets
+  publication flag `0x782996`, and clears current root pointer `0x78297a`.
+
+Publication-command matrix:
+
+- `ESC E` publishes a valid current root before environment/parser rebuild;
+  no current root means no publication.
+- `FF` publishes the current root after line-termination side effects. Its
+  visible pixels are the objects queued before FF.
+- `ESC &l#A` page-size handler `0xfc74` publishes queued objects before
+  writing the new page code and geometry.
+- `ESC &l#O` orientation handler `0x10220` publishes queued objects before
+  changing orientation byte `0x782da3` and active extents.
+- `ESC &l#H` paper-source handler `0xef62` flushes and publishes queued text
+  before writing paper-source/output state.
+- `ESC &l#X` copies handler `0xeef0` stores copy count `0x782da4`; the later
+  FF publication copies that value into published pool-header word `+0x0c`.
+
+Bridge, scheduling, and pixels:
+
+- After `0xff1e`, parser work is finished for the page. The published record
+  becomes scheduler input.
+- Scheduler selection promotes a page/control pool record into active source
+  pointer `0x780eae`.
+- `0x1ed84` copies active published-record header fields into a render work
+  record and calls `0x1edc6`.
+- `0x1edc6` copies source bucket root `+0x1c` to render `+0x18`, rule-list
+  root `+0x24` to render `+0x1c`, fixed-list root `+0x28` to render `+0x20`,
+  and context slots `+0x2c..+0x68` to render `+0x24..+0x60`.
+- Active scheduler loop `0x1eba4..0x1ecd2` calls `0x1ef6a` when a band has
+  enough capacity to render.
+- `0x1ef6a` dispatches this stream's compact object through
+  `0x1ef86 -> 0x1efc2 -> 0x1effe`, using the context copied by `0x1edc6`.
+
+State classification:
+
+- Canonical:
+  current page root `0x78297a`, compact bucket object, page-root context slot,
+  published page/control record, published pool pointer `0x780ea6`, active
+  source pointer `0x780eae`, and render-record bucket/context roots.
+- Derived/cache:
+  compact bucket/key fields, stream allocator fields `0x782a70`,
+  `0x782a72`, and `0x782a76`, copied pool-header values, render-band caches
+  `0x783a20`, `0x783a22`, and `0x783a28`, and same-geometry scheduler fields.
+- Parser scratch:
+  parser modes and six-byte command records for `ESC &k2G`, `ESC E`,
+  publication commands, unmatched printable byte `0x21`, and direct control
+  byte `0x0c`.
+- Firmware bookkeeping:
+  line-termination mode `0x78318f`, publication flag `0x782996`, page-root
+  clear state, pending text byte `0xff`, reset rebuild state from `0xcc70` /
+  `0xcda2` / `0xe146`, copy count `0x782da4`, paper-source state
+  `0x782da6`, and scheduler progress words.
+- Hardware/external:
+  paper-source output/control bytes `0x780e8f` and `0x780e26`, plus physical
+  formatter/DC timing after the ROM-local published-record handoff.
+- Unknown:
+  no unresolved ROM-local parser-to-publication, publication-to-bridge, or
+  bridge-to-render middle edge remains for the documented FF/reset/page-control
+  streams. Remaining uncertainty is limited to variants that change pool-header
+  fields, source-record selection, bridge values, or ROM-derived rows.
+
+Evidence:
+
+- Checked-in explanations:
+  `Worked Path: Reset And Default Environment`, `Worked Path: FF
+  Publication`, `Worked Path: Publication Commands To Rendered Page Records`,
+  and `Worked Path: Published Record To Active Bands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [publication-commands.md](publication-commands.md),
+  [reset-default-environment.md](reset-default-environment.md),
+  [page-record-storage.md](page-record-storage.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+  `generated/analysis/ic30_ic13_page_root_finalization.md`, and
+  `generated/analysis/ic30_ic13_esc_e_reset_flow.md`.
+
 ## Minimal Font Selection Walkthrough
 
 This is the smallest top-level font-selection spine that changes later text

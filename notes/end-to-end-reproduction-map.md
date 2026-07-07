@@ -914,6 +914,113 @@ Evidence:
   `generated/analysis/ic30_ic13_pcl_command_map.md`, and
   `generated/analysis/ic30_ic13_strings.txt`.
 
+## Minimal External Service/Error Walkthrough
+
+This is the smallest top-level service/error preemption spine. It is not
+entered by a PCL command table row. It documents the ROM-visible
+`0x2e38 -> 0xba48` external-ready/service loop that can stop or defer parser
+work, publish status bits, display service messages, and then return through
+the scheduler/status aggregate.
+
+Entry and loop state:
+
+- `0xba48` is entered from the external-ready/service caller cluster. On
+  entry it writes `0x7822da`, clears `0x780e09`, displays ROM string
+  `0xb63b` (`01 EXT READY`) through wrapper `0x8c7a`, writes
+  `$a200 = 0xff00`, and stores the final `0x36e4` aggregate result into
+  `0x780e08`.
+- `0xbb36` sets handshake latch `0x782302 = 1` only when the ROM enters the
+  external-ready loop.
+- `0xbb84` consumes `$fffee00b.7` as the live-loop condition.
+- While the loop is live, helpers `0xbbb2`, `0xbc56`, `0xbc88`, `0xbcfe`,
+  `0xbd84`, `0xbdae`, `0xc092`, and `0xc0ae` maintain register shadows,
+  text/message buffering, deferred action, handshaking, and status-bit
+  publication.
+- Teardown runs through `0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`. The
+  scheduler return from `0x19dd2` is ignored at this caller; the final status
+  byte written to `0x780e08` comes from the following `0x36e4` aggregate.
+
+Service and error behavior:
+
+- `0xc340` seeds message buffer `0x782312` from `01 EXT READY`.
+- `0xbcfe` appends masked printable bytes from `$fffee011` into
+  `0x782312`; carriage return terminates the buffer and displays it through
+  `0x8c7a`.
+- `0xc0ae` publishes `$fffee005.7` and `$fffee005.6` as status bits
+  `0x780e2e.7` and `0x780e2e.6` through `0x9bee`.
+- `0xc1c6` dispatches service/error conditions from status fields including
+  `0x780e36 & 0x18`, `0x780e2e & 0xc0`, `0x780e39.3`, `0x780e39.4`,
+  `0x780e31.7`, `0x780e31.6`, and pending-message flag `0x782301`.
+- Retained-record commit/readback failure writes `0x780e39.3` through
+  `0x571e -> 0x9bee(0x780e36, 0x00000008)`. When `0xc1c6` later consumes that
+  bit, it reaches non-returning display helper `0x85c0`, which displays
+  `68 SERVICE` from string `0xb45c` through wrapper `0x8c90`.
+- Startup retained-record load has a separate service path:
+  `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284` reports `67 SERVICE` when no active
+  retained-record marker is found.
+
+Output effect:
+
+- This loop does not allocate page roots, queue page objects, publish
+  page/control records, or call render entry `0x1ef6a`.
+- It can affect exact reproduction by preempting parser work, changing
+  status/service latches, changing operator-panel messages, driving external
+  registers, or entering non-returning service display.
+- A byte-stream renderer that starts from canonical ready state and ignores
+  board service loops can treat this as outside the page-image path. A
+  board-level or protocol-faithful emulator must preserve the loop because it
+  changes when later host bytes are admitted and what status/service state is
+  visible.
+
+State classification:
+
+- Canonical status/output:
+  final aggregate byte `0x780e08`, status longword `0x780e36..0x780e39`,
+  `$a200`, `$fffee00d`, `$a801`, retained-record active marker state, and
+  dirty flags `0x780eba..0x780ed8`.
+- Derived/cache:
+  shadow byte `0x7822eb`, last sampled `$fffee00b` byte `0x7822ec`,
+  low-three-bit mirror `0x7828f9`, timestamp snapshots
+  `0x78230a/0x78230e`, and retained commit/readback buffers.
+- Parser/status scratch:
+  message count `0x782300`, pending-message flag `0x782301`, message buffer
+  `0x782312..0x782322`, last debounced `$8000.w` byte `0x7821aa`, and timer
+  baseline `0x7821ac`.
+- Firmware bookkeeping:
+  handshake latch `0x782302`, service-poll latch `0x7822fd`,
+  deferred-action latch `0x7822fe`, edge latch `0x7822ff`, sampled byte
+  `0x7822fa`, scratch bytes `0x7821e7..0x7821ef`, and scheduler/status
+  teardown state.
+- Hardware/external:
+  board-level identity of `$fffee00b`, `$fffee00d`, `$fffee00f`,
+  `$fffee011`, `$fffee013`, `$fffee005`, `$fffee003`, `$fffee001`, `$a200`,
+  `$a801`, and the physical retained-storage device.
+- Unknown:
+  no unresolved ROM-local page-object or render edge remains. Remaining
+  boundaries are the physical identity/timing of the external register family,
+  physical retained-storage failure conditions, and user-facing names for
+  sibling service bits not yet tied to strings.
+
+Evidence:
+
+- Checked-in explanations:
+  [external-ready-service.md](external-ready-service.md),
+  [errors-and-status.md](errors-and-status.md),
+  [io-interfaces.md](io-interfaces.md),
+  `Worked Path: External Ready Service Preemption` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `External Ready And Service Status Loop` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`,
+  `generated/disasm/ic30_ic13_external_service_io_00bcd8.lst`,
+  `generated/disasm/ic30_ic13_external_service_reset_00c06e.lst`,
+  `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`,
+  `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
+  `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`,
+  `generated/analysis/ic30_ic13_strings.txt`, and
+  `generated/analysis/ic30_ic13_long_reference_scan.md`.
+
 ## Minimal Direct-Control Walkthrough
 
 This is the smallest top-level control/cursor spine. The control bytes and

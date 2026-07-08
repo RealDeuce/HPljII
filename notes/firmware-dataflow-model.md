@@ -2312,8 +2312,13 @@ Font-selection command-to-output matrix:
   context.
 - SI/SO controls:
   `0xc68a` selects primary slot `0`, and `0xc6b8` selects secondary slot `1`.
-  They affect the next printable byte's map/context choice through
-  `0x782f06`; they do not alter compact objects already queued on the page.
+  Both set dirty-map byte `0x782f2d` before testing current selected slot
+  `0x782f06`. SI skips `0xc428` when the slot is already `0`; otherwise it
+  calls `0xc428(0)` and clears `0x782f06` only when `D7` is nonzero. SO skips
+  `0xc428` when the slot is already nonzero; otherwise it calls `0xc428(1)`
+  and writes `0x782f06 = 1` only when `D7` is nonzero. They affect the next
+  printable byte's map/context choice through `0x782f06`; they do not alter
+  compact objects already queued on the page.
 
 Printable and page-object effect:
 

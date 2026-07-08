@@ -4688,11 +4688,13 @@ selector mismatch only copies the remembered word and installs no context.
   `0xc428` writes selected page-root context slot `0x78297e` after a
   successful install/reuse.
 - SI handler `0xc68a` selects primary slot 0 before the primary printable
-  bytes are consumed, and in the live handoff fixture it performs the modeled
-  `0xc428(0)` install before changing `0x782f06` to `0`.
+  bytes are consumed. It sets dirty-map byte `0x782f2d`, skips `0xc428` when
+  `0x782f06` is already zero, and otherwise changes `0x782f06` to `0` only
+  after modeled `0xc428(0)` install returns nonzero.
 - SO handler `0xc6b8` selects secondary slot 1 before the secondary printable
-  bytes are consumed, and in the live handoff fixture it performs the modeled
-  `0xc428(1)` install before changing `0x782f06` to `1`.
+  bytes are consumed. It sets dirty-map byte `0x782f2d`, skips `0xc428` when
+  `0x782f06` is already nonzero, and otherwise changes `0x782f06` to `1`
+  only after modeled `0xc428(1)` install returns nonzero.
 - Printable `0xd04a` / `0x1393a` write the source object, and `0x12f2e` /
   `0x1387c` write the compact page-record object.
 

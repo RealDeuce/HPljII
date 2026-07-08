@@ -1297,14 +1297,16 @@ documented in the owner notes.
 - HT `0x09`, handler `0x00f1cc`: tab and horizontal cursor positioning.
 - BS `0x08`, handler `0x00f2a8`: backspace cursor behavior.
 - SO `0x0e`, handler `0x00c6b8`: selected text context switch to slot `1`;
-  calls `0xc428(1)` / `0xc4fc`, sets `0x782f06 = 1` when the secondary
-  context installs, and makes later printable bytes consume the secondary
-  map/context documented in
+  sets dirty-map byte `0x782f2d`, skips `0xc428` when `0x782f06` is already
+  nonzero, otherwise calls `0xc428(1)` / `0xc4fc`, sets `0x782f06 = 1` when
+  the secondary context installs, and makes later printable bytes consume the
+  secondary map/context documented in
   [font-context-metrics.md](font-context-metrics.md).
 - SI `0x0f`, handler `0x00c68a`: selected text context switch to slot `0`;
-  calls `0xc428(0)` / `0xc4fc`, clears `0x782f06` when the primary context
-  installs, and makes later printable bytes consume the primary map/context
-  documented in [font-context-metrics.md](font-context-metrics.md).
+  sets dirty-map byte `0x782f2d`, skips `0xc428` when `0x782f06` is already
+  zero, otherwise calls `0xc428(0)` / `0xc4fc`, clears `0x782f06` when the
+  primary context installs, and makes later printable bytes consume the
+  primary map/context documented in [font-context-metrics.md](font-context-metrics.md).
 - Control-Z prefix `0x1a`, handler `0x011ea4`, with terminals `0x1a 0x1a`
   and `0x1a X`: normal handlers `0x120d2` / `0x1219e` conditionally feed
   printable text through `0xd04a`, while alternate/data handlers `0x1210c` /

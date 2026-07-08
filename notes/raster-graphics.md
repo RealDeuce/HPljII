@@ -275,9 +275,11 @@ Setup behavior:
 
 Gate behavior:
 
-- If the row is beyond the page extent, drain the parsed byte count through
-  `0xdace` at `0x1065c..0x10698` and return before the `0x10084`
-  ensure-root call. It does not queue or advance the row.
+- If the row is beyond the page extent, `0x1065c..0x10698` drains only while
+  the remaining parsed byte count in `D5` is positive. `D5 <= 0` returns
+  immediately, and a `0xdace` `-1` return exits early. This path returns
+  before the `0x10084` ensure-root call, so it does not allocate a root, queue
+  an object, or advance the row.
 - If the row is in range and byte count is larger than limit `+0x10`, store the
   capped count in `+0x04`, store overflow in `+0x06`, and queue only the capped
   bytes.
@@ -285,9 +287,10 @@ Gate behavior:
   clear `+0x06`, and queue the row.
 - If the row is negative, this test occurs after the count stores and after
   `0x10084`: `0x106a4` ensures the root, `0x106ae` writes the row word, and
-  `0x106b2..0x106c8` drains the parsed byte count through `0xdace` without
-  calling `0x13070`. The later cursor-update path still advances the modeled
-  row from `-1` to `0`.
+  `0x106b6..0x106f6` drains while remaining count `D5` is positive, without
+  calling `0x13070`. A `0xdace` `-1` return exits before cursor update;
+  otherwise the later cursor-update path advances the modeled row from `-1`
+  to `0`.
 
 Fixtures `0x105d0-modeled raster transfer skip and cap gate`, `modeled raster
 command stream applies 0x105d0 byte-count cap`, `modeled raster command stream
@@ -322,6 +325,9 @@ Instruction-level transfer outline:
   `0x782db2` through helper `0x10510`.
 - `0x10634..0x10658`: add scale `+0x0e` through `0x10518` and compare against
   `(0x782db2 + 1) << 16`.
+- `0x1065c..0x10698`: for beyond-extent rows, drain positive remaining count
+  through `0xdace`; nonpositive count returns immediately, and `0xdace == -1`
+  returns early.
 - `0x10670..0x106a0`: store accepted count `+0x04` and overflow `+0x06`
   before the root allocation boundary.
 - `0x106a4..0x106cc`: ensure root, store row word `+0x02`, skip negative rows,
@@ -345,8 +351,8 @@ Register and memory handoff across the producer boundary:
   committed before any page-root mutation.
 - `0x106a4..0x106cc`: `0x10084` is called only after the beyond-extent gate.
   The row word stored at state `+0x02` is `D4 >> 16`; negative rows drain
-  payload through `0xdace` and skip `0x13070`; nonnegative rows pass `A4` as
-  the sole `0x13070` argument.
+  positive remaining payload through `0xdace` and skip `0x13070`; nonnegative
+  rows pass `A4` as the sole `0x13070` argument.
 - `0x10084..0x1010e`: an existing `0x78297a` root returns unchanged. A missing
   root optionally publishes/services through `0x9ac2`, allocates through
   `0x9a9a`, marks root byte `+0x04 = 1`, clears `0x782a70`, seeds

@@ -372,15 +372,18 @@ The transfer routine at `0x0105d0`:
 The executable harness now pins four `0x105d0` gate cases before the
 `0x13070` queue call: a row at the inclusive page extent still queues
 and renders before advancing to the next row, a row beyond the page
-extent drains the full parsed byte count without queueing, a negative
-row drains the full parsed byte count without queueing, and a byte count
-larger than raster field `+0x10` ensures the modeled page root through
-`0x10084`, stores the capped count in `+4` and the overflow count in
-`+6`, then queues only the capped bytes. The parser-restored `ESC *b4W`
-stream now also proves the off-page row-counter distinction:
-`row_y == page_extent` queues and advances to `page_extent + 1`,
-beyond-extent rows do not advance `row_y`, and a negative row drains the
-payload and advances `row_y` from `-1` to `0`.
+extent enters the positive-count `0xdace` drain loop without queueing, a
+negative row ensures the root and uses the same positive-count drain
+loop without queueing, and a byte count larger than raster field `+0x10`
+ensures the modeled page root through `0x10084`, stores the capped count
+in `+4` and the overflow count in `+6`, then queues only the capped
+bytes. At `0x1065c..0x10698` and `0x106b6..0x106f6`, nonpositive counts
+return without payload reads, and a `0xdace` `-1` return exits early. The
+parser-restored `ESC *b4W` stream now also proves the off-page
+row-counter distinction: `row_y == page_extent` queues and advances to
+`page_extent + 1`, beyond-extent rows do not advance `row_y`, and a
+negative row advances `row_y` from `-1` to `0` only after a non-`-1`
+drain result.
 
 ## Page Object Queues
 

@@ -7256,15 +7256,16 @@ Canonical raster fields:
 
 Transfer gate behavior at `0x105d0`:
 
-- Beyond-extent rows drain the parsed byte count through `0xdace` at
-  `0x1065c..0x10698`, return before `0x10084`, queue no object, and do not
-  advance the row.
+- Beyond-extent rows enter the `0x1065c..0x10698` drain loop. That loop calls
+  `0xdace` only while the remaining count in `D5` is positive; `D5 <= 0`
+  returns immediately, and a `0xdace` `-1` return exits early. The path still
+  returns before `0x10084`, queues no object, and does not advance the row.
 - In-range rows whose byte count exceeds limit `+0x10` store accepted count
   in `+0x04`, store overflow in `+0x06`, queue only the accepted bytes, and
   drain the remainder later.
 - Negative rows store the same accepted/overflow state, call `0x10084`, drain
-  the transfer through `0xdace`, skip `0x13070`, and advance from row `-1` to
-  row `0`.
+  only positive remaining count through `0xdace`, skip `0x13070`, and advance
+  from row `-1` to row `0` unless `0xdace` returns `-1`.
 - Rows that pass the gate call `0x13070` with the raster state pointer
   `A4 = 0x783170`; `0x13070` computes bucket/key fields and `0x13250`
   allocates encoded-span objects under root `+0x1c`.

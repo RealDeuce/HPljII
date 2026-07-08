@@ -8906,9 +8906,10 @@ page root for queued rows, and passes the state block to `0x13070` /
     object allocation and read after `0x138de` to decide whether another
     segment is needed or the remaining payload should be drained through
     `0x12328`.
-  - beyond-extent rows drain input and return before `0x10084`; negative rows
-    store accepted/overflow counts, ensure a root, drain input, and advance
-    without creating a raster object.
+  - beyond-extent rows drain only positive remaining input and return before
+    `0x10084`; negative rows store accepted/overflow counts, ensure a root,
+    drain only positive remaining input, and advance without creating a raster
+    object unless `0xdace` returns `-1`.
 - Unknown for this checkpoint:
   - no unresolved software-visible raster object, bridge, or render-dispatch
     field remains for the covered dense text/rule/raster stream. Additional
@@ -9015,11 +9016,12 @@ This is the concrete handoff now known inside the remaining
   fields. The command record is not held only in call registers:
   `0x12218` restores it into the parser-record buffer, then `0x105d0`
   rewinds `0x78299e` by six at `0x105e4..0x105ec` and reads record word
-  `+2` at `0x105f2`. Beyond-extent rows drain the full count without queueing
-  or row advance and return before `0x10084`; negative rows store the capped
-  accepted count and overflow, ensure a root, drain the full count without
-  queueing, and advance from `-1` to `0`; capped rows queue only the accepted
-  bytes.
+  `+2` at `0x105f2`. Beyond-extent rows enter the `0x1065c..0x10698`
+  positive-count drain loop without queueing or row advance and return before
+  `0x10084`; negative rows store the capped accepted count and overflow,
+  ensure a root, enter the `0x106b6..0x106f6` positive-count drain loop
+  without queueing, and advance from `-1` to `0` unless `0xdace` returns
+  `-1`; capped rows queue only the accepted bytes.
 - `0x138de` consumes queued payload through `0xa904` and locally maps control
   pair `1a 58` to copied byte `00`.
 - `0x1edc6` copies the queued bucket object into render-record bucket roots.

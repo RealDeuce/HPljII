@@ -694,6 +694,56 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`,
   `0xf36c perforation skip gates vertical overflow page eject`, and
   `vertical layout parser trace feeds page-record queue`.
+
+  Field grouping for the VFC subfamily is explicit. Canonical VFC table state
+  is `0x782dde..0x782edd`, a 128-word channel table where selector `n` maps to
+  mask `1 << (n - 1)`. Canonical VFC/layout inputs are VMI `0x783160`, top
+  offset `0x782dce`, current vertical cursor `0x782c8e`, horizontal cursor
+  `0x782c8a`, left margin `0x782dd6`, text-bottom cache `0x782dd2`, VFC limit
+  `0x782dc2`, and line-count caches `0x782ede`, `0x782edf`, and `0x782ee0`.
+  Parser scratch for table definition is the delayed `ESC &l#W` snapshot:
+  pending byte `0x782a1a`, saved handler `0x782a1c = 0x12cfe`, saved command
+  record `0x782a20..0x782a25`, and restored live record at `0x78299e`.
+  Firmware bookkeeping is modified-layout flag `0x782ee1`, payload drain
+  reader `0xdace`, default-table builder `0x12b96`, line-cache helper
+  `0xfe54`, x reset `0xf06e`, span flush `0xf34a`, page-eject helper
+  `0xf124`, and publication boundary `0xff1e`.
+
+  `ESC &l#W` is a delayed table-definition command. Handler
+  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe` restores the saved command
+  record, reads the absolute byte count, consumes payload bytes through
+  `0xdace`, writes accepted even-count payload bytes into
+  `0x782dde..0x782edd`, clears unused table words, derives `0x782dc2`, copies
+  it to `0x782dd2`, and clears `0x782ee1`. Count `0` takes the default-table
+  path through `0x12b96`; odd counts and counts beyond
+  `2 * (0x782ede + 1)` are drained without installing table bytes. The
+  lowercase `w...W` stream preserves the first pending delayed record until
+  restore, so the restored lowercase count controls payload consumption.
+
+  `ESC &l#V` consumes that state through `0x1280a`. The handler reads the
+  selector, VMI, current y, top offset, line-count caches, and channel table,
+  then either moves x/y on the current page or publishes the old page before a
+  fresh printable object is queued. Cursor-only paths include forward in-text
+  hits, before-top normalization, selector-zero target-equal exits, and
+  start-after-text recovery; publishing paths include selector-zero page eject,
+  wrap hit, wrap no-hit, and target-after-text recovery. The output effect is
+  therefore indirect but visible: following printable bytes consume the
+  committed cursor through `0xd04a -> 0x12f2e`, while publishing VFC branches
+  split pre-VFC and post-VFC text across `0xf124 -> 0xff1e` page roots.
+  Evidence is [vertical-forms-control.md](vertical-forms-control.md),
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`, fixtures
+  `0x12cfe ESC &l#W loads vertical forms control state`, `mixed VFC definition
+  stream consumes payload before printable page-record queue`, `mixed VFC
+  lowercase delayed record survives until uppercase W`, `mixed VFC channel
+  jump stream moves cursor before printable page-record queue`,
+  `mixed VFC selector-zero page-eject publishes old page before fresh
+  printable`, `mixed VFC wrap-hit publishes old page before fresh printable`,
+  `mixed VFC wrap-no-hit publishes old page and returns to top`, `mixed VFC
+  target-after-text recovers near top before fresh printable`, and
+  `0x12b96 default VFC table channel convention`. No ROM-local middle edge
+  remains for the documented VFC table-definition, default-table, forward
+  jump, recovery, or page-boundary paths; manual-facing names for
+  `0x782ede`, `0x782edf`, and `0x782ee0` remain inferred.
   FF and reset use direct terminals `0xf0f0` and `0xcc52`. Owner notes:
   [publication-commands.md](publication-commands.md),
   [direct-control-codes.md](direct-control-codes.md), and

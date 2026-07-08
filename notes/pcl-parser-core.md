@@ -719,23 +719,53 @@ Unresolved middle edges:
   font/raster payload interpretation, macro data-chain lifecycle, and final
   rendered output.
 
-## Reproduction Requirements
+## Reproduction Contract
 
-A byte-stream reproduction must preserve these parser contracts:
+For a supplied byte stream, this layer is reproduced when the same admitted
+bytes produce the same parser mode, six-byte records, handler calls, delayed
+payload restore events, and alternate/data appends that the ROM parser would
+produce. The required ROM-visible behavior is:
 
-- Feed parser bytes through `0xda9a`, not directly through `0xa904`.
-- Feed counted binary/text payload bytes through the consumer used by the ROM path,
-  usually `0xdace` for delayed payload consumers.
-- Preserve the six-byte command-record cursor at `0x78299e` and the rewind by six bytes
-  used by handlers and delayed payload setup.
-- Treat `0x782a42..0x782a3e` as scratch text; the canonical parsed numeric fields are
-  the words in the six-byte record.
-- Preserve `0x782999` mode transitions and the normal vs alternate table choice
-  controlled by `0x782c18`.
-- Preserve delayed payload state `0x782a1a`, `0x782a1c`, and saved record bytes
-  `0x782a20..0x782a25` across the command terminator that triggers `0x12218`.
-- Do not collapse command records and payload bytes into one parser event. The ROM
-  stores the command record first and consumes payload bytes later.
+- Parser syntax bytes enter through `0xda9a`, not directly through `0xa904`.
+  The wrapper makes `ESC` visible as one parser byte while reporting the
+  non-`?` lookahead byte through `0x9ec0`; it also swallows only the private
+  `ESC ? 0x11` sequence. Counted payload readers do not use this `ESC`
+  wrapper unless their documented command-family path says so.
+- The tokenizer stores syntax in six-byte records at `0x78299e`: flag byte,
+  final byte, signed integer word, and signed fractional word. Scratch digits
+  in `0x782a42..0x782a3e` are not canonical command state. Handlers consume
+  the record words, not the scratch text.
+- Cursor rewinds are semantic state. `0xdaf0`, `0x11f4c`, and `0x121cc`
+  can subtract six from `0x78299e` so a lowercase chain, terminal handler, or
+  delayed payload setup sees the intended record. A reproduction must not
+  collapse those records into one parsed event.
+- Parser mode `0x782999` selects the current normal table slice
+  `0x112a4` / `0x112a8` or alternate/data table slice
+  `0x116f6` / `0x116fa`, depending on `0x782c18`. Matched entries write the
+  next mode byte and optionally call the handler longword at entry `+2`.
+- The mode-zero printable fast path is table-external behavior. In normal
+  mode, printable bytes call `0xd04a`; in alternate/data mode they append
+  through `0xe002`. Matched blank C0 rows are different from unmatched bytes:
+  they take the explicit terminal state path and do not fall through to the
+  selected-context printable fallback.
+- Returning to mode zero can dispatch a pending delayed payload. The terminal
+  state path calls `0x12218`; if `0x782a1a == 1`, `0x12218` restores saved
+  record bytes `0x782a20..0x782a25`, calls saved handler `0x782a1c` in normal
+  mode, or redirects non-wrapper payloads through `0x12358` in alternate/data
+  mode.
+- Delayed payload scheduling is edge-triggered by the first saved command.
+  `0x121cc` always rewinds the active record cursor, but it only writes
+  pending flag `0x782a1a`, handler pointer `0x782a1c`, and saved record
+  bytes when no delayed payload is already pending. Later arming attempts do
+  not replace the saved handler or record.
+- Counted binary/text payload bytes follow the consumer selected by the
+  command path. Generic delayed drains use `0x1228a -> 0x12328 -> 0xdace`,
+  while raster, transparent text, and downloaded-font handlers have their own
+  documented consumers after `0x12218` restores the saved record.
+- Alternate/data mode is not command ignorance. It preserves parser state and
+  payload boundaries, but redirects printable bytes, matched blank C0 rows,
+  and many non-wrapper delayed payload bytes into stored data through
+  `0xe002` instead of immediate page or render handlers.
 
 ## Parser-Core Status
 

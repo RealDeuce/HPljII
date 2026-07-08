@@ -555,10 +555,12 @@ Vertical-layout helper fixtures pin the shared VMI/text-boundary state that
 feeds both direct controls and later printable placement. `0xc992 ESC &l#D
 accepts ROM LPI set and refreshes pending vertical cursor` and
 `0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified` pin the
-VMI writers. `0xea9e ESC &l#F sets text length bottom or restores default`,
+VMI writers. In that fixture's zero case, the ROM-visible state is
+`0x783160 = 0` with modified-layout byte `0x782ee1` still clear. The fixtures
+`0xea9e ESC &l#F sets text length bottom or restores default`,
 `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`,
-and `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`
-pin the vertical layout writers. Fixture
+and `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only` pin
+the vertical layout writers. Fixture
 `0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
 handlers` pins same-family chaining; fixture
 `vertical layout parser trace feeds page-record queue` carries the resulting
@@ -644,13 +646,23 @@ Page-length handler boundary:
 
 Vertical-layout and mode handler boundaries:
 
+- `0xca8c..0xcaf2` handles `ESC &k#H`. It rewinds the parser record, reads
+  integer word `+2` and fractional word `+4`, treats a negative integer as a
+  signed pair by negating both words, and rejects integer values above
+  `0x348`. Accepted values are scaled by `30`: the integer contribution is
+  `word(+2) * 30`, the fractional contribution is
+  `word(+4) * 30 / 10000`, and `0x104d8` converts the sum before storing the
+  packed HMI in `0x78315c`. No page object is queued here; printable text,
+  HT/BS, margins, and cursor-position handlers consume the new HMI later.
 - `0xcb00..0xcb7c` handles `ESC &l#C`. It rewinds the parser record, uses the
   absolute parsed integer/fraction words, rejects values above `0x150`, scales
-  the value by `75`, converts it to packed line advance, rejects advances
-  beyond current page extent `0x782dba`, and writes VMI `0x783160`.
+  the value by `75`, converts it to packed line advance, rejects converted
+  advances beyond current page extent `0x782dba`, and writes VMI `0x783160`.
+  The store happens before the later zero check, so a converted value of zero
+  writes `0x783160 = 0`.
 - `0xcb82..0xcbca` is the `ESC &l#C` pending-cursor side effect. If pending
   byte `0x782a6d` is set, it computes `VMI * 18 / 25 + top_offset` and writes
-  refreshed cursor y `0x782c8e`. A converted VMI of zero does not set modified
+  refreshed cursor y `0x782c8e`. A converted VMI of zero skips only modified
   layout byte `0x782ee1`; nonzero values set it.
 - `0xc992..0xca0e` handles `ESC &l#D` selector admission. It rewinds the
   parser record, takes the absolute value, maps selector `0` to `12`, and
@@ -724,6 +736,7 @@ Evidence:
 - Disassembly:
   `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
   `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`,
   `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
   `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.

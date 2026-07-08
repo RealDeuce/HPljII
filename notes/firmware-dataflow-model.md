@@ -5369,9 +5369,9 @@ Command behavior:
   software-visible output byte `0x780e8f`, signals control word `0x780e26`,
   and selects the default page code from `0x780e97` or fallback code `2`.
 - `ESC &l#C` converts an absolute 1/48-inch VMI value using 75 packed
-  subunits per unit. Values whose converted VMI is zero leave the prior value
-  unchanged; accepted values write `0x783160` and refresh vertical cursor
-  `0x782c8e`.
+  subunits per unit. Accepted values write `0x783160`; a converted value of
+  zero writes `0x783160 = 0` but leaves modified-layout byte `0x782ee1`
+  clear. Nonzero accepted values refresh vertical cursor `0x782c8e`.
 - `ESC &l#D` accepts the ROM's LPI set, maps it to packed VMI `0x783160`,
   marks modified-layout byte `0x782ee1`, and refreshes vertical cursor
   `0x782c8e`.

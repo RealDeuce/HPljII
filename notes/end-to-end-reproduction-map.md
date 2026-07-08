@@ -4333,20 +4333,24 @@ objects, fixtures, evidence, and unresolved boundaries for that stream family:
 - Downloaded-font payloads and downloaded-glyph rendering:
   `ESC )s#W` descriptor/character streams followed by printable output or
   rule/raster composition. Start with
-  [downloaded-fonts.md](downloaded-fonts.md), then follow the downloaded-glyph
-  worked paths and boundaries in
+  the downloaded-font rows in [pcl-command-map.md](pcl-command-map.md),
+  then [downloaded-fonts.md](downloaded-fonts.md), followed by the
+  downloaded-glyph worked paths and boundaries in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). The key parser
   branch is `0x11f96`: zero-count streams enter `0x15d0a`, nonzero payloads
   enter `0x16c14`, successful downloaded-character installs reach `0x16498`,
-  and later printable bytes queue objects through `0x12f2e`. For row-count
-  streams, low-byte rows `0x0001..0x00ff` render through the documented
-  compact helpers; high-row short compact cases such as installed rows
-  `0x0101..0x0103` stop at the exact `0x1fe76` fallback table boundary rather
-  than claiming pixels beyond the ROM jump-table overflow. For a heterogeneous
-  downloaded-glyph page image, start with `Worked Path: Downloaded Glyph
-  Rule/Raster Composition`, which follows `ESC )s18W` through the byte-24
-  handoff into rectangle, printable, raster, publication, bridge, and render
-  dispatch.
+  and later printable bytes queue objects through `0x12f2e`. The command-map
+  row classifies current-font state, current-record/candidate state, delayed
+  payload scratch, descriptor/resource scratch, continuation fields, and
+  install/release bookkeeping before the owner note expands the low-level
+  ledger. For row-count streams, low-byte rows `0x0001..0x00ff` render through
+  the documented compact helpers; high-row short compact cases such as
+  installed rows `0x0101..0x0103` stop at the exact `0x1fe76` fallback table
+  boundary rather than claiming pixels beyond the ROM jump-table overflow. For
+  a heterogeneous downloaded-glyph page image, start with `Worked Path:
+  Downloaded Glyph Rule/Raster Composition`, which follows `ESC )s18W` through
+  the byte-24 handoff into rectangle, printable, raster, publication, bridge,
+  and render dispatch.
 - Raster, rectangle/rule, and mixed page-image streams:
   `ESC *t300R ESC *r0A ESC *b2W...`,
   `ESC *c12a5b0P`, and

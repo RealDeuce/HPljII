@@ -480,6 +480,40 @@ decimal value.
   command-compatible cursor math.
 - Unsupported commands should consume the correct syntax and then no-op.
 
+## Reproduction Contract
+
+For a supported PCL Level IV byte stream, this language layer is reproduced
+when the manual command form routes to the same ROM parser records, command
+handlers, state fields, page objects, and render inputs named by the owner
+notes. The required ROM-visible behavior is:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, tokenizer
+  helpers `0xdaf0` / `0xdb74`, and main parser loop `0x11774`; the manual
+  command spelling is only a readable label for those parsed bytes.
+- Command combining and delayed payload scheduling must preserve six-byte
+  parser records, lowercase-final chaining, saved delayed records, and
+  payload consumers before command-family semantics are applied.
+- A command-family claim is complete only when its owner note identifies the
+  parsed inputs, RAM fields written, downstream readers, output/page effect,
+  evidence, and unresolved boundaries. The quick-reference table below is an
+  index, not the behavioral proof.
+- State-only commands are still reproduced when their later consumers see the
+  same state. Cursor, font, symbol, page-layout, macro, and raster-control
+  commands often change later printable/page behavior without drawing
+  immediately.
+- Pixel-producing streams must pass through page-object publication and render
+  dispatch where applicable: current page root `0x78297a`, publication
+  `0xff1e`, active-record bridge `0x1ed84` / `0x1edc6`, and render entry
+  `0x1ef6a`.
+- Unsupported or no-output rows are reproduced by consuming exactly the ROM
+  syntax and then following the documented no-output path; they should not be
+  treated as unknown imaging commands.
+
+This contract is ROM-local. Manual names, physical timing, host-interface
+signals, and cartridge/resource contents matter only when the disassembly
+reduces them to a parser byte, RAM field, page object, selected resource, or
+render input.
+
 ## ROM Semantic Index For Quick Reference
 
 This checkpoint ties the manual quick-reference commands above to the

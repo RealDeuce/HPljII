@@ -324,7 +324,10 @@ A pixel-accurate ROM-derived renderer must preserve:
 - same-geometry reuse versus geometry-initialization behavior before
   `0x1ed84`;
 - active-copy bridge through `0x1ed84` and `0x1edc6`;
-- per-band active loop behavior at `0x1eba4..0x1ecd2`;
+- per-band active loop behavior at `0x1eba4..0x1ecd2`: cleanup and wait exits
+  must not call `0x1ef6a`, throttle word `+0x0e > 0x28` yields through
+  `0x10d8(2)`, and the render branch requires capacity `>= 9` after
+  subtracting active and, when selectors differ, paired remaining rows;
 - wait-object and trap state transitions that can wake or stall active work;
 - derived band fields consumed by `0x1ef6a`.
 

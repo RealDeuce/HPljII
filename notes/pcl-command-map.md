@@ -1188,8 +1188,45 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x783ed4`, `0x783ed8`, and `0x783e92..0x783ed1`. These commands create no
   page root, no page object, no publication record, and no render work; they
   affect pixels only indirectly if FIFO fullness stalls the producer or a
-  bidirectional host changes later input after reading the response. Owner
-  note: [errors-and-status.md](errors-and-status.md).
+  bidirectional host changes later input after reading the response.
+
+  Field grouping for this side channel is explicit. Canonical parser/response
+  state is wrapper `0x12034`, synthetic setup helper `0x11efe`, producer
+  `0x122be..0x12326`, active six-byte parser record word `+2`, query byte
+  fetched through `0xda9a`, and ROM literal `0x12280..0x12288`
+  (`33440A\r\n`). Canonical host-output FIFO state is count `0x783ed2`,
+  read pointer `0x783ed4`, write pointer `0x783ed8`, storage
+  `0x783e92..0x783ed1`, and wait object `0x7801e2`. Canonical status-output
+  state is pending count `0x780e22`, service byte `0x783e61`, service reason
+  `0x783e60`, accepted byte `0x780e62`, aggregate words `0x780e12` /
+  `0x780e0a`, warning/status accumulator `0x780e2a`, page-environment status
+  flag `0x780e90`, and cached status code `0x780e98`.
+
+  Firmware bookkeeping is FIFO enqueue `0xb0c0`, dequeue `0xb022`, blocking
+  enqueue `0xb090`, worker `0xae2c`, status byte producer `0xaece`, aggregate
+  helper `0x36e4`, and page-environment status producer `0x2888`. The output
+  effect is host-visible bytes only. `0xb090` waits through `0x10c8(0x7801e2)`
+  when the FIFO is full; `0xae2c` drains queued bytes according to interface
+  selector `0x780e40`, and mode `0` can also emit service/status bytes built
+  by `0xaece`. No FIFO consumer feeds `0xda9a`, page roots, page objects,
+  `0xff1e`, `0x1ed84`, or bitmap renderers. Evidence is
+  [errors-and-status.md](errors-and-status.md),
+  [host-byte-fetch.md](host-byte-fetch.md),
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_interface_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
+  `generated/disasm/ic30_ic13_page_environment_status_002888.lst`, fixtures
+  `0x12034/0x122be model-ID response emits FIFO literal`,
+  `0xb0c0/0xb022 output FIFO wraps and preserves order`,
+  `0xb090 waits on full FIFO then enqueues after drain`,
+  `0xaece emits service byte and combined status byte`,
+  `0xae2c drains FIFO by configured output mode`, and
+  `0x2888 sets page-environment status consumed by 0xaece`. No ROM object or
+  rendering edge remains in these side-channel paths; unresolved items are
+  physical signal names for MMIO status/data registers, user-facing names for
+  folded status categories, and the external protocol name for query byte
+  `0x11`. Owner note:
+  [errors-and-status.md](errors-and-status.md).
 
 ## High-Value Normal-Mode Handlers
 

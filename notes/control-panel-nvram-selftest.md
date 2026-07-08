@@ -281,6 +281,34 @@ Output effect:
   backing records, dirty flags, retained-storage serial path, and fallback
   tables become part of the initial page environment.
 
+## Reproduction Contract
+
+For a supplied host byte stream, this cluster is reproduced when the same
+default-record state reaches the reset and page-layout consumers that affect
+later output. The required ROM-visible behavior is:
+
+- The debounced panel/service byte source is `0xa3ca`, which samples
+  `$8000.w & 0xff` until two reads match. The external panel protocol behind
+  that byte remains a hardware boundary.
+- Loader `0x5e80` is the canonical bridge from selected backing record
+  `0x780eda + 2 * scaled(0x7822d5)` into reset-consumed defaults
+  `0x78219d`, `0x78219e`, and `0x7821a2`.
+- Menu/default writers `0x5060`, `0x50be`, and `0x52ba` must update both the
+  selected backing record and the canonical default mirror before marking the
+  matching dirty word.
+- Retained-storage helpers `0x96c4`, `0x97e4`, `0x9a4a`, and `0x571e` are
+  persistence/bookkeeping paths. They matter to byte-stream reproduction only
+  when modeling power-cycle, cold reset, menu reset, or NVRAM-failure state
+  before the host stream starts.
+- Pixel output is indirect. Reset handler `0xcda2`, paper-source handler
+  `0xef62`, and later page-layout consumers read the canonical defaults;
+  control-panel and NVRAM paths do not queue page objects or render rows by
+  themselves.
+
+Physical retained-storage device identity, control-panel key protocol, and
+manual-facing service wording are external correlation boundaries unless the
+ROM has reduced them to the default fields above.
+
 Evidence:
 
 - `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`

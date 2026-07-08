@@ -21,6 +21,44 @@ reaches a documented branch or helper transcription, but it does not raise
 pixel confidence by comparison. Pixel claims must cite the ROM fields,
 handlers, and render helpers that produce those rows.
 
+## Controlling Documentation Spine
+
+For a concrete host byte stream, the checked-in owner notes are the controlling
+artifact. Generated listings and fixture logs support those notes; they are not
+standalone deliverables.
+
+- Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md), which
+  documents `0xa904` source priority, data-chain replay, direct host paths, and
+  the normalized byte passed to parser wrapper `0xda9a`.
+- Parser state is owned by [pcl-parser-core.md](pcl-parser-core.md): parser
+  mode `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
+  normal/alternate tables, and delayed payload restore
+  `0x121cc -> 0x12218`.
+- Command dispatch is indexed by [pcl-command-map.md](pcl-command-map.md).
+  Individual command families then move to owner notes such as
+  [direct-control-codes.md](direct-control-codes.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md),
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [macro-data-chain.md](macro-data-chain.md), and
+  [vertical-forms-control.md](vertical-forms-control.md).
+- Page/image assembly is owned by
+  [page-record-storage.md](page-record-storage.md): current root
+  `0x78297a`, compact/raster buckets at root `+0x1c`, rules at `+0x24`,
+  fixed-list objects at `+0x28`, context slots at `+0x2c..+0x68`, and
+  publication through `0xff1e`.
+- Rendering is owned by [active-render-scheduler.md](active-render-scheduler.md)
+  and [page-raster-imaging.md](page-raster-imaging.md): published-record
+  scheduling, active render pointer `0x783a18`, bridge
+  `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`, compact text/downloaded-glyph
+  helpers, rule/fixed-list helpers, and encoded raster helper `0x1f88e`.
+- The broad host-byte-to-pixel walkthrough and residual-boundary index is
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). The unified
+  semantic field index is [semantic-state-model.md](semantic-state-model.md),
+  and the detailed dataflow spine is
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+
 ## Files
 
 - [source-index.md](source-index.md) - what each PDF contains and how to

@@ -430,6 +430,12 @@ A byte-stream renderer must preserve:
 - shared `0xe5e2` layout refresh when page/macro paths rebuild default VFC
   and static font-context state;
 - `0xdace` payload-byte normalization during VFC table load;
+- the `0x12cfe` payload-count branches: count `0` rebuilds the default table
+  when VMI conversion succeeds, odd counts and counts larger than
+  `2 * (0x782ede + 1)` drain through `0xdace` without installing a new table,
+  counts up to `0x100` install byte-addressed table data and clear the
+  remaining words, and larger accepted counts store only the first `0x100`
+  bytes before draining the rest;
 - the 128-word VFC table and selector-to-bit convention;
 - VMI, top offset, current x/y, and line-bound caches before `ESC &l#V`;
 - page-root existence and pending-text flush behavior around VFC jumps;

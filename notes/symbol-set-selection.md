@@ -371,6 +371,52 @@ Output effect:
   printable bytes pass through `0xd04a`, compact object queueing, publication,
   and render dispatch.
 
+## Reproduction Contract
+
+For a supplied byte stream, this command family is reproduced when the same
+`ESC (` / `ESC )` records produce the same requested symbol words, dirty
+flags, active font contexts, character maps, and later printable-byte glyph
+selection. The required ROM-visible behavior is:
+
+- Normal primary and secondary commands depend on the synthetic slot records.
+  `0x1201e` pushes slot word `0` through `0x11f26` for `ESC (`, while
+  `0x12008` pushes slot word `1` through `0x11efe` for `ESC )`. Terminal
+  wrapper `0x120be` then calls `0x1be22` and refresh helper `0xc580`.
+- Ordinary final bytes compute the requested word exactly as
+  `(abs(parameter) << 5) + final - 0x40`, capped by the `0x07ff` parameter
+  limit. Slot `0` writes `0x782ef4`; slot `1` writes `0x782f04`. Successful
+  ordinary finals set dirty flags `0x782f2c = 1` and `0x782f2d = 1`.
+- Final `X` is font-id selection, not an ordinary symbol-set word. `0x1be22`
+  restores the previous requested word, sets `0x78287b`, calls
+  `0x17708(slot, parameter)`, and enters refresh with dirty flag
+  `0x782f2c = 2`. Non-selected exits from `0x17708` preserve the prior
+  printable output context.
+- Final `@` dispatches by parameter through table `0x1bde2`. Parameters
+  `0`, `1`, `2`, and `3` are real ROM behaviors that copy default-symbol
+  words or run the default-font path; other parameters restore the previous
+  requested word and return without dirty flags.
+- Refresh is conditional on `0xc580`, not implied by the parser table alone.
+  Dirty flag `1` can call candidate refresh `0x13eb8`; dirty flag `2` skips
+  that candidate refresh. Only the currently selected slot `0x782f06` can
+  install a page-root context through `0xc428`.
+- Candidate refresh resolves requested words against the active resource
+  window. `0x1569c` selects the candidate window, `0x156de` filters by
+  requested, remembered, or fallback symbol words, `0x144d2` writes current
+  context `0x782ee6` or `0x782ef6`, and `0x14c64` rebuilds map `0x782f32` or
+  `0x783032`.
+- The command family has no immediate pixel output. Later printable bytes use
+  selected slot `0x782f06`, current context, and rebuilt map through
+  `0xd04a -> 0x1393a -> 0x12f2e`; only that later text path queues compact
+  objects and reaches render dispatch.
+- SI/SO are consumers of this selected state, not alternate symbol-set
+  parsers. `0xc68a` and `0xc6b8` switch `0x782f06`, deciding whether later
+  printable bytes use the primary or secondary context and map.
+
+The built-in resource window is pinned for the concrete streams documented
+above (`0N`, `10U`, `11U`, final-`@`, and final-`X` cases). Cartridge or
+other absent resource records remain external data boundaries; the ROM-local
+selection addresses and state transitions are still the same.
+
 ## Evidence And Boundaries
 
 Disassembly evidence:

@@ -37,6 +37,53 @@ and render helpers that generate the rows. No future fixture or physical
 capture is required to upgrade a ROM-local claim; the upgrade comes from
 documenting the missing disassembly edge.
 
+## Reproduction Contract
+
+For a supported host byte stream, the firmware model is reproduced when the
+same bytes and initialized ROM state produce the same parser records,
+command-family state, page/image objects, publication records, render work, and
+ROM-derived output rows documented by the owner notes. The required
+ROM-visible behavior is:
+
+- Startup supplies the baseline state: byte-source buffers, output FIFO, heap
+  allocator, default-environment fields, resource windows, and scheduler wait
+  objects are initialized as documented in `Worked Path: Startup Initial
+  State` and [firmware-startup.md](firmware-startup.md).
+- Host input reaches parser syntax through the `0xa904` byte-source contract,
+  then `0xda9a`, `0xdaf0`, `0xdb74`, and parser loop `0x11774`. Replay,
+  pushback, direct input, and live ring sources are equivalent only after they
+  produce the same parser-visible `D7` sequence and source-side state.
+- Command dispatch is defined by six-byte parser records, parser mode
+  `0x782999`, normal table `0x112a4`, alternate/data table `0x116f6`,
+  delayed-payload scheduler `0x121cc`, and restore path `0x12218`.
+  Manual command names are labels for those ROM parser states.
+- Command-family owner notes define behavior after dispatch. A semantic claim
+  belongs in the owner that names the handler addresses, parsed inputs, fields
+  written, readers/consumers, output effect, evidence, and unresolved
+  boundaries.
+- Page/image assembly is display-list based. Producers queue compact text,
+  segment-list spans, rules, fixed-list objects, raster rows, and font context
+  slots under current root `0x78297a`; they do not imply a parser-time
+  full-page bitmap.
+- Publication and rendering are separate boundaries. `0xff1e` publishes the
+  current root into a page/control pool record; `0x1ed84` / `0x1edc6` bridge
+  that record into render roots; `0x1eba4` / `0x1ef6a` schedule and dispatch
+  band-local rendering.
+- Pixel rows come from ROM render helpers and resource bytes named by the
+  relevant owner: compact glyph, segment-list, fixed-list, rule/pattern, and
+  encoded-raster helpers. Rendered rows are derived outputs of documented ROM
+  code and decoded data, not external printer observations.
+- External or physical evidence is only required when the ROM reads a value
+  whose source is outside the dumped firmware/resource images. Those cases
+  remain explicit boundaries: MMIO naming/timing, retained-storage device
+  identity, optional cartridge contents, and built-in resource continuation
+  after `0x0c0000`.
+
+If a byte stream changes a field, object class, dispatch helper, resource
+window, or render row not covered by an owner note, the missing work is to
+document that concrete ROM edge. It is not enough to add fixture output or a
+coverage entry without the disassembly-backed behavior.
+
 ## Reader Path Index
 
 Use these worked paths as entry points for the byte-stream-to-pixel model:

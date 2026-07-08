@@ -451,7 +451,68 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   publication. `0xedb0` writes wrap byte `0x783190` for selectors `0` and
   `1`; printable prechecks `0xd28a` / `0xd6bc` consume that byte before
   queueing glyphs, either rejecting horizontal overflow or calling `0xf054` to
-  reset x, advance y, and retry from recovered x `0`. Owner note:
+  reset x, advance y, and retry from recovered x `0`.
+
+  Field grouping for this placement cluster is explicit. Canonical parser
+  state is the six-byte terminal record at `0x78299e`, including parsed
+  integer/fraction words and record bit `0` for relative positioning. The
+  canonical placement block is horizontal cursor `0x782c8a`, vertical cursor
+  `0x782c8e`, left margin `0x782dd6`, right margin `0x782dda`, page width
+  `0x782db8`, vertical upper/lower bounds `0x782dc6` / `0x782dca`, top offset
+  `0x782dce`, HMI `0x78315c`, VMI `0x783160`, line-termination byte
+  `0x78318f`, and wrap byte `0x783190`. Canonical page-output state is not
+  changed by most of these commands directly; the fields are consumed by later
+  printable text, span flush, raster start, rectangle origin, VFC jump, FF, or
+  publication paths.
+
+  The shared writers are bounded in ROM. Margin handlers `0xeb58` and
+  `0xec0c` scale absolute column parameters through HMI, reject or clamp
+  against the opposite margin/page width, write `0x782dd6` or `0x782dda`, and
+  can move `0x782c8a` when the new margin crosses current text state.
+  Horizontal position handlers `0xf39e` (`&a#C`) and `0xf416` (`&a#H`) convert
+  HMI columns or decipoints, then commit through `0xf4ca`; vertical handlers
+  `0xf560` (`&a#R`) and `0xf60a` (`&a#V`) convert VMI rows or decipoints, then
+  commit through `0xf6e2`. Horizontal helper `0xf4ca` optionally adds relative
+  moves to current x, clamps to `0..0x782db8`, writes `0x782c8a`, sets
+  right-limit latch `0x782a57` only at right margin `0x782dda`, clears
+  pending byte `0x782a6d`, and refreshes span metrics through `0xd4ac` /
+  `0xd8fc`. Vertical helper `0xf6e2` ensures a page root, clears pending byte
+  `0x782a6d`, flushes pending spans through `0xf34a`, adds relative moves to
+  `0x782c8e` or absolute moves to top offset `0x782dce`, clamps below
+  `0x782dca`, writes `0x782c8e`, and can materialize span output through
+  `0x12714 -> 0x126e2`.
+
+  Derived/cache state is compact coordinates derived by later `0xd04a` /
+  `0x12f2e`, right-limit latch `0x782a57`, previous-width latches
+  `0x782a58` / `0x782a5a` / `0x782a5c`, pending text byte `0x782a6d`, and
+  span watermarks `0x783184..0x78318a`. Firmware bookkeeping is command-record
+  rewind in the handlers, conversion helpers `0x332ee` / `0x3324a` /
+  `0x104d8`, page-root ensure `0x10084` on vertical placement, span flush
+  `0xf34a`, and wrap recovery helper `0xf054`. Output effect is delayed for
+  state-only commands: the following printable byte reaches `0xd04a`, derives
+  compact coordinates from `0x782c8a` / `0x782c8e`, queues through
+  `0x12f2e -> 0x1387c`, and later renders through `0x1ed84 -> 0x1edc6 ->
+  0x1ef6a`; raster and rectangle commands consume the same cursor fields as
+  origins.
+
+  Evidence is [direct-control-codes.md](direct-control-codes.md),
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`,
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`, fixtures
+  `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`,
+  `0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at right
+  edge`, `cursor position stream ESC &a3.5c+1R selects 0xf39e then 0xf560`,
+  `0xf416 ESC &a#H converts decipoints and clamps horizontal cursor`,
+  `0xf60a ESC &a#V converts decipoints and clamps vertical cursor`,
+  `margin command parser trace feeds page-record queue`,
+  `right margin command parser trace feeds page-record queue`,
+  `chained margin command parser trace feeds page-record queue`, and
+  `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`. No
+  ROM-local middle edge remains for the covered cursor/margin/text-motion
+  writers; remaining text-placement work should add only variants that change
+  conversion arithmetic, clamp boundaries, span object bytes, compact
+  coordinates, or render inputs. Owner note:
   [direct-control-codes.md](direct-control-codes.md).
 - Direct ESC cursor helpers:
   `ESC 9` reaches handler `0xe9ba` directly from mode `1`, clears the left

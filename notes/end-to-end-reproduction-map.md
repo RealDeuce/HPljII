@@ -6872,10 +6872,12 @@ than open middle edges.
      command and render paths. Optional cartridge/external resource-window
      contents remain separate from these local payload installs.
    - Unknown: HP/manual names for consumed-but-not-staged validation fields;
-     the ROM-local invalid compact-mode-0 helper target behavior for wrapped
-     source-width low bytes `0x00..0x10`; and any future glyph row/span or
-     continuation variant only if it changes a documented field, object,
-     bridge state, or row-construction helper.
+     execution after documented invalid compact-helper jumps, such as wrapped
+     source-width span `0x0102` selecting `0x0066cc` through `0x1f034` /
+     `0x1f08e`, where the target is control/status code rather than a
+     row-copy helper; and any future glyph row/span or continuation variant
+     only if it changes a documented field, object, bridge state, or
+     row-construction helper.
 
    Return and drain boundaries:
 

@@ -266,6 +266,9 @@ A byte-stream renderer must preserve:
 - reset consumption of canonical defaults `0x78219d`, `0x78219e`, and
   `0x7821a2`;
 - the gated `0x7821a2 -> 0x782da6` behavior controlled by `0x7810b2`;
+- the reset status side effect at `0xcc9e..0xccd2`: when `0x7810b2` is
+  clear and `0x780e3c == 1`, the ROM copies `0x7821a2` to `0x780e8f`
+  and signals `0x780e26` through `0x9b5e`;
 - HMI refresh from current-font context and VMI conversion from default
   line-spacing;
 - parser/data-chain reset through `0xe146`;

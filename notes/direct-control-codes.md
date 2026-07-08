@@ -375,6 +375,49 @@ combined line termination` pins that behavior.
 advances x to `21`, BS backs it up to `20`, and the printable glyph queues at
 compact coord `0x0a01` / pixel x `26`.
 
+CR/LF/FF instruction boundaries:
+
+- `0xedf8..0xee1e` rewinds the six-byte parser record, reads record word `+2`,
+  and normalizes negative parameters to their absolute value before the
+  line-termination selector map writes `0x78318f`. Generated flow
+  `ic30_ic13_direct_control_code_flow.md` records the complete selector map:
+  `0 -> 0x00`, `1 -> 0x80`, `2 -> 0x60`, and `3 -> 0xe0`.
+- `0xf02c..0xf052` handles CR. It calls `0xf06e` to copy left margin
+  `0x782dd6` into horizontal cursor `0x782c8a`, calls `0xf34a` to clear
+  previous-width state and flush pending span output when enabled, then tests
+  `0x78318f.7`. If that bit is set, CR also calls LF helper `0xf0b2`.
+- `0xf054..0xf06c` is the unconditional CR+LF helper used by wrap recovery and
+  display-functions CR post-handling. It runs `0xf06e`, `0xf34a`, and
+  `0xf0b2` without consulting the line-termination mode byte.
+- `0xf06e..0xf08a` is the CR reset helper. It writes
+  `0x782c8a = 0x782dd6`, clears right-limit latch `0x782a57`, and clears
+  pending text/cursor latch `0x782a6d`.
+- `0xf08c..0xf0b0` handles LF. It tests `0x78318f.6`; when set, LF first
+  calls `0xf06e` for CR-style horizontal reset. It always calls `0xf34a` and
+  LF advance helper `0xf0b2`.
+- `0xf0b2..0xf0ee` is the LF advance helper. It ensures a page root through
+  `0x10084`, adds VMI `0x783160` to vertical cursor `0x782c8e` via `0x10518`,
+  calls overflow/perforation helper `0xf36c`, optionally calls `0x1048c` when
+  `0xf36c` returns nonzero, and clears `0x782a6d`.
+- `0xf0f0..0xf122` handles FF. It tests `0x78318f.5`; when set, FF first
+  calls `0xf06e`. It then calls `0xf34a`, ensures a page root through
+  `0x10084`, calls page-eject helper `0xf124`, and writes
+  `0x782a6d = 0xff` after the helper returns.
+- `0xf124..0xf174` is the page-eject helper used by FF, VFC, macro/page
+  finalize paths, and perforation overflow. It publishes the current root
+  through `0xff1e`, derives a new vertical cursor from VMI `0x783160`,
+  constants `0x12` and `0x19`, and top offset `0x782dce`, writes the result to
+  `0x782c8e`, and clears `0x782a6d`.
+- `0xf34a..0xf36a` is the shared span-flush helper. It clears
+  previous-width latch `0x782a58`; when span-enable byte `0x783184` is
+  nonzero, it materializes the pending span through `0x12714` and resets the
+  span state through `0x126e2`.
+- `0xf36c..0xf39c` is the vertical overflow/perforation helper. It compares
+  text-bottom/perforation limit `0x782dc2` against vertical cursor
+  `0x782c8e`; when the limit is nonzero, exceeded, and perforation-skip byte
+  `0x783191` is set, it calls `0xf124` and returns `D7 = 0`. Otherwise it
+  returns `D7 = 1`.
+
 HT/BS instruction boundaries:
 
 - `0xf1cc..0xf1e2` reads HMI `0x78315c` and converts it through `0x104fe`.

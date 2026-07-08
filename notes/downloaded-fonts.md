@@ -2859,6 +2859,19 @@ A byte-stream renderer must preserve:
   rendering rather than fixed-record rendering;
 - glyph table entry, glyph record bytes, bitmap offset, span, rows, width,
   split-plane layout, fixed-record layout, and compact selector bits;
+- the row-count split between installed glyph state and page-source selector
+  state: `0x16498` preserves the 16-bit installed row word, while `0x12f2e`
+  consumes the low row byte when choosing selector `0x0003`, `0x2003`, or
+  `0x3003`;
+- the short compact high-row boundary: installed rows `0x0101..0x0103`
+  publish low-byte selector `0x0003` and bucket `1`, but pixel reproduction
+  stops when `0x1f414` feeds fallback indices `199..201` to unchecked helper
+  table `0x1fe76`; row `0x0102` reads target `0x329ad3c0`;
+- the segmented-wide high-row rule: below-cap products render only when
+  selector `0x3003` reaches helper `0x1f264` with a documented source offset;
+  span-31 sampled siblings stop at fallback A2 source offset `+0xb50`, and
+  oversized row/span products stop before renderer entry at the restored
+  `ESC )s#W` payload-count cap;
 - the page-record bridge through `0x1edc6` and active render entry
   `0x1ed84`/`0x1ef6a`.
 

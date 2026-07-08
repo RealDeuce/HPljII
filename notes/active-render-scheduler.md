@@ -7,8 +7,8 @@ the bitmap object dispatchers consume render records.
 
 Status: composed for the software-visible scheduler state, active source
 selection, two-work-record alternation, per-band render loop, wait-object
-handoff, and rendered output fixtures. Physical formatter/DC timing remains a
-separate board-facing boundary.
+handoff, and ROM-derived row-construction checks. Physical formatter/DC timing
+remains a separate board-facing boundary.
 
 ## Evidence
 
@@ -232,24 +232,26 @@ The scheduler does not create page objects. Its output effect is deciding
 which published source record becomes active, which render work record receives
 the copied page roots, and which band words reach `0x1ef6a`.
 
-Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
-published source record `0x00d0eaa0` is copied to active source `0x780eae`,
-assigned render work record `0x782128` through `0x783a18`, and reaches the
-same ROM-local render-entry path as a direct `0x1ed84` / `0x1ef6a` setup.
+Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` checks the
+documented branch with published source record `0x00d0eaa0`: the record is
+copied to active source `0x780eae`, assigned render work record `0x782128`
+through `0x783a18`, and reaches the same ROM-local render-entry path as a
+direct `0x1ed84` / `0x1ef6a` setup.
 
-Fixture `0x1ecd6 same-geometry render work reuse reaches render entry` proves
-the sibling branch reuses prior geometry, computes destination word `+8`
+Fixture `0x1ecd6 same-geometry render work reuse reaches render entry` checks
+the sibling branch: it reuses prior geometry, computes destination word `+8`
 through `0x33238`, and still reaches the documented render-entry path.
 
-Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` proves
+Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` checks
 the render, capacity-wait, cleanup, and throttle outcomes. In the render case,
-it calls `0x1ef6a`, increments render work word `+0x10`, and increments
-throttle word `+0x0e`.
+the documented branch calls `0x1ef6a`, increments render work word `+0x10`,
+and increments throttle word `+0x0e`.
 
 Fixture `0x1eba4 scheduler band words render published downloaded glyph`
-proves scheduler-produced band words `0..9` drive a published downloaded-glyph
-record through `0x1ef6a`: only buckets `1` and `9` dispatch compact objects,
-and bucket `9` reaches the ROM-derived row-write path for page row `86`.
+checks scheduler-produced band words `0..9` against a published
+downloaded-glyph record through `0x1ef6a`: only buckets `1` and `9` dispatch
+compact objects, and bucket `9` reaches the ROM-derived row-write path for
+page row `86`.
 
 ### Active Loop Branches
 
@@ -331,8 +333,8 @@ A pixel-accurate ROM-derived renderer must preserve:
 High for pool-head versus scheduler-cursor distinction, candidate-slot
 staging/release, `0x780eaa -> 0x780eae`, work-record alternation,
 `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic,
-wait-object state transitions, active-loop branch predicates, and
-render-entry output because each is backed by disassembly and fixtures.
+wait-object state transitions, active-loop branch predicates, and render-entry
+state handoff because each is backed by disassembly and checked by fixtures.
 
 Medium for physical engine pacing because the firmware-visible wait states and
 MMIO-facing predicates are modeled, but connector-signal timing and exact

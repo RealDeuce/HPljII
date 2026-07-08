@@ -474,20 +474,21 @@ Evidence: normal parser dispatch table mode 1 entry for byte `0x59` to
 `0x12536`, alternate/data mode 1 entry for byte `0x59` to `0x12120`, and
 disassembly `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
 at `0x12120..0x1219c` and `0x12536..0x1261e`. Fixture
-`ESC Y display-functions stream reaches page-record output` proves the normal
-handler consumes `ESC Y!\x05! ESC Z`, routes values `21 05 21 1b 5a`, queues
-visible `!`, `!`, and `Z`, and renders the resulting page-record rows. Fixture
-`ESC Y display-functions filter-on routes controls as printable` proves the
-nonzero filter branch for the normal handler: with selected-context byte `1`
-and high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
-`0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through `0xd04a`,
-queues six compact entries, and renders digest
+`ESC Y display-functions stream reaches page-record output` checks the normal
+handler: it consumes `ESC Y!\x05! ESC Z`, routes values `21 05 21 1b 5a`,
+queues visible `!`, `!`, and `Z`, and reaches the ROM-derived page-record row
+path. Fixture `ESC Y display-functions filter-on routes controls as
+printable` checks the nonzero filter branch for the normal handler: with
+selected-context byte `1` and high-control filter `1`, stream
+`ESC Y\x05\x80\x1aX! ESC Z` normalizes `0x1a 0x58` to `0x7f`, routes values
+`05 80 7f 21 1b 5a` through `0xd04a`, queues six compact entries, and records
+digest
 `1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`. Fixture
-`0x12120 ESC Y alternate append stores normalized display bytes` proves the
-alternate/data handler consumes payload bytes `21 1a 58 1b 5a`, appends the
-literal prefix plus normalized loop values as `1b 59 21 7f 1b 5a`, and stores
-them through `0xe002` in macro chunk `0x783988` before terminating on appended
-`ESC Z`.
+`0x12120 ESC Y alternate append stores normalized display bytes` checks the
+alternate/data handler: it consumes payload bytes `21 1a 58 1b 5a`, appends
+the literal prefix plus normalized loop values as `1b 59 21 7f 1b 5a`, and
+stores them through `0xe002` in macro chunk `0x783988` before terminating on
+appended `ESC Z`.
 
 ## Delayed Payload Scheduler
 
@@ -651,27 +652,27 @@ Output effect:
 - This checkpoint has no pixels by itself. It preserves the record and
   payload state that later pixel-producing handlers consume.
 - Fixture `0x11774 ROM dispatch table routes raster stream to delayed
-  transfer` proves the parser reaches `0x11f82` and stores the delayed
+  transfer` checks that the parser reaches `0x11f82` and stores the delayed
   raster transfer record before payload bytes are consumed.
 - Fixture `modeled raster command stream parses ESC *t300R / ESC *r1A /
-  ESC *b4W payload boundary` proves `0x12218` restores the saved `W`
+  ESC *b4W payload boundary` checks that `0x12218` restores the saved `W`
   record before the payload reader consumes the following bytes.
-- Fixture `transparent data parser trace feeds page-record queue` proves
+- Fixture `transparent data parser trace feeds page-record queue` checks that
   delayed transparent text restores through `0x12452` before routing
   payload bytes into text/fixed-space output.
-- Fixture `0x121cc/0x15d0a-modeled font descriptor command stream` proves
+- Fixture `0x121cc/0x15d0a-modeled font descriptor command stream` checks that
   zero-count font descriptor `W` commands use the same scheduler fields before
   handler `0x15d0a` consumes the restored record.
 - Fixtures `resource payload stream ties ROM parser dispatch to 0x16c14
   install` and `downloaded character stream ties ROM parser dispatch to
-  rendered object` prove the same delayed-record contract feeds
+  rendered object` check that the same delayed-record contract feeds
   downloaded-font payload handlers before visible glyph output.
 
 Confidence:
 
 - High for tokenizer record layout, cursor rewind, helper selection, delayed
   snapshot/restore, and alternate/data redirection because these are direct
-  disassembly reads and fixture-backed across raster, transparent text,
+  disassembly reads and checked by fixtures across raster, transparent text,
   downloaded-font, and macro paths.
 - Medium only for command-family semantics beyond the parser boundary. Those
   are intentionally documented in command-family notes.

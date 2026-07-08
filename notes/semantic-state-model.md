@@ -5,6 +5,44 @@ concepts. It complements the low-level ledger in
 `notes/reverse-engineering-ledger.md`; it does not replace address-level
 notes, disassembly windows, or executable fixtures.
 
+## Reproduction Contract
+
+For a supported host byte stream, this state model is reproduced when the
+same ROM-visible fields move through the same field classes, writers,
+readers/consumers, output effects, and unresolved boundaries documented in
+each checkpoint. The required behavior is:
+
+- Canonical state is authoritative input to later firmware behavior. Parser
+  records, current font contexts, page roots, published records, raster/glyph
+  object fields, macro/data-chain frames, and selected resource records must
+  be preserved when downstream code reads them.
+- Derived/cache state may be recomputed only when the documented producer and
+  consumer relationship is preserved. Bucket keys, copied render roots,
+  selected-map caches, span watermarks, metric conversions, and band-local
+  destination state are derived from canonical inputs but can become the
+  immediate value consumed by render helpers.
+- Parser scratch is local to parser/tokenizer/payload scheduling. Six-byte
+  records, saved delayed records, numeric scratch, append buffers, and payload
+  drain cursors matter while handlers consume them, but they are not page
+  objects until a command-family producer writes canonical page or resource
+  state.
+- Firmware bookkeeping controls firmware execution without becoming PCL state
+  by itself. Allocator cursors, wait objects, service latches, retry flags,
+  continuation counters, and scheduler progress must be preserved when they
+  decide whether a documented producer, publication, or render path runs.
+- Hardware/external state is a boundary unless the ROM has already copied it
+  into a byte, word, page object, resource record, or render input. Physical
+  MMIO names, retained-storage identity, formatter/DC signal timing, optional
+  cartridge contents, and resource-window continuation bytes are not inferred
+  from fixtures.
+- Unknown state must stay bounded by exact addresses and call ranges. A field
+  graduates from unknown only when the disassembly-backed writer/reader chain
+  is documented in the relevant owner note.
+
+This file is the composition ledger for those classifications. The owner notes
+remain the behavioral source for command-family details and pixel-producing
+paths.
+
 ## Generated Lead Reports
 
 Status: indexed as lead-only artifacts. These reports are useful for search

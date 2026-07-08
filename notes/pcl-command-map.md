@@ -383,6 +383,55 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   [pcl-parser-core.md](pcl-parser-core.md),
   [direct-control-codes.md](direct-control-codes.md), and
   [font-context-metrics.md](font-context-metrics.md).
+
+  Field grouping for this entry path is explicit. Canonical parser state is
+  mode byte `0x782999`, alternate/data flag `0x782c18`, the unmatched
+  printable byte that reaches `0xd04a`, or the mode-zero C0 table row that
+  reaches `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, or
+  `0xc68a`. Canonical text/page state is horizontal cursor `0x782c8a`,
+  vertical cursor `0x782c8e`, current page root `0x78297a`, page-root context
+  slot `0x78297e`, live-font flags `0x78297f..`, compact bucket objects under
+  root `+0x1c`, current selected slot `0x782f06`, current font context/map
+  state, margins `0x782dd6` / `0x782dda`, HMI `0x78315c`, VMI `0x783160`,
+  line-termination byte `0x78318f`, and wrap byte `0x783190`.
+
+  Derived/cache state is printable source scratch `0x782d7e`, compact
+  bucket/key fields `0x782a7a..0x782a7e`, precheck result `0x782a6e`,
+  previous-width latches `0x782a58` / `0x782a5a` / `0x782a5c`, and render-band
+  fields after publication. Parser scratch is only the parser mode/table
+  state and current byte by the time `0xd04a` runs; after `0x1393a`, the text
+  producer consumes source scratch rather than the parser record. Firmware
+  bookkeeping is pending byte `0x782a6d`, page-root retry flag `root+0x15.0`,
+  allocator state `0x782a70` / `0x782a72` / `0x782a76`, span watermarks
+  `0x783184..0x78318a`, and shared span flush helpers
+  `0xf34a -> 0x12714 -> 0x126e2`.
+
+  Output effect is direct only for printable text and for controls that
+  publish or flush existing state. `0xd04a` normalizes the admitted byte,
+  builds source `0x782d7e` through `0x1393a`, selects unflagged
+  `0xd140 -> 0xd3b2` or flagged `0xd550 -> 0xd824`, and queues compact text
+  through `0x12f2e -> 0x1387c` under page-root `+0x1c`. CR, LF, HT, BS, SO,
+  SI, and line-termination commands usually mutate cursor or selected-context
+  state for later bytes; CR, cursor-changing controls, and underline/span
+  boundaries can flush pending span objects through `0x12714`, while FF
+  publishes a root through the page-finalization path. Bridge/render consumers
+  are `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers under
+  `0x1effe`.
+
+  Evidence is `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_text_span_flush_012714.lst`, fixtures
+  `plain printable parser trace feeds page-record queue`,
+  `mixed printable/control parser trace feeds page-record queue`,
+  `mixed printable/control page-record bridge renders post-CR glyph rows`,
+  `HT/BS parser trace feeds page-record queue`, `LF parser trace feeds
+  page-record queue`, and `live CR span flush materializes 0x12714 page
+  object`. No ROM-local middle edge remains between a covered printable byte
+  reaching `0xd04a` and a compact object reaching page-root `+0x1c`; remaining
+  text work is limited to byte streams that change selected context, source
+  class, compact selector shape, span object bytes, or render inputs.
 - Cursor, margins, and text-motion commands:
   `ESC &` enters mode `5` through `0x11eb6` / `0x11ec8`; `&a` enters mode
   `12` through `0x11eda`. Terminals route to `0xf39e` (`C/c`), `0xf416`

@@ -830,6 +830,11 @@ A byte-stream reproduction must preserve these behaviors:
   advance the raster row for each queued transfer.
 - Off-page transfer bytes are still consumed. Beyond-extent rows drain without
   row advance; negative rows drain and advance to row zero.
+- In-range transfers larger than row limit `+0x10` must split raw count into
+  accepted count `+0x04 = +0x10` and overflow `+0x06 = raw - +0x10`.
+  `0x13070` / `0x138de` copy only accepted bytes into encoded row objects;
+  remaining accepted plus overflow bytes are consumed through the `0x12328`
+  drain exits without becoming object payload.
 - Queued payload bytes use the `0x138de` local `1a 58 -> 00` behavior.
 - Row objects must be stored under page-root `+0x1c`, not rendered immediately.
 - Encoded row object byte `+4 = 0x80` is what sends the renderer through

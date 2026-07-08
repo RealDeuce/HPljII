@@ -93,6 +93,9 @@ Firmware bookkeeping:
 - `0x780e3e` and `0x7822e6`: normal service-message latch and next poll
   deadline maintained by `0x8656`.
 - `0x780e8a`: normal service-message selector for the `0x8656` table.
+- `0x7821f9`: engine/attendance status byte consumed by `0x7cf8` for
+  `11 PAPER OUT`, `12 PRINTER OPEN`, `13 PAPER JAM`, `14 NO EP CART`, and
+  `15 ENGINE TEST` selection.
 - `0x7821b8` / `0x7821b9`: self-test/font-print selectors consumed by
   `0x8656`.
 - `0x78292c..0x78293c`: desired 16-character operator-panel message buffer
@@ -114,6 +117,7 @@ Unknown:
 
 - physical signal names for `0xfffe0001` / `0xfffe0003`, `0xfffee005` /
   `0xfffee003`, `$8a01`, and `$a801`;
+- the physical DC-controller sensor bits that write `0x7821f9`;
 - user-facing names for selected record byte `+6`, `0x780e98`, and the folded
   aggregate status categories beyond the strings already listed below;
 - the physical panel effect of the flag-`1` display table built by `0x9406`.
@@ -174,6 +178,27 @@ Unknown:
 - `0x8a48` indexes suffix table `0xb490` with `0x780e98` or
   `0x780e98 & 0x7f`; the observed suffix strings are `LETTER`, `A4`,
   `B5`, `MINI`, `LEGAL`, `EXEC`, `COM-10`, `MONARCH`, `DL`, and `C5`.
+- `0x7c96..0x7cc8` dispatches aggregate status byte `0x780e35`: bit `1`
+  calls attendance selector `0x7cf8`, bit `2` calls paper-list helper
+  `0x7ea0`, and bit `3` calls the adjacent status helper at `0x7f98`.
+- `0x7ccc..0x7cf6` is a direct printer-open/status clear helper: it displays
+  string `0xb1d6` (`12 PRINTER OPEN`) through wrapper `0x8c90`, calls
+  `0x6798`, then clears bit `3` of aggregate status longword `0x780e32`
+  through `0x9c0c(0x780e32, 8)`.
+- `0x7cf8..0x7e20` maps attendance byte `0x7821f9` to operator-panel strings.
+  Bit `2` selects `0xb1d6` (`12 PRINTER OPEN`), bit `3` selects `0xb1e7`
+  (`13 PAPER JAM`), bit `6` selects `0xb1f8` (`14 NO EP CART`), bit `4`
+  selects `0xb1c5` (`11 PAPER OUT`), and bit `1` selects `0xb209`
+  (`15 ENGINE TEST`). If none of those bits is set, the routine keeps default
+  string `0xb3c3` (`55 ERROR`).
+- The `11 PAPER OUT` branch at `0x7d9a..0x7dca` also clears `0x780e96`,
+  copies it to `0x780e97`, and, when `0x780e6a` is set, clears active-status
+  byte `0x780e68` inside the `0x15a6` / `0x15ac` critical section.
+- Display wrapper choice inside `0x7cf8` depends on the selected string.
+  `15 ENGINE TEST` uses wrapper `0x8c7a`; other selected attendance strings
+  normally use `0x8c90`, with `UC` (`0xb23c`) or `LC` (`0xb24d`) substituting
+  for paper-out when `0x780e02` is set, selected string is `11 PAPER OUT`,
+  and `0x6f32(0x2a)` returns bit `5` or bit `6` clear.
 - `0x8656` selects normal status strings such as `16 TONER LOW`,
   `SERVICE MODE`, `04 SELF TEST`, `05 SELF TEST`, `06 PRINTING TEST`, and
   `06 FONT PRINTOUT`.
@@ -334,6 +359,8 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_page_environment_status_002888.lst`
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`
 - `generated/disasm/ic30_ic13_page_service_messages_008656.lst`
+- local `unidasm` window `0x7c96..0x7e20` over
+  `generated/roms/ic30_ic13.bin` for attendance-message selection.
 - `generated/disasm/ic30_ic13_page_environment_message_008a48.lst`
 - `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`
 - `generated/disasm/ic30_ic13_formatted_message_helper_009112.lst`
@@ -347,8 +374,10 @@ Unresolved middle edges:
   external protocol name for the `0x11` query that emits `33440A\r\n` from
   `0x12280`.
 - Other remaining work is user-facing names for folded status categories and
-  selected record bytes, physical panel behavior after `0x9406`, and physical
-  naming/timing for the output MMIO banks.
+  selected record bytes, physical panel behavior after `0x9406`, physical
+  naming/timing for the output MMIO banks, and the DC-controller/engine
+  producer that converts actual paper, cover, cartridge, and engine-test
+  signals into `0x7821f9` bits.
 
 ## Attendance / User Action
 
@@ -465,13 +494,22 @@ Self-test covers:
 
 ## Sensor-Related Message Sources
 
-- Paper out / load: cassette sensor `PS301`, tray-size switches
-  `SW201`-`SW203`.
-- Manual feed: manual feed sensor `PS302`.
-- Paper jam: delivery sensor `PS331`.
-- Printer open: cover / +24B interlock path.
-- No EP cartridge: cartridge sensitivity switches `CSENS1`/`CSENS2` both
-  high.
+- Paper out / load: ROM branch `0x7cf8` tests `0x7821f9.4` and selects
+  string `0xb1c5` (`11 PAPER OUT`). Service hardware names this source as
+  cassette sensor `PS301` plus tray-size switches `SW201`-`SW203`.
+- Manual feed: page-environment helper `0x8a48` formats `PF FEED`,
+  `PE FEED`, or `PE FEED ENVELOPE` from `0x780e8e` / `0x780e98`; service
+  hardware names the physical sensor as `PS302`.
+- Paper jam: ROM branch `0x7cf8` tests `0x7821f9.3` and selects string
+  `0xb1e7` (`13 PAPER JAM`). Service hardware names this as delivery sensor
+  `PS331`.
+- Printer open: ROM branch `0x7cf8` tests `0x7821f9.2` and selects string
+  `0xb1d6` (`12 PRINTER OPEN`). Helper `0x7ccc` also displays the same string
+  and clears `0x780e32.3`; the physical source remains the cover / +24B
+  interlock path.
+- No EP cartridge: ROM branch `0x7cf8` tests `0x7821f9.6` and selects string
+  `0xb1f8` (`14 NO EP CART`). Service hardware names this as cartridge
+  sensitivity switches `CSENS1`/`CSENS2` both high.
 - Toner low: toner sensor `TSENS`.
 - Beam/scanner errors: `BD`, scanner tach `FG+`/`FG-`, scanner speed
   control `SCNCONT`, laser feedback `PD`.

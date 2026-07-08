@@ -631,11 +631,14 @@ Selector `0` starts definition mode. When invoked by lowercase-final
 ESC & f
 ```
 
-Uppercase-final `ESC &f0X` seeds a single zero byte instead. Selector
-`1` stops definition mode, normalizes chunk-header overhead out of the
-stored byte count, and clears empty one-byte or auto-prefix-only
-records; the auto-prefix-only check tests payload bytes `0x1b`, `0x26`,
-and `0x66` at chunk offsets `+4`, `+5`, and `+6`.
+Uppercase-final `ESC &f0X` seeds zero bytes through two ROM sites. Handler
+`0xddf2..0xddf4` appends one zero byte through `0xe002`; after `0xdd08`
+returns, parser-loop branch `0x11a68..0x11a82` can append a further zero byte
+when current macro record raw count `+0x04` is greater than `1`. Selector `1`
+stops definition mode, normalizes chunk-header overhead out of the stored byte
+count, and clears empty one-byte or auto-prefix-only records; the
+auto-prefix-only check tests payload bytes `0x1b`, `0x26`, and `0x66` at chunk
+offsets `+4`, `+5`, and `+6`.
 
 The append/count path behind that storage is now pinned. `0xe002` only
 appends when active frame byte `+9` is zero and macro error byte

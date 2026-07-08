@@ -635,6 +635,8 @@ A byte-stream renderer must preserve:
 - raw record counts that include four header bytes per 0x100-byte chunk;
 - 252 payload bytes per macro chunk after the longword next pointer;
 - lowercase `ESC &f0x` auto-prefix seeding and stop-time empty-prefix cleanup;
+- uppercase `ESC &f0X` zero-byte seeding at both `0xddf2..0xddf4` and the
+  parser-loop post-handler branch `0x11a68..0x11a82`;
 - alternate/data parser behavior that appends payload controls but still lets
   `ESC &f1X` stop definition;
 - execute/call frame fields `+0x00/+0x04/+0x08/+0x09/+0x0a`;

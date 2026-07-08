@@ -2541,7 +2541,11 @@ Exact boundaries:
   reads `0x1f08e + 0x0408 = 0x1f496`, and jumps to target `0x0066cc` from
   bytes `00 00 66 cc`. Listing
   `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst` shows
-  this is unrelated control code, not a row-copy helper head. Other sampled
+  this is unrelated control code, not a row-copy helper head: `0x0066cc`
+  starts with `tst.b $7821b9.l`, branches to `0x66e2`, can wait on
+  `0x10c8(0x780202)`, calls control/status helpers `0x15a6`, `0x15ac`,
+  `0x9ac2`, and `0x6722`, and then unwinds a normal stack frame through
+  `movem.l (A7)+, D0/D5/A4-A5`, `unlk A6`, and `rts`. Other sampled
   low-byte spans select out-of-firmware or non-helper longwords such as
   `0x20700000`, `0x4e90202c`, `0x4cdf1030`, `0x4e750001`, `0xf4e00001`,
   `0xf5960001`, and `0x4e904cdf`.

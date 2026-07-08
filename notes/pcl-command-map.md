@@ -541,8 +541,58 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x121b2` append literal `0x1a` or normalized `0x7f` through `0xe002`
   instead. `ESC z` enters mode `1` and dispatches normal handler `0xcd86`; it
   tests active data-chain frame byte `0x782d76 + 9`, calls status helper
-  `0x9c2c` only when that byte is zero, and creates no page object. Owner
-  notes:
+  `0x9c2c` only when that byte is zero, and creates no page object.
+
+  Field grouping for this byte-reader edge is explicit. Canonical parser state
+  is the delayed-payload snapshot `0x782a1a`, delayed handler pointer
+  `0x782a1c`, saved command record `0x782a20..0x782a25`, restored live record
+  at `0x78299e`, alternate/data flag `0x782c18`, and parser mode/table row
+  that selects the Control-Z siblings. Canonical text/filter state is selected
+  slot `0x782f06`, selected context byte `0x782eea + 0x10 * slot`, local
+  Control-Z context byte `0x782eeb + 0x10 * slot`, fallback filter byte
+  `0x782efa`, and high-character flags `0x783132` / `0x783133`. Canonical
+  append/status state is append sink `0xe002`, active data-chain frame pointer
+  `0x782d76`, service/status busy bit `0x780e2d.3`, marker `0x7821cc`,
+  status byte `0x7822db`, and warning accumulator `0x780e2a.3`.
+
+  Derived/cache state is the selected-slot product from `0x332ee(0x10)`, the
+  local high-control filter word at `A6-2`, and the reader-local termination
+  flag that remembers whether the previous normalized loop value was `ESC`.
+  Firmware bookkeeping is `0xd99a` for local `0x1a 0x58 -> 0x7f`
+  normalization, `0xf054` after CR routed by the normal display reader,
+  delayed restore helper `0x12218`, alternate delayed restore wrapper
+  `0x12358(0x1228a)`, append sink helper `0xe002`, and status helper
+  `0x9c2c -> 0x9b5e`.
+
+  Output effect splits by reader. Normal transparent data and normal display
+  functions feed payload values into the text-output path: filtered C0 and
+  high-control values call `0xd0f0`, while printable or filter-enabled values
+  call `0xd04a`; downstream text source creation, compact object queueing,
+  bridge, and render dispatch are the ordinary
+  `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0x12f2e -> 0x1ed84 ->
+  0x1edc6 -> 0x1ef6a` path. Alternate/data readers append preserved bytes
+  through `0xe002` and create no immediate page object. Normal Control-Z
+  siblings either enter `0xd04a`, synthesize `0x100` through `0xd04a`, or do
+  nothing on the false branch of `0x120d2`; alternate siblings append through
+  `0xe002`. `ESC z` is a guarded host/status edge and creates no page object,
+  compact object, publication request, or render work.
+
+  Evidence is
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`,
+  `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`,
+  fixtures `0x11f5a/0x12452 transparent text restores and consumes counted
+  bytes`, `transparent data parser trace feeds page-record queue`,
+  `ESC Y display-functions stream reaches page-record output`,
+  `ESC Y display-functions filter-on routes controls as printable`, and
+  `0x12120 ESC Y alternate append stores normalized display bytes`. No
+  ROM-local middle edge remains for the covered transparent/display reader
+  loops, Control-Z siblings, or `0xcd86 -> 0x9c2c` boundary. The remaining
+  transparent-output boundary is physical/resource-window decode for secondary
+  high-control fallback rows that read `0x0c0000..0x0c0321` after the verified
+  resource suffix `0x0bfe22..0x0bffff`; that boundary affects built-in glyph
+  bytes, not parser, dispatch, or page-object semantics. Owner notes:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).
 - Rectangle and raster imaging:

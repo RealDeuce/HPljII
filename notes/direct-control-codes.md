@@ -204,10 +204,12 @@ Unknown:
   y through VMI-scaled movement.
 - `0xf0f0` handles FF by optionally applying CR-style reset, finalizing the
   page root, and marking page-eject pending state.
-- `0xf1cc` handles HT by advancing to the next eight-column stop and clamping
-  to page width.
+- `0xf1cc` handles HT by converting HMI `0x78315c` to whole units, advancing
+  to the next eight-column stop relative to left margin `0x782dd6`, clamping
+  against right margin/page width, and refreshing span metrics.
 - `0xf2a8` handles BS by subtracting HMI or alternate previous-width state,
-  then clamping at the left margin.
+  clamping at the left margin or zero, setting previous-width latch
+  `0x782a58`, and refreshing span metrics.
 - `0xca8c` writes HMI `0x78315c` for accepted `ESC &k#H` values.
 - `0xe9ba` implements `ESC 9` by clearing left margin, copying page width to
   the right margin, and clearing the right-margin fractional companion.
@@ -372,6 +374,36 @@ combined line termination` pins that behavior.
 `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`. HT
 advances x to `21`, BS backs it up to `20`, and the printable glyph queues at
 compact coord `0x0a01` / pixel x `26`.
+
+HT/BS instruction boundaries:
+
+- `0xf1cc..0xf1e2` reads HMI `0x78315c` and converts it through `0x104fe`.
+  If the converted HMI is zero, the handler returns immediately with no cursor
+  write and no span refresh.
+- `0xf1e4..0xf1f8` selects horizontal cursor `0x782c8a` and left margin
+  `0x782dd6`. If current x is left of the margin, HT commits the margin as the
+  new x through the shared commit path at `0xf26a`.
+- `0xf202..0xf24c` subtracts left margin from current x, converts to whole
+  HMI columns, rounds the column count up to the next multiple of eight, scales
+  it back through HMI, adds the left margin, and leaves the candidate in `D4`.
+- `0xf24e..0xf288` clamps the HT candidate against right margin `0x782dda`.
+  If current x is already beyond the right margin, the clamp limit becomes page
+  width `0x782db8 << 16`; otherwise it is the right margin.
+- `0xf26a..0xf2a4` commits HT x to `0x782c8a`, selects the active font context
+  from `0x782ee6 + 16 * byte(0x782f06)`, and refreshes span metrics through
+  `0xd8fc` for flagged contexts or `0xd4ac` otherwise.
+- `0xf2a8..0xf2e4` handles BS setup. It ensures a page root through `0x10084`,
+  reads current x, then subtracts either latched previous-width word
+  `0x782a5a << 16` when alternate metrics byte `0x78318e` is set, or HMI
+  `0x78315c` otherwise.
+- `0xf2e6..0xf310` clamps BS: if current x was at or beyond left margin and
+  the candidate crosses below it, the candidate becomes left margin; any
+  negative candidate is clamped to zero. The committed x is written to
+  `0x782c8a`, previous-width latch `0x782a58` is set, and right-limit and
+  pending-cursor latches `0x782a57` / `0x782a6d` are cleared.
+- `0xf316..0xf342` uses the same active-context selection as HT and refreshes
+  span metrics through `0xd8fc` or `0xd4ac`. Neither HT nor BS queues a compact
+  object; the following printable byte consumes the committed x in `0xd04a`.
 
 `ESC &k6H!!` routes `0xca8c` before two printable bytes. The accepted HMI
 value stores packed advance `15` in `0x78315c`, moving the second glyph to

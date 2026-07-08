@@ -3204,9 +3204,14 @@ Direct-control command-to-output matrix:
   current page root through `0xff1e` when one exists. Its visible output is
   the pre-FF queued page objects.
 - HT and BS bytes `0x09` / `0x08`:
-  handlers `0xf1cc` and `0xf2a8` mutate horizontal cursor `0x782c8a` using
-  HMI `0x78315c`, tab-stop arithmetic, left-margin clamp, and previous-width
-  state. They do not queue page objects directly.
+  handlers `0xf1cc` and `0xf2a8` mutate horizontal cursor `0x782c8a`.
+  HT returns without a cursor write when converted HMI is zero; otherwise it
+  advances to the next eight-column stop relative to left margin `0x782dd6`
+  and clamps against right margin or page width. BS ensures a page root,
+  subtracts either HMI `0x78315c` or previous-width word `0x782a5a << 16`,
+  clamps at left margin or zero, and sets previous-width latch `0x782a58`.
+  Neither handler queues page objects directly; later printable bytes consume
+  the committed x.
 - `ESC &k#H` HMI:
   handler `0xca8c` writes packed HMI `0x78315c`; later printable, margin,
   cursor, HT, and BS paths consume it for coordinate conversion and advance.

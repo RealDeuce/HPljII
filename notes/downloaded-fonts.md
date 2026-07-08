@@ -2842,6 +2842,9 @@ A byte-stream renderer must preserve:
 - command-family parser state for `ESC *c#D`, `ESC *c#E`, `ESC *c#F`, and
   `ESC )s#W` / `ESC (s#W`;
 - current font id `0x782f2e` and current character `0x782f30`;
+- parser/device mode byte `0x782a92` for `ESC *c#F`: mode `2` suppresses
+  destructive or refresh selectors `0`, `1`, `2`, `3`, and `6`, while mark
+  and unmark selectors `4` and `5` still run through `0x17150` / `0x17108`;
 - the 32 current downloaded-font records and record flag bit `6`;
 - current-record counters `0x782782` and `0x782786`;
 - candidate counters/cursors affected by `0x16c14` and `0x1bc38`;

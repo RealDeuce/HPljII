@@ -1107,6 +1107,59 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   inline/downloaded paths; remaining font-selection work must change a
   concrete candidate, context, map, page-root slot, compact object, or
   row-construction input.
+
+  Field grouping for the downloaded `W` payload edge is explicit. Canonical
+  command state is current downloaded-font id `0x782f2e`, current character
+  `0x782f30`, current-record pool `0x782640..0x782776`, record id `+0`,
+  record flags `+2`, installed payload pointer `+6`, unmarked and marked
+  counts `0x782782` / `0x782786`, candidate total `0x78278e`, class counters
+  `0x782790` / `0x782796` and `0x782798` / `0x78279e`, candidate-window
+  cursors `0x7827a0`, `0x7827ac`, `0x7827b0`, and `0x7827b4`, and candidate
+  longword bits `30` and `26`. Parser scratch is restored command-record
+  cursor `0x78299e`, delayed-payload state `0x782a1a`, `0x782a1c`, and
+  `0x782a20..0x782a25`, payload budget `0x783140`, descriptor/resource
+  scratch `0x7827de..0x7827e9`, staged resource-header pointer `0x782862`,
+  bitmap byte count `0x7827be`, span `0x7827c2`, row count `0x7827c4`, and
+  continuation fields `0x7827c6`, `0x7827c8`, `0x7827ca`, `0x7827ce`,
+  `0x7827d2`, `0x7827d6`, `0x7827d8`, and `0x7827da`. Firmware bookkeeping is
+  parser/device mode `0x782a92`, byte readers `0x1599c`, `0x159d4`, and
+  `0x159f6`, descriptor walker `0x16336`, descriptor helpers `0x16b1a`,
+  `0x16b74`, and `0x16bd2`, validator `0x16fae`, allocator `0x17026`,
+  initializer `0x1719c`, glyph/object installer `0x16498`, byte drainer
+  `0x12328`, and release helpers `0x17a24` and `0x1887a`.
+
+  The output effect of downloaded `W` payloads is delayed. Descriptor,
+  resource-header, and character-payload commands do not draw at install
+  time. Accepted installs change the later printable-byte path:
+  `0xd04a -> 0x1393a -> 0xd824` or `0xd3b2 -> 0x12f2e -> 0x1387c` queues
+  compact downloaded-glyph objects under page-root bucket state, then
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` publishes and renders those
+  objects through compact helpers including `0x1fe76`, `0x1f0d2`,
+  `0x1f1f0`, and `0x1f264`. No-install and validation-failure exits drain or
+  skip their payload bytes and leave the following printable byte on the
+  previous/default font path unless a documented replacement/release path has
+  intentionally changed installed state. Evidence is
+  [downloaded-fonts.md](downloaded-fonts.md), the `Worked Path: Downloaded
+  Glyph` section in [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  listings `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, plus
+  fixtures `host-fetched font control stream feeds descriptor and character
+  payload state`, `host-fetched resource header plus glyph payload renders
+  offset-table downloaded glyph`, `host-fetched downloaded character object
+  feeds 0x1ed84 and 0x1ef6a`, `host-fetched downloaded character object
+  preserves 0x1edc6 bridge contract`, `host-fetched payload-control
+  downloaded glyph FF publishes page record`, `combined host-fetched font
+  download stream prints installed glyph`, and `0x16498 no-install exits
+  preserve following printable output`. No broad parser-to-page/render edge
+  remains for the documented installed downloaded-glyph paths; remaining
+  downloaded-glyph boundaries are the named row/span/count/source-byte
+  cross-products, wrapped source-byte helper targets through `0x1f034` /
+  `0x1f08e`, segmented-wide span-31 fallback source offset `+0xb50`, and the
+  `0x1fe76` short-compact fallback table behavior for high-row short compact
+  siblings.
   Downloaded glyph row-count streams have a documented selector boundary:
   low-byte rows `0x0001..0x00ff` are reproducible through the compact helpers,
   while high-row short compact siblings `0x0101..0x0103` stop at the unchecked

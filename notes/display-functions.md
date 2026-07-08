@@ -245,6 +245,13 @@ A byte-stream renderer must preserve:
   selected context/filter state is nonzero;
 - the fact that terminating `ESC Z` bytes participate as routed/appended
   values before the loop terminates;
+- local Control-Z mode-2 dispatch is table-dependent: normal `0x1a 0x1a`
+  calls `0x120d2` and only emits printable `0x1a` when the selected context
+  byte at `0x782eeb + 0x10 * 0x782f06` equals `1`; normal `0x1a X` always
+  calls `0xd04a(0x100)`;
+- alternate/data Control-Z siblings append through `0xe002` instead of
+  queueing page objects: nested `0x1a` appends literal `0x1a`, and `0x1a X`
+  runs `0xd99a` then appends `0x7f`;
 - `ESC z` as a guarded status/service edge, not a text-rendering command.
 
 ## Confidence

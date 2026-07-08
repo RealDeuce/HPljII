@@ -318,6 +318,41 @@ Evidence and unresolved boundary:
   extension contents at `0x200000` / `0x400000`, and the physical decode policy
   for resource continuation `0x0c0000..0x0c0321`.
 
+## Reproduction Contract
+
+For a supplied host byte stream, startup is reproduced when later parser,
+allocator, page-object, scheduler, and render code see the same ROM-visible
+baseline state. The required software behavior is:
+
+- Reset entry `0x0110..0x0240` must reach the same post-test initialization
+  path. RAM-test failure codes and early MMIO writes are startup diagnostics;
+  they do not create parser bytes, page objects, or pixels.
+- Startup config helpers `0x02b2..0x031e`, `0x071c`, and `0x05ba` write the
+  memory/config fields consumed by `0x0b18`. A renderer that assumes the
+  verified local baseline should preserve the documented `0x780efa`,
+  `0x780efe`, `0x7810b4`, and `0x7810b8` values or explicitly document a
+  different memory configuration.
+- Heap initializer `0x164a` owns the allocation baseline. Page objects,
+  macro/data-chain chunks, raster payloads, and downloaded-font payloads later
+  depend on allocator fields `0x780e86`, `0x783972..0x783986`, and payload base
+  `0x783988`.
+- Host byte and interface-output buffers start empty. `0x3178` initializes
+  ring/LIFO state `0x783e54..0x783e8e` and `0x7821c4`; `0x31d6` initializes
+  output FIFO state `0x783ed2`, `0x783ed4`, and `0x783ed8`.
+- Render-work and scheduler baselines are part of pixel reproduction.
+  `0x2feb6` seeds render selectors and counters, while `0x0c24` builds
+  wait-object records `0x780182..0x780262` with restart PCs including
+  interface output, parser, and active render scheduler entries.
+- Default-environment startup call `0x2c84` is the handoff into retained/default
+  records. Its parser/page effects are consumed later by reset, page layout,
+  and font/context notes; physical retained-storage identity remains an
+  external boundary.
+
+Physical names for reset MMIO registers are not required for byte-stream
+pixel reproduction unless their sampled values change one of the software
+fields above. Optional extension contents and the `0x0c0000..0x0c0321`
+resource continuation remain explicit external memory-map boundaries.
+
 ## Startup `0x0078xxxx` Write Cross-Reference
 
 This section is the startup-state write ledger for the ROM paths above. It

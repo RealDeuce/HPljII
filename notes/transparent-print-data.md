@@ -650,6 +650,12 @@ For `ESC &p#X`:
 - Let nonzero-filtered C0 and `0x80..0x9f` bytes enter `0xd04a` and emit normal
   mapped text entries.
 - Treat `1a xx` with `xx != 58` as routed payload byte `xx`, not `1a`.
+- For the secondary `SO ESC &p3X ! 80 !` segmented high-control path, preserve
+  the page-record and renderer state through glyph `0x5f`, segment `0x39`,
+  source `0x0bfe22`, and read window `0x0bfe22..0x0c0321`. Rows backed by
+  verified bytes `0x0bfe22..0x0bffff` are ROM-derived; fallback rows that need
+  bytes at `0x0c0000..0x0c0321` must stop at the physical/resource-window
+  decode boundary unless a board/emulator memory map supplies those bytes.
 
 ## Remaining Edges
 

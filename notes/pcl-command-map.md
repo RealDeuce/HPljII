@@ -555,7 +555,42 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `value * 5 / 10000` plus round-up and `+0x0b` bias path before writing the
   same fields. `G` writes area-fill id `0x78316e`, and `P` consumes the size,
   fill, cursor, page-extent, orientation, and page-root state to clip and
-  queue a rule object. Raster resolution `*t#R` uses mode `15` and handler
+  queue a rule object.
+
+  Field grouping for the rectangle edge is explicit. Canonical command state
+  is width `0x78316a`, height `0x783166`, and area-fill id `0x78316e`.
+  Canonical page/cursor inputs are cursor `0x782c8a` / `0x782c8e`,
+  orientation `0x782da3`, page extents `0x782db8` / `0x782db6`, and current
+  page root `0x78297a`. `0x10898` maps fill selectors: missing or `0P` uses
+  solid selector `7`; `2P` maps percent-fill thresholds from `0x78316e` to
+  selectors `0..7`; `3P` maps HP pattern ids `1..6` to selectors `8..13`
+  with landscape remaps for ids `1..4`. `0x10b80` clips the current-cursor
+  rectangle against page extents and writes canonical source record
+  `0x782a88 +0/+2/+4/+6/+8` for x, y, width, height, and selector. Derived
+  state is bucket `0x782a7c`, low bucket byte `0x782a7d`, and packed key
+  `0x782a7e` from `0x134d6`. Firmware bookkeeping is rule-list root
+  `page_root + 0x24`, allocator state `0x782a70` / `0x782a72` / `0x782a76`,
+  and no-room retry flag `page_root + 0x15.0`; parser scratch is the
+  six-byte `*c` record at `0x78299e`.
+
+  Output effect is direct rule-list object production when clipped width and
+  height remain nonzero. The queue path is
+  `0x10898 -> 0x10b80 -> 0x10084 -> 0x13386 -> 0x133aa`: `0x133aa`
+  allocates and links a 14-byte rule object under page-root `+0x24`.
+  Allocation failure at `0x10d22` marks the root, publishes through `0xff1e`,
+  allocates a fresh root, and retries the same source record. Publication and
+  bridge copy the rule list through `0x1ed84` / `0x1edc6`; render dispatch
+  enters `0x1ef6a -> 0x1f446`, where selector `7` uses solid helper
+  `0x1f596` and selectors `0..6` / `8..13` use patterned helper `0x1f4e0`.
+  Evidence is [rectangle-graphics.md](rectangle-graphics.md),
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  fixtures `rectangle command stream queues chained ESC *c rule object`,
+  `0x13386/0x133aa-modeled rectangle/rule list object and bridge
+  normalization`, `0x1f446/0x1f596 renders solid black rectangle rule pixels`,
+  and `0x1f4e0 renders gray and HP pattern selector matrix`.
+
+  Raster resolution `*t#R` uses mode `15` and handler
   `0x10808`; while raster-active byte `0x783182` is clear, it maps requested
   resolution to raster scale `0x78317e` and encoded mode `0x783178`.
   Raster start/end `*r#A/#B` use mode `7` and handlers `0x1075a` /

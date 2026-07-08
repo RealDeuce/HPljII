@@ -765,6 +765,16 @@ Key scheduler state:
 - `0x783a20`, `0x783a22`, `0x783a28`: derived band rows, remainder, and
   destination base computed by `0x1ef86`.
 
+Render-band setup is explicit arithmetic, not an opaque scheduler state.
+At `0x1ef86..0x1efc0`, helper `0x1ef86` loads render work word `+0x10`,
+adds word `+0x08`, subtracts word `+0x0a`, and divides the result by word
+`+0x06` with unsigned word division. It stores the division remainder in
+`0x783a22`, stores `(word +0x06 - remainder) << 4` in `0x783a20`, and stores
+`long +0x00 + ((remainder << 6) * word +0x04)` in both `0x783a28` and render
+work long `+0x12`. The following bucket dispatcher `0x1efc2` indexes render
+root `+0x18` by active band word `+0x10`, so these derived fields control
+where the selected bucket/list objects write pixels in the current band.
+
 The scheduler does not define object semantics. Its output is the selected
 render work record and band state passed to `0x1ef6a`. Physical engine timing
 and formatter/DC signal names remain separate board-facing boundaries.

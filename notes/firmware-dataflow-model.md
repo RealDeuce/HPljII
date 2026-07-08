@@ -644,6 +644,13 @@ Publication and render handoff:
 - `0x1edc6` copies root `+0x1c` to render `+0x18`, root `+0x24` to render
   `+0x1c`, root `+0x28` to render `+0x20`, and context slots
   `+0x2c..+0x68` to render `+0x24..+0x60`.
+- `0x1edc6` then converts copied rule and fixed-list nodes into render-time
+  continuation state. The rule loop at `0x1edf4..0x1ee0e` walks render
+  `+0x1c`, marks each rule byte `+0x05 |= 0x10`, and copies height word
+  `+0x0a` into remaining-row word `+0x0c`. The fixed-list loop at
+  `0x1ee10..0x1ee5e` walks render `+0x20`, marks each fixed byte
+  `+0x05 |= 0x10`, copies extent word `+0x08` into remaining-row word
+  `+0x0a`, and initializes bytes `+0x0c = 1` and `+0x0d = 8`.
 
 Output effect:
 
@@ -704,9 +711,18 @@ record:
   render `+0x1c`, root `+0x28` to render `+0x20`, and context slots
   `+0x2c..+0x68` to render `+0x24..+0x60`.
 
-Rule and fixed-width lists are normalized by `0x1edc6` before renderer
-dispatch. Compact bucket roots and context slots are mostly pass-through.
-The bridge contract is documented in
+Rule and fixed-width lists are not simple pass-through roots. Bridge helper
+`0x1edc6` mutates the copied render nodes before renderer dispatch:
+
+- rule nodes under render `+0x1c`: `0x1edf4..0x1ee0e` marks byte
+  `+0x05 |= 0x10` and copies height word `+0x0a` to continuation word
+  `+0x0c`;
+- fixed-list nodes under render `+0x20`: `0x1ee10..0x1ee5e` marks byte
+  `+0x05 |= 0x10`, copies extent word `+0x08` to continuation word `+0x0a`,
+  and sets bytes `+0x0c = 1` and `+0x0d = 8`.
+
+Compact bucket roots and context slots are mostly pass-through. The bridge
+contract is documented in
 [page-record-storage.md](page-record-storage.md) and
 `generated/analysis/ic30_ic13_page_record_bridge.md`.
 

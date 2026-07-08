@@ -2237,6 +2237,13 @@ Render work selection and bridge:
   rule-list root `+0x24` to render root `+0x1c`, source fixed-list root
   `+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to render
   slots `+0x24..+0x60`.
+- The bridge also initializes render-time continuation fields. At
+  `0x1edf4..0x1ee0e`, each rule-list node has selector byte `+0x05` ORed
+  with `0x10` and height word `+0x0a` copied to remaining rows `+0x0c`. At
+  `0x1ee10..0x1ee5e`, each fixed-list node has byte `+0x05` ORed with
+  `0x10`, word `+0x08` copied to remaining rows `+0x0a`, byte `+0x0c` set to
+  `1`, and byte `+0x0d` set to `8`. Later band renders consume these mutated
+  render-record fields.
 
 Active band loop:
 
@@ -2277,7 +2284,9 @@ State classification:
   active source pointer `0x780eae`, release cursor `0x780eb2`, active render
   pointer `0x783a18`, render work records `0x7820c4` / `0x782128`, render
   roots `+0x18`, `+0x1c`, `+0x20`, context slots `+0x24..+0x60`, and active
-  band word `+0x10`.
+  band word `+0x10`. Rule-list remaining rows `+0x0c` and fixed-list
+  remaining rows `+0x0a` become canonical render-record fields after bridge
+  helper `0x1edc6` initializes them.
 - Derived/cache:
   render-band rows `0x783a20`, remainder `0x783a22`, destination base
   `0x783a28`, stride `0x783a1c`, same-geometry destination word `+8`, and
@@ -2354,6 +2363,11 @@ Render-record inputs:
   source rule-list root `+0x24` to render root `+0x1c`, source fixed-list
   root `+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to
   render slots `+0x24..+0x60`.
+- The same bridge initializes rule-list and fixed-list continuation fields:
+  rule selector byte `+0x05` is marked with `0x10`, rule height `+0x0a`
+  becomes remaining rows `+0x0c`, fixed byte `+0x05` is marked with `0x10`,
+  fixed height `+0x08` becomes remaining rows `+0x0a`, and fixed bytes
+  `+0x0c/+0x0d` become `1/8`.
 - Active render pointer `0x783a18` selects the render work record consumed by
   `0x1ef6a`.
 

@@ -6481,6 +6481,11 @@ Definition storage:
 - Selector `0` reaches `0xdd86`, starts definition mode, and makes ordinary
   following bytes append to the selected macro record instead of dispatching
   as page output.
+- Lowercase selector-`0` final `x` seeds bytes `ESC & f` through
+  `0xddc6..0xdde8`. Uppercase final `X` seeds a zero byte through
+  `0xddf2..0xddf4`; after `0xdd08` returns, parser-loop branch
+  `0x11a68..0x11a82` can append a further zero byte when current macro record
+  raw count `+0x04` is greater than `1`.
 - Alternate/data parser table `0x116f6` still routes `x/X` to `0xdd08`, so
   the later `ESC &f1X` can stop the definition while ordinary payload
   controls are appended.

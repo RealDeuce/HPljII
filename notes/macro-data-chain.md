@@ -209,8 +209,10 @@ entry.
 Selector effects:
 
 - `0`: handler `0xdd86` starts definition mode. Lowercase `x` seeds
-  lowercase auto-prefix bytes through `0xe002`; uppercase `X` seeds a single
-  zero byte.
+  lowercase auto-prefix bytes through `0xe002`; uppercase `X` seeds one zero
+  byte in the handler. After `0xdd08` returns, parser-loop branch
+  `0x11a04..0x11a9c` can append another zero byte for selector-`0` uppercase
+  `X` when the current macro record raw count `+0x04` is greater than `1`.
 - `1`: handler `0xddfc` stops definition mode, normalizes raw chunk counts,
   clears empty or auto-prefix-only records, and leaves nonempty payload records
   selectable.
@@ -258,7 +260,10 @@ The disassembly-backed selector boundary is:
   sets append-error byte `0x782c19` and definition byte `0x782c18`; an existing
   record is first cleared through `0xdfba`, assigned current id `0x783164`, and
   then put in definition mode. Lowercase final `x` seeds bytes `ESC & f` into
-  the definition stream through `0xe002`; uppercase `X` seeds one zero byte.
+  the definition stream through `0xe002`; uppercase `X` seeds one zero byte
+  inside the handler at `0xddf2..0xddf4`. The parser-loop post-handler branch
+  `0x11a68..0x11a82` can append a further zero byte when record raw count
+  `+0x04` is greater than `1`.
 - `0xddfc..0xde7a`: selector `1` stops definition mode. It normalizes raw count
   `record[+4]` by subtracting four header bytes per 0x100-byte chunk, clears
   empty records and lowercase auto-prefix-only records through `0xdfba`, and
@@ -292,8 +297,10 @@ The disassembly-backed selector boundary is:
   and `macro command stream respects definition and active-chain guards`
   exercise the selector branches and guard behavior described above.
 - `0xdd86..0xde7a` starts/stops definition mode, seeds lowercase `ESC &f`
-  auto-prefix bytes through `0xe002`, normalizes counts, and clears empty or
-  auto-prefix-only records through `0xdfba`.
+  auto-prefix bytes or uppercase zero bytes through `0xe002`, normalizes
+  counts, and clears empty or auto-prefix-only records through `0xdfba`.
+  The uppercase zero-byte case has two ROM sites: handler `0xddf2..0xddf4`
+  and parser-loop branch `0x11a68..0x11a82` after `0xdd08` returns.
 - `0xe002` appends definition bytes into linked 0x100-byte chunks, links new
   chunks, updates record raw count `+0x04`, and sets `0x782c19` on allocation
   failure.

@@ -308,6 +308,15 @@ before jumping to a command-family owner note:
   restore, but before terminal reset it preserves matched C0 and command bytes
   by flushing byte scratch through `0x123ae`, numeric scratch through
   `0x123de`, and appending the matched byte through `0xe002`.
+- `0x11a04..0x11a9c`: macro-control exception inside that alternate/data
+  path. If the current parser mode is `17`, the active six-byte record word
+  `+2` is zero, and the final byte is `x` or `X`, the loop does not append the
+  final byte as an ordinary stored command byte. Lowercase `x` rejoins the
+  terminal path immediately. Uppercase `X` tests current macro record raw count
+  `0x782d7a(+4)`, and when it is greater than `1` appends one zero byte through
+  `0xe002` before the terminal reset. This post-handler append is separate
+  from selector-`0` handler `0xdd86`, which can already seed macro definition
+  bytes before control returns to the parser loop.
 - `0x11af6..0x11b2e`: nonzero next-mode continuation after a state transition.
   When the active callback is `0x11d0c` or `0x11dd2` and the byte is a
   lowercase final in `0x60..0x7e`, the loop calls `0xdaf0` to continue command

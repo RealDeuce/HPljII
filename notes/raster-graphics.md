@@ -252,6 +252,14 @@ Instruction boundary:
   `0x783182` and leaves origin, baseline, scale, mode, byte limit, and row
   fields unchanged.
 
+The active-start exit is an ignored-command boundary, not a second
+initialization path. If `ESC *r#A` reaches `0x1075a` while active byte
+`0x783182` is nonzero, `0x10784..0x107aa` returns before selector testing,
+origin writes, baseline copy, or row-limit recomputation. A byte-stream
+renderer must therefore keep existing raster fields `+0x00`, `+0x08`,
+`+0x0a`, `+0x0e`, and `+0x10`; only a prior `ESC *r#B` or reset/default path
+can reopen those start/resolution writes.
+
 `0x107fa` handles `ESC *r#B`. It clears only active byte `0x783182`
 (`state+0x12`). It leaves origin, mode, scale, limit, and row state intact.
 That is why a following `ESC *t150R` can update resolution after `ESC *rB`,
@@ -811,6 +819,9 @@ A byte-stream reproduction must preserve these behaviors:
   pieces of state until `0x12218` restores the record and calls `0x105d0`.
 - Raster resolution commands are ignored while raster active byte `+0x12` is
   set.
+- Raster start commands are also ignored while raster active byte `+0x12` is
+  set; `0x1075a` preserves the previous origin, baseline, scale, mode, and
+  byte limit until `ESC *r#B` clears the active byte.
 - `ESC *r#B` clears only active byte `+0x12`; it does not reset mode, scale,
   origin, or byte limit.
 - Lowercase same-family `ESC *b#w` records remain pending until an uppercase

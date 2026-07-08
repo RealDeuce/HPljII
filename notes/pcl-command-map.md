@@ -501,7 +501,43 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   materializes a selector-`0x4000` segment-list object under the current page
   root before following text continues. Its visible effect is therefore
   delayed until printable text or a flush boundary consumes the selector; the
-  `ESC &d` command alone only changes span state. Owner note:
+  `ESC &d` command alone only changes span state.
+
+  Field grouping for this span edge is explicit. Canonical command state is
+  underline/span selector `0x783185`; canonical pending-span state is enable
+  byte `0x783184`, start x `0x783186`, current/end x `0x783188`, and y/extent
+  companion `0x78318a`. Canonical page/output state is current page root
+  `0x78297a`, compact text objects that caused the span to grow, and the
+  segment-list span object inserted under page-root `+0x1c`. The produced
+  covered portrait object has selector/class `0x4000`, count `+0x06`, packed
+  key `+0x08`, y `+0x0a`, and extent `+0x0c`; fixture bytes include
+  `00 00 00 00 40 00 00 01 3a 00 03 00 00 12` for the
+  `ESC &d3D! ESC &d@` path.
+
+  Derived/cache state is compact coordinates and the `0x12714` bucket/key
+  result, such as `0x3200` or `0x3a00`, computed from span bounds. Parser
+  scratch is the normal six-byte `ESC &d` terminal record at `0x78299e`; no
+  delayed-payload state participates. Firmware bookkeeping is re-armed span
+  bounds after `0x126e2`, page-root allocation through `0x10084`, no-room
+  retry/publication through `0xff1e`, and span updates from printable paths
+  `0xd4ac` / `0xd8fc`.
+
+  Output effect requires both a span-producing selector and a flush boundary.
+  `ESC &d3D` writes `0x783185 = 1`; following printable text reaches
+  `0xd04a` and updates the span block through selected-font metrics; final
+  `ESC &d@`, CR, margin changes, or vertical cursor changes can then call
+  `0xf34a`, which routes the pending block through `0x12714 -> 0x126e2` into
+  a selector-`0x4000` page object. Evidence is
+  `generated/disasm/ic30_ic13_text_span_flush_012714.lst`,
+  `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`, fixture
+  `ESC &d underline selector materializes span output`, plus fixtures
+  `live CR span flush materializes 0x12714 page object`,
+  `left-margin parser span flush materializes 0x12714 page object`, and
+  `vertical-cursor parser span flush materializes 0x12714 page object`. No
+  ROM-local middle edge remains for the covered portrait span producers; new
+  work should add only variants that change object bytes, bucket choice,
+  bridge state, or row-construction inputs. Owner note:
   [direct-control-codes.md](direct-control-codes.md).
 - Page layout, VFC, and publication commands:
   `&l` enters mode `10` through `0x11eda`. Page-size, VMI/LPI, margin, paper,

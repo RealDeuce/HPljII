@@ -74,9 +74,6 @@ Derived/cache status:
 Canonical backchannel response:
 
 - `0x12280..0x12288`: zero-terminated literal `33440A\r\n`.
-- Active six-byte parser record word `+2`: the model-ID response handler emits
-  the literal only when this word is `1` or `-1` and the fetched query byte is
-  `0x11`.
 - `0x12034`: command-table wrapper reached from `ESC *r#K` and `ESC *s#^`. It
   calls setup helper `0x11efe`, which appends a synthetic secondary/setup
   six-byte record with word `+2 = 1`, then enters `0x122be`.
@@ -109,9 +106,17 @@ Firmware bookkeeping:
 
 Parser scratch:
 
-- none for these status paths. Parser-side producers can enqueue response
-  bytes through `0xb090`, but the status fields above are host-interface,
-  pool, and service bookkeeping rather than PCL parser state.
+- Model-ID response parsing uses parser scratch. Wrapper `0x12034` appends a
+  synthetic six-byte setup record through `0x11efe`, producer
+  `0x122be..0x12326` rewinds active record cursor `0x78299e`, and the
+  following query byte is fetched through parser byte wrapper `0xda9a`.
+  The handler emits literal `33440A\r\n` only when the active record word `+2`
+  is `1` or `-1` and the fetched query byte is `0x11`.
+- The synthetic record and query byte are consumed immediately by
+  `0x122be..0x12326`; they do not become page/image state.
+- The other status and page-environment paths here do not consume PCL parser
+  records directly; their state is host-interface, pool, panel, and service
+  bookkeeping.
 
 Unknown:
 
@@ -245,6 +250,9 @@ State and output effect:
   and no render work. It can affect later pixels only if a bidirectional host
   consumes the response bytes and sends different future input, or if FIFO
   fullness stalls the parser-side producer.
+- The ROM-local parser-to-FIFO edge is resolved for this path. Remaining
+  uncertainty is the hardware/MMIO identity of the selected output backend
+  registers named by `0x780e40`.
 
 ### Output Effect
 

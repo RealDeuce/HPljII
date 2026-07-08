@@ -558,6 +558,59 @@ assembles patterned rule rows` prove that non-solid rule continuation mutates
 the bridged node between bands and that the walker resumes from the carried
 node on the next band.
 
+### Rule Destination And Row Writes
+
+The solid and patterned helpers share the same destination setup contract in
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`.
+
+At `0x1f4e8..0x1f514` and `0x1f59e..0x1f5ca`, the helper reads packed
+coordinate word `object[+6]` into `D1`, clears bridged current-band flag
+`object[+5].4`, computes the current-band row count in `D3`, subtracts that
+count from continuation word `object[+0x0c]`, and shortens `D3` if the
+continuation word goes nonpositive. A first-band object uses the row-high bits
+from `object[+6]` and the bucket delta from walker `0x1f446`; a continuation
+object masks `D1` to the low twelve row bits and clears the walker delta.
+
+Helper `0x1f626..0x1f6ec` then converts the packed coordinate into a concrete
+destination:
+
+- `0x1f626..0x1f63e` writes destination phase byte `$a001` from the
+  coordinate's sub-byte bits, setting bit `0x10` for a nonzero phase.
+- `0x1f642..0x1f648` converts the coordinate low byte to byte-pair offset
+  `A2`.
+- `0x1f64a..0x1f688` selects `0x783a28 + row_offsets[row] + A2` for objects
+  that start in the active band without a bucket-delta carry.
+- `0x1f68a..0x1f6ce` selects the active band with an added
+  `0x783a1c * delta_rows` stride when the bucket delta still fits within
+  `0x783a20`; if the requested row count crosses that active-band boundary,
+  `D3` is returned with rows for the active band in the low word and rows for
+  the fallback buffer in the high word.
+- `0x1f6d2..0x1f6ec` selects fallback buffer `0x7810b4 + A2` plus
+  `0x783a1c * adjusted_row` when the bucket delta starts outside the active
+  band.
+
+Solid helper `0x1f596` consumes that destination as a run of black words.
+After `0x1f5d0..0x1f5e6` derives full-word count and right-edge mask from
+`object[+8]`, loop `0x1f5f4..0x1f60a` writes `0xffff` for each full word,
+writes the masked tail word, and advances one output row by stride
+`0x783a1c`. If `0x1f626` returned fallback rows in the high word of `D3`,
+`0x1f60e..0x1f61e` resets `A1` to `0x7810b4 + A2` and repeats the same row
+loop for the remaining rows.
+
+Pattern helper `0x1f4e0` uses the same destination split, but
+`0x1f51a..0x1f54c` first calls mask helper `0x1f6ee` and selects the pattern
+row table through pointer table `0x2fefe`. Loop `0x1f558..0x1f57a` writes the
+left-masked pattern word, any full interior pattern words, and the
+right-masked tail word for each row, then advances by `0x783a1c`.
+`0x1f57e..0x1f58e` repeats from `0x7810b4 + A2` when the high word of `D3`
+contains fallback rows.
+
+Mask helper `0x1f6ee..0x1f754` is therefore part of the pixel contract for
+non-solid rectangle output. It builds the left and right masks in `D2` from
+the coordinate phase and requested width using mask tables at `0x3089e` and
+`0x308be`; the patterned helper consumes the low word as the left mask and
+the high word as the right mask.
+
 ## Mixed Page-Record Composition
 
 The rectangle/rule producer has been composed with adjacent page producers in

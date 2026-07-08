@@ -550,7 +550,35 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0xf6e2` to canonical cursor `0x782c8e` and clamps to `0x782dc6`. They
   create no page object directly. Later printable text, raster start,
   rectangle fill, VFC, or publication paths consume the updated cursor fields.
-  Owner note: [direct-control-codes.md](direct-control-codes.md).
+
+  Field grouping for this dot-position edge is explicit. Canonical parser
+  state is the six-byte `ESC *p` terminal record at `0x78299e`, signed word
+  `+2`, final byte `X/x` or `Y/y`, lowercase/uppercase continuation state,
+  and record bit `0` as the relative flag. Canonical placement state is
+  horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, page width
+  `0x782db8`, vertical upper bound `0x782dc6`, lower bound `0x782dca`, top
+  offset `0x782dce`, current page root `0x78297a`, and pending span block
+  `0x783184..0x78318a`. Derived/cache state is the whole-dot packed candidate
+  produced by `value << 16`, plus right-limit latch `0x782a57` and pending
+  text byte `0x782a6d` written by the shared commit helpers. Parser scratch is
+  only the restored terminal record; no delayed payload participates.
+
+  Output effect is delayed and shares the cursor-placement commit helpers.
+  `0xf48c..0xf4c8` sign-extends the parsed word, shifts it into a whole-dot
+  packed x coordinate, and calls `0xf4ca`, which clamps and writes
+  `0x782c8a`. `0xf692..0xf6e0` performs the same conversion for y, calls
+  `0xf6e2`, and clamps the committed y to `0x782dc6`. A following printable
+  byte then reaches `0xd04a -> 0x12f2e`; raster start and rectangle/rule paths
+  can also use the committed cursor as an origin. Evidence is
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`,
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`,
+  [direct-control-codes.md](direct-control-codes.md), fixture
+  `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits`, and
+  fixture `dot position parser trace feeds page-record queue`. No ROM-local
+  middle edge remains for the covered dot-position writes; remaining variants
+  should add only streams that change relative arithmetic, clamp boundaries,
+  span flush bytes, or downstream object coordinates. Owner note:
+  [direct-control-codes.md](direct-control-codes.md).
 - Underline/text-attribute commands:
   `ESC &d` dispatches terminal handler `0x12622` directly from the `ESC &`
   family. It tokenizes the local `&d` form, writes underline/span selector

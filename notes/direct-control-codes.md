@@ -603,6 +603,40 @@ Producer cases:
   flushes selector-`0x4000` span object
   `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`.
 
+Underline/text-attribute instruction boundaries:
+
+- `0x12622..0x12636` enters the local `ESC &d` handler, calls command combiner
+  `0xdaf0` to tokenize the current six-byte record, then fetches one lookahead
+  byte through parser wrapper `0xda9a`.
+- `0x12638..0x12654` treats lookahead `W` or `w` as a generic counted-payload
+  boundary by scheduling delayed handler `0x1228a` through `0x121cc`. This
+  matches the stateful tokenizer helpers even though normal underline streams
+  do not use a payload.
+- `0x12654..0x12664` keeps lowercase finals in `0x60..0x7e` inside the `&d`
+  family by looping back to `0xdaf0`. Uppercase or non-lowercase finals leave
+  the loop.
+- `0x12666..0x1266c` handles non-`W/w` lookahead by rewinding
+  `0x78299e` by one six-byte record, so the terminal logic acts on the record
+  already parsed by `0xdaf0`.
+- `0x1266e..0x1268c` accepts terminal bytes `0x40..0x5e`; other values are
+  reported through `0x9ec0` and return without changing span state.
+- `0x1268e..0x126a0` restores any delayed payload through `0x12218`, then
+  uses final-byte bit 2 as the split. If bit 2 is clear, the handler calls
+  `0x12714` to flush pending span state and returns. The covered `ESC &d@`
+  stream takes this terminal flush path.
+- `0x126a2..0x126a8` is the selector-write guard. If span enable byte
+  `0x783184` is already nonzero, the handler returns without changing
+  selector byte `0x783185`.
+- `0x126aa..0x126d4` reads the parsed parameter word from the current
+  six-byte record, normalizes it to an absolute value, and writes
+  `0x783185 = 1` only for final byte `D` with parameter `3`. Other accepted
+  selector terminals write `0x783185 = 0`.
+- `0x126da..0x126e0` calls `0x126e2` after a selector write. `0x126e2`
+  initializes pending span state only when `0x783184` was clear: it writes
+  `0x783184 = 1`, seeds low/high x words `0x783186` and `0x783188` from
+  current horizontal cursor word `0x782c8a`, and clears high-y word
+  `0x78318a`.
+
 State classification for this cluster:
 
 - canonical: pending span fields `0x783184`, `0x783186`, `0x783188`, and

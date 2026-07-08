@@ -1947,15 +1947,15 @@ VMI state before object queueing, then cross the same `0x1387c`,
 ### Confidence
 
 High for the command-family mapping, field roles, conversion effects,
-page-record compact coordinates, and bridge/render-entry effects because
-they are covered by generated disassembly reports plus executable fixtures
-that start at `0xa904` and exercise the documented page-record/render-helper
-path. The derived rows are consequences of the traced ROM helpers, not an
-external pixel oracle. Medium for the
-exact names of pending-text latches and every internal write between
-`0xd04a` and `0x12f2e`, because several page-object fixtures still use
-modeled source/object structures rather than parser-produced page/control
-pool records for every source variant.
+page-record compact coordinates, and bridge/render-entry effects because the
+handler listings, generated disassembly reports, and named RAM fields show the
+writer and consumer chain from `0xa904` through page-record/render-helper
+state. Fixtures that start at `0xa904` exercise that documented path, but the
+derived rows are consequences of traced ROM helpers rather than an external
+pixel oracle. Medium for the exact names of pending-text latches and every
+internal write between `0xd04a` and `0x12f2e`; those names remain inferred
+until the disassembly is documented down to each intermediate field for every
+source variant.
 High for the ROM-visible `ESC 9`, `ESC =`, and `ESC &d` field writes,
 helper boundaries, and representative downstream visible-output effects
 because those are direct disassembly reads plus dedicated host-fetched

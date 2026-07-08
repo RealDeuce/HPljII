@@ -688,6 +688,9 @@ Command route:
 - `ESC &l#E` and `ESC &l#F` reach top-margin and text-length handlers
   `0xece2` and `0xea9e`.
 - `ESC &l#L` reaches perforation-skip handler `0xee64`.
+- `ESC &l#T` is the page-layout `T` table slot with no ROM handler. The
+  lowercase chaining form `ESC &l#t` reaches generic rewind helper `0x11f4c`,
+  leaving the `&l` family active for the following final byte.
 - `ESC &s#C` reaches wrap-mode handler `0xedb0`.
 - The following printable byte reaches `0xd04a`, then `0x12f2e` /
   `0x1387c`, publication, bridge, and render entry through the normal
@@ -706,6 +709,9 @@ State handoff:
 - Parser scratch:
   six-byte command records for the `ESC &l` and `ESC &s` commands; those records
   are consumed by the handlers and are not later page-object state.
+  The `ESC &l#t` chaining row is parser scratch only: `0x11f4c` subtracts six
+  from `0x78299e` and returns so the next `&l` final can consume the retained
+  record context.
 - Firmware bookkeeping:
   modified-layout byte `0x782ee1`, pending text/cursor latch `0x782a6d`,
   pending publication/root-clear state for the `ESC &l0P` branch, and later
@@ -802,6 +808,12 @@ Vertical-layout and mode handler boundaries:
 - `0xee64..0xeeaa` handles `ESC &l#L`. It rewinds the parser record, takes the
   absolute selector, clears perforation byte `0x783191` for selector `0`, sets
   it for selector `1`, and leaves it unchanged for other selectors.
+- `ESC &l#T` has no terminal page-layout writer in the parser table. It
+  returns through the normal terminal parser path without changing VMI, page
+  extent, margins, perforation, cursor, page-root, publication, or render state.
+  Its lowercase sibling `ESC &l#t` reaches `0x11f4c`, whose complete body is
+  `subq.l #6, $78299e` and return; any later effect comes from the following
+  chained `&l` final, not from `t` itself.
 - `0xf36c..0xf39c` is the shared perforation consumer. It calls page-eject
   helper `0xf124` and returns `D7 = 0` only when cursor y `0x782c8e` is beyond
   nonzero limit `0x782dc2` and perforation byte `0x783191` is set. Otherwise
@@ -839,6 +851,9 @@ Output boundary:
 - `ESC &s#C` has no immediate object. Its output effect is the later
   `0xd28a` / `0xd6bc` accept/reject/retry decision before compact text
   queueing.
+- `ESC &l#T` and `ESC &l#t` have no page-output effect. The uppercase slot is
+  ignored at the command-family boundary; the lowercase slot only preserves
+  parser chaining for the next `&l` final.
 
 Evidence:
 
@@ -847,10 +862,12 @@ Evidence:
   `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
   `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`,
   `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
-  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`,
+  `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`, and
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
 - Generated flow:
-  `generated/analysis/ic30_ic13_direct_control_code_flow.md` and
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`,
+  `generated/analysis/ic30_ic13_pcl_command_map.md`, and
   `generated/analysis/ic30_ic13_text_cursor_span_flow.md`.
 - Fixture families:
   page-length, VMI/LPI, top-margin, text-length, perforation-skip,
@@ -872,6 +889,8 @@ A byte-stream renderer must preserve:
   horizontal overflow decisions;
 - VMI/LPI, page-length, top-margin, text-length, and perforation-skip state as
   delayed inputs to following printable placement and vertical overflow;
+- the `ESC &lT/t` no-output page-layout slot: uppercase ignores the command and
+  lowercase only performs `0x11f4c` parser chaining;
 - CR reset through left margin before optional LF movement;
 - LF and FF optional CR-style reset behavior;
 - HT eight-column stop arithmetic using left margin and HMI;

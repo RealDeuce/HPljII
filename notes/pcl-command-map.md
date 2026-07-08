@@ -773,7 +773,40 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   selector `4` stores `0x782a92` / `0x782a94`; publication `0xff1e` may
   resolve that id, build a non-replay frame through `0xe4f4`, re-enter
   `0x11774`, and publish the replayed page objects through the normal
-  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path. Owner note:
+  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path.
+
+  Field grouping for macro replay is explicit. Canonical macro state is
+  current id `0x783164`, macro record pool `0x782a98`, selected record pointer
+  `0x782d7a`, record head/count/id/permanent fields `+0/+4/+8/+0x0a`, active
+  data-chain frame pointer `0x782d76`, frame head/count `+0/+4`, source offset
+  `+8 = 4`, frame kind `+9`, and snapshot pointer `+0x0a`. Canonical overlay
+  state is mode byte `0x782a92`, saved overlay id `0x782a94`, and page-root
+  retry flag `+0x14.0`. Parser scratch is normal mode-17 records for `Y/y`
+  and `X/x`, alternate/data table `0x116f6` keeping `X/x -> 0xdd08` while
+  suppressing payload control execution, and replayed payload bytes returned
+  by `0xa904` before `0x11774` parses them again. Firmware bookkeeping is
+  heap chunk allocation/free, definition-mode bytes `0x782c18` / `0x782c19`,
+  frame-end unwinding through `0xe22c`, context-stack pointer `0x782c6e`, and
+  font-context refresh helper `0xe65c`.
+
+  Output effect depends on the selected control. Definition and delete
+  selectors mutate records but draw nothing. Execute/call frames make stored
+  payload bytes an input source; `0xa904` returns those bytes, the normal
+  parser dispatches them to ordinary handlers such as `0xd04a`, `0xf02c`,
+  `0xedf8`, `0x105d0`, or `0x12452`, and resulting page objects use the same
+  publication and render path as live host input. Overlay publication is the
+  page-finalization detour: `0xff1e` tests `0x782a92`, `0x782a94`, macro
+  record presence, and root retry flag, then `0xe4f4` creates a non-replay
+  frame so the stored payload is parsed into the page being published. Evidence
+  is [macro-data-chain.md](macro-data-chain.md),
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  fixtures `macro execute data-chain replay feeds page-record stream`,
+  `host-fetched macro replay payloads preserve 0x1edc6 bridge contract`,
+  `macro overlay finalization replays before page publication`, and the
+  overlay payload fixtures for mixed-control, transparent, raster, and
+  span-flush payloads.
+  Owner note:
   [macro-data-chain.md](macro-data-chain.md).
 - Status and model-response side channels:
   `ESC *r#K` enters mode `7` and `ESC *s#^` enters mode `6`; both dispatch

@@ -2246,9 +2246,11 @@ Field groups:
   - span-2 helper `0x1fe76` is an unchecked row-count jump table over `D3`:
     `0x1fe76..0x1fe88` loads table base `0x1fe8a`, shifts `D3` left by two,
     reads a longword target, and jumps. The valid entries are `0..128`; entry
-    `128` at `0x2008a` points to `0x2008e`, which is the first row-copy
-    instruction rather than another pointer. Entries above `128` read
-    executable code bytes as pointer data.
+    `0` at `0x1fe8a` points to `0x2028e`, entry `127` at `0x20086` points
+    to `0x20092`, and entry `128` at `0x2008a` points to `0x2008e`, which is
+    the first row-copy instruction rather than another pointer. Entries above
+    `128` read executable code bytes as pointer data; the row-`0x0102`
+    fallback index `200` reads target longword `0x329ad3c0`.
   - `0x783a40`, `0x783a42`, `0x783a44`, `0x783a46`, and `0x783a48`: wide-mode
     row-skip, fallback row-skip, remainder row-skip, current 16-byte chunk
     phase, and fallback source pointer caches written by `0x1f0d2` and

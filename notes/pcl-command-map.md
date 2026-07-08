@@ -569,7 +569,43 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   rows through `0xdace`, queues accepted rows through
   `0x10084 -> 0x13070 -> 0x13250`, and leaves encoded raster objects under
   page-root bucket `+0x1c` for publication/render dispatch through `0x1ed84`,
-  `0x1edc6`, `0x1ef6a`, `0x1efc2`, and `0x1f88e`. Owner notes:
+  `0x1edc6`, `0x1ef6a`, `0x1efc2`, and `0x1f88e`.
+
+  Field grouping for this raster edge is explicit. Canonical raster state is
+  block `0x783170`: baseline `+0x00`, current row `+0x02`, accepted byte
+  count `+0x04`, overflow/drain count `+0x06`, encoded mode `+0x08`,
+  baseline/origin coordinate `+0x0a`, scale `+0x0e`, row byte limit
+  `+0x10`, and active flag `+0x12` (`0x783182`). Related canonical page state
+  is cursor `0x782c8a` / `0x782c8e`, orientation `0x782da3`, page extent
+  `0x782db4`, y clamp `0x782dc6`, and current page root `0x78297a`. Parser
+  scratch is delayed-payload byte `0x782a1a`, saved handler
+  `0x782a1c = 0x105d0`, saved command record `0x782a20..0x782a25`, and
+  restored `0x78299e` record. Derived/cache state is bucket index
+  `0x782a7c`, packed key `0x782a7e`, allocation capacity `0x782a80`, and
+  encoded object bytes produced by `0x13250` / `0x138de`.
+
+  Output effect is direct page-object production only for accepted rows.
+  `0x105d0` gates the transfer using current row, page extent, accepted count,
+  and drain count; beyond-extent or negative-row transfers still consume host
+  payload through `0xdace` but skip `0x13070`. Accepted rows ensure a page root
+  through `0x10084`, then `0x13070` computes bucket/key fields and calls
+  `0x13250` to link a high-bit encoded-span object under root `+0x1c`.
+  Publication copies that object through `0x1ed84` / `0x1edc6`; render
+  dispatch `0x1ef6a -> 0x1efc2` selects encoded-raster writer `0x1f88e`.
+  `0x1f88e` consumes object byte `+5 & 3` to select mode helpers: mode `0`
+  renders literal rows, mode `1` expands bytes into two rows, mode `2`
+  expands byte pairs into three rows and can clip into fallback buffers, and
+  mode `3` expands bytes into four rows. Evidence is
+  [raster-graphics.md](raster-graphics.md),
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`,
+  fixtures `raster stream ties parser dispatch to queued page object`,
+  `host-fetched raster stream preserves 0x1edc6 bridge contract`,
+  `0x13070/0x13250 raster row queues encoded-span object`, and
+  `0x1f88e mode-0 raster object renders queued literal row` through
+  `0x1f88e mode-3 raster object expands queued bytes into four rows`.
+  Owner notes:
   [rectangle-graphics.md](rectangle-graphics.md) and
   [raster-graphics.md](raster-graphics.md).
 - Downloaded-font current-state controls in the `*c` family:

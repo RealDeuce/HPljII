@@ -744,7 +744,66 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   remains for the documented VFC table-definition, default-table, forward
   jump, recovery, or page-boundary paths; manual-facing names for
   `0x782ede`, `0x782edf`, and `0x782ee0` remain inferred.
-  FF and reset use direct terminals `0xf0f0` and `0xcc52`. Owner notes:
+
+  Field grouping for publication edges is explicit. Canonical page-record
+  state is current page root `0x78297a`, compact bucket root `page_root+0x1c`,
+  context-slot root `page_root+0x2c`, published page/control pointer
+  `0x780ea6`, and publication flag `0x782996`. Canonical command/header state
+  is line-termination byte `0x78318f`, copy count `0x782da4`, paper-source
+  byte `0x782da6`, pending page-size/page-length header flag `0x782997`,
+  pending paper/layout header flag `0x782998`, status/header byte `0x780e99`,
+  paper-source output/control bytes `0x780e8f` / `0x780e26`, page code
+  `0x782da2`, and orientation byte `0x782da3`. Parser scratch is the
+  six-byte `ESC &l` terminal record for page-size, orientation, paper-source,
+  and copies; FF and reset are direct terminal/control handlers. Firmware
+  bookkeeping is stream allocator state `0x782a70` / `0x782a72` /
+  `0x782a76`, page-root bookkeeping byte `0x782990`, page state byte
+  `0x782a92`, and publication helper `0xff1e`.
+
+  Publication commands freeze queued page objects before mutating state that
+  belongs to the next page or environment. Reset `0xcc52 -> 0xcc70` flushes
+  pending text through `0xf34a`, calls `0xff1e`, then rebuilds environment
+  state. FF `0xf0f0` applies optional CR-style x reset from `0x78318f.5`,
+  flushes spans, ensures a root, and reaches `0xf124 -> 0xff1e`.
+  Page-size `0xfc74` and orientation `0x10220` publish before writing page
+  code/orientation and rebuilding geometry, margins, VMI/HMI, VFC, and font
+  context state for later bytes. Paper-source `0xef62` publishes before
+  writing `0x782da6`, setting `0x782998`, and optionally signaling
+  `0x780e8f` / `0x780e26`. Copies `0xeef0` writes nonzero absolute counts,
+  clamped at `99`, to `0x782da4`; it does not publish until a later FF or
+  other publication path copies that word into published root `+0x0c`.
+
+  The render handoff is the ROM-local pixel boundary for these commands.
+  `0xff1e` consumes root `0x78297a` and pending header flags, marks the root
+  published with byte `+4 = 2`, writes page/header bytes such as `+0x07`,
+  `+0x0a`, and `+0x0c`, sets `0x780ea6` / `0x782996`, and clears the current
+  root. It does not draw rows itself. Bridge helpers `0x1ed84` / `0x1edc6`
+  copy the published bucket roots, rule/fixed-list roots, and context slots
+  into the active render record; `0x1ef6a` then dispatches bucket chains such
+  as compact text through `0x1effe`. Evidence is
+  [publication-commands.md](publication-commands.md),
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+  and fixtures `publication streams tie parser handlers to page-record
+  publication boundary`, `host-fetched publication streams reach parser and
+  published rows`, `host-fetched publication streams preserve 0x1edc6 bridge
+  contract`, `mixed printable/page-size page-record stream publishes queued
+  text before geometry change`, `mixed printable/orientation page-record
+  stream publishes queued text before landscape change`,
+  `mixed printable/paper-source page-record stream publishes queued text`, and
+  `mixed printable/copies/FF stream publishes copy count`. No
+  parser-to-publication or publication-to-render ROM middle edge remains for
+  covered reset, FF, page-size, orientation, paper-source, or copies streams;
+  additional work should target streams that change page-record fields,
+  command-specific header words, bridge state, or row-construction inputs.
+  Owner notes:
   [publication-commands.md](publication-commands.md),
   [direct-control-codes.md](direct-control-codes.md), and
   [vertical-forms-control.md](vertical-forms-control.md).

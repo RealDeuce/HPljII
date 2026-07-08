@@ -58,6 +58,51 @@ These notes track firmware behavior that directly affects page pixels.
 Names are provisional where the ROM state variables are not fully
 cross-referenced yet.
 
+## Reproduction Contract
+
+For documented supported streams, this layer is reproduced when the same
+parser-visible command effects produce the same page-root fields, queued page
+objects, published records, render work records, object dispatch order, and
+ROM-derived row writes. The required ROM-visible behavior is:
+
+- Page/image objects are rooted at current page root `0x78297a`. Helper
+  `0x10084` creates the first root, initializes bucket/list roots and context
+  fields, and is the common prerequisite for text, raster, rule, and span
+  object producers.
+- Object producers do not render immediately. Compact text queues through
+  `0xd04a -> 0x1393a -> 0x12f2e`; pending spans flush through `0x12714`;
+  raster rows queue through `0x105d0 -> 0x138de -> 0x13070` / `0x13250`; and
+  rectangle/rule objects queue through `0x10898 -> 0x10b80 -> 0x13386` /
+  `0x133aa`.
+- Publication is the page-root boundary. `0xff1e` copies root fields, bucket
+  roots, list roots, context slots, and status/header fields into a published
+  page/control record. It may publish, clear, or retry according to the root
+  state documented in the page-record storage checkpoint.
+- Render entry starts from published records, not from parser commands.
+  `0x1ed84` copies the active page/control record into render-record state,
+  `0x1edc6` bridges page roots into render roots, and `0x1ef6a` walks the
+  active band work record.
+- Object-class dispatch order is part of the pixel contract. `0x1ef6a` calls
+  the compact bucket chain, rule list, raster/fixed roots, and continuation
+  paths in the documented order before row helpers write current-band or
+  fallback destinations.
+- Compact text pixels depend on the selected font context and map that were
+  installed before `0xd04a` queued the object. Raster pixels depend on the
+  queued encoded mode and copied payload bytes. Rule pixels depend on clipped
+  source dimensions, fill selector, and pattern/solid dispatch. These
+  producer fields are the canonical state; rendered rows are derived from
+  them by the ROM helpers.
+- Scheduler and MMIO events only matter to reproduction when they change a
+  ROM-visible page object, published record, band word, render call, or
+  destination buffer. Physical formatter/DC signal names remain external
+  boundaries unless the ROM code consumes their values into those fields.
+
+This contract is intentionally scoped to the object classes and command
+families documented below. Remaining work starts from byte streams that change
+specific object fields, selected-font state, publication fields, helper
+dispatch, or row-construction inputs, not from broad claims about live printer
+timing.
+
 ## Page Size Tables
 
 The page-size command handler `ESC &l#A` at `0x00fc74` maps PCL

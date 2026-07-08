@@ -24,6 +24,37 @@ These are current anchors for the path from host bytes into PCL command
 records. Names are provisional until caller/callee cross-references are
 broader.
 
+## Reproduction Contract
+
+For a supported byte stream, the parser firmware layer is reproduced when the
+same host-byte sequence produces the same normalized parser bytes, six-byte
+command records, parser mode transitions, delayed-payload restore events, and
+terminal handler entries documented in [pcl-parser-core.md](pcl-parser-core.md)
+and [pcl-command-map.md](pcl-command-map.md). The required ROM-visible
+behavior is:
+
+- `0xa904` supplies bytes and source-side state; consumer-specific handling of
+  `0x1a 0x58`, `ESC`, and negative `D7` belongs to parser or payload readers,
+  not to a global byte-source rewrite.
+- Parser syntax bytes go through `0xda9a`; counted payload drains go through
+  the reader selected by the restored delayed handler, such as `0xdace`,
+  `0x12452`, `0x105d0`, `0x15d0a`, or `0x16c14`.
+- Tokenizer helpers must preserve the six-byte record layout, cursor rewinds,
+  lowercase chaining, continuation finals, and delayed-payload snapshot fields
+  before any command-family side effect is interpreted.
+- Table dispatch through `0x11774` must preserve the normal/alternate table
+  split. Alternate/data mode may append or drain bytes without running the
+  normal page-state handler, but it still preserves parser state transitions
+  and selected payload boundaries.
+- This file is a trace and address ledger for parser firmware. The canonical
+  behavioral contracts live in [host-byte-fetch.md](host-byte-fetch.md),
+  [pcl-parser-core.md](pcl-parser-core.md), [pcl-command-map.md](pcl-command-map.md),
+  and the command-family owner notes.
+
+No pixel claim is complete at this layer alone. A parser terminal is only the
+handoff to command behavior; page-object, publication, render scheduling, and
+row-generation claims belong to the downstream owner notes.
+
 ## Host Byte Fetch Anchor
 
 See [host-byte-fetch.md](host-byte-fetch.md) for the tracked explanation

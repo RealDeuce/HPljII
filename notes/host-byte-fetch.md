@@ -736,21 +736,46 @@ Unresolved middle edges:
   the exact user-facing trigger names for these two quiesce/reset branches are
   still provisional.
 
-## Reproduction Requirements
+## Reproduction Contract
 
-A byte-stream renderer can model this layer without electrical timing by
-feeding bytes through the same source priority:
+For a supplied byte stream, this layer is reproduced when every parser or
+payload caller sees the same `D7` sequence and the same byte-source side
+effects that `0xa904` would produce. The required ROM-visible behavior is:
 
-- preserve `D7 = -1` for callers that treat it as stop/error;
-- preserve data-chain replay before live input;
-- preserve both LIFO sources before the ring/direct sources;
-- preserve ring wrap from after `0x783e53` to `0x783a4c`;
-- preserve direct-mode `0x1a` reporting through `0x9ec0` while returning
-  byte `0x1a`;
-- preserve mode-2 status accumulation in `0x780e2e`;
-- leave consumer-specific `0x1a 0x58` behavior to the payload/parser reader.
+- Service work does not return a synthetic byte. If `0x7821cd` is nonzero,
+  `0xa904` enters `0xaa88`, runs `0x10cc(0x780202)` with `0x7821cc` set,
+  clears `0x7821cc`, and retries source selection from `0xa904`.
+- The no-byte gate wins before every buffered or live source. If
+  `0x780e66 != 0` and `0x780e3b != 0`, `0xa904` returns `D7 = -1` at
+  `0xa920` without consuming first-stack, data-chain, second-stack, ring, or
+  direct-MMIO input. The main parser loop at `0x117dc..0x117ee` is the
+  observed consumer that clears `0x780e3b` before waiting on `0x780202`.
+- Source priority is fixed: first LIFO `0x783e8c`/`0x783e8e`, active
+  data-chain frame `0x782d76`, second LIFO `0x783e76`/`0x783e78`, ring
+  `0x783e54`/`0x783e56` when `0x780e40 == 0`, direct mode 1 when
+  `0x780e40 == 1`, and direct mode 2 otherwise.
+- A byte-stream renderer can use the ring source as the host-input
+  abstraction, but it must preserve ring count, read-pointer advance, and wrap
+  from after `0x783e53` to `0x783a4c`. Startup/quiesce helper `0x3178` is the
+  documented empty-source initializer.
+- Data-chain replay is not a separate parser path. `0xa904` reads the active
+  frame at `0x782d76`; frame `+0x00` and `+0x04` provide payload pointer/count,
+  `+0x04 == -1` clears the count, calls `0xe22c`, and retries. Execute/call
+  producers `0xe418` and page-finalization producer `0xe4f4` are the documented
+  writers for the observed frame classes.
+- Pushback/log helper `0x9ec0` must feed the same two LIFO sources that
+  `0xa904` later consumes. With `0x780e3b` clear, current frame byte
+  `+0x09 == 0` selects the second stack, and nonzero `+0x09` selects the first
+  stack. With `0x780e3b` set, `0x9ec0` returns `D7 = 1` without appending.
+- `0xa904` does not globally translate the `0x1a 0x58` pair. Direct-MMIO
+  modes report a literal `0x1a` through `0x9ec0` while returning `0x1a`;
+  parser and payload readers such as `0xdace`, `0x12142`, `0x138fa`, and
+  `0x168dc` apply their own local `0x1a 0x58` rules.
+- Direct mode 2 status bits are software-visible state: `0xfffee005.6` and
+  `.7` accumulate `0x40` and `0x80` in `0x780e2e`, even though physical signal
+  names remain outside the ROM evidence.
 
 Hardware-accurate emulation would also need verified physical identities for
 the MMIO registers. Pixel reproduction from a supplied byte stream does not
-need that electrical detail as long as the byte source presents the same byte
-sequence to the parser and payload readers.
+need that electrical detail as long as the model presents the same bytes and
+source-side state transitions to parser and payload consumers.

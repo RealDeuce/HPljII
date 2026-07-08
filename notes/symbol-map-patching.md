@@ -190,6 +190,42 @@ Concrete example:
   queuing. This effect is documented in [resource-rom.md](resource-rom.md)
   and [page-raster-imaging.md](page-raster-imaging.md).
 
+## Reproduction Contract
+
+For a supplied byte stream, this boundary is reproduced when the same selected
+font state entering `0x14f16` produces the same primary or secondary
+character-to-glyph map consumed by later printable bytes. The required
+ROM-visible behavior is:
+
+- `0x14f16` only runs after `0x14c64` has rebuilt a base map through
+  `0x14d9c`, `0x14e24`, or `0x14eb6`. It is not a parser, page-object, or
+  renderer entry point.
+- The selected candidate at `0x7828a8` decides which symbol-reader helper is
+  used: candidate byte bit 6 selects `0x15890`; the clear case selects
+  `0x158be`. If the returned normalized selected-font symbol is not
+  `0x0115`, the patcher returns without changing the rebuilt map.
+- Slot `0x7828de` selects both the map and active symbol word:
+  primary uses map `0x782f32` with active word `0x783144`; secondary uses
+  map `0x783032` with active word `0x783146`.
+- Active word `0x0005` copies the upper half of the selected map down over
+  the lower half, then clears the upper half. Active word `0x0015` leaves the
+  lower half unchanged and clears the upper half.
+- Active words found in ROM table `0x14fce` apply `(dst, src)` byte pairs
+  from the selected target table, then clear the upper half. A table miss
+  leaves the rebuilt base map unchanged.
+- Patch paths that reach the common clear tail also clear
+  `0x783132 + 0x7828de`. That byte is derived/cache state used by surrounding
+  selected-font logic, not a page object.
+- The patcher changes future pixels only through later text mapping.
+  `0xd04a -> 0x1393a` reads the selected map and stores the derived glyph
+  index in queued compact text objects. Objects already queued before the map
+  patch keep their previously captured glyph index.
+
+ROM table bytes beginning at `0x14fce` are part of the firmware image and must
+be preserved as data. Physical output timing and page publication are outside
+this boundary; they start after later printable bytes have consumed the map and
+queued page objects.
+
 ## Evidence
 
 Disassembly:

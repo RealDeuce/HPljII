@@ -271,6 +271,36 @@ For a closed byte-stream renderer that ignores backchannel responses, these
 status/backchannel paths are protocol and service-scheduling state, not
 bitmap-composition state.
 
+### Reproduction Contract
+
+A byte-stream renderer or protocol emulator must preserve these status-side
+contracts when host backchannel behavior is modeled:
+
+- `ESC *r#K` and `ESC *s#^` both dispatch wrapper `0x12034`; `0x12034` calls
+  `0x11efe`, appends the synthetic six-byte record with word `+2 = 1`, and
+  then enters `0x122be..0x12326`.
+- `0x122be..0x12326` consumes the next parser byte through `0xda9a`. Only
+  query byte `0x11` with active record word `1` or `-1` enqueues the ROM
+  literal `33440A\r\n` from `0x12280..0x12288`; other query bytes are reported
+  through `0x9ec0`.
+- Response bytes enter the 64-byte host-output FIFO through blocking helper
+  `0xb090`, so a full FIFO can stall the parser-side producer before later
+  host bytes are admitted.
+- Output worker `0xae2c` drains FIFO bytes or status/service bytes according
+  to backend selector `0x780e40`; this is host-visible protocol output, not a
+  page-root or render-record producer.
+- Status worker `0xaece` builds outbound status bytes from base `0x30` using
+  `0x780e12`, `0x780e90`, `0x780e2a`, `0x780e0a`, and reason byte
+  `0x783e60`.
+- Page-environment status helper `0x2888` writes `0x780e90`, `0x780e98`, and
+  `0x780e2a.4`; those fields can affect `0xaece` status bytes and
+  `0x7612..0x7834` panel/service selection, but they do not create page
+  objects.
+- None of these paths call `0x10084`, `0xff1e`, `0x1ed84`, `0x1edc6`, or
+  `0x1ef6a`. Pixel output changes only if a bidirectional host reacts to the
+  response/status bytes by sending a different later byte stream, or if status
+  service prevents later bytes from reaching `0xa904`.
+
 ### Aggregate Status Helper `0x36e4`
 
 The aggregate helper is the ROM-local join point for service/status longwords

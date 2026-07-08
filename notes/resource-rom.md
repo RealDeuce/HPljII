@@ -30,6 +30,44 @@ directories, metrics, and glyph data.
 The firmware-facing scan and candidate-window contract for these records
 is documented in [built-in-resource-scan.md](built-in-resource-scan.md).
 
+## Reproduction Contract
+
+For built-in font output, this resource layer is reproduced when the same
+firmware-visible resource bytes produce the same candidate records, selected
+font contexts, glyph-entry fields, bitmap payload bytes, and unresolved
+resource-window boundaries. The required ROM-visible behavior is:
+
+- Map verified `IC32,IC15` resource bytes to firmware addresses as
+  `0x080000 + file_offset`. The verified local image covers
+  `0x080000..0x0bffff`.
+- Preserve the `HEAD` chain exactly. Startup scanner `0x41a` and font scanner
+  `0x1a616`, initialized by `0x1a2e4`, see 24 typed built-in records from
+  file offset `0x00004c` through `0x02e122`, then a null terminator at
+  `0x032f80`.
+- Preserve candidate-facing record fields. Class/orientation byte `+0x20`,
+  spacing byte `+0x21`, pitch/default-advance longword `+0x24`, decoded-height
+  inputs `+0x28/+0x2a`, and chooser bytes `+0x2f..+0x31` are consumed by
+  selection, metric, and chooser helpers documented below.
+- Preserve offset-table glyph resolution for bit-30 built-in contexts.
+  `0x1393a` stores the mapped glyph index in the compact source object, and
+  renderer helper `0x1f354` later resolves the selected context longword,
+  table entry, glyph entry, bitmap delta, row count, width, and bitmap bytes.
+- Treat glyph-entry words `+0` and `+2`, byte `+4`, byte `+5`, word `+6`,
+  and word `+8` as canonical resource fields for built-in glyph rendering.
+  They drive placement, bitmap offset/mode, row count, and pixel width.
+- Do not infer missing bytes past the verified pair as ROM fact. The secondary
+  segment-57 path reaches `0x0c0000..0x0c0321`; mirror, code-pair
+  continuation, and zero-fill are documented hypotheses until board,
+  emulator, or gate-array memory-map evidence selects the actual decode.
+- Resource records do not draw by themselves. They become pixels only after
+  parser/font selection installs a current context, printable bytes queue
+  compact objects, publication copies page roots, and render dispatch consumes
+  the selected glyph payload.
+
+Generated resource extracts are supporting evidence. The checked-in semantic
+contract is the firmware address mapping, field ownership, candidate/glyph
+consumer chain, and explicit continuation boundary above.
+
 ## Header
 
 The generated header probe

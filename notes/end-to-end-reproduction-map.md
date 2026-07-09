@@ -4193,6 +4193,14 @@ Cursor-only output path:
   through `0xf06e`, flushes pending text through `0xf34a`, writes vertical
   cursor y `176`, and lets the following printable `!` queue at compact
   coordinate `0xb001`.
+- The following printable uses the ordinary single-entry short compact object
+  shape. For the line-1 channel jump, the payload entry is glyph `0x20` at
+  coordinate `0xb001`, so the queued object prefix is:
+
+```text
+00 00 00 00 00 00 00 01 20 b0 01
+```
+
 - The before-top sibling starts at y `89`, below top offset `90`; branch
   `0x128ae..0x128f4` normalizes the search start line to `0` before the same
   line-1 hit and the same following printable coordinate `0xb001`.
@@ -4209,6 +4217,10 @@ Page-boundary output path:
   `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publishes the old page through
   `0xff1e`, resets x/y to `10`/`126`, and queues the next `!` on a fresh page
   at compact coordinate `0x9001`.
+- The pre-VFC and post-VFC printables are separate page-root objects on the
+  publishing paths. The pre-VFC compact object is preserved in the old
+  published root, while the post-VFC fresh-root object uses the same short
+  shape with payload entry glyph `0x20` at compact coordinate `0x9001`.
 - Wrap-hit stream `! ESC &l2V !` starts at y `226`, publishes the old page,
   wraps to line `1`, writes y `176`, and queues the next `!` at coordinate
   `0xb001`.

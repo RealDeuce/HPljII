@@ -68,9 +68,11 @@ standalone deliverables.
   `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
   command-dispatch anchors, `Binary Payload Lifecycle`, `State-Only Command
   Dependency Map`, `Host/Status Side-Channel Boundary`,
-  `Page Versus Band Model`, and `Pixel composition contract` are the shortest
-  checked-in path from an admitted byte stream to page objects and rendered
-  pixels.
+  `Publication And Page-Control Boundary`, `Page Versus Band Model`,
+  `Render Scheduling`, `Pixel composition contract`, and `Boundary: Secondary
+  Segment-57 Source` are the shortest checked-in path from an admitted byte
+  stream to page objects, rendered pixels, and exact pixel-affecting stop
+  points.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
@@ -123,7 +125,8 @@ checked-in ROM model:
    [firmware-dataflow-model.md](firmware-dataflow-model.md) is the concise
    explanation of why parsing builds a page-object graph rather than a
    full-page bitmap.
-6. For publication, follow `Publication And Page-Control Boundary` in
+6. For publication and scheduling, follow `Publication And Page-Control
+   Boundary` and `Render Scheduling` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md), then follow
    `0xff1e` into the page/control pool and
    [active-render-scheduler.md](active-render-scheduler.md): scheduler source
@@ -143,7 +146,10 @@ checked-in ROM model:
 8. If the route stops, record the exact boundary as ROM-local unknown,
    hardware/MMIO, missing external resource data, or optional physical
    correlation. Do not replace a missing ROM edge with fixture output or a
-   hardware assumption.
+   hardware assumption. For the transparent secondary segment-57 path, use
+   `Boundary: Secondary Segment-57 Source` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
+   continuation rule in [resource-rom.md](resource-rom.md).
 
 ## Files
 

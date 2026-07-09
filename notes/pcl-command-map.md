@@ -368,6 +368,102 @@ Checked-in dispatch audit, generated from
   same `12` family prefixes; `0x11f96` covers the `4` downloaded-font payload
   entries that must remain stored in data/macro contexts.
 
+## Parser Handler Owner Matrix
+
+Every nonzero handler address in the normal and alternate/data parser tables
+is assigned below to a checked-in semantic owner. This is a routing matrix, not
+a replacement for the owner notes: use it to move from a parser-table handler
+address to the document that describes field writes, consumers, page/output
+effects, evidence, and remaining boundaries.
+
+Normal table `0x112a4`:
+
+- Parser setup, prefixes, and delayed-payload arming:
+  `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11f5a`, `0x11f6e`,
+  `0x11f82`, `0x11f96`, `0x11ff6`, `0x12008`, and `0x1201e`.
+  Owners are [pcl-parser-core.md](pcl-parser-core.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [vertical-forms-control.md](vertical-forms-control.md),
+  [raster-graphics.md](raster-graphics.md),
+  [symbol-set-selection.md](symbol-set-selection.md), and
+  [downloaded-fonts.md](downloaded-fonts.md). These handlers mutate parser
+  scratch, append setup records, or save delayed handlers; pixel/page effects
+  begin only when the restored family consumer runs.
+- Printable-context, direct-control, cursor, layout, and publication handlers:
+  `0xc68a`, `0xc6b8`, `0xc992`, `0xca8c`, `0xcb00`, `0xcc52`, `0xe9ba`,
+  `0xea9e`, `0xeb58`, `0xec0c`, `0xece2`, `0xedb0`, `0xedf8`, `0xee64`,
+  `0xeef0`, `0xef62`, `0xf02c`, `0xf08c`, `0xf0f0`, `0xf176`, `0xf1cc`,
+  `0xf2a8`, `0xf39e`, `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, `0xf692`,
+  `0xf75e`, `0xf9e8`, `0xfc74`, `0x10220`, `0x12622`, and `0x1280a`.
+  Owners are [direct-control-codes.md](direct-control-codes.md),
+  [publication-commands.md](publication-commands.md),
+  [vertical-forms-control.md](vertical-forms-control.md), and
+  [font-context-metrics.md](font-context-metrics.md). These handlers write
+  cursor, motion, selected-font slot, page geometry, span, publication, VFC, or
+  page-control state; visible rows appear through later printable, span flush,
+  VFC publication, FF/reset publication, or render-bridge consumers.
+- Display, transparent, local Control-Z, and host/status side-channel
+  handlers:
+  `0xcd86`, `0x12034`, `0x120d2`, `0x1219e`, and `0x12536`.
+  Owners are [display-functions.md](display-functions.md),
+  [transparent-print-data.md](transparent-print-data.md), and
+  [errors-and-status.md](errors-and-status.md). Normal display/transparent
+  readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and `0x12034`
+  are host/status side channels with no page-object output.
+- Raster and rectangle imaging handlers:
+  `0x1075a`, `0x107fa`, `0x10808`, `0x10898`, `0x10a40`, `0x10ae0`,
+  `0x10dce`, `0x10e22`, and `0x10e68`.
+  Owners are [raster-graphics.md](raster-graphics.md) and
+  [rectangle-graphics.md](rectangle-graphics.md). These handlers write raster
+  setup state, rectangle width/height/fill state, or queue rule/raster page
+  objects that later publish through `0xff1e` and render through
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+- Font-selection, symbol/designation, and downloaded-font state handlers:
+  `0xc390`, `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`,
+  `0x12046`, `0x1205a`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`,
+  `0x120be`, `0x15a18`, `0x15a56`, and `0x16df6`.
+  Owners are [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-map-patching.md](symbol-map-patching.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [downloaded-fonts.md](downloaded-fonts.md). These handlers write font
+  request fields, selected-context/glyph-map state, current downloaded-font id
+  or character, and downloaded-font control state. They draw only through
+  later printable bytes and compact-glyph render dispatch.
+- Macro command handlers:
+  `0xdd08` and `0xe112`.
+  Owner is [macro-data-chain.md](macro-data-chain.md). `0xe112` stores the
+  current macro id; `0xdd08` defines, stops, executes, calls, overlays,
+  deletes, or marks macro records. Execute/call/overlay paths re-enter
+  `0xa904 -> 0x11774`, so their page effects are the same command-family
+  paths used by live host bytes.
+
+Alternate/data table `0x116f6`:
+
+- Parser setup and family continuation:
+  `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11f4c`, `0x11fd2`,
+  `0x11fe4`, and `0x11ff6`.
+  Owners are [pcl-parser-core.md](pcl-parser-core.md),
+  [macro-data-chain.md](macro-data-chain.md), and
+  [symbol-set-selection.md](symbol-set-selection.md). In alternate/data mode,
+  these preserve parser syntax, rewind lowercase continuation records, or run
+  setup without the normal immediate page-state side effect.
+- Alternate/data payload and macro exceptions:
+  `0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`, `0xdd08`, and `0xcc52`.
+  Owners are [transparent-print-data.md](transparent-print-data.md),
+  [vertical-forms-control.md](vertical-forms-control.md),
+  [raster-graphics.md](raster-graphics.md),
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [macro-data-chain.md](macro-data-chain.md), and
+  [publication-commands.md](publication-commands.md). Counted payloads and
+  macro-stop/reset behavior remain active because they delimit stored data or
+  reset the environment; most ordinary page-state handlers are suppressed.
+- Alternate display and Control-Z append handlers:
+  `0x1210c`, `0x12120`, and `0x121b2`.
+  Owner is [display-functions.md](display-functions.md). These append
+  normalized bytes through `0xe002` instead of sending them to printable text,
+  so their immediate output effect is stored macro/data-chain content rather
+  than page objects.
+
 ## Supported Stream Dispatch Matrix
 
 Use this matrix with

@@ -730,8 +730,13 @@ Field groups for this index:
   `0x783166..0x78316e`; `0x10898` clips the active rectangle and queues
   rule-list objects through `0x13386` / `0x133aa`. Solid and patterned rules
   render through `0x1f446`, `0x1f596`, and `0x1f4e0`, including
-  band-crossing continuation. Concrete stream `ESC *c12a5b0P` queues
-  selector-7 rule object
+  band-crossing continuation. Area-fill stream `ESC *c50g2P` writes
+  `0x78316e = 50` through `0x10dce`; `0x10898` maps `2P` gray percentages
+  from `0x78316e` to selectors `0..7`, maps `3P` pattern ids `1..6` to
+  selectors `8..13`, and applies landscape remaps for pattern ids `1..4`.
+  Selector `7` renders through solid helper `0x1f596`; gray selectors `0..6`
+  and HP-pattern selectors `8..13` render through pattern helper `0x1f4e0`.
+  Concrete stream `ESC *c12a5b0P` queues selector-7 rule object
   `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` under page-root `+0x24`;
   bridge `0x1edc6` copies the rule list to render-record `+0x1c`, and
   `0x1f446` dispatches selector `7` to solid helper `0x1f596`.

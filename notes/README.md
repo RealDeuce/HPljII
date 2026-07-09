@@ -123,7 +123,9 @@ checked-in ROM model:
    [firmware-dataflow-model.md](firmware-dataflow-model.md) is the concise
    explanation of why parsing builds a page-object graph rather than a
    full-page bitmap.
-6. For publication, follow `0xff1e` into the page/control pool and then
+6. For publication, follow `Publication And Page-Control Boundary` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md), then follow
+   `0xff1e` into the page/control pool and
    [active-render-scheduler.md](active-render-scheduler.md): scheduler source
    `0x780eae`, active render pointer `0x783a18`, and bridge
    `0x1ed84 -> 0x1edc6`.

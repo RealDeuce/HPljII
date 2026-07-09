@@ -496,6 +496,134 @@ Evidence and remaining boundaries:
   add another row here only when a parsed command writes state that is later
   consumed by a different documented page-object or render path.
 
+## Publication And Page-Control Boundary
+
+Page-boundary commands do not draw their own pixels. They decide when the
+current page-object graph becomes a published page/control record and which
+page-environment bytes are copied into that record before render scheduling
+sees it. This boundary connects parsed page-control commands to the page image
+assembly model without treating `0xff1e` as a renderer.
+
+Publication-triggering writers:
+
+- Reset `ESC E` reaches `0xcc52`. Its helper `0xcc70..0xcc98` clears
+  alternate/data mode when the reset gate allows it, flushes pending text
+  through `0xf34a`, publishes or clears the current root through `0xff1e`, and
+  only then lets `0xcda2`, `0xcbd4`, and `0xe146` rebuild page, font, parser,
+  and data-chain state.
+- FF reaches `0xf0f0..0xf122`. It applies the optional line-termination
+  horizontal reset, flushes pending text through `0xf34a`, ensures a root
+  through `0x10084`, and calls `0xf124..0xf172`, whose publication edge is
+  `0xff1e` before the next top-of-form cursor state is installed.
+- Page size `ESC &l#A` reaches `0xfc74..0xfe52`. Its explicit change path
+  publishes through `0xf34a` / `0xff1e` before storing the accepted page code
+  and recomputing geometry for following objects.
+- Orientation `ESC &l#O` reaches `0x10220..0x103e6`. It rejects unchanged or
+  invalid selectors; accepted changes publish through `0xf34a` / `0xff1e`
+  before writing orientation byte `0x782da3` and rebuilding
+  orientation-dependent extents, HMI/VMI, font context, and VFC tables.
+- Paper source `ESC &l#H` reaches `0xef62..0xf02a`. It flushes and publishes
+  queued text first, then maps the selector through table `0xef3a`, writes
+  paper-source byte `0x782da6`, mirrors output state through `0x780e8f`, and
+  sets pending publication byte `0x782998`.
+- Page length `ESC &l#P` reaches `0xf9e8..0xfc52`. Nonzero values are
+  publication-adjacent state writers: they write extent `0x782dba`, set
+  pending header byte `0x782997`, refresh geometry, and affect following
+  placement. The zero/default branch can flush and publish before restoring
+  default page length and paper-source output state.
+- Copies `ESC &l#X` reaches `0xeef0..0xef38`. It stores canonical copy count
+  `0x782da4` and does not publish immediately; a later FF or other
+  publication copies that word into the published pool header at root `+0x0c`.
+
+Shared publication helper:
+
+- `0xff26..0xff40` is the no-root or non-active-root exit. It clears current
+  root state through the `0xffa2` exit without synthesizing a page record.
+- `0xff40..0xffb0` is the macro-overlay publication branch. If page state
+  `0x782a92`, root word `+0x14`, and data-chain state `0x782d7a` match the
+  overlay predicate, the helper calls `0xe0a4`, sets `0x782a92 = 2`, starts a
+  replay frame through `0xe4f4`, runs parser loop `0x11774`, and ensures a
+  fresh root through `0x10084` before continuing publication.
+- `0xffb0..0xffcc` normalizes the selected root before publishing: it clears
+  root-adjacent bytes `0x78297e`, `0x782c72`, and `0x782c73`, clears root
+  word `+0x18`, and copies root word `+0x16` to `+0x1a`.
+- `0xffd2..0xfffe` consumes pending page/status byte `0x782997`, sets root
+  byte `+0x0a.0`, clears `0x780e99`, and clears `0x782997`.
+- `0x10000..0x1001e` copies pending status/header byte `0x780e99` to root
+  byte `+0x08` when it remains set.
+- `0x10020..0x1003e` consumes pending paper/layout byte `0x782998`, sets root
+  byte `+0x0a.1`, and clears `0x782998`.
+- `0x10044..0x1005a` copies environment byte `0x782da6` to root byte `+0x07`
+  and copy count `0x782da4` to root word `+0x0c`.
+- `0x10060..0x10080` marks root byte `+0x04 = 2`, writes published pool-head
+  pointer `0x780ea6`, sets publication flag `0x782996 = 1`, and clears
+  current root pointer `0x78297a`.
+
+Readers and output effect:
+
+- The immediate reader is the render scheduler, not a pixel helper. Scheduler
+  state later selects a published source through `0x780eaa` and active source
+  `0x780eae`.
+- `0x1ed84` copies selected published-record header words into the active
+  render work record, then `0x1edc6` copies source root `+0x1c` to render
+  `+0x18`, source `+0x24` to render `+0x1c`, source `+0x28` to render
+  `+0x20`, and context slots `+0x2c..+0x68` to render `+0x24..+0x60`.
+- Pixel effects come only from objects already queued under the published
+  root, such as compact text from `0xd04a -> 0x12f2e -> 0x1387c`, raster
+  objects from `0x13070 -> 0x13250`, or rules from `0x13386 -> 0x133aa`.
+  Publication commands decide which root and header state are visible to those
+  later render dispatches.
+
+State classification:
+
+- Canonical page state:
+  current page root `0x78297a`, root active/published byte `+0x04`, root
+  bucket/list/context fields `+0x1c`, `+0x24`, `+0x28`, and `+0x2c..+0x68`,
+  published pool-head pointer `0x780ea6`, scheduler source pointers
+  `0x780eaa` / `0x780eae`, and publication flag `0x782996`.
+- Canonical page-environment state:
+  page code and extent fields owned by the page-size/page-length handlers,
+  orientation byte `0x782da3`, paper-source byte `0x782da6`, copy count
+  `0x782da4`, line-termination byte `0x78318f`, and paper/status mirror state
+  `0x780e8f` / `0x780e26`.
+- Derived/cache state:
+  refreshed geometry, HMI/VMI, cursor positions, VFC caches, render records
+  copied by `0x1ed84` / `0x1edc6`, and band fields derived later by
+  `0x1ef86`.
+- Parser scratch:
+  six-byte page-control command records, relative/absolute selector bits, and
+  numeric parameters that stop mattering after the handler commits canonical
+  page or environment fields.
+- Firmware bookkeeping:
+  root-adjacent bytes `0x78297e`, `0x782c72`, `0x782c73`, page/data-chain byte
+  `0x782a92`, overlay key `0x782a94`, reset gate `0x7810b2`, and status wait
+  helper `0x9ac2`.
+
+Evidence and unresolved edges:
+
+- Detail owners are [publication-commands.md](publication-commands.md),
+  [reset-default-environment.md](reset-default-environment.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [active-render-scheduler.md](active-render-scheduler.md).
+- Controlling worked paths are `Reset And Default Environment`,
+  `FF Publication`, `Publication Commands To ROM-Derived Page Rows`,
+  `Page Length, Wrap, And Perforation Controls`,
+  `Shared Page-Record Storage And Allocator`, and
+  `Published Record To Active Bands`.
+- Key listings include
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_page_record_alloc_010084.lst`,
+  `generated/disasm/ic30_ic13_reset_handlers_00cc52.lst`, and the page-control
+  handler listings named by [publication-commands.md](publication-commands.md).
+- Exact unresolved middle edges are limited to variants that change a named
+  field not listed here: a new `0xff1e` header bit path, a page-control command
+  that publishes after mutating rather than before mutating environment state,
+  an overlay replay branch that changes fields between `0xff40..0xffb0` and
+  `0x10060..0x10080`, or a scheduler selection path between published pool
+  pointers `0x780ea6` / `0x780eaa` / `0x780eae` and render bridge entry
+  `0x1ed84` not already covered by `Published Record To Active Bands`.
+
 ## Host/Status Side-Channel Boundary
 
 Some parser-visible commands produce host-visible bytes or status/service

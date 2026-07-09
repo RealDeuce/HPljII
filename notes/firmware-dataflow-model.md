@@ -1273,6 +1273,126 @@ Evidence and unresolved boundaries:
   bridge from selected context/map to source object, page context slot, render
   context slot, and compact renderer is documented for the covered streams.
 
+## Symbol Set And Map Patch Boundary
+
+Symbol-set commands are font-context writers whose output effect is delayed
+until a later printable byte is mapped. The ROM path is:
+parsed `ESC (` / `ESC )` terminal, requested symbol word, refresh gate,
+candidate filtering, active map rebuild, optional map patching, printable
+source capture, compact page object, and renderer glyph-row lookup.
+
+Parser and requested-symbol writers:
+
+- Normal `ESC (` setup `0x1201e` and `ESC )` setup `0x12008` append synthetic
+  slot records before tokenizing. The primary slot word is `0`; secondary is
+  `1`.
+- Terminal wrapper `0x120be` calls symbol handler `0x1be22`, then common
+  font refresh `0xc580`.
+- `0x1be22` rewinds command-record cursor `0x78299e`, reads final byte `+1`,
+  integer parameter `+2`, and the synthetic slot word, then writes requested
+  symbol word `0x782ef4 + 0x10 * slot` for ordinary finals:
+  `(abs(parameter) << 5) + final - 0x40`.
+- Ordinary finals set dirty flags `0x782f2c = 1` and `0x782f2d = 1`.
+  Final `X` calls font-id selector `0x17708`, preserves the previous requested
+  symbol word, and sets dirty `0x782f2c = 2`. Final `@` dispatches through the
+  ROM default-symbol table at `0x1bde2`.
+
+Refresh and active-map consumers:
+
+- `0xc580` consumes dirty flags, selected slot `0x782f06`, page-root live
+  flags `0x78297f..0x78298e`, and transient context record `0x782992`.
+  Depending on dirty kind and slot match, it calls candidate refresh
+  `0x13eb8`, page-root context installer `0xc428`, both, or neither.
+- Candidate refresh `0x13eb8` eventually reaches `0x156de`, which filters
+  active candidate windows by requested symbol words `0x782ef4` / `0x782f04`,
+  remembered words `0x782f08` / `0x782f0a`, and fallback table
+  `0x782f0c..0x782f18`.
+- The retained candidate path writes active symbol words
+  `0x783144` / `0x783146`, current-font contexts `0x782ee6` / `0x782ef6`,
+  and active maps `0x782f32` / `0x783032` through
+  `0x144d2 -> 0x14c64`.
+- `0xc428` selects or installs the context slot copied into page roots and
+  later render work. This slot install is a page-object dependency even though
+  the symbol command itself queues no glyph.
+
+Map patcher `0x14f16`:
+
+- `0x14c64` calls `0x14f16` after it rebuilds the selected base map through
+  `0x14d9c`, `0x14e24`, or `0x14eb6`.
+- `0x14f16` reads selected candidate pointer `0x7828a8`; candidate byte bit 6
+  chooses symbol-reader helper `0x15890` or `0x158be`.
+- If the selected font's normalized symbol is not Roman-8 word `0x0115`,
+  `0x14f16` returns without patching. Non-Roman streams such as `ESC (0N`,
+  `ESC (10U`, and `ESC (11U` therefore select distinct built-in records rather
+  than Roman-8 records patched in place.
+- Slot selector `0x7828de` chooses primary map `0x782f32` and active word
+  `0x783144`, or secondary map `0x783032` and active word `0x783146`.
+- Active word `0x0005` copies the upper 128 map bytes down and clears the
+  upper half; active word `0x0015` leaves the lower half and clears the upper
+  half; active words found in ROM table `0x14fce` apply `(dst, src)` byte
+  pairs before clearing the upper half.
+- Patch paths that reach the clear tail also clear derived/cache flag
+  `0x783132 + 0x7828de`.
+
+State classification:
+
+- Canonical symbol/font state:
+  requested words `0x782ef4` / `0x782f04`, active words
+  `0x783144` / `0x783146`, selected slot `0x782f06`, selected candidate
+  `0x7828a8`, current contexts `0x782ee6` / `0x782ef6`, active maps
+  `0x782f32` / `0x783032`, and page-root/render context slots.
+- Derived/cache state:
+  remembered words `0x782f08` / `0x782f0a`, fallback words
+  `0x782f0c..0x782f18`, default-symbol table `0x782f1c..0x782f28`, selected
+  slot selector `0x7828de`, map flags `0x783132` / `0x783133`, and snapshots
+  `0x783148` / `0x783152`.
+- Parser scratch:
+  six-byte setup and terminal records, parsed final byte, parsed parameter,
+  synthetic slot word, and final-`@` subdispatch index.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c` / `0x782f2d`, marker `0x78287b`, page-root slot scan
+  state in `0xc4fc`, candidate active bits, and local patch-table cursors in
+  `0x14f16`.
+- Hardware/external state:
+  none for the ROM-local symbol-to-map route.
+- Unknown:
+  manual-facing names for some dirty/cache flags. Their writer/consumer roles
+  above are fixed by the cited handler addresses.
+
+Writers, readers, and output effects:
+
+- Writers:
+  `0x1be22` writes requested symbol words and dirty flags; `0x17708` writes
+  final-`X` font-id selection state; `0x156de`, `0x144d2`, `0x14c64`, and
+  `0x14f16` write active words, current contexts, maps, and map patches.
+- Readers/consumers:
+  `0xc580` consumes dirty state; `0x13eb8` / `0x156de` consume candidate
+  windows and requested words; `0xd04a -> 0x1393a` later consumes selected map
+  bytes; `0x1edc6` and compact renderers consume the copied context slot.
+- Output effect:
+  symbol-set commands do not change queued compact objects or render rows
+  directly. They change future pixels only by changing the map and context that
+  later printable bytes use to choose glyph indexes and row sources.
+
+Evidence and unresolved edges:
+
+- Evidence:
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-map-patching.md](symbol-map-patching.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  `Worked Path: Font Selection To Visible Glyphs`,
+  `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+  `generated/disasm/ic30_ic13_font_id_select_017708.lst`, and
+  `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`.
+- No ROM-local middle edge remains for ordinary `ESC (` / `ESC )` symbol
+  finals, final `X`, final `@`, selected-context map rebuild, or
+  `0x14f16..0x14fcc` patcher control flow in the documented paths.
+- Remaining symbol-family work must change `0x13eb8`, `0x156de`, `0x17708`,
+  `0xc580`, `0x14c64`, or `0x14f16` outcomes; otherwise it is data variation
+  in candidate records or patch-table entries, not a new parser-to-pixel edge.
+
 ## Downloaded Glyph Boundary Decision Rules
 
 Downloaded-font streams have two separate questions. The first is whether the

@@ -386,6 +386,124 @@ Evidence:
 [raster-graphics.md](raster-graphics.md), and
 [downloaded-fonts.md](downloaded-fonts.md).
 
+## Transparent And Display Reader Boundary
+
+Transparent print data and display functions are parser-visible byte readers.
+They are not opaque skips: both families consume later host bytes locally, then
+either route normalized values into the normal text/fixed-space consumers or
+append normalized bytes to macro/data storage.
+
+Transparent counted payload:
+
+- `ESC &p#X` dispatches to arming stub `0x11f5a`, which schedules delayed
+  handler `0x12452` through `0x121cc`.
+- Restore helper `0x12218` reinstalls saved command record
+  `0x782a20..0x782a25` at live cursor `0x78299e`, then calls `0x12452`.
+- `0x12452` rereads record word `+2` as an absolute byte count, fetches bytes
+  directly through `0xa904`, normalizes local pair `0x1a 0x58` to routed value
+  `0x7f` after `0xd99a`, and consumes `0x1a xx` with `xx != 0x58` as routed
+  value `xx`.
+- Default-filtered C0 values `0x00..0x1f` route through fixed-space helper
+  `0xd0f0`; default-filtered high-control values `0x80..0x9f` also route
+  through `0xd0f0`. When the selected context/filter state is nonzero, the
+  same ranges fall through to printable handler `0xd04a`.
+- Printable-routed values rejoin `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`,
+  so they allocate compact text objects under page-root bucket arrays and later
+  render through the ordinary compact-text bridge.
+
+Display-functions direct reader:
+
+- Normal `ESC Y` dispatches to `0x12536`; alternate/data `ESC Y` dispatches to
+  append handler `0x12120`.
+- Both handlers enter a direct `0xa904` loop rather than feeding loop bytes
+  back through parser wrapper `0xda9a`.
+- Both loops maintain local previous-ESC flag `D4`; normalized `ESC Z`
+  terminates only after the `Z` byte has itself been routed or appended.
+- Normal `0x12536` uses the same C0/high-control routing matrix as transparent
+  data: values can become fixed spacing through `0xd0f0` or visible printable
+  bytes through `0xd04a`.
+- Alternate/data `0x12120` writes literal prefix `ESC Y` and each normalized
+  loop value through append sink `0xe002`. This path has no immediate pixels;
+  it creates stored bytes for later macro/data-chain replay.
+
+Local Control-Z and display-off siblings:
+
+- Normal parser mode-2 nested Control-Z dispatches `0x120d2`; it routes literal
+  `0x1a` through `0xd04a` only when context byte
+  `0x782eeb + 0x10 * 0x782f06` equals `1`.
+- Normal `0x1a X` dispatches `0x1219e` and routes synthetic value `0x100`
+  through `0xd04a`.
+- Alternate/data siblings `0x1210c` and `0x121b2` append literal `0x1a` or
+  normalized `0x7f` through `0xe002`.
+- `ESC z` handler `0xcd86` reads active data-chain frame pointer `0x782d76`
+  and calls status helper `0x9c2c` only when frame byte `+9` is zero. It is a
+  host/status side effect, not a page-object producer.
+
+State classification:
+
+- Canonical parser state:
+  transparent saved payload fields `0x782a1a`, `0x782a1c`, and
+  `0x782a20..0x782a25`; command-record cursor `0x78299e`; normal/alternate
+  dispatch table selection; display loop termination flag `D4`; active
+  data-chain frame pointer `0x782d76`.
+- Canonical text/page state:
+  selected slot `0x782f06`, compact page roots and bucket arrays reached
+  through `0xd04a` / `0xd824` / `0x12f2e` / `0x1387c`, and macro/data append
+  sink `0xe002`.
+- Derived/cache state:
+  selected-context C0 filter byte `0x782eea + 0x10 * slot`, Control-Z context
+  byte `0x782eeb + 0x10 * slot`, fallback high-control filter byte
+  `0x782efa`, high-character flags `0x783132` / `0x783133`, and local
+  high-control filter word `A6-2`.
+- Parser scratch:
+  restored transparent record count, direct-reader fetched bytes, normalized
+  loop values, and consumed probe prefixes.
+- Firmware bookkeeping:
+  normalization helper `0xd99a`, CR post-handler `0xf054`, selected-slot scale
+  helper `0x332ee`, status helper `0x9c2c`, and status bits `0x7821cc`,
+  `0x7822db`, and `0x780e2a.3`.
+- Hardware/external state:
+  external consumers and physical names for the `ESC z` status bits.
+- Unknown:
+  manual-facing names for the selected-context and high-control filter fields.
+  Their ROM-local routing roles are documented by `0x12452` and `0x12536`.
+
+Writers, readers, and output effects:
+
+- Writers:
+  `0x11f5a` / `0x121cc` write delayed transparent parser state;
+  `0x12452` writes text effects by calling `0xd04a` or `0xd0f0`; `0x12120`
+  writes append bytes through `0xe002`; `0x12536` writes text/fixed-space
+  effects through the same consumers; `0xcd86 -> 0x9c2c` writes status/service
+  state.
+- Readers/consumers:
+  `0xa904` supplies direct loop bytes; `0x12452` and `0x12536` consume filter
+  fields and selected slot state; `0xd04a` / `0xd0f0` consume normalized values;
+  macro/data replay later consumes bytes appended by `0xe002`.
+- Output effect:
+  transparent and normal-display printable routes can queue compact text
+  objects, advance cursor spacing, publish through later `0xff1e`, bridge
+  through `0x1ed84 -> 0x1edc6`, and render through compact glyph routines.
+  Alternate/data routes only store bytes until replay. `ESC z` only updates
+  host/status state.
+
+Evidence and unresolved edges:
+
+- Evidence:
+  [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md),
+  `Worked Path: Transparent Print Data`,
+  `Worked Path: Display Functions Direct Reader`,
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`, and
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`.
+- No unresolved ROM-local middle edge remains for the documented
+  `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452` transparent route, normal
+  `0x12536` display loop, alternate/data `0x12120` append loop, local
+  Control-Z siblings, or `0xcd86 -> 0x9c2c` status boundary.
+- Remaining names for status bits and context/filter bytes are manual-facing
+  or external-consumer questions, not missing parser-to-page routing edges.
+
 ## State-Only Command Dependency Map
 
 Many supported commands intentionally stop before page-object production. They

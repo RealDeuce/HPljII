@@ -4569,10 +4569,19 @@ Address-level cluster map:
   0x1ef6a -> 0x1effe`. Owner notes are
   [font-context-metrics.md](font-context-metrics.md),
   [page-record-storage.md](page-record-storage.md), and
-  [page-raster-imaging.md](page-raster-imaging.md). The supported stream
-  residual is any later byte stream that changes selected context/map,
-  source class, compact selector shape, bridge context roots, or compact
-  row-copy helper input.
+  [page-raster-imaging.md](page-raster-imaging.md). Normal unmatched
+  mode-zero printable bytes reach `0xd04a` only when alternate/data mode
+  `0x782c18` is clear. `0xd04a` builds source object `0x782d7e` through
+  `0x1393a`, using selected slot `0x782f06`, current context
+  `0x782ee6` / `0x782ef6`, and active map `0x782f32` / `0x783032`.
+  `0xd824` positions the source from cursor/page geometry, marks the
+  page-root font slot live at `0x78297f + slot`, and `0x12f2e -> 0x1387c`
+  queues compact bucket objects under root `+0x1c`. Publication and pixels
+  require `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, band dispatch `0x1ef6a`,
+  compact dispatcher `0x1efc2 -> 0x1effe`, glyph resolver `0x1f354`, and the
+  selected row-copy helper. The supported stream residual is any later byte
+  stream that changes selected context/map, source class, compact selector
+  shape, bridge context roots, or compact row-copy helper input.
 - Direct control and placement cluster:
   parser rows dispatch CR/LF/FF/HT/BS/SO/SI to `0xf02c`, `0xf08c`,
   `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, and `0xc68a`; cursor and margin
@@ -4581,6 +4590,16 @@ Address-level cluster map:
   [direct-control-codes.md](direct-control-codes.md). The output edge is
   usually delayed until later printable text, span flush `0xf34a -> 0x12714`,
   or publication `0xff1e` consumes the changed cursor/layout state.
+  `ESC &k#G` writes line-termination byte `0x78318f` through `0xedf8`; CR,
+  LF, and FF consume its bits through `0xf02c`, `0xf08c`, and `0xf0f0`.
+  HT/BS mutate horizontal cursor `0x782c8a`; HMI `ESC &k#H` writes
+  `0x78315c`; wrap `ESC &s#C` writes `0x783190`; cursor stack `ESC &f#S`
+  saves/restores cursor fields. Cursor/margin commands write canonical
+  placement fields `0x782c8a`, `0x782c8e`, `0x782dd6`, and `0x782dda`
+  through `0xf4ca` / `0xf6e2`. Cursor-changing commands can flush pending
+  span state through `0xf34a -> 0x12714` before writing the new cursor; the
+  following printable byte then consumes the changed state through the
+  printable cluster.
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,
@@ -4591,7 +4610,15 @@ Address-level cluster map:
   `Minimal Generic Counted Payload Drain Walkthrough` covering the no-output
   `W/w` wrapper path. The residual is a new table row or delayed-restore
   branch that changes saved parser record state or reaches a page-object
-  owner.
+  owner. Normal zero-handler rows `0x00`, `0x07`, and `0x0b` match explicit
+  table entries, run terminal cleanup through `0x11912..0x119bc`, call
+  delayed restore `0x12218`, reset parser scratch, and do not fall through to
+  printable or direct-control handlers. Alternate/data blank C0 rows
+  `0x00` and `0x07..0x0f` append through `0xe002` before cleanup, so they can
+  become visible only if later macro/data-chain replay feeds them back through
+  `0xa904`. `ESC ?` is consumed by the `0xda9a` ESC-aware wrapper, `ESC Z` is
+  local to display-functions readers, and `ESC &lT/t` has no page-output
+  handler.
 - Transparent/display-reader cluster:
   transparent data uses `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
   display functions use normal reader `0x12536` or alternate/data reader
@@ -4600,7 +4627,17 @@ Address-level cluster map:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md). The remaining pixel-affecting
   residual is not parser routing; it is the secondary segment-57 resource
-  continuation read at firmware range `0x0c0000..0x0c0321`.
+  continuation read at firmware range `0x0c0000..0x0c0321`. Transparent
+  `ESC &p#X` saves a delayed record through `0x121cc`; `0x12452` reopens the
+  restored count, fetches payload bytes directly through `0xa904`, locally
+  normalizes `1a 58` through `0xd99a`, and routes each value to printable
+  `0xd04a` or fixed-space `0xd0f0` using selected-context/high-control
+  filters. Normal `ESC Y ... ESC Z` enters `0x12536`, then reads directly
+  through `0xa904` until local `ESC Z` termination; the terminating pair is
+  routed before exit. Alternate/data `0x12120` appends literal `ESC Y` and
+  normalized loop values through `0xe002`, creating stored input rather than
+  immediate page objects. Control-Z handlers are local table consumers, not a
+  global parser rule.
 - Font-selection cluster:
   designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
   0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and
@@ -4609,7 +4646,18 @@ Address-level cluster map:
   [font-context-metrics.md](font-context-metrics.md), and
   [built-in-resource-scan.md](built-in-resource-scan.md). Pixels appear only
   after later printable bytes consume `0x782ee6` / `0x782ef6` and
-  `0x782f32` / `0x783032` through `0xd04a`.
+  `0x782f32` / `0x783032` through `0xd04a`. Attribute streams
+  `ESC (s...T` / `ESC )s...T` write request fields through lowercase writers
+  `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and final `T` writer
+  `0xc7e0`; common refresh `0xc580` calls `0x13eb8`, candidate filtering,
+  `0x144d2` current-context install, and `0x14c64` map rebuild. Symbol-set
+  finals through `0x120be -> 0x1be22` write requested words
+  `0x782ef4` / `0x782f04`; final `@` uses ROM default-symbol table helpers;
+  final `X` calls `0x17708` and may select built-in or inline/downloaded
+  contexts, or exit before map rebuild and preserve prior visible output.
+  SO/SI controls `0xc6b8` / `0xc68a` select slot `1` or `0`, and `0xc428`
+  installs the selected context into page-root slot state before later
+  printable bytes queue context-indexed compact objects.
 - Page/font scheduler handoff cluster:
   quiesce and resource callers reach `0x19dd2` from `0x447a`, `0x4760`,
   `0xbb16`, and `0x1a3c2`; teardown and scan paths include

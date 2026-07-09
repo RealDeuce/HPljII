@@ -181,6 +181,124 @@ Primary fixtures:
 - `combined host-fetched font download stream prints installed glyph`
 - `host-fetched font control stream feeds descriptor and character payload state`
 
+## Owner Summary
+
+Concept: this note owns the downloaded-font command family from parsed font
+control bytes to renderer-visible glyph resources. It covers current font and
+character selection, `ESC )s#W` / `ESC (s#W` descriptor and payload routing,
+resource validation and installation, downloaded-character bitmap copies,
+fixed-record and offset-table resource forms, continuation/resume state,
+font-control mark/delete operations, selected-map refresh, printable-byte use
+of installed glyphs, publication, and compact downloaded-glyph rendering.
+
+Primary route:
+
+- Parser dispatch routes `ESC *c#D` to `0x15a56`, `ESC *c#E` to `0x15a18`,
+  `ESC *c#F` to `0x16df6`, and `ESC )s#W` / `ESC (s#W` to delayed selector
+  `0x11f96`.
+- Zero-count `W` route:
+  `0x11f96 -> 0x121cc -> 0x12218 -> 0x15d0a -> descriptor bytes
+  -> 0x16498/0x16606/0x15b9a/0x15c4c`.
+- Nonzero `W` route:
+  `0x11f96 -> 0x121cc -> 0x12218 -> 0x16c14 -> 0x16fae -> 0x17026
+  -> 0x1719c -> current-record/candidate install`.
+- Downloaded-character bitmap route:
+  `0x16498 -> 0x16874 -> 0x168dc/0x16942 -> glyph table entry
+  -> bitmap record and payload bytes`.
+- Selected-glyph output route:
+  `0x17708/0x14c64/0x14e24 -> 0x1393a -> 0xd04a -> 0x12f2e
+  -> 0x1387c -> page-record storage -> publication/render`.
+- Compact downloaded-glyph render route:
+  `0x1ed84 -> 0x1ef6a -> 0x1effe -> 0x1fe76/0x1f0d2/0x1f1f0/0x1f264`.
+
+Field groups:
+
+- Canonical command state: current downloaded font id `0x782f2e`, current
+  character/code word `0x782f30`, parser/device mode byte `0x782a92`, and
+  parser record cursor `0x78299e`.
+- Canonical current-record state: 32 records at `0x782640..0x782776`,
+  current-record counts `0x782782` / `0x782786`, current record id `+0x00`,
+  flags at `+0x02`, and payload pointer `+0x06`.
+- Canonical candidate/resource state: candidate count `0x78278e`, class
+  counters and cursors `0x782790..0x7827b4`, candidate longword bits `30`
+  and `26`, installed payload headers, glyph pointer tables, downloaded
+  character records, bitmap payload bytes, and active glyph maps.
+- Canonical continuation state: `0x7827c6`, `0x7827c8`, `0x7827ca`,
+  `0x7827ce`, `0x7827d2`, `0x7827d6`, `0x7827d8`, and `0x7827da`.
+- Canonical page output: compact bucket objects from `0x12f2e`, page-root
+  bucket chains, published bucket arrays from `0xff1e`, and compact selector
+  families `0x0003`, `0x1003`, `0x2003`, and `0x3003`.
+- Derived/cache: selected-map bytes built by `0x14e24`, source objects built
+  by `0x1393a`, compact coordinates/segments from `0x12f2e`, active render
+  work words from `0x1ed84`, and row chunks selected by compact helpers.
+- Parser scratch: delayed-payload state `0x782a1a`, saved handler
+  `0x782a1c`, saved records `0x782a20..0x782a25`, payload byte budget
+  `0x783140`, staged descriptor/header storage `0x7827de..0x7827e9`,
+  staging pointer `0x782862`, optional symbol bytes `0x782842..0x782856`,
+  and bitmap parse fields `0x7827be`, `0x7827c2`, and `0x7827c4`.
+- Firmware bookkeeping: candidate insertion `0x1bc38`, release helpers
+  `0x1887a`, `0x18b92`, `0x18bf2`, `0x17a24`, and `0x17d7c`, dirty context
+  refresh, default refresh `0x1b04c`, and continuation cleanup on no-install
+  or failed-resume exits.
+- Unknown: exact HP manual labels for some validation-table fields and
+  remaining row/span cross-products are not named. The ROM-local boundaries
+  that matter for those unknowns are listed in `Remaining Edges`.
+
+Writers and readers:
+
+- `0x15a56` and `0x15a18` write the current font id and character word.
+- `0x16df6`, `0x17108`, and `0x17150` write font-control mark/unmark state
+  and dispatch destructive control selectors.
+- `0x15d0a` reads descriptor bytes and routes current-record or continuation
+  payloads to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
+- `0x16c14` writes current-record ids, payload pointers, candidate longwords,
+  counters, and installed counts after `0x17026` / `0x1719c` succeeds.
+- `0x16fae`, `0x17362`, `0x17026`, and `0x1719c` validate, stage, allocate,
+  and copy resource payload headers.
+- `0x168dc` and `0x16942` consume host payload bytes through `0xa904`, apply
+  local payload-control normalization, write bitmap payloads, and save
+  continuation state when needed.
+- `0x17708`, `0x14c64`, `0x14e24`, and `0x14eb6` consume installed candidates
+  and payload tables to select the glyph map later consumed by `0x1393a`.
+- `0x12f2e`, `0x1387c`, `0xff1e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`
+  consume installed glyph source objects through the shared page-record and
+  render pipeline.
+
+Output effect:
+
+- Font id, character, descriptor, install, control, release, and continuation
+  commands do not draw directly.
+- A later printable byte draws differently when the active map resolves that
+  byte to an installed downloaded glyph instead of a built-in glyph.
+- The resulting compact object can be normal, wide, segmented, or
+  segmented-wide; the object selector determines whether render dispatch uses
+  `0x1fe76`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+- Publication through `0xff1e` copies downloaded-glyph bucket objects into the
+  published page record. Render scheduling then walks the same published
+  buckets as text, rule, and raster objects.
+- Failed validation, no-install, and failed-resume exits preserve following
+  printable output by skipping or releasing downloaded-font state before the
+  normal printable path runs.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in the `ic30_ic13_font_*` listings named above,
+  especially `font_control_dispatch_016df6`, `font_payload_setup_015b80`,
+  `font_resource_validate_016fae`, `font_resource_object_add_016c14`,
+  `font_resource_payload_initializer_01719c`, `font_payload_readers_0168dc`,
+  `font_resource_release_018b92`, `font_resource_release_alt_018bf2`, and
+  `font_candidate_object_alloc_01bc38`.
+- Fixture evidence is named in the Primary fixtures list above; those streams
+  anchor descriptor routing, resource validation, install/no-install exits,
+  continuation resume, downloaded-character payload copies, selected-map
+  construction, compact object creation, publication, render dispatch, and
+  rule/raster composition.
+- Remaining exact boundaries are `0x16fae..0x17016` manual field naming,
+  `0x16498..0x16942` row/span cross-products not already sampled, high-row
+  compact helper targets reached from `0x1f414`, and physical meaning of
+  manual soft-font fields. These do not block the documented installed-glyph
+  route from host bytes to page-record and compact render output.
+
 ## Field Groups
 
 Canonical command selection:

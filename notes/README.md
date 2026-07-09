@@ -67,12 +67,17 @@ standalone deliverables.
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
   `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
   command-dispatch anchors, `Binary Payload Lifecycle`, `State-Only Command
-  Dependency Map`, `Page Geometry And Layout State Boundary`,
-  `Host/Status Side-Channel Boundary`, `Publication And Page-Control
-  Boundary`, `Page Versus Band Model`, `Render Scheduling`,
-  `Pixel composition contract`, and `Boundary: Secondary Segment-57 Source`
-  are the shortest checked-in path from an admitted byte stream to page
-  objects, rendered pixels, and exact pixel-affecting stop points.
+  Dependency Map`, `Parser Artifact And No-Output Boundary`,
+  `Transparent And Display Reader Boundary`,
+  `Page Geometry And Layout State Boundary`,
+  `Host/Status Side-Channel Boundary`,
+  `Publication And Page-Control Boundary`,
+  `Font Context And Glyph Source Boundary`,
+  `Symbol Set And Map Patch Boundary`, `Page Versus Band Model`,
+  `Render Scheduling`, `Pixel composition contract`, and
+  `Boundary: Secondary Segment-57 Source` are the shortest checked-in path
+  from an admitted byte stream to page objects, rendered pixels, and exact
+  pixel-affecting stop points.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
@@ -104,7 +109,9 @@ checked-in ROM model:
    use `Binary Payload Lifecycle` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md). For
    definition-mode or replayed bytes, use `Alternate/Data And Macro Replay
-   Boundary` in the same file before jumping to the family owner.
+   Boundary` in the same file before jumping to the family owner. For
+   explicit ignored rows, wrapper artifacts, or generic counted drains, use
+   `Parser Artifact And No-Output Boundary`.
 4. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
    After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual
@@ -114,9 +121,13 @@ checked-in ROM model:
    `Command Family Owner Matrix` in the same file gives the compact
    handler-to-owner handoff and output class for each command family. For
    text/font routes, use `Font Context And Glyph Source Boundary` to connect
-   selected contexts and maps to printable source objects, then use
+   selected contexts and maps to printable source objects, and use
+   `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`, final `X`, or
+   final `@` changes requested symbols, maps, or `0x14f16` patching. Then use
    `Downloaded Glyph Boundary Decision Rules` for downloaded-glyph helper and
-   payload stop points. For layout routes, use
+   payload stop points. For transparent/display readers, use
+   `Transparent And Display Reader Boundary` before crossing into text output,
+   alternate/data append, or status behavior. For layout routes, use
    `Page Geometry And Layout State Boundary` to connect page-length, VMI, LPI,
    top-margin, text-length, wrap, and perforation commands to later placement,
    overflow, publication, and render effects. For raster and rectangle routes,

@@ -803,8 +803,9 @@ objects. The unflagged rows-`0x81` case retries bucket words `9` and
 indexes `0..64`. Selected published and retried buckets render the same
 ROM-derived rows through `0x1effe`. The remaining uncertainty is selector-mode
 cross-products only when they change source fields, allocator retry behavior,
-bucket shapes, helper dispatch, fallback split, or visible rows; it is not the
-paired no-room return semantics or row contract for these source families.
+bucket shapes, helper dispatch, fallback split, or ROM-derived
+row-construction inputs; it is not the paired no-room return semantics or row
+contract for these source families.
 
 The segmented retry contract is also exact:
 
@@ -3353,8 +3354,8 @@ Other checked leads:
 ## Next Targets
 
 - Keep downloaded-font work focused on byte streams that change installed
-  records, source/page objects, bridge state, or visible rows, not
-  selector-family rediscovery. Fixtures
+  records, source/page objects, bridge state, or ROM-derived row-construction
+  inputs, not selector-family rediscovery. Fixtures
   `combined host-fetched font download stream prints
   installed glyph` and `combined font download FF publishes installed glyph
   page record` already run one `0xa904` fetched stream through font-control
@@ -3378,12 +3379,12 @@ Other checked leads:
   now start from `! ESC E`, allocate/materialize the compact bucket through
   the page-record path, publish through `0xff1e`, clear the current page
   root, and render through `0x1ed84`/`0x1ef6a`. Remaining reset work is
-  additional reset byte streams that expose new publication fields or visible
-  output, not the software-visible reset-to-render contract for this
-  compact-text case.
+  additional reset byte streams that expose new publication fields or
+  ROM-derived pixel output. It is not the software-visible reset-to-render
+  contract for this compact-text case.
 - Treat the direct-control command family as composed from host fetch to
-  rendered rows for the currently named cursor/layout variants. The
-  `Text Cursor And Direct Control State` checkpoint in
+  ROM-derived row construction for the currently named cursor/layout variants.
+  The `Text Cursor And Direct Control State` checkpoint in
   `notes/semantic-state-model.md` groups canonical cursor state
   `0x782c8a` / `0x782c8e`, margins, HMI, VMI, page limits, control
   modes, parser scratch `0x78299e`, derived compact coordinates, and
@@ -3395,8 +3396,8 @@ Other checked leads:
   objects through `0x1387c`, bridge through `0x1edc6`, and render through
   `0x1ed84` / `0x1ef6a`. Remaining work is additional cursor-state
   cross-products that produce new `0xd04a` source-object fields, `0x12f2e`
-  bucket shapes, or visible rows, not the command-family parser-to-render
-  boundary.
+  bucket shapes, or ROM-derived row-construction inputs, not the
+  command-family parser-to-render boundary.
 - Treat selector-7 rectangle/rule composition as covered for mixed
   text/rule/raster page records, and the non-solid selector matrix as covered
   for text/rule page records:

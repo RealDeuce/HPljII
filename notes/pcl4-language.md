@@ -687,15 +687,24 @@ Field groups for this index:
   [vertical-forms-control.md](vertical-forms-control.md).
 - Transparent and display-function data:
   `ESC &p#X` schedules `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
-  `ESC Y ... ESC Z` uses `0x12536` or alternate `0x12120`. The transparent
-  reader consumes counted bytes through `0xdace`, normalizes/filter-controls,
-  and re-enters printable/control paths; display readers append/report bytes
-  without ordinary page-state effects. Transparent bytes can become compact
-  text through the same `0xd04a` path. Display-functions are parser/input
-  behavior, not page imaging. Concrete stream `ESC &p2X!!` restores delayed
-  record `80 58 00 02 00 00`, consumes payload bytes `21 21`, routes both
-  through `0xd04a`, and queues the same compact coordinates `0x0001` and
-  `0x0202` as the direct printable `!!` baseline before publication/render.
+  `ESC Y ... ESC Z` uses normal direct reader `0x12536` or alternate/data
+  reader `0x12120`. The transparent reader restores delayed record state,
+  consumes the absolute record count through direct `0xa904` fetches,
+  normalizes local `0x1a 0x58 -> 0x7f`, applies the selected-context
+  filter matrix, and re-enters `0xd04a` or `0xd0f0`; printable transparent
+  bytes can therefore create compact text objects. Normal display-functions
+  reader `0x12536` is also page-affecting: it fetches loop bytes through
+  `0xa904` until local `ESC Z` termination, routes values through `0xd04a`
+  or `0xd0f0`, and consumes the terminating pair as routed values before
+  exit. Alternate/data reader `0x12120` appends literal `ESC Y` and loop
+  values through `0xe002` with no immediate page object. Concrete stream
+  `ESC &p2X!!` restores delayed record `80 58 00 02 00 00`, consumes payload
+  bytes `21 21`, routes both through `0xd04a`, and queues the same compact
+  coordinates `0x0001` and `0x0202` as the direct printable `!!` baseline
+  before publication/render. Concrete stream `ESC Y!\x05! ESC Z` reaches
+  `0x12536`, routes loop values `21 05 21 1b 5a` as
+  `d04a d0f0 d04a d0f0 d04a`, and queues compact entries at `0x0001`,
+  `0x0403`, and `0x0405`.
   Evidence:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).

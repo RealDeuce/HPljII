@@ -157,6 +157,100 @@ Unknown:
   bridge-normalized rule list, no-room retry publication state, render
   dispatch, or ROM-derived row construction.
 
+## Command-To-Pixel Owner Summary
+
+The `ESC *c` family is a delayed drawing model. Size and fill commands write
+persistent rectangle state; only `ESC *c#P` consumes that state to build a
+rule-list object. Pixels appear later when publication and render scheduling
+copy that object into the active render record.
+
+Writers:
+
+- Parser setup handlers `0x11eb6`, `0x11ec8`, and `0x11eda` keep the
+  `ESC *c` family active while chained lowercase finals are parsed.
+- Dot-size handlers `0x10e68` and `0x10e22` write width `0x78316a` and height
+  `0x783166`; decipoint handlers `0x10a40` and `0x10ae0` write the same fields
+  after ROM unit conversion and rounding.
+- Area-fill handler `0x10dce` writes fill id `0x78316e`.
+- Fill handler `0x10898` maps the current `#P` selector and `0x78316e` to the
+  rule selector byte: solid selector `7`, gray selectors `0..7`, or pattern
+  selectors `8..13` with landscape remaps.
+- Clip/queue helper `0x10b80` writes source record `0x782a88`, ensures current
+  page root `0x78297a` through `0x10084`, and calls `0x13386` only for
+  nonempty on-page rectangles.
+- Producer `0x13386 -> 0x133aa` derives bucket/key fields through `0x134d6`,
+  allocates a 14-byte rule object through `0x1381c`, and links it under
+  page-root rule list `+0x24`.
+- Retry path `0x10d22..0x10d3e` sets page-root flag `+0x15.0`, publishes the
+  old root through `0xff1e`, ensures a fresh root, and retries the same
+  already-clipped source record when `0x13386` reports no room.
+- Bridge `0x1edc6` copies page-root `+0x24` to render-record `+0x1c`, ORs
+  object byte `+0x05` with `0x10`, and copies object height `+0x0a` into
+  continuation word `+0x0c`.
+
+Readers and consumers:
+
+- `0x10898` consumes width `0x78316a`, height `0x783166`, fill id
+  `0x78316e`, and the parsed `#P` command record. Zero dimensions or invalid
+  selector/id combinations exit without queueing.
+- `0x10b80` consumes cursor `0x782c8a/0x782c8e`, orientation `0x782da3`, and
+  page extents `0x782db8/0x782db6` to reject, clip, or transform the rule
+  source.
+- `0x133aa` consumes stream allocator state
+  `0x782a70/0x782a72/0x782a76` and preserves ascending object byte `+0x04`
+  order in the rule list; equal buckets insert after the existing equal node.
+- Publication `0xff1e` freezes the current root. `0x1ed84` selects the
+  published source, and `0x1edc6` normalizes the rule list for rendering.
+- Render entry `0x1ef6a` calls rule-list walker `0x1f446` after compact bucket
+  dispatch `0x1efc2` and before fixed-list dispatch `0x1f756`.
+- `0x1f446` dispatches selector `7` to solid helper `0x1f596`; selectors
+  `0..6` and `8..13` dispatch to pattern helper `0x1f4e0`.
+- Solid and pattern helpers consume packed key `+0x06`, width `+0x08`, and
+  continuation word `+0x0c`; they mutate `+0x0c` when the rule crosses render
+  bands.
+
+Output effect:
+
+- `ESC *c12a5b0P` queues selector-7 object
+  `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00`; after `0x1edc6`, the object is
+  `00 00 00 00 01 17 4a 00 00 0c 00 05 00 05`.
+- `! ESC *c12a5b50g2P` writes fill state `50`, maps `2P` to gray selector
+  `4`, bridges selector byte `0x04` to `0x14`, and renders through
+  `0x1f4e0`.
+- `! ESC *c12a5b2g3P` writes fill state `2`, maps `3P` to portrait pattern
+  selector `9`, bridges selector byte `0x09` to `0x19`, and renders through
+  `0x1f4e0`.
+- Mixed page streams keep this rule object separate from compact/raster
+  buckets: compact and raster objects live under root `+0x1c`, while rectangle
+  rules live under root `+0x24` and render through the rule walker.
+
+Field classification for this owner:
+
+- Canonical state:
+  rectangle width/height/fill fields `0x78316a`, `0x783166`, and `0x78316e`;
+  source record `0x782a88`; current root `0x78297a`; rule list `+0x24`;
+  rule object bytes; published source record; and render-record rule list
+  `+0x1c`.
+- Derived/cache state:
+  bucket/key fields `0x782a7c`, `0x782a7d`, and `0x782a7e`; horizontal phase
+  `0x782dc0`; bridged selector bit `0x10`; continuation word `+0x0c`; render
+  band fields; and destination mask state in `0x1f596`, `0x1f4e0`, and
+  `0x1f6ee`.
+- Parser scratch:
+  parser modes, command-record cursor `0x78299e`, parsed numeric parameters,
+  and relative parser state consumed by the size/fill handlers.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70/0x782a72/0x782a76`, page-root retry bit
+  `+0x15.0`, publication flag `0x782996`, pool cursors, and render-work
+  scheduler state.
+- Hardware/external state:
+  none for the ROM-local rectangle object and renderer contract after the same
+  normalized host bytes and publication boundary exist.
+- Unknown:
+  only streams that change clipping, allocator/rollover, no-room retry fields,
+  rule object bytes, bridge normalization, selector dispatch, or row
+  construction create new ROM-local work.
+
 ## Size Commands
 
 `0x10e68` handles `ESC *c#A`; `0x10e22` handles `ESC *c#B`. Both rewind

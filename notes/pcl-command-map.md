@@ -220,9 +220,11 @@ boundaries:
 - `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append,
   and guarded `ESC z` status signaling:
   [display-functions.md](display-functions.md#owner-summary).
-- Reset, FF publication, page size, page-length zero/default, orientation, paper source,
-  and copies: [publication-commands.md](publication-commands.md#owner-summary) plus
-  reset provenance in [reset-default-environment.md](reset-default-environment.md).
+- Reset, FF publication, page size, page-length zero/default, orientation,
+  paper source, and copies:
+  [publication-commands.md](publication-commands.md#owner-summary) plus reset
+  provenance in
+  [reset-default-environment.md](reset-default-environment.md#owner-summary).
 - Transparent print data `ESC &p#X`:
   [transparent-print-data.md](transparent-print-data.md).
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:

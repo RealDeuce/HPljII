@@ -10572,8 +10572,8 @@ byte streams and ROM row-construction branches.
 ## Default Environment Record Producers
 
 The standalone reset/default contract is in
-[reset-default-environment.md](reset-default-environment.md). This section
-preserves the producer-side state block in the unified model.
+[reset-default-environment.md](reset-default-environment.md#owner-summary).
+This section preserves the producer-side state block in the unified model.
 
 Status: composed for the RAM record, ROM-table fallback, record-maintenance,
 startup retained-record bulk load, retained-storage commit/readback,
@@ -11686,8 +11686,9 @@ leaves those names unresolved.
 ## ESC E Reset And Default Environment
 
 The standalone reset/default contract is in
-[reset-default-environment.md](reset-default-environment.md). This section
-preserves the reset consumer-side state block in the unified model.
+[reset-default-environment.md](reset-default-environment.md#owner-summary).
+This section preserves the reset consumer-side state block in the unified
+model.
 
 Status: composed for the PCL software-reset command family. This checkpoint
 keeps the lower-level ledger in

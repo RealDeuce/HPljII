@@ -44,6 +44,103 @@ Primary fixtures:
 - `0x5e80 -> 0xcda2 reset consumes default record outputs`
 - `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI`
 
+## Owner Summary
+
+Concept: this note owns `ESC E` software reset and its default-environment
+inputs from parser dispatch to page-root publication, environment rebuild,
+parser/data-chain reset, default-record consumption, and representative
+rendered output. It also owns the ROM producers for the reset-consumed default
+fields `0x78219d`, `0x78219e`, and `0x7821a2`.
+
+Primary route:
+
+- Parser dispatch sends `ESC E` to `0xcc52`.
+- Reset route:
+  `0xcc52 -> 0xcc70 -> 0xf34a -> 0xff1e/no-root clear -> 0x9ac2
+  -> 0xcda2 -> 0xcbd4 -> 0xe146`.
+- Default-consumer route:
+  `0x5e80/default producer -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`.
+- Environment rebuild route:
+  `0xcda2 -> page/control records 0x780f02 -> HMI/VMI/top/margin/parser
+  defaults -> raster/page-derived state`.
+- Parser/data-chain reset route:
+  `0xe146 -> 0x782d76/0x782d7a/0x782c1e..0x782c6d/0x783196..0x783199`.
+- Visible output then belongs to the publication/render owners if a valid
+  current root existed before reset; missing-root reset creates no published
+  page record.
+
+Field groups:
+
+- Canonical reset inputs: defaults `0x78219d`, `0x78219e`, `0x7821a2`, and
+  reset/environment gate `0x7810b2`.
+- Canonical default producers: selector `0x7822d5`, compact backing records
+  under `0x780eda`, staged bytes `0x782283` / `0x782290`, and menu/update
+  writers `0x5060`, `0x50be`, and `0x52ba`.
+- Canonical page/control pool: records at `0x780f02`, bucket-array pointers
+  `+0x1c`, current root `0x78297a`, published root `0x780ea6`, and
+  publication flag `0x782996`.
+- Canonical parser/data-chain reset state: scratch pointer `0x782a26`,
+  cursor-stack pointer `0x782d36`, data-chain frame pointer `0x782d76`,
+  current macro record pointer `0x782d7a`, parser/control records
+  `0x782c1e..0x782c6d`, and text accumulation bytes `0x783196..0x783199`.
+- Derived/cache reset state: HMI `0x78315c`, VMI `0x783160`, top offset
+  `0x782dce`, layout scratch `0x782dd0`, and raster block `0x783170`.
+- Retained/default bookkeeping: retained-record flags `0x780eba..0x780ed8`,
+  maintenance counters `0x780ef0`, buffers `0x782252..0x782270`, and serial
+  retained-storage helpers using `$a400` and `$8c01`.
+- Firmware bookkeeping: reset pending bytes `0x782997` / `0x782998`,
+  reset-cleared latches, reset-set latches `0x782a6d` / `0x783191`, active
+  symbol snapshots, and reset completion byte `0x782a93`.
+- Unknown: physical retained-storage identity behind `$a400` / `$8c01`,
+  external panel/service protocol for `$8000.w`, and manual-facing names for
+  reset latches.
+
+Writers and readers:
+
+- `0xcc52` calls reset publication/environment helper `0xcc70`, metric refresh
+  `0xcbd4`, and parser/data-chain reset `0xe146`, then clears `0x782a93`.
+- `0xcc70` flushes pending text, publishes or clears the current page root,
+  waits through `0x9ac2`, handles the reset gate, calls `0xcda2`, and rebuilds
+  raster/page-derived state.
+- `0xcda2` consumes defaults and current-font context, rebuilds page/control
+  records, copies default environment fields, recomputes HMI/VMI, and resets
+  bookkeeping bytes.
+- `0xcbd4` consumes current-font context and active symbol words to refresh
+  HMI and active-symbol snapshots.
+- `0xe146` consumes and resets parser/data-chain records, freeing active
+  data-chain chunks where needed.
+- `0x5e80`, menu/update handlers, retained-record maintenance, and NVRAM
+  helpers produce or preserve the default fields consumed by later reset.
+
+Output effect:
+
+- `ESC E` publishes ROM-derived rows only when a valid active page root exists
+  before reset.
+- Missing-root reset takes the `0xff1e` no-root/current-root clear exit and
+  produces no published page record.
+- Reset environment changes affect later output by replacing HMI, VMI, page
+  geometry, paper/source header state, parser/data-chain state, raster state,
+  and font/context snapshots before following bytes are parsed.
+- Default-record producers have no direct pixels; their visible effect occurs
+  when a later reset consumes `0x78219d`, `0x78219e`, or `0x7821a2`.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in `ic30_ic13_esc_e_reset_00cc52.lst`,
+  `ic30_ic13_esc_e_environment_reset_00cda2.lst`,
+  `ic30_ic13_esc_e_metric_refresh_00cbd4.lst`,
+  `ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
+  `ic30_ic13_page_root_finalize_00ff1e.lst`, and the default/retained-record
+  listings named above.
+- Fixture evidence is named in the Primary fixtures list above; those streams
+  pin valid-root publication, missing-root no-publication, page-record bridge,
+  default-field production/consumption, and VMI conversion.
+- No unresolved ROM-local middle edge remains for `ESC E` reset from parser
+  dispatch through publication/no-publication, environment rebuild, parser
+  reset, and default-field consumption. Remaining boundaries are external
+  retained-storage identity, panel/service protocol, and manual names for
+  reset latches.
+
 ## Field Groups
 
 Canonical reset inputs:

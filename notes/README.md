@@ -97,19 +97,17 @@ standalone deliverables.
 Use this short route when reading a supported PCL byte stream through the
 checked-in ROM model:
 
-0. Establish the ROM-visible baseline. For power-on/default-state streams,
-   start from [firmware-startup.md](firmware-startup.md): host byte-source
-   buffers `0x783e54..0x783e8e`, output FIFO `0x783ed2` /
-   `0x783ed4` / `0x783ed8`, heap fields `0x780e86` and
-   `0x783972..0x783988`, render-work selector seeds `0x7820bc` /
-   `0x7820c0`, and wait-object records `0x780182..0x780262`. For streams
-   that include `ESC E`, use
-   [reset-default-environment.md](reset-default-environment.md): reset
+0. Establish the ROM-visible baseline. For power-on/default-state streams, start from
+   [firmware-startup.md](firmware-startup.md): host byte-source buffers
+   `0x783e54..0x783e8e`, output FIFO `0x783ed2` / `0x783ed4` / `0x783ed8`, heap fields
+   `0x780e86` and `0x783972..0x783988`, render-work selector seeds `0x7820bc` /
+   `0x7820c0`, and wait-object records `0x780182..0x780262`. For streams that include
+   `ESC E`, use
+   [reset-default-environment.md](reset-default-environment.md#owner-summary): reset
    publishes or clears the current root before rebuilding environment fields,
-   parser/data-chain state, VMI/HMI, raster state `0x783170`, and page/control
-   pool records. Physical MMIO names, retained-storage identity, and optional
-   extension contents are boundaries unless they change one of those
-   ROM-visible fields.
+   parser/data-chain state, VMI/HMI, raster state `0x783170`, and page/control pool
+   records. Physical MMIO names, retained-storage identity, and optional extension
+   contents are boundaries unless they change one of those ROM-visible fields.
 1. If starting from a manual command name, use the ROM Semantic Index in
    [pcl4-language.md](pcl4-language.md) to find the command-family route and
    concrete stream anchor. If starting from raw bytes, use `Reader Entry
@@ -241,9 +239,9 @@ checked-in ROM model:
 - [macro-data-chain.md](macro-data-chain.md#owner-summary) - documented macro
   definition, execute/call replay, overlay publication, and data-chain byte
   replay to page-record output.
-- [reset-default-environment.md](reset-default-environment.md) - documented
-  `ESC E` reset, default-record producers, retained-record paths, and reset
-  publication behavior.
+- [reset-default-environment.md](reset-default-environment.md#owner-summary) -
+  documented `ESC E` reset, default-record producers, retained-record paths,
+  and reset publication behavior.
 - [publication-commands.md](publication-commands.md#owner-summary) -
   documented publication owner boundary, reset, FF, page-size, page-length
   zero/default, orientation, paper-source, and copies routes to rendered page records or

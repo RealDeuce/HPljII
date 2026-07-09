@@ -5204,6 +5204,33 @@ Address-level cluster map:
   normalized loop values through `0xe002`, creating stored input rather than
   immediate page objects. Control-Z handlers are local table consumers, not a
   global parser rule.
+  Concrete direct-reader streams are now part of the route index.
+  `ESC &p2X!!` restores record `80 58 00 02 00 00`, routes payload bytes
+  `21 21` through `0xd04a`, queues compact coordinates `0x0001` and
+  `0x0202`, and later renders through the ordinary compact-text path.
+  `ESC &p4X!\x05\x85!` under default zero filters restores
+  `80 58 00 04 00 00`, routes `d04a d0f0 d0f0 d04a`, and queues object
+  prefix `00 00 00 00 00 00 00 02 20 00 01 20 06 04`; the two fixed-space
+  routes advance cursor state without compact entries in the flagged built-in
+  path. With nonzero filters, `ESC &p4X!\x05\x80!` routes all four payload
+  values through `0xd04a` and queues prefix
+  `00 00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`. Secondary
+  stream `SO ESC &p3X!\x80!` selects slot `1`, routes all values through
+  `0xd04a`, and the high-control byte creates selector-`0x2001` segmented
+  buckets; selected bucket `0` begins
+  `00 00 00 00 20 01 00 01 5f 00 1c 01 00 00 00 00` before the documented
+  source-read boundary at segment 57. Display stream `ESC Y!\x05! ESC Z`
+  reaches `0x12536`, consumes values `21 05 21 1b 5a`, routes
+  `d04a d0f0 d04a d0f0 d04a`, and queues visible `!`, `!`, and `Z` at
+  compact coordinates `0x0001`, `0x0403`, and `0x0405`. Filter-on display
+  stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes `1a 58` to `0x7f`, routes
+  all six values through `0xd04a`, and queues object prefix
+  `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05
+  59 06 06`. Alternate/data reader `0x12120` appends payload
+  `21 1a 58 1b 5a` as stored stream `1b 59 21 7f 1b 5a` through `0xe002`.
+  Evidence is [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md), and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - Host/status side-channel cluster:
   `ESC *r#K` and `ESC *s#^` dispatch through wrapper `0x12034` to
   `0x122be..0x12326`; host-output FIFO and status workers use

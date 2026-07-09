@@ -230,6 +230,154 @@ Unknown:
   and validation/error forms beyond the bounded predicate and short-budget
   no-install cases.
 
+## Writers
+
+Font selection reaches this owner through parser terminal handlers, but the
+parser table is only the route into the state machine. The semantic writers
+are the handlers that update requested font fields, choose a current context,
+rebuild maps, install page-root slots, or create source objects:
+
+- Parser font-request writers:
+  lowercase and uppercase font-attribute terminals update the requested font
+  state before the common refresh. The covered primary stream
+  `ESC (s0p10h12v0s0b3T` writes through `0xc930`, `0xc89c`, `0xc6ec`,
+  `0xc780`, `0xc840`, and uppercase wrapper `0x1205a`; sibling wrappers
+  `0x12046`, `0x1206e`, `0x12082`, `0x12096`, and `0x120aa` have the same
+  single-attribute-plus-refresh shape.
+- Pitch-mode compatibility writer:
+  `0xc390` handles `ESC &k#S/s` selectors `0`, `2`, and `4` by rewriting the
+  active six-byte parser record into synthetic pitch records, then calling
+  `0xc89c -> 0xc580`. Other selectors exit through `0xc420` without a refresh.
+- Common refresh writer:
+  `0xc580` consumes dirty flags `0x782f2c/0x782f2d`, selected slot
+  `0x782f06`, current contexts `0x782ee6/0x782ef6`, page-root live flags
+  `0x78297f..`, and transient record `0x782992`. Depending on those fields,
+  it calls candidate refresh `0x13eb8`, context installer `0xc428`, both, or
+  neither.
+- Candidate and map writers:
+  `0x13eb8` filters candidate windows, `0x14398` writes selected slot pointer
+  `0x7828a8`, `0x144d2` copies the selected candidate longword into
+  `0x782ee6` or `0x782ef6`, `0x14c64` rebuilds glyph map `0x782f32` or
+  `0x783032`, `0x14f16` patches Roman-8-compatible maps, and `0x1440c` writes
+  selected-font snapshots `0x783148` or `0x783152`.
+- Font-ID and active-object writers:
+  `0x17708` implements final-`X` selection and either reaches the same
+  `0x14c64` map rebuild path or exits without changing the prior selected
+  context. Predicate helper `0x14ba4..0x14c5c` only classifies active-object
+  compatibility; it writes no map or page object.
+- Page-root context writers:
+  SI/SO handlers `0xc68a` and `0xc6b8` select primary or secondary slot
+  through `0xc428(0/1)`. `0xc4fc` chooses or reuses a page-root context slot,
+  writes the selected context longword into root `+0x2c..+0x68`, sets live flag
+  `0x78297f+n`, and updates selected page-root slot byte `0x78297e`.
+- Printable source writers:
+  printable handler `0xd04a` calls `0x1393a`, which writes source object
+  `0x782d7e` from the selected context and glyph map. The unflagged path
+  `0xd140 -> 0xd3b2` or flagged path `0xd550 -> 0xd824` writes positioned
+  source fields and passes the source object to `0x12f2e`.
+- Span-metric writers:
+  `0xd4ac` consumes unflagged metric fields `+0x2b/+0x2c/+0x2d`; `0xd8fc`
+  consumes flagged metric words `+0x16/+0x18/+0x1a`. They update pending span
+  state `0x783184..0x78318a`, which later flushes through `0x12714`.
+- Downloaded metric producers:
+  `0x16fae..0x17016`, `0x1719c..0x1725c`, `0x17430..0x1749c`,
+  `0x1757a..0x175b8`, and `0x1762a..0x1763c` stage and copy descriptor metric
+  fields into downloaded payload records. Those records become metric inputs
+  when later selected contexts route printable bytes to `0xd4ac` or `0xd8fc`.
+
+## Readers And Consumers
+
+The main consumers are printable text, span flush, publication, and compact
+rendering. A font command has no complete output path until one of those later
+consumers reads the selected state.
+
+- Parser dispatch consumers:
+  [pcl-command-map.md](pcl-command-map.md) maps font-selection, symbol-set,
+  final-`X`, pitch-mode, SI/SO, and downloaded-font parser handlers into this
+  note. Its matrix is the address index; this file owns what those handlers
+  do to font state and how later bytes consume it.
+- Printable source consumer:
+  `0xd04a -> 0x1393a` reads selected slot `0x782f06`, current context
+  `0x782ee6` or `0x782ef6`, active map `0x782f32` or `0x783032`, cursor
+  state, and the page-root context slot installed by `0xc428`. It outputs
+  source fields `+0x00/+0x04/+0x0b/+0x10/+0x16` that `0x12f2e` turns into
+  compact text objects.
+- Span consumers:
+  `0xd4ac` and `0xd8fc` read selected glyph metrics while printable bytes are
+  being placed. Their output is pending span state, not immediate pixels; the
+  later flush path `0xf34a -> 0x12714 -> 0x126e2` creates segment-list or
+  fixed-list page objects.
+- Page-root and bridge consumers:
+  `0x12f2e -> 0x1387c` writes compact text entries under page-root `+0x1c`,
+  carrying the page-root font slot number. Publication `0xff1e` snapshots the
+  root, and bridge `0x1edc6` copies page-root context slots
+  `+0x2c..+0x68` into render-record slots `+0x24..+0x60`.
+- Compact renderer consumers:
+  `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches compact text. Resolver `0x1f354`
+  reads the copied render context slot, mapped glyph byte, source-class flag,
+  and glyph/fixed-record pointer to derive bitmap rows from built-in resource
+  records or downloaded/current records.
+- Cache and skip consumers:
+  `0x13a48` reads selected-font snapshots to decide whether map rebuild can be
+  skipped. `0x14ba4` reads active-object signatures to decide whether an
+  existing selected object remains compatible. These exits preserve prior
+  visible rows only because later printable bytes keep consuming the already
+  installed context/map.
+
+## Output Effect
+
+Font-selection, symbol-set, pitch-mode, and final-`X` commands are delayed
+pixel effects. They do not queue compact objects on their own. They change the
+context and map that a later printable byte, transparent/display reader, macro
+replay, or downloaded-glyph path consumes.
+
+Concrete output paths are documented by the existing fixtures and listings:
+
+- Built-in primary stream `ESC (s0p10h12v0s0b3T!!` selects context
+  `0xc008004c`, rebuilds primary map `0x782f32`, derives HMI `30`, and queues
+  compact object
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02` through
+  `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`.
+- Built-in secondary stream `ESC )s0p16h8v0s0b0T SO !!` selects context
+  `0xc00ae122`, rebuilds secondary map `0x783032`, crosses SO handler
+  `0xc6b8`, and queues compact object
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`.
+- Final-`X` streams such as `ESC (7X!!` and `ESC )8X SO !!` enter helper
+  `0x17708`; success selects a concrete candidate and rebuilds the selected
+  map, while scan-miss, candidate-miss, class-mismatch, and context-full exits
+  deliberately preserve the prior selected context for the following
+  printable bytes.
+- Pitch-mode streams only affect output after `0xc390 -> 0xc89c -> 0xc580`
+  changes selected-font/HMI state and later printable bytes consume the
+  refreshed context.
+- Span-metric streams affect pixels when `0xd4ac` or `0xd8fc` expands pending
+  span bounds and a later flush queues a segment-list or fixed-list object.
+- Downloaded metric streams affect pixels only after a selected downloaded
+  context makes printable bytes consume the installed payload record and its
+  metric fields.
+
+The pixel-producing boundary for all of these paths is the same compact text
+and span route used by ordinary printable bytes: page-root objects are
+published through `0xff1e`, context slots are copied by `0x1edc6`, and render
+entry `0x1ef6a` dispatches compact, segment-list, or fixed-list helpers.
+
+## Remaining Edges
+
+No ROM-local middle edge remains for the covered primary/secondary built-in
+selection streams, primary/secondary symbol fallback and remembered-symbol
+streams, final-`X` built-in and inline/downloaded success paths, final-`X`
+non-selected exits, final-`@` default-table streams, pitch-mode selectors
+`0/2/4`, live current-font-RAM SI/SO handoff, or the documented `0xd4ac` and
+`0xd8fc` span-metric producer/consumer paths.
+
+Remaining font-context work should start only from byte streams or selected
+records that change one of these concrete boundaries: `0xc580` refresh
+decision, `0x13eb8` candidate filters, `0x14398` selected slot pointer,
+`0x14c64` map rebuild/cache decision, `0x14f16` map patch, `0x17708` final-`X`
+exit, `0xc428` page-root context slot install, `0x1393a` source-class fields,
+span-metric consumers `0xd4ac` / `0xd8fc`, page-root object bytes, bridge
+context slots, or compact-renderer glyph source inputs.
+
 ## Pitch Mode Command
 
 `ESC &k#S/s` is a compatibility pitch-mode command, not an independent

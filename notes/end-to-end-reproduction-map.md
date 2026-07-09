@@ -4672,8 +4672,19 @@ Address-level cluster map:
   `0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`. Owners are
   [publication-commands.md](publication-commands.md),
   [page-record-storage.md](page-record-storage.md), and
-  [active-render-scheduler.md](active-render-scheduler.md). Hardware timing
-  can change when active-band work is scheduled, but not the documented
+  [active-render-scheduler.md](active-render-scheduler.md). The byte-stream
+  route is that command handlers such as reset `0xcc52`, FF `0xf0f0`,
+  page-size `0xfc74`, orientation `0x10220`, paper source `0xef62`, copy count
+  `0xeef0`, VFC page-boundary helper `0xf124`, or allocator retry paths call
+  `0xff1e` after any required pending text/span flush. `0xff1e` consumes
+  current page root `0x78297a`, copies compact/raster bucket root `+0x1c`,
+  rule list `+0x24`, fixed list `+0x28`, context slots `+0x2c..`, pool-header
+  state, and copy-count/source fields into the page/control pool, sets
+  publication flag `0x782996`, and clears the current root. `0x1ed84` selects
+  the published source, `0x1edc6` bridges roots into render-record
+  `+0x18/+0x1c/+0x20` and context slots, `0x1eba4` schedules band words, and
+  `0x1ef6a` dispatches compact/raster buckets, rules, and fixed lists. Hardware
+  timing can change when active-band work is scheduled, but not the documented
   page-object-to-row construction for an already selected published record.
 - Macro, data-chain, and overlay cluster:
   macro commands run `0xe112` / `0xdd08`; record selection and storage use
@@ -4681,15 +4692,40 @@ Address-level cluster map:
   overlay publication uses `0xff1e -> 0xe0a4 -> 0xe4f4 -> 0x11774`.
   Owner note is [macro-data-chain.md](macro-data-chain.md). The supported
   output rule is that replayed bytes become ordinary parser input and use the
-  same page-object and render owners as live host bytes.
+  same page-object and render owners as live host bytes. `ESC &f#Y` writes
+  current macro id `0x783164` through `0xe112`; `ESC &f#X` reaches `0xdd08`
+  selectors for definition, execute, call, overlay, delete, and permanence.
+  Definition stores payload bytes through alternate/data append sink `0xe002`
+  into linked 0x100-byte chunks recorded in the 32-entry macro pool at
+  `0x782a98`. Execute and call selectors look up records through `0xe0a4` and
+  build data-chain frames at `0x782d76` through `0xe418`, with frame
+  `+0x09 = 2` for execute or `3` for call. Host fetch `0xa904` prioritizes
+  those frame bytes, so replay enters parser loop `0x11774` and reaches the
+  ordinary command owners for printable text, controls, transparent data,
+  raster, rectangle, span flush, publication, and rendering. Overlay state
+  `0x782a92` / `0x782a94` is consumed during `0xff1e`; `0xe4f4` builds a
+  non-replay frame with kind `+0x09 = 4` before publication when the enabled
+  record exists, while disabled, missing-record, or retry-flag gates publish
+  the base page unchanged.
 - VFC cluster:
   `ESC &l#W` uses delayed route
   `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` consumes the table
   through `0x1280a`. Owner note is
   [vertical-forms-control.md](vertical-forms-control.md). Output is cursor
-  movement or page publication before later printable bytes queue page
-  objects; residuals are only variants that change VFC table bytes, channel
-  target choice, publication split, or following object coordinates.
+  movement or page publication before later printable bytes queue page objects.
+  `0x12cfe` rewinds the restored command record, consumes table payload bytes
+  through `0xdace`, writes accepted even-count bytes into table
+  `0x782dde..0x782edd`, derives limit/cache fields `0x782dc2` and `0x782dd2`,
+  and clears modified-layout flag `0x782ee1`; zero-count/default handling
+  rebuilds the table through `0x12b96`, while odd or over-window counts drain
+  without installing table bytes. `0x1280a` maps selector `n` to mask
+  `1 << (n - 1)`, scans the table with VMI `0x783160`, top offset
+  `0x782dce`, current y `0x782c8e`, and line caches
+  `0x782ede/0x782edf/0x782ee0`, then either resets cursor x/y for the next
+  printable byte or calls `0xf124 -> 0xff1e` so the old page is published
+  before following printable output queues on a fresh page. Residuals are only
+  variants that change VFC table bytes, channel target choice, publication
+  split, or following object coordinates.
 
 - Printable text, direct controls, and cursor placement:
   `!!`, `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`,

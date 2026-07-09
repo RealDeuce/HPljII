@@ -102,9 +102,13 @@ common helper `0x33298`.
 - Other finals dispatch to `0x1c0a4`: keep the computed requested word and
   mark dirty flags.
 
-Final `X` deliberately does not accept the provisional
-`(parameter << 5) + 'X' - 0x40` word. It restores the saved requested word
-from stack local `-4(A6)`, then calls `0x17708` with the slot and font id.
+Final `X` deliberately does not accept the ordinary-final computed word
+`(parameter << 5) + 'X' - 0x40`. It restores the saved requested word from
+stack local `-4(A6)`, then calls `0x17708` with the slot and font id.
+The exact instruction boundary is `0x1c066..0x1c09a`: scale slot `D4` through
+`0x332ee(0x10)`, restore word `-4(A6)` into `0x782ef4 + 0x10*slot`, set
+`0x78287b = 1`, call `0x17708(slot, font_id)`, then set
+`0x782f2c = 2` and `0x782f2d = 1`.
 Successful `0x17708` paths select a built-in or inline/downloaded font record
 and rebuild the selected map through `0x14c64`; documented non-selected exits
 stop before map rebuild, so following printable bytes use the prior context.
@@ -331,7 +335,7 @@ Writers:
 - `0x1201e` and `0x12008` write the slot setup records consumed by `0x1be22`.
 - `0x1be22` writes requested symbol words and dirty flags.
 - `0x1be22 -> 0x1c066 -> 0x17708` handles font-id selection without accepting
-  the provisional `X` symbol word.
+  the ordinary-final computed `X` word.
 - `0x1be22 -> 0x1bec8` handles final-`@` table/default-font variants.
 - `0x156de` writes active symbol words `0x783144` / `0x783146`.
 - `0xc580` copies active symbol words into remembered words and clears

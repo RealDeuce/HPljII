@@ -1058,7 +1058,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   and setup slot word, computes requested symbol word
   `(abs(parameter) << 5) + final - 0x40`, writes `0x782ef4` or `0x782f04`,
   and sets dirty flags `0x782f2c` / `0x782f2d`. Final `X` restores the old
-  requested word instead of accepting that provisional symbol word, sets
+  requested word instead of accepting that ordinary-final computed word, sets
   marker `0x78287b`, calls font-id selector `0x17708(slot, parameter)`, and
   enters `0xc580` with dirty flag `2`; successful `0x17708` paths select
   built-in or inline/downloaded records and rebuild maps through `0x14c64`,
@@ -1902,7 +1902,7 @@ shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;
 `0x11fe4` and `0x11fd2` only call generic setup `0x11ec8` and then tokenize
 through `0xdaf0`; they do not append the synthetic primary/secondary slot
 record before tokenization. The normal terminal wrapper calls `0x1be22`,
-which computes the provisional PCL symbol word as
+which computes the ordinary-final PCL symbol word as
 `(parameter << 5) + final_byte - 0x40` and stores it at
 `0x782ef4 + 0x10*slot`. Normal symbol-set finals keep that word and call
 common refresh `0xc580`; final `X` restores the previous requested symbol

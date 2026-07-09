@@ -721,6 +721,17 @@ Field groups for this index:
   Pitch-mode `ESC &k#S/s` is routed through handler `0xc390`, which accepts
   selectors `0`, `2`, and `4`, rewrites synthetic pitch records, and rejoins
   `0xc89c -> 0xc580` before any later printable output.
+  Font-control rows in the `ESC *c` family are state/resource controls:
+  `ESC *c#D` reaches `0x15a56` and writes current downloaded-font id
+  `0x782f2e`, `ESC *c#E` reaches `0x15a18` and writes current character word
+  `0x782f30`, and `ESC *c#F` reaches dispatcher `0x16df6`. Selector `5`
+  runs `0x16e86 -> 0x17108` to mark the current record, selector `4` uses
+  `0x17150` to unmark it, selectors `0..3` and `6` release or refresh
+  current-record/resource state when mode byte `0x782a92 != 2`, and other
+  selectors return without page output. These rows create no page object by
+  themselves; later `ESC (s#W` / `ESC )s#W` descriptor or payload handlers
+  consume the selected id/character/current-record state before printable text
+  can queue a downloaded-glyph compact object.
   Selected maps affect later printable bytes; downloaded glyphs install
   records that later queue compact objects and render through `0x1effe` /
   `0x1f0d2` / `0x1f1f0` / `0x1f264`. Concrete final-`X` stream
@@ -746,6 +757,7 @@ Field groups for this index:
   cap `0x7fff` before `0x16498` can install a glyph.
   Evidence:
   [font-context-metrics.md](font-context-metrics.md),
+  [pcl-command-map.md](pcl-command-map.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
   [downloaded-fonts.md](downloaded-fonts.md); row-copy helper details are in
   [page-raster-imaging.md](page-raster-imaging.md).

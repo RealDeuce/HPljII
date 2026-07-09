@@ -5162,6 +5162,29 @@ Address-level cluster map:
   `0xa904`. `ESC ?` is consumed by the `0xda9a` ESC-aware wrapper, `ESC Z` is
   local to display-functions readers, and `ESC &lT/t` has no page-output
   handler.
+  Concrete parser-artifact streams are now part of the route index.
+  Normal-mode `NUL BEL VT` enters through `0xa904 -> 0xda9a -> 0x11774`,
+  matches explicit zero-handler rows for `0x00`, `0x07`, and `0x0b`, runs
+  `0x11912..0x119bc -> 0x12218`, resets command/numeric scratch, and creates
+  no page root, page object, publication, render record, or host-output FIFO
+  byte. `ESC ? 11` is swallowed in wrapper `0xda9a`: after `ESC`, fetch
+  `0xdaa6` sees `?`, fetch `0xdab2` consumes third byte `0x11`, and the
+  wrapper resumes byte fetch without entering a command-family handler.
+  `ESC Y ! ESC Z` is display-reader input, not a global `ESC Z` command:
+  normal reader `0x12536` consumes the terminating pair inside its direct
+  `0xa904` loop, while alternate/data reader `0x12120` appends literal
+  `ESC Y` and loop bytes through `0xe002` until the same local terminator.
+  In alternate/data mode, blank C0 rows `0x00` and `0x07..0x0f` take
+  `0x11930..0x11ab8`, flush scratch through `0x123ae` / `0x123de`, append
+  the matched byte through `0xe002`, and then rejoin the terminal reset path;
+  therefore alternate/data BS/HT/LF/FF/CR/SO/SI bytes are stored input, not
+  immediate cursor-control effects. `ESC &lT` is an unimplemented
+  parser-table terminal with no handler; lowercase final `t` in the same
+  `&l` family reaches rewind helper `0x11f4c` for chaining only. Evidence is
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md), and `Worked Path: Explicit
+  No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Transparent/display-reader cluster:
   transparent data uses `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
   display functions use normal reader `0x12536` or alternate/data reader

@@ -97,6 +97,105 @@ Primary fixtures:
 - `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
 - `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
 
+## Owner Summary
+
+Concept: this note owns ordinary printable text and direct cursor/control
+command state from parser terminal handlers to page-record effects. It covers
+normal printable fallback `0xd04a`, CR, LF, FF, HT, BS, line termination,
+HMI/VMI, cursor stack, margins, absolute/relative cursor and dot positions,
+wrap and perforation state, underline/span flush, and the handoff from cursor
+state to compact text or span objects.
+
+Primary route:
+
+- Host/parser/dispatch owners deliver printable bytes to `0xd04a` or terminal
+  handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xedf8`,
+  `0xca8c`, `0xedb0`, `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf560`,
+  `0xf60a`, `0xf48c`, `0xf692`, `0xf75e`, `0x12622`, `0xcb00`, `0xc992`,
+  `0xece2`, `0xea9e`, `0xee64`, or `0xf9e8`.
+- Printable route:
+  `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0xd3b2/0xd824 -> 0x12f2e
+  -> 0x1387c -> page-record storage -> publication/render`.
+- Direct controls mutate cursor, layout, margin, span, or mode state. Their
+  visible effects occur through a later printable byte, span flush `0x12714`,
+  FF/VFC/page-eject publication `0xf124 -> 0xff1e`, or raster/rectangle
+  consumers that read the same cursor state.
+- Span flush route: direct controls call `0xf34a`, which can materialize a
+  pending span through `0x12714 -> 0x126e2`.
+- Pixel route after object creation belongs to
+  [page-raster-imaging.md](page-raster-imaging.md#owner-summary),
+  [active-render-scheduler.md](active-render-scheduler.md#owner-summary),
+  and [pixel-generation.md](pixel-generation.md#owner-summary).
+
+Field groups:
+
+- Canonical placement: `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`,
+  `0x78315c`, and `0x783160`.
+- Canonical control/layout modes: `0x78318f`, `0x783190`, `0x783191`,
+  `0x782dba`, `0x782dc2`, `0x782dce`, `0x782db8`, `0x782dc6`, and
+  `0x782dca`.
+- Canonical stack/span state: cursor stack `0x782c96..0x782d36`, stack
+  pointer `0x782d36`, span-enable byte `0x783184`, underline selector
+  `0x783185`, and span watermarks `0x783186`, `0x783188`, and `0x78318a`.
+- Canonical page output: current page root `0x78297a`, compact bucket objects
+  under root `+0x1c`, and segment-list span objects produced by `0x12714`.
+- Derived/cache: compact coordinates, source scratch `0x782d7e`, queue keys
+  `0x782a7c..0x782a7e`, pending-width state, and render caches populated
+  after publication.
+- Parser scratch: parsed command cursor `0x78299e` and admitted host bytes
+  before terminal handlers rewrite local command records.
+- Firmware bookkeeping: `0x782a57`, `0x782a58`, `0x782a5a`, `0x782a5c`,
+  `0x782a6d`, and `0x78318e`.
+- Unknown: manual HP names for several latches are unknown, but their ROM
+  roles are tied below to concrete writers, readers, and disassembly ranges.
+
+Writers and readers:
+
+- Writers are terminal handlers for line termination, CR/LF/FF/HT/BS, HMI/VMI,
+  margins, cursor positioning, dot positioning, cursor stack, underline,
+  perforation skip, wrap mode, and vertical layout. Their exact address ranges
+  are listed in the sections below.
+- Readers are printable text path `0xd04a`, printable prechecks `0xd28a` and
+  `0xd6bc`, compact text/object queue `0x12f2e -> 0x1387c`, span materializer
+  `0x12714 -> 0x126e2`, overflow helper `0xf36c`, page-record bridge
+  `0x1edc6`, active render setup `0x1ed84`, row render `0x1ef6a`, and raster
+  start handlers documented in `notes/raster-graphics.md`.
+
+Output effect:
+
+- Printable bytes queue compact text objects and can later render pixels after
+  page-root publication and active-band scheduling.
+- CR, LF, FF, HT, and BS primarily adjust cursor/span state. FF also publishes
+  the current page root through the page-eject path.
+- Cursor, margin, wrap, perforation, and layout commands are state-only until
+  a later printable, span, raster, rectangle, or publication consumer reads the
+  mutated fields.
+- Underline/span commands can materialize segment-list objects through
+  `0x12714`.
+- No direct-control handler writes final pixels before page-record
+  publication and render dispatch.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`,
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`, and the other
+  focused listings named in the Evidence section.
+- Fixture evidence is named in the Primary fixtures list above; each fixture
+  anchors a parser route, state mutation, page-record queue entry, span object,
+  or render bridge used by the semantic claims in this note.
+- No unresolved ROM-local middle edge remains between normal printable entry
+  `0xd04a` and compact bucket object creation at `0x12f2e..0x1306e` for the
+  documented short and segmented source shapes.
+- Remaining direct-control boundaries are exact variant boundaries: source
+  variants not yet shown to change fields at `0xd04a`, allocation branches,
+  compact object bytes, or row-construction inputs should be documented only
+  when their disassembly changes one of those named outputs.
+
 ## Field Groups
 
 Canonical placement state:

@@ -5143,6 +5143,37 @@ Address-level cluster map:
   at compact coordinate `0x0207`. Evidence is
   [direct-control-codes.md](direct-control-codes.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+- Page geometry cluster:
+  page-size and orientation commands dispatch through
+  `0x11774 -> 0xfc74` and `0x11774 -> 0x10220`; page-length/default-page
+  commands dispatch through `0x11774 -> 0xf9e8`. Owner notes are
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [publication-commands.md](publication-commands.md), and
+  [pcl-command-map.md](pcl-command-map.md). These commands normally do not
+  queue pixels directly. They write canonical geometry state consumed by later
+  printable placement, VFC/perforation movement, raster bounds, rectangle
+  clipping, page publication, and render scheduling. `ESC &l1A` reaches
+  `0xfc74`, maps PCL page size `1` to internal code `6`, writes page code
+  `0x782da2`, rebuilds active size `3030 x 2025`, top offset `90`, printable
+  extent `3090`, and half-page remainder `0x782dc0 = 11`. `ESC &l1O`
+  reaches `0x10220`, writes orientation byte `0x782da3 = 1`, swaps active
+  extents to `2025 x 3030`, selects landscape margin `2175`, printable
+  extent `2125`, top offset `100`, and threshold sequence
+  `2175, 2550, 2480, 2550`. Chained `ESC &l1a1O` stays in the `&l` parser
+  family, runs `0xfc74` for lowercase final `a`, then runs `0x10220` for
+  uppercase final `O` with the same final landscape state. When content is
+  already queued, `! ESC &l1A` and `! ESC &l1O` publish the pre-geometry
+  compact object `00 00 00 00 00 00 00 01 20 00 01` through
+  `0xf34a -> 0xff1e` before page code or orientation is changed, so those
+  rows render under the old geometry. Nonzero `ESC &l66P !` uses VMI
+  `0x783160` in `0xf9e8`, writes page extent `0x782dba = 3300`, selects
+  internal code `2`, refreshes top offset `90`, and the following printable
+  queues compact coordinate `0x9001`. Zero `ESC &l0P` takes the default-page
+  branch, can publish pending text, selects fallback page code `2`, writes
+  text bottom `3240`, mirrors `0x780e8f = 0x80`, and signals
+  `0x780e26 = 1`. Evidence is `Minimal Page Geometry Walkthrough` above,
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [publication-commands.md](publication-commands.md).
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,

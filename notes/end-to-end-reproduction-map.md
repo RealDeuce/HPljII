@@ -93,8 +93,10 @@ controlling artifact.
   normalized byte sequence.
 - Normal bytes, control codes, ESC entry, parameterized commands, binary
   payloads, macro/replay, and ignored/error cases:
-  indexed by [pcl-command-map.md](pcl-command-map.md) and its
-  [Inbound Byte Outcome Classes](pcl-command-map.md#inbound-byte-outcome-classes).
+  the branch-level parser outcomes are documented in
+  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and
+  the command-family classes are indexed by
+  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
   Checked-in owners are [direct-control-codes.md](direct-control-codes.md),
   [transparent-print-data.md](transparent-print-data.md),
   [display-functions.md](display-functions.md),
@@ -181,17 +183,22 @@ command-family and page-image structure:
    delayed payload bytes, keep the payload reader's direct `0xa904` calls
    separate from parser-wrapper bytes.
 2. Classify each admitted byte:
-   use [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes)
-   to decide whether the byte is printable, alternate/data append, explicit
-   no-output parser behavior, syntax/prefix state, a state-only terminal, a
-   delayed-payload arming byte, a page-object producer, a publication/render
-   boundary, or a host/status side channel.
+   first use
+   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract) to
+   place the byte on a concrete `0x11774` branch: printable handler,
+   alternate/data append, matched command handler, zero-handler reset, no-match
+   fallback, callback continuation, or parser-external return. Then use
+   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes) to
+   map handler-backed outcomes to printable text, syntax/prefix state,
+   state-only terminals, delayed-payload arming, page-object producers,
+   publication/render boundaries, or host/status side channels.
 3. Follow parser records and dispatch:
-   for command bytes, use [pcl-parser-core.md](pcl-parser-core.md) to track
-   parser mode `0x782999`, parser record cursor `0x78299e`, the six-byte
-   record fields, delayed-payload scratch `0x782a1a/0x782a1c/0x782a20..`,
-   normal table `0x112a4`, and alternate/data table `0x116f6`. Then jump to
-   the owner note named by
+   for matched command bytes, continue in
+   [pcl-parser-core.md](pcl-parser-core.md) to track parser mode `0x782999`,
+   parser record cursor `0x78299e`, the six-byte record fields,
+   delayed-payload scratch `0x782a1a/0x782a1c/0x782a20..`, normal table
+   `0x112a4`, and alternate/data table `0x116f6`. Then jump to the owner note
+   named by
    [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 4. Record command state effects:
    in the owner note, capture the canonical fields written by the handler,

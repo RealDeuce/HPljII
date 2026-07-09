@@ -589,7 +589,12 @@ Field groups for this index:
   producers restore canonical environment; `0xef62` publishes before
   paper-source changes; `0xeef0` writes `0x782da4`; page geometry writers
   update `0x782da2..0x782dc0`. These commands either publish a queued page,
-  change later page defaults, or both. Evidence:
+  change later page defaults, or both. Concrete stream `! ESC E` queues
+  compact object `00 00 00 00 00 00 00 01 20 00 01`, then reset publishes
+  through `0xff1e`, stores the published pointer in `0x780ea6`, sets
+  publication flag `0x782996`, clears current root `0x78297a`, and renders
+  the preserved page through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  Evidence:
   [publication-commands.md](publication-commands.md),
   [reset-default-environment.md](reset-default-environment.md), and
   `Worked Path: Publication Commands` in
@@ -672,7 +677,13 @@ Field groups for this index:
   descriptors/payloads use `0x15d0a`, `0x16c14`, `0x1719c`, and `0x16498`.
   Selected maps affect later printable bytes; downloaded glyphs install
   records that later queue compact objects and render through `0x1effe` /
-  `0x1f0d2` / `0x1f1f0` / `0x1f264`. Evidence:
+  `0x1f0d2` / `0x1f1f0` / `0x1f264`. Concrete final-`X` stream
+  `ESC (7X!!` selects built-in context `0xc0089fb0` and queues prefix
+  `00 00 00 00 00 00 00 02 00 89 00 00 87 02`. Concrete downloaded glyph
+  stream `ESC )s80W ... ESC )s3W f0 f0 f0 !` installs glyph `0x21`, queues
+  compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders through the
+  same publication/bridge/compact-render pipeline.
+  Evidence:
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
   [downloaded-fonts.md](downloaded-fonts.md).

@@ -314,6 +314,78 @@ Evidence:
 `Worked Path: Text Source Objects And Compact Buckets` below; and
 [page-raster-imaging.md](page-raster-imaging.md).
 
+## Binary Payload Lifecycle
+
+Counted binary payload commands use a two-stage parser handoff. The command
+terminal first records a saved handler and six-byte command record; a later
+mode-zero terminal boundary restores that record and calls the payload
+consumer. This is why payload bytes are not parsed as ordinary PCL commands
+unless a family-specific reader deliberately routes them back to text output.
+
+Shared delayed-payload state:
+
+- Arming helper `0x121cc` rewinds command-record cursor `0x78299e` by one
+  six-byte record, sets pending byte `0x782a1a = 1`, stores handler longword
+  `0x782a1c`, and snapshots the active command record at
+  `0x782a20..0x782a25`.
+- Restore helper `0x12218` runs when parser mode returns to zero. It restores
+  the saved six-byte record to the live command-record buffer, clears pending
+  byte `0x782a1a`, calls handler `0x782a1c`, and then clears the saved handler
+  longword.
+- Generic counted wrapper `0x1228a` drains `abs(record[+2])` bytes through
+  `0x12328` / `0xdace` without page output. In alternate/data mode, wrapper
+  `0x12358` either delegates to `0x1228a` for that generic wrapper case or
+  appends positive-count payload bytes through `0xe002`.
+
+Family consumers:
+
+- Transparent print data:
+  `ESC &p#X` arms `0x12452` through `0x11f5a -> 0x121cc`. After restore,
+  `0x12452` reads the absolute count from the restored record, fetches payload
+  bytes directly through `0xa904`, applies its local `1a 58 -> 7f` rule, and
+  routes accepted bytes to text/fixed-space handlers. Output can rejoin
+  compact page-object path `0xd04a -> 0x12f2e`.
+- VFC table definition:
+  `ESC &l#W` arms `0x12cfe` through `0x11f6e -> 0x121cc`. After restore,
+  `0x12cfe` consumes the table bytes through `0xdace`, writes
+  `0x782dde..0x782edd`, and updates derived VFC/text-bottom cache state
+  consumed by `ESC &l#V`.
+- Raster transfer:
+  `ESC *b#W` arms `0x105d0` through `0x11f82 -> 0x121cc`. After restore,
+  `0x105d0` rereads record word `+2` as the byte count, clips or drains
+  payload according to raster state `0x783170..0x783182`, and queues accepted
+  encoded-span objects through `0x13070 -> 0x13250`.
+- Downloaded font and glyph payloads:
+  `ESC (s#W` / `ESC )s#W` use arming handler `0x11f96`. Count zero restores
+  descriptor handler `0x15d0a`; nonzero counts restore resource/character
+  payload handler `0x16c14`. These handlers consume payload budget
+  `0x783140`, update downloaded-resource records, and may later make printable
+  bytes select downloaded glyph objects.
+
+State classification:
+
+- Canonical parser state:
+  live record cursor `0x78299e`, pending byte `0x782a1a`, saved handler
+  `0x782a1c`, saved record `0x782a20..0x782a25`, normal/alternate parser mode
+  `0x782c18`, and payload budget `0x783140` for font paths.
+- Parser scratch:
+  restored command records, numeric count fields, direct-reader local bytes,
+  and drained payload bytes that do not survive as page objects.
+- Canonical command/page state:
+  family-specific payload products such as transparent compact text objects,
+  VFC table bytes, raster encoded-span objects, and downloaded-font records.
+- Firmware bookkeeping:
+  `0x12328` drain state, append sink `0xe002`, and allocation/validation
+  status in the family owner notes.
+
+Evidence:
+[pcl-parser-core.md](pcl-parser-core.md),
+`Worked Path: Command Record And Payload Dispatch` below,
+[transparent-print-data.md](transparent-print-data.md),
+[vertical-forms-control.md](vertical-forms-control.md),
+[raster-graphics.md](raster-graphics.md), and
+[downloaded-fonts.md](downloaded-fonts.md).
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

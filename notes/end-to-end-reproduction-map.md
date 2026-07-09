@@ -6710,9 +6710,10 @@ Address-level cluster map:
   streams. Remaining work is limited to byte streams that change clipping
   output, `0x1381c` rollover/allocation state, retry publication fields, rule
   object bytes, bridge state, render dispatch, or ROM-derived row construction.
-- Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
-  paths are covered through `0xff1e` for current modeled page records. Page
-  length is the publication-adjacent sibling: nonzero `ESC &l#P` refreshes
+- Reset, FF, page-size, page-length zero/default, orientation, paper-source,
+  copies, and VFC publication paths are covered through `0xff1e` for current
+  modeled page records. Page length is the publication-adjacent sibling:
+  nonzero `ESC &l#P` refreshes
   geometry and later placement, while zero/default `ESC &l0P` can publish
   pending text before restoring default page state. VFC coverage includes
   `ESC &l#W` delayed table payloads, lowercase

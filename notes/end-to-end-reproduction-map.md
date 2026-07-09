@@ -3240,6 +3240,143 @@ Evidence:
   `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, plus
   `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
+## Minimal Symbol-Set Map Walkthrough
+
+This walkthrough isolates the symbol-set and map-patching subpath inside font
+selection. Symbol commands do not draw immediately. They change requested
+symbol words, refresh the selected font context, rebuild or patch the active
+character-to-glyph map, and thereby change how later printable bytes become
+compact glyph payloads.
+
+Representative streams:
+
+```text
+ESC (0N ESC (s0p10h12v0s0b3T ! !
+ESC (10U ESC (s0p10h12v0s0b3T ! !
+ESC (11U ESC (s0p10h12v0s0b3T ! !
+ESC (0@ ESC (s0p10h12v0s0b3T ! !
+ESC (7X ! !
+```
+
+Parser and requested-symbol route:
+
+- Primary `ESC (` reaches setup wrapper `0x1201e`, which writes synthetic
+  setup slot word `0`; secondary `ESC )` reaches `0x12008`, which writes slot
+  word `1`.
+- Symbol/designation terminal wrapper `0x120be` calls handler `0x1be22`, then
+  calls common refresh `0xc580`.
+- `0x1be22` rewinds command-record cursor `0x78299e`, reads final byte `+1`,
+  integer parameter `+2`, and the synthetic slot word. Ordinary finals compute
+  requested word `(abs(parameter) << 5) + final - 0x40`.
+- Primary ordinary finals write `0x782ef4`; secondary ordinary finals write
+  `0x782f04`. Successful ordinary finals set dirty flags
+  `0x782f2c = 1` and `0x782f2d = 1`.
+- Final `@` dispatches through ROM table `0x1bde2`. The documented `@0..@3`
+  cases copy default-symbol words or run default-font helper paths before the
+  same refresh gate.
+- Final `X` is font-id selection, not an ordinary symbol word. It restores the
+  prior requested symbol word, sets marker `0x78287b`, calls
+  `0x17708(slot, font_id)`, and enters refresh with dirty flag
+  `0x782f2c = 2`.
+
+Candidate refresh and map rebuild:
+
+- `0xc580` consumes dirty flags, selected text slot `0x782f06`, and
+  page-root live flags `0x78297f..0x78298e`. Dirty `1` can call candidate
+  refresh `0x13eb8`; dirty `2` skips candidate refresh and can install only
+  the current context for the selected slot.
+- Candidate refresh reaches `0x1569c` and `0x156de`. `0x1569c` selects the
+  active candidate window, and `0x156de` filters by requested words
+  `0x782ef4` / `0x782f04`, remembered words `0x782f08` / `0x782f0a`, and
+  fallback table `0x782f0c..0x782f18`.
+- For the verified built-in class-zero window, `ESC (0N`, `ESC (10U`, and
+  `ESC (11U` write requested words `0x000e`, `0x0155`, and `0x0175`, then
+  select built-in record starts `0x000cb8`, `0x000418`, and `0x000868`.
+- `0x144d2` writes current-font context record `0x782ee6` or `0x782ef6`.
+  `0x14c64` rebuilds the active map `0x782f32` or `0x783032`.
+- `0x14f16` runs after `0x14c64` has built a base map. It reads selected
+  candidate `0x7828a8`, checks the selected font's normalized symbol, and only
+  applies its hard-coded or table-patch paths when that selected font
+  normalizes to Roman-8 word `0x0115`.
+- Non-Roman streams such as `ESC (0N`, `ESC (10U`, and `ESC (11U` therefore
+  select distinct built-in records. They are not modeled as Roman-8 record
+  `0x00004c` plus a `0x14f16` patch.
+
+Printable consumption and output effect:
+
+- The later `ESC (s0p10h12v0s0b3T` attribute stream uses the same selected
+  symbol state while choosing the visible font context.
+- Later printable `!` bytes reach `0xd04a -> 0x1393a`. Source helper
+  `0x1393a` reads selected slot `0x782f06`, current context
+  `0x782ee6` / `0x782ef6`, and active map `0x782f32` / `0x783032`.
+- Primary `ESC (0N`, `ESC (10U`, and `ESC (11U` followed by the Courier
+  attribute stream select contexts `0xc0080cb8`, `0xc4080418`, and
+  `0xc4080868`, then queue compact text from those contexts.
+- Secondary `ESC )0N`, `ESC )10U`, and `ESC )11U` select class-one contexts
+  `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`; SO handler `0xc6b8` selects
+  slot `1` before later printable bytes consume secondary map `0x783032`.
+- Page-object production, publication, bridge, and render dispatch are the
+  ordinary compact-text route:
+  `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84 ->
+  0x1edc6 -> 0x1ef6a -> 0x1effe`.
+- The pixel effect is future glyph selection. Already queued compact payloads
+  keep the glyph byte captured when their printable byte originally ran.
+
+State classification:
+
+- Canonical:
+  requested symbol words `0x782ef4` / `0x782f04`, active symbol words
+  `0x783144` / `0x783146`, current contexts `0x782ee6` / `0x782ef6`, selected
+  text slot `0x782f06`, active maps `0x782f32` / `0x783032`, page-root context
+  slots, compact text payload glyph bytes, and render-record context slots.
+- Derived/cache:
+  remembered words `0x782f08` / `0x782f0a`, fallback words
+  `0x782f0c..0x782f18`, default-symbol table `0x782f1c..0x782f28`, selected
+  candidate pointer `0x7828a8`, active candidate pointer/count
+  `0x78287c` / `0x7827b8`, selected map slot `0x7828de`, and map flags
+  `0x783132` / `0x783133`.
+- Parser scratch:
+  synthetic setup records from `0x1201e` / `0x12008`, terminal command
+  records at `0x78299e`, final byte, integer parameter, dirty flags while
+  refresh is pending, and final-`@` subdispatch index.
+- Firmware bookkeeping:
+  `0x78287b`, page-root context-slot scan state in `0xc4fc`, transient
+  full-root flag `0x78298f`, candidate active bits, and local patch-table
+  cursors inside `0x14f16`.
+- Hardware/external:
+  none for the verified built-in symbol streams. Cartridge or other optional
+  resource records remain external data inputs to the same candidate-filtering
+  addresses.
+- Unknown:
+  no unresolved ROM-local middle edge remains for ordinary symbol finals,
+  final `@`, final `X`, selected-context map rebuild, or `0x14f16..0x14fcc`
+  patcher control flow in the documented paths. Remaining work must change
+  candidate records, selected map bytes, final context install, compact object
+  shape, bridge state, or ROM-derived rows.
+
+Evidence:
+
+- Checked-in explanations:
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-map-patching.md](symbol-map-patching.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md), and
+  `Symbol Set And Map Patch Boundary` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+  `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+  `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`, and
+  `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`.
+- Fixture names cited by the owner notes:
+  `0x120be/0x1be22 symbol-set stream updates active words and 0x14f16 glyph
+  maps`, `symbol-set parser trace feeds active map patches`, `live parser
+  symbol-set streams select non-Roman built-ins`,
+  `real final-@ default-table streams select visible built-ins`, and
+  `font-ID built-in selection feeds visible page-record rows`.
+
 ## Minimal Built-In Glyph Resource Walkthrough
 
 This section documents where built-in text pixels come from after font

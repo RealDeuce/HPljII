@@ -1274,6 +1274,141 @@ Evidence:
   `generated/analysis/ic30_ic13_pcl_command_map.md`, and
   `generated/analysis/ic30_ic13_strings.txt`.
 
+## Minimal Page/Font Scheduler Handoff Walkthrough
+
+This is the smallest top-level handoff that reconciles optional font/resource
+state before parsing or rendering resumes. It is not reached by a PCL command
+table row, and it does not queue page objects or emit pixels directly. It
+matters for exact byte-stream reproduction because later font selection,
+downloaded-font lookup, and glyph rendering consume the candidate/context
+state that this handoff can prune, refresh, or commit.
+
+Entry and caller contracts:
+
+- Host quiesce caller `0x447a` calls `0x19dd2` and ignores scheduler `D7`;
+  only scheduler side effects can change later parsing or font state.
+- Host/menu caller `0x4760` calls `0x19dd2` and consumes scheduler `D7`:
+  `D7 = 0` returns immediately, while `D7 != 0` enters menu/default setup.
+- External-ready teardown runs `0xba48 -> 0xc06e -> 0xc108 -> 0x19dd2 ->
+  0x36e4`. Caller `0xbb16` ignores scheduler `D7`; final byte `0x780e08`
+  comes from the following `0x36e4` status aggregate.
+- Font-resource scan caller `0x1a2e4 -> 0x1a3c2` snapshots candidate count
+  `0x78278e` to `0x782780`, calls `0x19dd2`, ignores scheduler `D7`, then
+  passes `0x78219b`, `0x78219c`, and local `A6-0x02` to resolver `0x1b50e`.
+
+Scheduler scan and predicate flow:
+
+- `0x19dd6..0x19dda` publishes local scratch block `A6-0x28` through global
+  pointer `0x782894`.
+- `0x19eb6..0x19f00` clears two 20-byte scratch slots, checks optional-window
+  gate bits `$8000.14` and `$8000.15`, and calls `0x1a0f2(1)` or
+  `0x1a0f2(2)` when the matching gate permits a scan.
+- `0x1a0f2..0x1a21e` scans optional window `0x200000..0x3ffffe` into scratch
+  slot `0`, or optional window `0x400000..0x5ffffe` into scratch slot `1`.
+  It publishes active scan fields `0x78288c`, `0x782884`, `0x782890`, and
+  terminal byte `0x782898`.
+- `0x1b9c0` classifies each resource cursor: `HEAD` returns `1`; `FONT`,
+  `font`, `DUMY`, `TABL`, or `tabl` at the cursor or cursor `+8` return `0`;
+  neither match returns `-1`.
+- `0x1a220..0x1a252` handles classifier return `1` by advancing through the
+  record length and returning record word `+0x0e`; `0x1a254..0x1a2e2` handles
+  classifier return `0` by skipping known signatures and returning the first
+  non-signature record word `+0x06`. Return `-1` appends a zero word and
+  advances to the next optional-resource grid point.
+- `0x1a042..0x1a0f0` compares canonical table slots
+  `0x7828b6 + slot * 0x14` against the fresh scratch slots. `0x19f08..0x19fb6`
+  performs the mirror comparison from fresh scratch to canonical table.
+  `0x19de6..0x19df6` stores the two predicate bytes in `A6-0x29` and
+  `A6-0x2a`.
+
+Branch behavior:
+
+- Both predicate bytes zero:
+  `0x19dd2` calls `0x19fb8(0)`, runs shared font/default refresh `0x1b04c`,
+  and returns `D7 = 1`.
+- Status-return branch:
+  when the first predicate is nonzero and `0x72a2` returns zero,
+  `0x19e32..0x19e46` writes `0x780e8d`, raises status mask `0x00000200`
+  through `0x9bee(0x780e2e, 0x00000200)`, calls `0x19fb8(predicate)`, and
+  returns `D7 = 0`.
+- Long-refresh branch:
+  nonzero predicates outside the status-return branch call
+  `0x1ba92(predicate)`, `0x178fa(predicate)`, `0x19d9c()`,
+  `0x1a4fa(fresh_side_predicate)`, and `0x1a900()`, then return `D7 = 1`.
+  This branch can prune candidate entries, release current downloaded-font
+  payloads, mark candidates dirty, rescan optional ranges, validate active
+  contexts, and copy the fresh scratch table into canonical `0x7828b6`.
+
+Output effect:
+
+- No direct page root, page object, render record, band work item, row-copy
+  helper, or bitmap buffer is produced by `0x19dd2..0x1a2e2`.
+- Pixel output can change only indirectly, when later font designation,
+  downloaded-font resolution, resource lookup, printable text, publication, or
+  rendering consumes the changed candidate/context/resource state.
+- A byte-stream renderer with no optional cartridges can treat the optional
+  windows as absent, while preserving the canonical table and caller-return
+  behavior. A renderer that supports optional resources must preserve this
+  handoff before later glyph selection or downloaded-font lookup.
+
+State classification:
+
+- Canonical:
+  resource-window table `0x7828b6..0x7828dd`, status root `0x780e2e`, and
+  status predicate byte `0x780e8d`.
+- Derived/cache:
+  scratch pointer `0x782894`, scan pointer `0x782884`, active optional-window
+  base `0x78288c`, active optional-window limit `0x782890`, terminal byte
+  `0x782898`, and candidate-list pointers/counts `0x7827a8`, `0x7827ac`,
+  `0x7827b0`, `0x7827b4`, `0x782790`, `0x782794`, `0x782798`, and
+  `0x78279c`.
+- Parser scratch:
+  predicate bytes `A6-0x29` and `A6-0x2a`, scratch slot `A6-0x28..A6-0x15`
+  for window `0x200000..0x3ffffe`, scratch slot `A6-0x14..A6-0x01` for
+  window `0x400000..0x5ffffe`, and caller local `A6-0x02` consumed after
+  `0x1a3c2`.
+- Firmware bookkeeping:
+  candidate-count snapshot `0x782780`, current downloaded-font records
+  `0x782640..0x782776`, candidate pointer-list entries rooted at `0x782324`,
+  active-font dirty bytes `0x782f2c` and `0x782f2d`, caller bookkeeping behind
+  `0x447a` and `0x4760`, and return register `D7`.
+- Hardware/external:
+  optional-window gate bits `$8000.14` and `$8000.15`, and physical optional
+  resource contents at `0x200000..0x3ffffe` and `0x400000..0x5ffffe`.
+- Unknown:
+  board-level names for `$8000.14/.15`, the user-visible name for status mask
+  `0x00000200`, and physical optional-resource records that drive classifier
+  return `-1`.
+
+Evidence:
+
+- Checked-in explanations:
+  [page-font-scheduler.md](page-font-scheduler.md),
+  `Worked Path: Page Font Scheduler Resource Handoff` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  `Page/Font Scheduler Handoff` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused listings:
+  `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`,
+  `generated/disasm/ic30_ic13_font_resource_refresh_helpers_0178fa.lst`,
+  `generated/disasm/ic30_ic13_font_scheduler_commit_01a4fa.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`,
+  `generated/disasm/ic30_ic13_font_default_update_01ba40.lst`,
+  `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`,
+  `generated/disasm/ic30_ic13_host_scheduler_caller_004700.lst`,
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`,
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`, and
+  `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`.
+
+Unresolved boundary:
+
+- The ROM-local scheduler chain is bounded for the unchanged, status-return,
+  and modeled changed-window exits. Remaining work starts at external optional
+  resource data or board memory-map evidence for windows `0x200000..0x3ffffe`
+  and `0x400000..0x5ffffe`; that evidence would name physical records and
+  determine which candidate pruning, current-record release, canonical-table
+  commit, or later page/font state changes are possible.
+
 ## Minimal External Service/Error Walkthrough
 
 This is the smallest top-level service/error preemption spine. It is not
@@ -4475,6 +4610,16 @@ Address-level cluster map:
   [built-in-resource-scan.md](built-in-resource-scan.md). Pixels appear only
   after later printable bytes consume `0x782ee6` / `0x782ef6` and
   `0x782f32` / `0x783032` through `0xd04a`.
+- Page/font scheduler handoff cluster:
+  quiesce and resource callers reach `0x19dd2` from `0x447a`, `0x4760`,
+  `0xbb16`, and `0x1a3c2`; teardown and scan paths include
+  `0xc108 -> 0x19dd2 -> 0x36e4` and
+  `0x1a2e4 -> 0x1a3c2 -> 0x19dd2 -> 0x1b50e`. Owner note is
+  [page-font-scheduler.md](page-font-scheduler.md), with the minimal path in
+  `Minimal Page/Font Scheduler Handoff Walkthrough`. This cluster produces no
+  direct pixels; residuals are physical optional-window contents
+  `0x200000..0x3ffffe` / `0x400000..0x5ffffe` and board-level names for
+  `$8000.14/.15`.
 - Downloaded-font cluster:
   font control uses `0x15a56`, `0x15a18`, and `0x16df6`; delayed `W`
   payloads use `0x11f96 -> 0x15d0a` for count zero and

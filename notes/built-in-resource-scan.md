@@ -21,6 +21,9 @@ Primary disassembly:
 
 Primary generated reports:
 
+- `generated/analysis/ic32_ic15_header.txt`
+- `generated/analysis/ic32_ic15_resource_markers.txt`
+- `generated/analysis/ic32_ic15_strings.txt`
 - `generated/analysis/ic32_ic15_font_records.md`
 - `generated/analysis/ic32_ic15_resource_glyph_probe.md`
 - `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`
@@ -61,6 +64,21 @@ pointer list at `0x782324`. The verified built-ins produce 24 total
 candidates: 12 class-one low-window entries and 12 class-zero low-window
 entries.
 
+The generated resource header and string reports are supporting ROM
+evidence for that scan, not a separate parser path. File offset `0x000000`
+contains `HEAD`, which maps to firmware address `0x080000`; the first
+resource string at offset `0x00001f` is the HP copyright text. The marker
+index finds structured `COURIER` records at offsets `0x000410`,
+`0x000860`, `0x000cb0`, `0x00a374`, `0x00a7c4`, `0x00ac14`,
+`0x01a0dc`, `0x01a52c`, `0x01a97c`, `0x023848`, `0x023c98`, and
+`0x0240e8`; it finds structured `LINE_PRINTER` records at offsets
+`0x0146a8`, `0x014afc`, `0x014f50`, `0x02d86e`, `0x02dcc2`, and
+`0x02e116`. Those offsets correspond to firmware resource addresses by
+adding `0x080000`, and they are the named-record subset later decoded by
+the font-record and glyph-probe reports. The interleaved tail string at
+file offset `0x03ffe0`, `SSHH77--99223334--0011`, remains dump identity
+evidence for the IC32/IC15 pair, not a firmware-scanned resource record.
+
 The scan output is a set of candidate windows, not a selected font.
 Activator `0x1569c` chooses a class-specific active window from those
 lists. Filters `0x156de`, `0x1519a`, and `0x153c6` then reduce the
@@ -76,6 +94,12 @@ Canonical resource records:
 - `HEAD`-path records carry scanner length and type fields. Fixture
   `0x41a HEAD scanner walks verified IC32/IC15 resource chain` pins the
   verified 24-record chain.
+- The verified image starts with `HEAD` at file offset `0x000000`
+  / firmware address `0x080000`; generated reports
+  `ic32_ic15_header.txt`, `ic32_ic15_resource_markers.txt`, and
+  `ic32_ic15_strings.txt` provide the ROM-byte evidence for the header,
+  copyright text, named Courier/Line Printer marker offsets, and tail
+  interleave marker.
 - Accepted font records use byte `+0x0d` for candidate flag bits
   28..29, set high flag `0x40000000`, and mirror byte `+0x0c == 2`
   into high flag `0x04000000`.

@@ -3043,11 +3043,25 @@ startup-visible typed-record chain that bounds this built-in window.
 ### Field Groups
 
 - Canonical resource records:
+  - verified resource header: `HEAD` at `IC32,IC15` file offset `0x000000`
+    / firmware address `0x080000`, with the HP copyright string at file
+    offset `0x00001f`. Generated reports
+    `ic32_ic15_header.txt`, `ic32_ic15_resource_markers.txt`, and
+    `ic32_ic15_strings.txt` are the ROM-byte evidence for those offsets.
   - verified built-in `HEAD` chain: 24 typed records from firmware
     address `0x08004c` through `0x0ae122`, terminating at `0x0b2f80`.
   - accepted `HEAD`-path records use byte `+0x0d` for candidate flag
     bits 28..29, set high flag `0x40000000`, and mirror byte
     `+0x0c == 2` into high flag `0x04000000`.
+  - named marker subset: structured `COURIER` records appear at file offsets
+    `0x000410`, `0x000860`, `0x000cb0`, `0x00a374`, `0x00a7c4`,
+    `0x00ac14`, `0x01a0dc`, `0x01a52c`, `0x01a97c`, `0x023848`,
+    `0x023c98`, and `0x0240e8`; structured `LINE_PRINTER` records appear at
+    `0x0146a8`, `0x014afc`, `0x014f50`, `0x02d86e`, `0x02dcc2`, and
+    `0x02e116`. Add `0x080000` to each file offset for the firmware resource
+    address consumed by the scan and font-record decoders. Tail string
+    `SSHH77--99223334--0011` at file offset `0x03ffe0` is package/interleave
+    identity evidence, not a resource-record candidate.
   - class/orientation byte `+0x20`, symbol word `+0x22`, spacing byte
     `+0x21`, HMI source longword `+0x24`, height-like words
     `+0x28/+0x2a`, and comparator bytes `+0x2f..+0x31` are the
@@ -3315,6 +3329,9 @@ resources because no image is available in this repo.
 - `generated/disasm/ic30_ic13_object_compare_013a48.lst`
 - `generated/disasm/ic30_ic13_active_object_scan_014398.lst`
 - `generated/disasm/ic30_ic13_font_candidate_object_alloc_01bc38.lst`
+- `generated/analysis/ic32_ic15_header.txt`
+- `generated/analysis/ic32_ic15_resource_markers.txt`
+- `generated/analysis/ic32_ic15_strings.txt`
 - `generated/analysis/ic32_ic15_font_records.md`
 - `generated/analysis/ic32_ic15_resource_glyph_probe.md`
 

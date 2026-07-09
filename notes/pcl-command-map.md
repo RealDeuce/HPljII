@@ -1240,6 +1240,55 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `macro overlay finalization replays before page publication`, and the
   overlay payload fixtures for mixed-control, transparent, raster, and
   span-flush payloads.
+
+  Concrete overlay object effects are part of this command-family contract.
+  For `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X`, selector `4` saves the
+  overlay id, and publication replays stored bytes `21 0d` before the root is
+  copied to a render record. The replayed printable queues the same compact
+  one-glyph object prefix as live text and execute replay:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+  The replayed CR reaches `0xf02c` and advances cursor/page state without
+  allocating another visible object for the minimal payload. Repeated
+  publication keeps the stored macro record canonical and composes that same
+  replayed object with each page's existing rule list; documented selector-7
+  rule examples are:
+
+```text
+00 00 00 00 01 07 88 01 00 0c 00 03 00 00
+00 00 00 00 01 07 e4 00 00 08 00 04 00 00
+```
+
+  The skip gates are output-affecting but not renderer-specific: disabled
+  overlay mode, missing selected record from `0xe0a4(0x782a94)`, and root
+  retry flag `+0x14.0` skip `0xe4f4`, so a base printable/rule page such as
+  rule object:
+
+```text
+00 00 00 00 01 07 a2 00 00 06 00 02 00 00
+```
+
+  publishes unchanged. Stored payload variants prove that overlay replay uses
+  normal parser and page-object producers after the frame boundary. Stored
+  `ESC &p2X!!` reaches delayed transparent-data restore `0x12452` and queues
+  compact text object prefix:
+
+```text
+00 00 00 00 00 00 00 02 20 00 01 20 02 02
+```
+
+  Stored `! ESC *t300R ESC *r0A ESC *b2W c3 3c` reaches delayed raster
+  handler `0x105d0` and queues mode-0 raster object:
+
+```text
+00 00 00 00 80 00 00 02 00 00 c3 3c
+```
+
+  Both variants cross the same `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`
+  publication and render bridge as live host input.
   Owner note:
   [macro-data-chain.md](macro-data-chain.md).
 - Status and model-response side channels:

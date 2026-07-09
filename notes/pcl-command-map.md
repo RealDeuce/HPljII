@@ -1325,7 +1325,25 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x1f1f0`, and `0x1f264`. No-install and validation-failure exits drain or
   skip their payload bytes and leave the following printable byte on the
   previous/default font path unless a documented replacement/release path has
-  intentionally changed installed state. Evidence is
+  intentionally changed installed state.
+
+  The normal offset-table downloaded-glyph path has a concrete command stream.
+  Host-fetched `ESC )s80W` restores parser record `80 57 00 50 00 00`, enters
+  delayed handler `0x16c14`, lets validator `0x16fae` consume the 64-byte
+  descriptor, allocates a 10-byte resource through `0x17026` / `0x1719c`, and
+  installs a class-one candidate longword `0x40000000` at the head of the
+  candidate list. Later dispatch `0x14c64` treats that candidate as an
+  offset-table resource and rebuilds the active map for symbol `0x1234` and
+  range `0x0000..0x007f`. The companion host-fetched
+  `ESC )s3W f0 f0 f0` path restores record `80 57 00 03 00 00`, writes table
+  entry `0x00ce` at resource delta `0x0180`, installs glyph record
+  `00 00 00 00 0c 01 00 03 00 04 00 00`, copies bitmap bytes at delta
+  `0x018c`, and leaves glyph `0x21` available through the downloaded-pointer
+  map. The following printable `!` queues compact object
+  `00 00 00 00 00 00 00 01 21 5a 00`, publishes span object
+  `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and renders the three
+  installed glyph rows before the documented `d8fc` span rows.
+  Evidence is
   [downloaded-fonts.md](downloaded-fonts.md), the `Worked Path: Downloaded
   Glyph` section in [firmware-dataflow-model.md](firmware-dataflow-model.md),
   listings `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,

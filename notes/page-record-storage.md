@@ -56,6 +56,97 @@ Primary fixtures:
 - `0x1edc6 bridge records render-record destination offsets`
 - `0x1ed84 active page-record copy seeds render-record header words`
 
+## Owner Summary
+
+Concept: this note owns the canonical page/image assembly state after a
+command-family handler has decided to create visible content and before the
+active render scheduler interprets object classes. It tracks current page root
+allocation, stream storage, compact/raster bucket objects, rule and fixed
+lists, publication through `0xff1e`, and the bridge copy into render-record
+roots through `0x1ed84` / `0x1edc6`.
+
+Primary route:
+
+- Producers ensure or reuse current root `0x78297a` through `0x10084` and
+  initialize it through `0x10110`.
+- Compact text and downloaded glyphs queue through
+  `0xd04a -> 0x12f2e -> 0x1387c` under root `+0x1c`.
+- Text spans queue through `0x12714`, with portrait segment-list objects under
+  root `+0x1c` and landscape fixed-list objects under root `+0x28`.
+- Raster rows queue through `0x105d0 -> 0x13070 / 0x13250 -> 0x138de` under
+  root `+0x1c`.
+- Rectangle/rule commands queue through `0x10898 -> 0x13386 -> 0x133aa` under
+  root `+0x24`.
+- Publication `0xff1e` moves the active root to the protected published pool at
+  `0x780ea6`, then render bridge `0x1ed84 -> 0x1edc6` copies source roots to
+  render roots consumed by `0x1ef6a`.
+
+Field groups:
+
+- Canonical page/image state: current root pointer `0x78297a`, root state byte
+  `+4`, bucket root `+0x1c`, stream chunk link root `+0x20`, rule list
+  `+0x24`, fixed list `+0x28`, and 16 context slots `+0x2c..+0x68`.
+- Canonical object state: bucket object links and class byte `+4`, object
+  count/capacity `+6`, compact payload at `+8`, segment/raster payload at
+  `+0x0a`, rule/fixed object selector bytes, ordered keys, dimensions, and
+  continuation fields.
+- Derived/cache state: stream allocator fields `0x782a70`, `0x782a72`, and
+  `0x782a76`; producer keys `0x782a7a..0x782a7e`; render bridge outputs
+  `0x783a20`, `0x783a22`, and `0x783a28` after active render setup.
+- Parser scratch: none is owned here. Parser state has already been converted
+  into command-family owner state before a page object is queued.
+- Firmware bookkeeping: pending-root allocation latches `0x782c72` /
+  `0x782c73`, transient root byte `0x782990`, publication flag `0x782996`,
+  protected pool head `0x780ea6`, and allocator/pool record headers.
+- Unknown: manual-facing names for some page/control pool header fields. No
+  ROM-local unknown remains for the documented object-class mapping from source
+  root fields to render-root consumers.
+
+Writers and readers:
+
+- `0x10084`, `0x10110`, and `0x1381c` write root and stream storage state.
+- `0x1387c`, `0x133aa`, and `0x136d2` write the canonical object lists.
+- `0x12714`, `0x13070`, `0x13250`, `0x138de`, `0xd04a`, and `0x10898` are the
+  command-family producer paths that feed those storage helpers.
+- `0xff1e` reads the active root, writes published pool state, and clears or
+  preserves current-root state according to publication outcome.
+- `0x1ed84` and `0x1edc6` read the published source record, copy bucket/rule/
+  fixed/context roots into render-record fields, and normalize rule/fixed
+  continuation fields for the renderer.
+- `0x1ef6a`, `0x1efc2`, `0x1f446`, and `0x1f756` are downstream consumers;
+  their row writes are owned by the render documentation, not this storage
+  owner.
+
+Output effect:
+
+- Page objects are queued data structures, not pixels. Pixel generation begins
+  only after publication and active render scheduling copy these roots into a
+  render record.
+- Root `+0x1c` becomes render `+0x18` for compact text, downloaded glyphs,
+  text-span segment lists, and encoded raster bucket chains.
+- Root `+0x24` becomes render `+0x1c` for rectangle/rule lists.
+- Root `+0x28` becomes render `+0x20` for landscape fixed-list spans.
+- Root `+0x2c..+0x68` becomes render `+0x24..+0x60`, supplying font/resource
+  context to compact and segmented glyph helpers.
+
+Evidence:
+
+- Root allocation and stream storage are backed by
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+  `generated/analysis/ic30_ic13_page_root_allocation.md`, and
+  `generated/analysis/ic30_ic13_compact_bucket_allocator.md`.
+- Object producers are backed by
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`, and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
+- Publication and bridge behavior are backed by
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+- The fixtures listed above exercise allocation, rollover, object reuse,
+  publication, bridge copying, and render-entry handoff for text, rule, raster,
+  fixed-list, and mixed page-record shapes.
+
 ## Field Groups
 
 Canonical page root:

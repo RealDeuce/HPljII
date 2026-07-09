@@ -335,13 +335,17 @@ decimal value.
 
 | Function | Byte |
 | --- | --- |
+| Explicit no-output row | `NUL` / `0x00` |
+| Explicit no-output row | `BEL` / `0x07` |
 | Backspace | `BS` / `0x08` |
 | Horizontal tab | `HT` / `0x09` |
 | Line feed | `LF` / `0x0a` |
+| Explicit no-output row | `VT` / `0x0b` |
 | Form feed | `FF` / `0x0c` |
 | Carriage return | `CR` / `0x0d` |
 | Shift out, select secondary font | `SO` / `0x0e` |
 | Shift in, select primary font | `SI` / `0x0f` |
+| Control-Z local prefix/probe | `SUB` / `0x1a` |
 
 ### Job and Paper
 

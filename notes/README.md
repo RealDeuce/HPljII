@@ -33,7 +33,10 @@ standalone deliverables.
 - Parser state is owned by [pcl-parser-core.md](pcl-parser-core.md): parser
   mode `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
   normal/alternate tables, and delayed payload restore
-  `0x121cc -> 0x12218`.
+  `0x121cc -> 0x12218`. Its `Inbound Byte Outcome Contract` is the
+  branch-level owner for deciding whether a normalized byte becomes printable
+  output, alternate/data append, a matched command handler, a zero-handler
+  reset, a no-match fallback, callback continuation, or parser-external return.
 - Command dispatch is indexed by [pcl-command-map.md](pcl-command-map.md).
   Individual command families then move to owner notes such as
   [direct-control-codes.md](direct-control-codes.md),
@@ -58,6 +61,12 @@ standalone deliverables.
   semantic field index is [semantic-state-model.md](semantic-state-model.md),
   and the detailed dataflow spine is
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Resource bytes are owned by [resource-rom.md](resource-rom.md) and
+  [built-in-resource-scan.md](built-in-resource-scan.md). The verified
+  `IC32,IC15` pair supplies built-in resource bytes through firmware address
+  `0x0bffff`; the transparent secondary segment-57 continuation rule in
+  [resource-rom.md](resource-rom.md) is the owner for the remaining
+  pixel-affecting resource boundary at `0x0c0000..0x0c0321`.
 
 ## Files
 

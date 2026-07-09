@@ -266,6 +266,10 @@ controlling artifact.
   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and
   the command-family classes are indexed by
   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
+  The ROM Semantic Index in [pcl4-language.md](pcl4-language.md) adds the
+  command-language entry point: for each major PCL Level IV family it names
+  first parser handlers, representative byte streams, page-object bytes or
+  state fields, render routes, and owner notes.
   Checked-in owners are [direct-control-codes.md](direct-control-codes.md),
   [transparent-print-data.md](transparent-print-data.md),
   [display-functions.md](display-functions.md),
@@ -284,7 +288,9 @@ controlling artifact.
   macro replay, and VFC.
 - Command dispatch tables and parsed forms to handlers:
   covered by [pcl-command-map.md](pcl-command-map.md), generated table extracts
-  cited there, and `Worked Path: Command Record And Payload Dispatch`.
+  cited there, the ROM Semantic Index in
+  [pcl4-language.md](pcl4-language.md), and `Worked Path: Command Record And
+  Payload Dispatch`.
   Normal table `0x112a4`, alternate/data table `0x116f6`, parser loop
   `0x11774`, delayed arming helpers `0x11f5a` / `0x11f6e` / `0x11f82` /
   `0x11f96`, restore path `0x121cc -> 0x12218`, and owner notes form the

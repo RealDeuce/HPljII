@@ -5221,6 +5221,25 @@ Address-level cluster map:
   select slot `1` or `0`, and `0xc428` installs the selected context into
   page-root slot state before later printable bytes queue context-indexed
   compact objects.
+  Concrete final-`X` stream examples are now part of the route index.
+  `ESC (7X!!` reaches setup `0x1201e`, terminal `0x120be`, font-id selector
+  `0x17708`, selected context `0xc0089fb0`, and compact object prefix
+  `00 00 00 00 00 00 00 02 00 89 00 00 87 02`. The secondary sibling
+  `ESC )8X SO !!` reaches setup `0x12008`, SO handler `0xc6b8`, selected
+  context `0xc00ae122`, page-root slot `1`, and prefix
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`. Bit-30-clear
+  inline/downloaded final-`X` streams select context `0x00000100`: primary
+  `ESC (4660X!` rebuilds map `0x782f32` and queues
+  `00 00 00 00 00 00 00 01 01 66 01 00 00 00`, while secondary
+  `ESC )4660X SO !` rebuilds `0x783032` and queues
+  `00 00 00 00 00 01 00 01 01 66 01 00 00 00`. The documented non-selected
+  exits keep prior context instead of drawing from the requested font id:
+  primary `ESC (7X!!` can render from prior context `0xc008004c` with prefix
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and secondary
+  `ESC )8X SO !!` can render from prior context `0xc40ad87a` with prefix
+  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`. Evidence is
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
+  and the font-selection owner notes cited above.
 - Page/font scheduler handoff cluster:
   quiesce and resource callers reach `0x19dd2` from `0x447a`, `0x4760`,
   `0xbb16`, and `0x1a3c2`; teardown and scan paths include
@@ -5249,6 +5268,19 @@ Address-level cluster map:
   0x1ef6a -> 0x1effe`. Supported visible branches include short compact
   `0x1fe76`, wide compact `0x1f0d2`, segmented `0x1f1f0`, segmented-wide
   `0x1f264`, and mixed rule/raster composition with `0x1f446` / `0x1f88e`.
+  The normal offset-table downloaded-glyph stream is concrete:
+  host-fetched `ESC )s80W` restores record `80 57 00 50 00 00`, enters
+  `0x16c14`, validates the 64-byte descriptor through `0x16fae`, allocates
+  through `0x17026` / `0x1719c`, and installs class-one candidate longword
+  `0x40000000`. Companion `ESC )s3W f0 f0 f0` restores record
+  `80 57 00 03 00 00`, writes table entry `0x00ce`, installs glyph record
+  `00 00 00 00 0c 01 00 03 00 04 00 00`, copies bitmap bytes at delta
+  `0x018c`, and leaves glyph `0x21` available. The following printable `!`
+  queues compact object `00 00 00 00 00 00 00 01 21 5a 00`, publishes span
+  object `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and renders through the
+  same `0x1ed84 -> 0x1edc6 -> 0x1ef6a` path. Evidence is
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
+  and [downloaded-fonts.md](downloaded-fonts.md).
   Exact residuals are the named compact-helper table/source/count boundaries
   in `Minimal Downloaded Glyph Boundary Walkthrough`: unchecked short-compact
   `0x1fe76` table reads above valid index `128`, wrapped width low bytes

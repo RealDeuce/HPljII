@@ -484,6 +484,7 @@ decimal value.
 | Make macro permanent | `ESC &f10X` |
 | Display functions on | `ESC Y` |
 | Display functions off | `ESC Z` |
+| Display-functions status/reset edge | `ESC z` |
 | Transparent print data | `ESC &p#X` followed by data |
 
 ### Status Queries

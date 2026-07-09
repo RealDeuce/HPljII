@@ -496,6 +496,92 @@ Evidence and remaining boundaries:
   add another row here only when a parsed command writes state that is later
   consumed by a different documented page-object or render path.
 
+## Host/Status Side-Channel Boundary
+
+Some parser-visible commands produce host-visible bytes or status/service
+state instead of page objects. These paths belong in the byte-stream model
+because a bidirectional host can react to them, but they are not imaging paths
+unless that reaction changes later input bytes.
+
+Parser-entered backchannel commands:
+
+- `ESC *r#K` and `ESC *s#^` both dispatch through wrapper `0x12034`.
+  `0x12034` appends the synthetic secondary/setup record through `0x11efe`,
+  then enters producer `0x122be..0x12326`.
+- `0x122be..0x12326` rewinds command-record cursor `0x78299e`, fetches the
+  following query byte through parser wrapper `0xda9a`, and emits ROM literal
+  `33440A\r\n` from `0x12280..0x12288` only when the active record word
+  `+2` is `1` or `-1` and the query byte is `0x11`.
+- Accepted response bytes enqueue through blocking FIFO helper `0xb090` /
+  `0xb0c0`. Nonmatching query bytes go to report/pushback helper `0x9ec0`
+  rather than page-object production.
+
+Service/status producers and consumers:
+
+- Output worker `0xae2c` consumes host-output FIFO count `0x783ed2`, pending
+  status count `0x780e22`, and bridge-service byte `0x783e61`. In mode zero it
+  can call status helper `0xaece` before draining queued FIFO bytes.
+- Status helper `0xaece` emits service byte `0x13` or builds status bytes from
+  base `0x30`: `0x780e12` / `0x780e90` sets bit `0`, `0x780e2a` sets bit `1`,
+  `0x780e0a` sets bit `2`, and service-reason byte `0x783e60` is ORed into
+  the result.
+- Page-environment helper `0x2888` writes page-environment status flag
+  `0x780e90`, cache byte `0x780e98`, and warning/status bit
+  `0x780e2a.4`. Those fields feed `0xaece` host-status bytes and
+  `0x7612..0x7834` panel/service message selection.
+- Display-functions-off `ESC z` routes through `0xcd86 -> 0x9c2c` only under
+  the documented active data-chain predicate. It is a status/service side
+  effect, not a page-object producer.
+
+State classification:
+
+- Canonical host-output state:
+  FIFO count `0x783ed2`, read/write pointers `0x783ed4` / `0x783ed8`, FIFO
+  storage `0x783e92..0x783ed1`, and backend selector `0x780e40`.
+- Canonical response state:
+  literal `0x12280..0x12288`, query byte from `0xda9a`, synthetic setup record,
+  parser record cursor `0x78299e`, and command-table wrapper `0x12034`.
+- Derived/cache status:
+  `0x780e22`, `0x783e61`, `0x783e60`, `0x780e62`, aggregate status fields
+  `0x780e12` and `0x780e0a`, warning/status accumulator `0x780e2a`,
+  page-environment flag `0x780e90`, and media/status cache `0x780e98`.
+- Firmware bookkeeping:
+  wait object `0x7801e2`, FIFO blocking helper `0xb090`, output worker
+  `0xae2c`, service selectors `0x7612`, `0x8656`, and `0x8a48`, and display
+  message helpers `0x8c7a`, `0x8c90`, `0x9112`, and `0x9182`.
+- Hardware/external state:
+  physical output-register names and timing for `0xfffe0001`, `0xfffe0003`,
+  `0xfffee005`, and `0xfffee003`; physical sensor names behind service bits.
+
+Output effect and confidence:
+
+- These paths do not allocate current page root `0x78297a`, queue page objects,
+  publish through `0xff1e`, bridge through `0x1ed84` / `0x1edc6`, or dispatch
+  bitmap rendering through `0x1ef6a`.
+- For a fixed host byte stream, the pixel effect is none. For a bidirectional
+  host session, the backchannel bytes can change pixels only indirectly by
+  causing the host to send different later bytes.
+- Confidence is high for the no-page-output boundary because the cited
+  handlers write FIFO/status/message state and have no calls into the
+  documented page-root, page-record, publication, or render-dispatch paths.
+
+Evidence and unresolved boundaries:
+
+- Detail owners are [errors-and-status.md](errors-and-status.md),
+  [host-byte-fetch.md](host-byte-fetch.md), and
+  [io-interfaces.md](io-interfaces.md).
+- Controlling worked paths are `Host Interface Output FIFO And Model-ID
+  Backchannel`, `Page Environment Status Bridge`, and `External Ready Service
+  Preemption`.
+- Key listings are `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
+  `generated/disasm/ic30_ic13_page_environment_status_002888.lst`, and
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+- Exact unresolved boundaries are external: protocol naming for query byte
+  `0x11`, physical output-register mapping/timing, sensor naming behind
+  service bits, and physical panel output after `0x9182..0x9406`.
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

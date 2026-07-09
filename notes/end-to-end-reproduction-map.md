@@ -4317,6 +4317,95 @@ Use this index when starting from a concrete byte stream. Each entry points to
 the checked-in note that carries the parser route, state fields, page/render
 objects, fixtures, evidence, and unresolved boundaries for that stream family:
 
+Address-level cluster map:
+
+- Printable text cluster:
+  `0xa904 -> 0xda9a -> 0x11774 -> 0xd04a -> 0x1393a ->
+  0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84 -> 0x1edc6 ->
+  0x1ef6a -> 0x1effe`. Owner notes are
+  [font-context-metrics.md](font-context-metrics.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md). The supported stream
+  residual is any later byte stream that changes selected context/map,
+  source class, compact selector shape, bridge context roots, or compact
+  row-copy helper input.
+- Direct control and placement cluster:
+  parser rows dispatch CR/LF/FF/HT/BS/SO/SI to `0xf02c`, `0xf08c`,
+  `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, and `0xc68a`; cursor and margin
+  commands dispatch to `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf48c`,
+  `0xf560`, `0xf60a`, and `0xf692`. Owner note is
+  [direct-control-codes.md](direct-control-codes.md). The output edge is
+  usually delayed until later printable text, span flush `0xf34a -> 0x12714`,
+  or publication `0xff1e` consumes the changed cursor/layout state.
+- Parser artifact and no-output cluster:
+  explicit zero-handler rows, unmatched command forms, alternate/data appends,
+  and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,
+  `0x12218`, `0x12358`, normal table `0x112a4`, and alternate table
+  `0x116f6`. Owners are [pcl-parser-core.md](pcl-parser-core.md) and
+  [pcl-command-map.md](pcl-command-map.md). The residual is a new table row
+  or delayed-restore branch that changes saved parser record state or reaches
+  a page-object owner.
+- Transparent/display-reader cluster:
+  transparent data uses `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
+  display functions use normal reader `0x12536` or alternate/data reader
+  `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and
+  `0x121b2`. Owners are
+  [transparent-print-data.md](transparent-print-data.md) and
+  [display-functions.md](display-functions.md). The remaining pixel-affecting
+  residual is not parser routing; it is the secondary segment-57 resource
+  continuation read at firmware range `0x0c0000..0x0c0321`.
+- Font-selection cluster:
+  designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
+  0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and
+  preserve-output exits through `0x17708`. Owners are
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [built-in-resource-scan.md](built-in-resource-scan.md). Pixels appear only
+  after later printable bytes consume `0x782ee6` / `0x782ef6` and
+  `0x782f32` / `0x783032` through `0xd04a`.
+- Downloaded-font cluster:
+  font control uses `0x15a56`, `0x15a18`, and `0x16df6`; delayed `W`
+  payloads use `0x11f96 -> 0x15d0a` for count zero and
+  `0x11f96 -> 0x16c14` for nonzero counts. Installed glyphs become page
+  objects only after `0x16498` and later printable dispatch through
+  `0xd04a -> 0x12f2e`. Owner note is
+  [downloaded-fonts.md](downloaded-fonts.md). Exact residuals are the named
+  compact-helper table/source boundaries in that note, including the
+  unchecked short-compact `0x1fe76` table read above valid index `128`.
+- Raster and rectangle cluster:
+  rectangle state and rule production run through `0x10898 -> 0x10b80 ->
+  0x13386 -> 0x133aa -> 0x1f446`; raster state and encoded rows run through
+  `0x10808`, `0x1075a`, `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 ->
+  0x13070 -> 0x13250 -> 0x1f88e`. Owners are
+  [rectangle-graphics.md](rectangle-graphics.md) and
+  [raster-graphics.md](raster-graphics.md). Residual work must change
+  clipping, transfer acceptance, allocator state, object bytes, bridge roots,
+  or renderer helper inputs.
+- Publication and render-scheduler cluster:
+  reset, FF, page-size, orientation, paper-source, copies, VFC publication,
+  and no-room retries converge on `0xff1e`. Published records then run
+  `0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`. Owners are
+  [publication-commands.md](publication-commands.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [active-render-scheduler.md](active-render-scheduler.md). Hardware timing
+  can change when active-band work is scheduled, but not the documented
+  page-object-to-row construction for an already selected published record.
+- Macro, data-chain, and overlay cluster:
+  macro commands run `0xe112` / `0xdd08`; record selection and storage use
+  `0xe0a4` and `0xe002`; execute/call frames use `0xe418` and `0xe22c`;
+  overlay publication uses `0xff1e -> 0xe0a4 -> 0xe4f4 -> 0x11774`.
+  Owner note is [macro-data-chain.md](macro-data-chain.md). The supported
+  output rule is that replayed bytes become ordinary parser input and use the
+  same page-object and render owners as live host bytes.
+- VFC cluster:
+  `ESC &l#W` uses delayed route
+  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` consumes the table
+  through `0x1280a`. Owner note is
+  [vertical-forms-control.md](vertical-forms-control.md). Output is cursor
+  movement or page publication before later printable bytes queue page
+  objects; residuals are only variants that change VFC table bytes, channel
+  target choice, publication split, or following object coordinates.
+
 - Printable text, direct controls, and cursor placement:
   `!!`, `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`,
   `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &d3D! ESC &d@`;

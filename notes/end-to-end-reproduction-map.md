@@ -285,8 +285,9 @@ controlling artifact.
   [downloaded-fonts.md](downloaded-fonts.md), and
   [vertical-forms-control.md](vertical-forms-control.md). The minimal
   walkthroughs for parser dispatch, ignored/no-output rows, transparent data,
-  display functions, macro replay, overlay replay, VFC, raster, and downloaded
-  glyphs give byte-stream examples. The `Supported Stream Entry Points`
+  display functions, symbol-set/map updates, macro replay, overlay replay,
+  VFC, raster, and downloaded glyphs give byte-stream examples. The
+  `Supported Stream Entry Points`
   address-level cluster map is the current checked-in route index for starting
   from a concrete byte stream: it names the parser route and the first
   command-family/page/render owners for printable text, direct controls,

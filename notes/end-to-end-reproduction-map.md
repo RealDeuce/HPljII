@@ -106,7 +106,13 @@ controlling artifact.
   [vertical-forms-control.md](vertical-forms-control.md). The minimal
   walkthroughs for parser dispatch, ignored/no-output rows, transparent data,
   display functions, macro replay, overlay replay, VFC, raster, and downloaded
-  glyphs give byte-stream examples.
+  glyphs give byte-stream examples. The `Supported Stream Entry Points`
+  address-level cluster map is the current checked-in route index for starting
+  from a concrete byte stream: it names the parser route and the first
+  command-family/page/render owners for printable text, direct controls,
+  parser artifacts, transparent/display readers, font selection, scheduler
+  handoff, downloaded fonts, raster/rectangle graphics, publication/render,
+  macro replay, and VFC.
 - Command dispatch tables and parsed forms to handlers:
   covered by [pcl-command-map.md](pcl-command-map.md), generated table extracts
   cited there, and `Worked Path: Command Record And Payload Dispatch`.
@@ -125,7 +131,10 @@ controlling artifact.
   [rectangle-graphics.md](rectangle-graphics.md), raster in
   [raster-graphics.md](raster-graphics.md), publication in
   [publication-commands.md](publication-commands.md), and reset provenance in
-  [reset-default-environment.md](reset-default-environment.md).
+  [reset-default-environment.md](reset-default-environment.md). The address
+  cluster map does not replace those ledgers; it is the top-level dispatch
+  bridge from parsed command forms into those command-family ledgers and from
+  page producers into publication and renderer owners.
 - Page/image assembly model:
   covered by [page-record-storage.md](page-record-storage.md),
   [page-raster-imaging.md](page-raster-imaging.md),
@@ -4507,8 +4516,10 @@ Evidence:
 
 Use this index before opening a new trace window. The supported stream
 families below already have checked-in parser, state, page-object, bridge, and
-render documentation; new work should start from one of these exact residual
-edges or from a byte stream that changes a named field in the family sections.
+render documentation, and the address-level cluster map in
+`Supported Stream Entry Points` names the owner route for each current
+supported family. New work should start from one of these exact residual edges
+or from a byte stream that changes a named field in the family sections.
 
 - Pixel-affecting resource data:
   `Boundary: Secondary Segment-57 Source` in

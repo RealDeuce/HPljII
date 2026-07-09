@@ -2469,9 +2469,26 @@ Output and page-image effect:
 - `ESC &l2H` does not create a paper-source pixel object. Its pixel output comes
   from the compact text object queued before the command, then published by the
   command's `0xf34a -> 0xff1e` path.
+- The addressed paper-source stream uses one stream chunk at `0x00d0c000` and
+  publishes the same one-entry compact bucket prefix as the other
+  publication-boundary streams:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+  The printable payload is glyph `0x20` at compact coordinate `0x0001`.
+  After the publication boundary, `0xef62` leaves selected value `0x80`,
+  paper-source byte `0x782da6 = 0x80`, pending refresh byte
+  `0x782998 = 1`, cursor x/y at packed `5` / `92.1`, and ROM-visible
+  output/control bytes `0x780e8f = 0x80` and `0x780e26 = 1`.
 - `ESC &l2X` does not create a pixel object or publish immediately. Its
   ROM-visible page effect is the stored copy count consumed by later
   publication.
+- The addressed copies stream uses one stream chunk at `0x00d0d000`. Handler
+  `0xeef0` stores `0x782da4 = 2`; the trailing FF publishes the existing
+  compact bucket, clears current root `0x78297a`, and copies the count into
+  published pool-header word `+0x0c = 2`.
 - The rendered pixels for both representative streams use the ordinary
   publication and render path:
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`. The command-specific
@@ -2520,7 +2537,8 @@ Evidence:
   `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
   `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
-  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 - Supporting fixtures:
   `mixed printable/paper-source page-record stream publishes queued text`,
   `mixed printable/copies/FF stream publishes copy count`,

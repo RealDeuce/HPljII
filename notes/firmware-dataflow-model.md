@@ -1873,6 +1873,9 @@ The active render scheduler is documented in
 records, alternates render work records, derives the current band destination,
 and calls the render dispatcher when enough capacity is available.
 
+The scheduler starts after `0xff1e` has published a page/control record. It
+does not read parser records, host bytes, or delayed payload state.
+
 Key scheduler state:
 
 - `0x780ea6`: published pool-head pointer.
@@ -1885,6 +1888,25 @@ Key scheduler state:
 - `0x783a20`, `0x783a22`, `0x783a28`: derived band rows, remainder, and
   destination base computed by `0x1ef86`.
 
+Scheduler writers and branch boundaries:
+
+- Pool initialization `0x3144..0x3162` seeds pool and cursor pointers
+  `0x780ea6`, `0x780eaa`, `0x780eae`, `0x780eb2`, and `0x780eb6`.
+- Candidate and cursor paths `0x7ec6..0x7f90` and `0x7722..0x779a` promote a
+  selectable pool record into scheduler cursor `0x780eaa` and release cursor
+  `0x780eb2`.
+- Active scheduler entry `0x1eb32..0x1eb50` copies scheduler cursor
+  `0x780eaa` into active source `0x780eae`.
+- Work-record selector `0x1ecd6..0x1ed76` toggles `0x7820bc`, chooses render
+  work record `0x7820c4` or `0x782128`, writes active render pointer
+  `0x783a18`, handles same-geometry reuse or geometry setup, and calls
+  active-copy entry `0x1ed84`.
+- Active-copy bridge `0x1ed84 -> 0x1edc6` copies the active source's bucket,
+  rule, fixed-list, and context roots into the selected render work record.
+- Active loop `0x1eba4..0x1ecd2` decides whether a band calls `0x1ef6a`,
+  yields, waits, or performs cleanup. Cleanup and wait branches do not produce
+  pixels because they do not call the render dispatcher.
+
 Render-band setup is explicit arithmetic, not an opaque scheduler state.
 At `0x1ef86..0x1efc0`, helper `0x1ef86` loads render work word `+0x10`,
 adds word `+0x08`, subtracts word `+0x0a`, and divides the result by word
@@ -1895,9 +1917,61 @@ work long `+0x12`. The following bucket dispatcher `0x1efc2` indexes render
 root `+0x18` by active band word `+0x10`, so these derived fields control
 where the selected bucket/list objects write pixels in the current band.
 
+Active-loop consumers:
+
+- `0x1eba4..0x1ebd2` handles loop-flag cleanup when `0x780ea5 == 1`: it calls
+  `0x1ef38`, clears active flag `0x780ea4`, signals wait object `0x780182`,
+  and continues without calling `0x1ef6a`.
+- `0x1ebd8..0x1ec06` handles stale work when active work word `+0x0c` is less
+  than active band word `+0x10`; it takes the same cleanup path without
+  rendering.
+- `0x1ec0c..0x1ec30` handles throttle yield when work word `+0x0e > 0x28` by
+  clearing `+0x0e`, signaling `0x780182`, and yielding through `0x10d8(2)`.
+- `0x1ec34..0x1ec8e` computes available capacity from active remaining rows
+  and, when the two selector bytes differ, paired-record remaining rows.
+- `0x1ec8e..0x1ecac` is the render branch. Capacity `>= 9` releases the
+  scheduler lock, calls `0x1ef6a`, increments active band word `+0x10`, and
+  increments throttle word `+0x0e`.
+- `0x1ecb0..0x1ecd2` is the capacity-wait branch. Capacity `< 9` clears
+  `+0x0e`, signals `0x780182`, waits through `0x10d0(2)`, and does not render.
+
+State classification:
+
+- Canonical scheduler state:
+  pool head `0x780ea6`, cursor `0x780eaa`, active source `0x780eae`, release
+  cursor `0x780eb2`, work-record selectors `0x7820bc` / `0x7820c0`, active
+  render pointer `0x783a18`, and render work records `0x7820c4` / `0x782128`.
+- Derived/cache state:
+  render-band rows `0x783a20`, remainder `0x783a22`, destination base
+  `0x783a28`, same-geometry fields copied before `0x1ed84`, and bridge roots
+  written by `0x1edc6`.
+- Firmware bookkeeping:
+  candidate slots `0x780e6e[]`, active flags `0x780ea4` / `0x780ea5`,
+  wait-object record `0x780182`, timer/status latches, throttle word `+0x0e`,
+  and trap/wait helpers `0x10c8`, `0x10d0`, and `0x10d8`.
+- Parser scratch:
+  none. Parser, command handlers, and page-object producers have already
+  committed their state before this scheduler boundary starts.
+- Hardware/external state:
+  physical timing and bit-to-signal names for the MMIO-facing scheduler and
+  engine predicates. The ROM-visible branches above remain documented without
+  needing physical row comparison.
+
 The scheduler does not define object semantics. Its output is the selected
-render work record and band state passed to `0x1ef6a`. Physical engine timing
-and formatter/DC signal names remain separate board-facing boundaries.
+render work record and band state passed to `0x1ef6a`; object semantics remain
+owned by `Pixel And Object Rendering`, `Render Dispatch And Pixel Composition`,
+and the object-family notes. The exact unresolved middle edge is external
+engine timing for wait/MMIO predicates around `0x0d52..0x1282` and
+`0x1cf8..0x1ea8`, not the ROM-local selection of published source,
+render-work alternation, bridge roots, or band words for covered paths.
+
+Evidence:
+[active-render-scheduler.md](active-render-scheduler.md),
+`Worked Path: Published Record To Active Bands`,
+`generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`, and
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
 
 ## Pixel And Object Rendering
 

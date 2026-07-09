@@ -3692,12 +3692,124 @@ Page-object and render effect:
   root is published. Overlay replay therefore composes with any existing base
   page objects, such as selector-7 rule objects, rather than rendering into a
   separate bitmap.
+- For the minimal `!\r` overlay payload, the replayed printable queues the
+  same one-glyph compact object bytes as the direct and macro-execute text
+  paths:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+  The leading longword is the bucket-chain next pointer, the count byte is
+  `1`, and the payload begins with glyph byte `0x20` plus the compact
+  coordinate bytes. The following replayed carriage return routes through
+  `0xf02c`; it advances parser/page cursor state for subsequent bytes but
+  does not allocate a second visible object for this minimal payload.
+- Repeated overlay publication keeps the macro record canonical and replays
+  it on each page boundary. The same stored `!\r` payload composes with the
+  first page's selector-7 rule object:
+
+```text
+00 00 00 00 01 07 88 01 00 0c 00 03 00 00
+```
+
+  and then with the second page's selector-7 rule object:
+
+```text
+00 00 00 00 01 07 e4 00 00 08 00 04 00 00
+```
+
+  This makes overlay state `0x782a92` / `0x782a94` canonical page-finalization
+  state, while page-root objects remain page-local canonical data under
+  `0x78297a`.
+- The skip-gate branch is also page-object visible. A base page with printable
+  `?` and selector-7 rule object:
+
+```text
+00 00 00 00 01 07 a2 00 00 06 00 02 00 00
+```
+
+  publishes unchanged when overlay mode is disabled, when `0xe0a4(0x782a94)`
+  finds no nonempty selected record, or when page-root retry flag `+0x14.0`
+  blocks overlay re-entry. Those gates therefore affect whether replay mutates
+  the page root, not how the renderer later interprets the base objects.
 - After replay cleanup, `0xff1e` publishes the page root. `0x1ed84` and
   `0x1edc6` copy bucket, rule, fixed-list, and context roots into the active
   render record.
 - `0x1ef6a` renders the composed record through the same compact, rule,
   fixed-list, segment-list, and raster helpers used by live host bytes. Overlay
   replay has no overlay-specific pixel writer.
+
+Overlay payload variants:
+
+- Stored cursor payload `ESC &a2C!` remains in the same non-replay frame kind
+  but routes the replayed cursor command through `0xf39e` before printable
+  `0xd04a`. It moves packed horizontal cursor `10 -> 36`, then queues compact
+  text payload:
+
+```text
+00 01 20 0a 02
+```
+
+  The page still composes with selector-7 rule object:
+
+```text
+00 00 00 00 01 07 82 02 00 07 00 02 00 00
+```
+
+  which the rule renderer `0x1f596` mutates to:
+
+```text
+00 00 00 00 01 07 82 02 00 07 00 02 ff ca
+```
+
+- Stored vertical-decipoint payload `ESC &a72V!` routes through `0xf60a`,
+  moves packed vertical cursor `20 -> 30`, leaves x at packed `10`, and queues
+  compact text payload:
+
+```text
+00 01 20 90 01
+```
+
+  Here the canonical overlay fields are still `0x782a92` / `0x782a94`; the
+  derived/cache fields are the compact coordinate `0x9001`, rule key
+  `0x8801`, and renderer continuation/mutation fields written by the bridge
+  and `0x1f596`.
+- Stored transparent-data payload `ESC &p2X!!` proves that overlay replay can
+  enter delayed binary payload mode. Parser handler `0x11f5a` saves delayed
+  record:
+
+```text
+80 58 00 02 00 00
+```
+
+  then delayed handler `0x12452` restores it and feeds raw bytes `21 21`
+  through `0xd04a`. The queued compact object begins:
+
+```text
+00 00 00 00 00 00 00 02 20 00 01 20 02 02
+```
+
+  while the page's selector-7 rule:
+
+```text
+00 00 00 00 01 07 e0 02 00 09 00 02 00 00
+```
+
+  remains a normal rule-list object consumed by the publication bridge and
+  rule renderer.
+- Stored raster payload `! ESC *t300R ESC *r0A ESC *b2W c3 3c` proves that
+  overlay replay can cross from printable text into raster command state and
+  back into normal page buckets. It queues the compact text object for `!`
+  plus a mode-0 raster object:
+
+```text
+00 00 00 00 80 00 00 02 00 00 c3 3c
+```
+
+  The raster object is then copied by `0x1ed84` / `0x1edc6` into the active
+  render record and consumed by `0x1ef6a` through the same raster helper path
+  as a live `ESC *b#W` payload.
 
 State classification:
 
@@ -3742,6 +3854,17 @@ Skip-gate boundaries:
   they decide whether replayed bytes mutate the current page root before
   publication.
 
+Unresolved middle edges:
+
+- No ROM-local middle edge is currently unresolved for the documented minimal
+  `!\r` overlay publication path from selector `4` through `0xff1e`, `0xe4f4`,
+  `0xa904`, `0x11774`, `0xd04a`, `0xf02c`, `0xe22c`, `0x1ed84`, `0x1edc6`,
+  and `0x1ef6a`.
+- For overlay variants, the remaining unresolved edges are the same bounded
+  command-family edges documented in their primary command sections. The
+  overlay-specific boundary is only the replay frame:
+  `0xe4f4 -> 0xa904 -> 0x11774 -> 0xe22c`.
+
 Evidence:
 
 - Checked-in explanations:
@@ -3759,7 +3882,8 @@ Evidence:
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`, and
-  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Rectangle Rule Walkthrough
 

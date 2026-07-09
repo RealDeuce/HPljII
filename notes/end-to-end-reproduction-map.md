@@ -1770,6 +1770,19 @@ Consumers and output effect:
 - The `ESC &l66P !` path proves the page-length state is consumed by the
   following printable byte: `0xf9e8 -> 0xd04a` refreshes placement and queues
   the `!` compact object at coordinate `0x9001`.
+- That following printable uses the same single-entry short compact object
+  shape as the ordinary printable path. The layout command has already
+  refreshed placement; `ESC &l66P` itself writes page-layout state, and
+  `0xd04a -> 0x12f2e -> 0x1387c` queues the printable entry. For the documented
+  line-printer fixture, the queued object prefix is:
+
+```text
+00 00 00 00 00 00 00 01 20 90 01
+```
+
+  The first four bytes are the null next-object link, the next four bytes hold
+  selector/context/count for a one-entry compact text object, and the payload
+  entry is glyph `0x20` at compact coordinate `0x9001`.
 - The `ESC &l1L !` path proves perforation state and the following printable
   share the same parser-to-page-record pipeline: `0xee64` writes `0x783191`,
   then `0xd04a` queues the compact object.
@@ -1821,7 +1834,8 @@ Evidence:
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/analysis/ic30_ic13_direct_control_code_flow.md`, and
-  `generated/analysis/ic30_ic13_page_geometry_tables.md`.
+  `generated/analysis/ic30_ic13_page_geometry_tables.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Page Geometry Walkthrough
 

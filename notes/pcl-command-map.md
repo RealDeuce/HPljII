@@ -161,7 +161,8 @@ undocumented imaging commands:
   display-functions readers, not a normal parser-table terminal. Normal handler
   `0x12536` and alternate/data handler `0x12120` both consume the terminating
   `ESC Z` bytes inside their direct `0xa904` reader loops before returning. The
-  checked-in semantic contract is [display-functions.md](display-functions.md).
+  checked-in semantic contract is
+  [display-functions.md](display-functions.md#owner-summary).
 
 Normal mode-zero C0 rows `0x00`, `0x07`, and `0x0b` are also matched
 zero-handler table rows, not unknown imaging commands. They enter the shared
@@ -218,7 +219,7 @@ boundaries:
   [direct-control-codes.md](direct-control-codes.md).
 - `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append,
   and guarded `ESC z` status signaling:
-  [display-functions.md](display-functions.md).
+  [display-functions.md](display-functions.md#owner-summary).
 - Reset, FF publication, page size, page-length zero/default, orientation,
   paper source, and copies:
   [publication-commands.md](publication-commands.md) plus reset provenance in
@@ -498,7 +499,7 @@ Normal table `0x112a4`:
 - Display, transparent, local Control-Z, and host/status side-channel
   handlers:
   `0xcd86`, `0x12034`, `0x120d2`, `0x1219e`, and `0x12536`.
-  Owners are [display-functions.md](display-functions.md),
+  Owners are [display-functions.md](display-functions.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md), and
   [errors-and-status.md](errors-and-status.md). Normal display/transparent
   readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and `0x12034`
@@ -552,10 +553,10 @@ Alternate/data table `0x116f6`:
   reset the environment; most ordinary page-state handlers are suppressed.
 - Alternate display and Control-Z append handlers:
   `0x1210c`, `0x12120`, and `0x121b2`.
-  Owner is [display-functions.md](display-functions.md). These append
-  normalized bytes through `0xe002` instead of sending them to printable text,
-  so their immediate output effect is stored macro/data-chain content rather
-  than page objects.
+  Owner is [display-functions.md](display-functions.md#owner-summary). These
+  append normalized bytes through `0xe002` instead of sending them to printable
+  text, so their immediate output effect is stored macro/data-chain content
+  rather than page objects.
 
 ## Supported Stream Dispatch Matrix
 

@@ -603,7 +603,7 @@ data-chain replay.
 
 ## ESC Y Display Functions Readers
 
-See [display-functions.md](display-functions.md) for the composed
+See [display-functions.md](display-functions.md#owner-summary) for the composed
 renderer-facing contract for the normal output loop, alternate append loop,
 Control-Z siblings, and `ESC z` status edge. This section preserves parser-core
 details.

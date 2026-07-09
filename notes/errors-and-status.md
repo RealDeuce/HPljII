@@ -271,6 +271,63 @@ Evidence:
 `generated/analysis/ic30_ic13_pcl_command_map.md` for the parser-table route
 into `0x12034`.
 
+### Host Output Worker Contract
+
+Worker `0xae2c` is the wait-object consumer that drains host-visible output
+state. It consumes the FIFO above, the pending status count, and the
+bridge-service byte. It does not consume page roots or render records.
+
+Worker sleep/wake gate:
+
+- `0xae30..0xae5c` enters a critical section, ORs FIFO count `0x783ed2`,
+  pending status count `0x780e22`, and bridge-service byte `0x783e61`, and
+  waits through `0x10d0(0x15)` only when all three are zero.
+- Any nonzero source leaves the critical section and selects an output backend
+  from `0x780e40`.
+
+Backend selector behavior:
+
+- `0x780e40 == 0`: `0xae6a..0xae8e` first calls status/service helper
+  `0xaece`, then dequeues FIFO bytes through `0xb022`. Each dequeued byte is
+  sent through retry helper `0xaf7c`, which repeatedly calls backend writer
+  `0xa1b0` until accepted or until retry count `0x4e20` triggers error report
+  `0x1284(0xe2, 4)`.
+- `0x780e40 == 1`: `0xae9e..0xaeaa` only dequeues FIFO bytes through
+  `0xb022` and loops back to the worker gate. The bytes are discarded by the
+  ROM-visible worker path; status helper `0xaece` is not called in this mode.
+- Other nonzero `0x780e40` values: `0xaeac..0xaecc` dequeues FIFO bytes
+  through `0xb022` and sends accepted bytes through retry helper `0xafcc`.
+  `0xafcc` calls backend writer `0xa1d6`, waits through `0x10d0(0x0b)` when
+  engine/status counter `0x780e04` advances too far, and retries until the
+  backend accepts the byte.
+
+Status/service helper `0xaece` owns the mode-0 status priority before FIFO
+bytes:
+
+- `0xaedc..0xaf02`: if `0x783e61` is nonzero, try to send literal service byte
+  `0x13` through `0xa1b0`. On success, write `0x780e62 = 0x13` and clear
+  `0x783e61`.
+- `0xaf08..0xaf26`: if pending status count `0x780e22` is zero, return with
+  no status byte.
+- `0xaf16..0xaf62`: build status byte from base `0x30`. Set bit `0` when
+  `0x780e12` or `0x780e90` is nonzero, bit `1` when `0x780e2a` is nonzero,
+  bit `2` when `0x780e0a` is nonzero, then OR reason byte `0x783e60`.
+- `0xaf62..0xaf7a`: only after `0xa1b0` accepts that byte does the helper
+  clear `0x783e60` and decrement `0x780e22`.
+
+Output effect: model-ID response bytes, status bytes, and bridge-service byte
+`0x13` are host-visible protocol output. They do not call `0x10084`,
+`0xff1e`, `0x1ed84`, or `0x1ef6a`. They affect pixel reproduction only
+indirectly, when a bidirectional host reacts to the output or when a blocking
+FIFO/status backend stalls the parser-side producer.
+
+Evidence:
+`generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`;
+`generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`;
+`generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`;
+fixtures `0xaece emits service byte and combined status byte` and
+`0xae2c drains FIFO by configured output mode`.
+
 ### Model-ID Command Stream
 
 The concrete parser-visible response stream is:

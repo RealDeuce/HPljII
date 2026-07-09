@@ -331,6 +331,18 @@ test.
 This is an emulator-oriented subset from appendix A. `#` is an ASCII
 decimal value.
 
+### Control Codes
+
+| Function | Byte |
+| --- | --- |
+| Backspace | `BS` / `0x08` |
+| Horizontal tab | `HT` / `0x09` |
+| Line feed | `LF` / `0x0a` |
+| Form feed | `FF` / `0x0c` |
+| Carriage return | `CR` / `0x0d` |
+| Shift out, select secondary font | `SO` / `0x0e` |
+| Shift in, select primary font | `SI` / `0x0f` |
+
 ### Job and Paper
 
 | Function | Command |

@@ -2762,7 +2762,15 @@ Scheduler and render entry:
 ```
 
 - `0x1ef86` computes current-band caches.
+- In the band-setup fixture, `0x1ef86` divides
+  `(work +0x10 + work +0x08 - work +0x0a) = 0x0014` by work word
+  `+0x06 = 6`, stores remainder `2` in `0x783a22`, stores scaled current-band
+  rows `64` in `0x783a20`, and stores destination base `0x00101000` in both
+  `0x783a28` and render-record long `+0x12`.
 - `0x1efc2` walks bucket-chain objects from render root `+0x18`.
+- In the bucket-dispatch fixture, `0x1efc2` indexes render bucket word `2` at
+  slot offset `8`, then routes object class bytes through the same compact,
+  segment-list, and encoded-raster branches documented below.
 - `0x1f446` walks rule-list objects from render root `+0x1c`.
 - `0x1f756` walks fixed-list objects from render root `+0x20`.
 
@@ -2871,7 +2879,8 @@ Evidence:
   `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,
   `generated/analysis/ic30_ic13_page_record_bridge.md`,
   `generated/analysis/ic30_ic13_render_path_references.md`, and
-  `generated/analysis/ic30_ic13_render_dispatch_tables.md`.
+  `generated/analysis/ic30_ic13_render_dispatch_tables.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Font Selection Walkthrough
 

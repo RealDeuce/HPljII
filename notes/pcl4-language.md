@@ -445,6 +445,7 @@ decimal value.
 | Rectangle width decipoints | `ESC *c#H` |
 | Rectangle height dots | `ESC *c#B` |
 | Rectangle height decipoints | `ESC *c#V` |
+| Area-fill ID for gray/pattern fills | `ESC *c#G` |
 | Fill rectangle as rule | `ESC *c0P` |
 | Fill rectangle gray scale | `ESC *c2P` |
 | Fill rectangle HP pattern | `ESC *c3P` |

@@ -606,7 +606,13 @@ Field groups for this index:
   `0xf60a`, `0xeb58`, `0xec0c`, `0xca8c`, `0xc992`, `0xcb00`, `0xedf8`,
   `0xedb0`, and `0xf75e`. They write cursor/layout flags and pending-span
   state. Most are state-only until a following printable byte, span flush, VFC
-  jump, or publication consumes the updated state. Evidence:
+  jump, or publication consumes the updated state. Concrete stream
+  `ESC &k1G!\r!` writes line-termination byte `0x78318f` through `0xedf8`;
+  CR handler `0xf02c` applies CR+LF and makes the following printable queue at
+  compact coordinate `0x3b00`. Cursor stream `ESC &a2C!` commits x through
+  `0xf4ca` before the following printable queues at compact coordinate
+  `0x0a02`.
+  Evidence:
   [direct-control-codes.md](direct-control-codes.md) and
   `Text Cursor And Direct Controls` in
   [semantic-state-model.md](semantic-state-model.md).

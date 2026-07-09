@@ -2220,9 +2220,10 @@ or fixed-space helper `0xd0f0`.
   and the fixture above.
 - Derived/cache filtering state:
   - selected slot `0x782f06` is scaled by helper `0x332ee`.
-  - selected context byte `0x782eea + 0x10 * 0x782f06` is copied to `D3`.
-  - fallback filtering byte `0x782efa` supplies the local filter word when
-    high-character flags `0x783132` and `0x783133` are clear.
+  - selected-context C0 filter byte `0x782eea + 0x10 * 0x782f06` is copied to
+    `D3`.
+  - fallback high-control filter byte `0x782efa` supplies the local filter word
+    when high-character flags `0x783132` and `0x783133` are clear.
   - local stack word `A6-2` holds the high-control filtering word used by the
     `0x80..0x9f` branch.
   Evidence: `transparent-print-data.md` and fixtures with
@@ -2288,8 +2289,10 @@ or fixed-space helper `0xd0f0`.
   leaves marker `0x00000000`; both keep one `HEAD` chain, walk the same 24
   typed records, and skip from probe `0x40000` to final probe `0x80000`.
 - Unknown for this checkpoint:
-  - manual-facing names for the selected context filtering byte, fallback
-    filtering byte, and high-character flags remain provisional.
+  - manual-facing names for the selected-context C0 filter byte, fallback
+    high-control filter byte, and high-character flags remain unknown. Their
+    ROM-local transparent-routing role is documented in
+    `transparent-print-data.md`.
   - the board memory-map policy for firmware address `0x0c0000..0x0c0321`
     remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
     produce different fallback row digests in the harness. A simple full mirror

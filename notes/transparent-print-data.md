@@ -75,11 +75,20 @@ Canonical fields:
 
 Derived/cache fields:
 
-- `0x782eea + 0x10 * selected_slot`: context byte copied to `D3` after helper
-  `0x332ee` scales the selected slot.
-- `0x782efa`: fallback filtering byte used when high-character flags are clear.
-- `0x783132` and `0x783133`: high-character state flags that choose whether the
-  local filtering word comes from the context byte or `0x782efa`.
+- `0x782eea + 0x10 * selected_slot`: selected-context C0 filter byte copied to
+  `D3` after helper `0x332ee` scales the selected slot. At
+  `0x124f8..0x1250a`, zero routes transparent C0 bytes through fixed-space
+  helper `0xd0f0`; nonzero lets them fall through to printable handler
+  `0xd04a`.
+- `0x782efa`: fallback high-control filter byte used only when both
+  high-character flags are clear. At `0x1250c..0x12528`, zero routes
+  transparent `0x80..0x9f` bytes through `0xd0f0`; nonzero lets them fall
+  through to `0xd04a`.
+- `0x783132` and `0x783133`: primary and secondary high-character/symbol-set
+  flags. Font activation writes them at `0x14d3a..0x14d7e`; `0x12496..0x124b8`
+  uses them to choose the local high-control filter source, and printable path
+  `0xd07c..0xd086` uses them when deciding whether high bytes are masked to
+  seven bits before `0x1393a`.
 
 Parser scratch:
 
@@ -104,8 +113,10 @@ Hardware/external state:
 
 Unknown:
 
-- Manual-facing names for the context byte at `0x782eea + 0x10 * slot`, the
-  fallback byte `0x782efa`, and high-character flags `0x783132`/`0x783133`.
+- Manual-facing HP names for the selected-context C0 filter byte at
+  `0x782eea + 0x10 * slot`, fallback high-control filter byte `0x782efa`, and
+  high-character flags `0x783132`/`0x783133`. Their ROM-local routing roles are
+  documented above.
 
 ## Payload Reader At 0x12452
 
@@ -537,18 +548,19 @@ compact text objects.
 Field groups:
 
 - Canonical: command record `+2` byte count and text cursor `0x782c8a`.
-- Derived/cache: selected-slot context byte at `0x782eea + 0x10 * 0x782f06`,
-  fallback filtering byte `0x782efa`, high-byte state flags
-  `0x783132`/`0x783133`, and compact coords such as `0x0001` and `0x0604`.
+- Derived/cache: selected-slot C0 filter byte at
+  `0x782eea + 0x10 * 0x782f06`, fallback high-control filter byte `0x782efa`,
+  high-character/symbol-set flags `0x783132`/`0x783133`, and compact coords
+  such as `0x0001` and `0x0604`.
 - Parser scratch: delayed fields `0x782a1a`, `0x782a1c`, and
   `0x782a20..0x782a25`.
 - Firmware bookkeeping: local filtering word at `A6-2`.
 - Hardware/external state: secondary segment-57 fallback rows require
   resource-window bytes from `0x0c0000..0x0c0321` after the verified resource
   suffix `0x0bfe22..0x0bffff`.
-- Unknown: manual-facing names for the filtering/context bytes remain
-  provisional; no ROM-local parser, payload, page-record, bridge, or compact
-  renderer edge is unknown for the covered primary transparent-data streams.
+- Unknown: manual-facing names for the filtering/context bytes remain unknown;
+  no ROM-local parser, payload, page-record, bridge, or compact renderer edge
+  is unknown for the covered primary transparent-data streams.
 
 Writers:
 
@@ -557,6 +569,10 @@ Writers:
   delayed handler in normal parser mode.
 - `0x1226e..0x1227e` redirects restored delayed payloads through
   `0x12358(0x1228a)` when alternate/data flag `0x782c18` is set.
+- `0x14d3a..0x14d7e` writes high-character flags `0x783132` and `0x783133`
+  while activating the primary or secondary font/map context.
+- `0x1c604`, `0x1ceea`, and `0x1e9fc` write primary selected-context filter
+  byte `0x782eea` from font/sample-page context setup paths.
 - `0x12452..0x12534` decrements the payload count and selects `0xd04a` or
   `0xd0f0`.
 - `0xd04a`/`0xd824` write compact page-record text objects.
@@ -568,8 +584,8 @@ Writers:
 Readers/consumers:
 
 - `0xa904` supplies transparent payload bytes.
-- `0x12452` reads command record `+2`, selected context state, fallback
-  filtering state, and payload bytes.
+- `0x12452` reads command record `+2`, selected-context C0 filter state,
+  fallback high-control filter state, high-character flags, and payload bytes.
 - `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a` consume the page-record result
   for visible text output.
 
@@ -680,5 +696,6 @@ For `ESC &p#X`:
   current-band rows are already pinned across mirror, code-pair, and zero-fill
   continuation policies, and the startup scanner consequence is pinned for all
   three policies.
-- The names for the active context filtering byte, fallback byte, and high-byte
-  flags remain provisional.
+- Manual-facing names for the active context filtering byte, fallback byte, and
+  high-character flags remain unknown; their transparent-routing effect is
+  documented by `0x12476..0x12534`.

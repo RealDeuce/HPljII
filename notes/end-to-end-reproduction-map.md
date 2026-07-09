@@ -73,6 +73,72 @@ strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
+## Shared Page-Object Contract
+
+The current checked-in model treats page content as queued ROM objects, not as
+a parser-time bitmap. This section is the common object contract used by the
+command-family notes; detailed ledgers remain in
+[page-record-storage.md](page-record-storage.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md).
+
+- Canonical page root:
+  current root `0x78297a`, stream allocator fields
+  `0x782a70/0x782a72/0x782a76`, bucket array root `+0x1c`, rule-list root
+  `+0x24`, fixed-list root `+0x28`, and font/resource context slots
+  `+0x2c..+0x68`. Writers are `0x10084`, `0x10110`, `0x1381c`, `0x1387c`,
+  `0x133aa`, and `0x136d2`; publication and render consumers are `0xff1e`,
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+- Compact text and downloaded glyph objects:
+  printable bytes route through `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`
+  and queue bucket objects under root `+0x1c`. Examples now documented in
+  [pcl-command-map.md](pcl-command-map.md) include primary final-`X`
+  `ESC (7X!!` object prefix
+  `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, secondary
+  `ESC )8X SO !!` prefix
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and downloaded printable `!`
+  object `00 00 00 00 00 00 00 01 21 5a 00`.
+- Segment/span objects:
+  pending text decoration or span state flushes through `0x12714` into a
+  class-`0x40` object. The documented `ESC &d3D ! ESC &d@` path queues span
+  object `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`, then renders through
+  `0x1efc2 -> 0x1f812 -> 0x1f862`; see
+  [pcl-command-map.md](pcl-command-map.md) and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Raster and rectangle/rule objects:
+  raster rows route through `0x105d0 -> 0x138de -> 0x13070` / `0x13250` into
+  bucket objects under root `+0x1c`; rectangles route through
+  `0x10898 -> 0x10b80 -> 0x13386` / `0x133aa` into the rule list at `+0x24`.
+  Documented examples include primary mode-0 raster object
+  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` and selector-7 rule objects
+  `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` /
+  `00 00 00 00 01 17 4a 00 00 0c 00 05 00 05`.
+- Publication and render consumers:
+  `0xff1e` snapshots page-root buckets, lists, context slots, and header
+  fields into a page/control pool record. `0x1ed84` selects an active source
+  record, `0x1edc6` copies source `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render
+  record `+0x18/+0x1c/+0x20/+0x24..+0x60`, and `0x1ef6a` dispatches the active
+  band through bucket, rule, fixed-list, compact, segment-list, and raster
+  helpers.
+
+State classification for this shared layer is: canonical state is the current
+page root, queued object records, context slots, and published page/control
+records; derived/cache state is bucket index `0x782a7c`, compact coordinate
+keys, selected-font maps, render stride `0x783a1c`, band fields
+`0x783a20/0x783a22/0x783a28`, and copied render roots; parser scratch is the
+six-byte command records and delayed payload state consumed before object
+creation; firmware bookkeeping is allocator accounting, publication flag
+`0x782996`, scheduler cursors, and render-work alternator state; hardware or
+external state begins where the ROM waits on formatter/DC events instead of
+writing one of these fields.
+
+The remaining unresolved page/render edges must change a named object field,
+root/list field, publication field, bridge field, scheduler-produced band word,
+or ROM row-helper input. The current explicit residuals are allocator free-list
+lifetime outside `0x1710`, exact physical formatter/DC timing, and ROM-local
+downloaded-glyph helper variants such as the high-row `0x1fe76` fallback and
+the wrapped source-byte helper targets through `0x1f034` / `0x1f08e`.
+
 ## Objective Coverage Matrix
 
 Use this section to map the current checked-in documentation back to the

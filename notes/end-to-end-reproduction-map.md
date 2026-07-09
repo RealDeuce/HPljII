@@ -4649,6 +4649,27 @@ Address-level cluster map:
   normalized loop values through `0xe002`, creating stored input rather than
   immediate page objects. Control-Z handlers are local table consumers, not a
   global parser rule.
+- Host/status side-channel cluster:
+  `ESC *r#K` and `ESC *s#^` dispatch through wrapper `0x12034` to
+  `0x122be..0x12326`; host-output FIFO and status workers use
+  `0xb0c0`, `0xb090`, `0xb022`, `0xae2c`, and `0xaece`. Owners are
+  [errors-and-status.md](errors-and-status.md),
+  [io-interfaces.md](io-interfaces.md), and
+  [host-byte-fetch.md](host-byte-fetch.md). This cluster produces host-visible
+  bytes, not page-image objects. `0x12034` calls setup helper `0x11efe` to
+  append a synthetic six-byte record with word `+2 = 1`; `0x122be` rewinds
+  parser record cursor `0x78299e`, fetches the following query byte through
+  `0xda9a`, and emits literal `33440A\r\n` from `0x12280..0x12288` through
+  blocking enqueue `0xb090` only for accepted query byte `0x11`. FIFO state is
+  canonical host-output state at count `0x783ed2`, pointers `0x783ed4` /
+  `0x783ed8`, and storage `0x783e92..0x783ed1`; worker `0xae2c` drains queued
+  bytes according to backend selector `0x780e40`. Sibling status producer
+  `0xaece` consumes pending-status fields `0x780e22`, `0x783e61`,
+  `0x783e60`, `0x780e12`, `0x780e0a`, `0x780e2a`, and `0x780e90` to emit
+  service/status bytes. No FIFO/status consumer feeds `0xd04a`, `0xff1e`,
+  `0x1ed84`, `0x1edc6`, or `0x1ef6a`; the pixel-reproduction residual is only
+  FIFO-induced parser stall or a modeled bidirectional host reacting with
+  different later bytes, plus external protocol/register naming.
 - Font-selection cluster:
   designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
   0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and

@@ -475,6 +475,52 @@ The parser table does not itself define output pixels. It routes to handlers
 that mutate environment state, enqueue page objects, publish pages, or schedule
 payload readers. The command-family notes own those effects:
 
+Parser-table handoff anchors:
+
+- Top-level `ESC` mode:
+  after `ESC`, parser mode `1` maps `ESC E` to reset handler `0xcc52`,
+  `ESC *` to prefix helper `0x11ec8`, `ESC )` to secondary-font prefix
+  `0x12008`, `ESC (` to primary-font prefix `0x1201e`, `ESC &` to prefix
+  helper `0x11ec8`, `ESC =` to half-line-feed handler `0xf176`, `ESC 9` to
+  margin-clear handler `0xe9ba`, `ESC z` to status/display edge `0xcd86`, and
+  `ESC Y` to display-functions reader `0x12536`.
+- Page/layout `ESC &l` terminals:
+  page size `A` reaches `0xfc74`, page length `P` reaches `0xf9e8`, VFC table
+  payload `W` schedules `0x11f6e -> 0x12cfe`, VFC channel `V` reaches
+  `0x1280a`, orientation `O` reaches `0x10220`, VMI `C` reaches `0xcb00`,
+  lines-per-inch `D` reaches `0xc992`, top margin `E` reaches `0xece2`, text
+  length `F` reaches `0xea9e`, perforation skip `L` reaches `0xee64`, paper
+  source/page eject `H` reaches `0xef62`, and copies `X` reaches `0xeef0`.
+- Cursor/layout `ESC &a`, `ESC &k`, and `ESC &f` terminals:
+  left/right margins `&a#L/#M` reach `0xeb58` / `0xec0c`; horizontal/vertical
+  positions `&a#C/#H/#R/#V` reach `0xf39e`, `0xf416`, `0xf560`, and
+  `0xf60a`; HMI, line termination, and pitch mode `&k#H/#G/#S` reach
+  `0xca8c`, `0xedf8`, and `0xc390`; cursor stack `&f#S` reaches `0xf75e`;
+  macro id/control `&f#Y/#X` reach `0xe112` and `0xdd08`.
+- Raster, rectangle, and dot-position terminals:
+  raster resolution/start/end `*t#R`, `*r#A`, and `*r#B` reach `0x10808`,
+  `0x1075a`, and `0x107fa`; raster transfer `*b#W` schedules
+  `0x11f82 -> 0x105d0`; dot positions `*p#X/#Y` reach `0xf48c` and
+  `0xf692`; rectangle fill `*c#P` reaches `0x10898`; rectangle size/fill-id
+  terminals `*c#A/#B/#G/#H/#V` reach `0x10e68`, `0x10e22`, `0x10dce`,
+  `0x10a40`, and `0x10ae0`; downloaded-font controls `*c#D/#E/#F` reach
+  `0x15a56`, `0x15a18`, and `0x16df6`.
+- Font selection and downloaded-font terminals:
+  primary/secondary font attributes `ESC (s...` and `ESC )s...` reach the
+  shared wrappers `0x12082`, `0x12096`, `0x12046`, `0x1206e`, `0x120aa`, and
+  `0x1205a`; font designation terminals reach `0x120be`; downloaded
+  descriptor/payload `ESC (s#W` / `ESC )s#W` schedules `0x11f96`, then
+  restore dispatch calls `0x15d0a` for count zero or `0x16c14` for nonzero
+  payloads.
+
+The full flattened table audit is in [pcl-command-map.md](pcl-command-map.md):
+normal table `0x112a4` has `214` flattened rows, `78` unique nonzero handlers,
+and `5` zero-handler rows; alternate/data table `0x116f6` has `216`
+flattened rows, `17` unique nonzero handlers, and `130` zero-handler rows.
+Those zero-handler rows are meaningful parser behavior: they either reset
+parser scratch, preserve bytes for alternate/data append, or mark local
+terminators such as `ESC Z`; they are not anonymous imaging commands.
+
 - Printable text and direct controls:
   [direct-control-codes.md](direct-control-codes.md) documents cursor
   movement, text span flushing, and compact text objects.

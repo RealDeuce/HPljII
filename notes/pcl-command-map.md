@@ -18,6 +18,99 @@ regenerated with:
 tools/analyze_roms.py
 ```
 
+## Owner Summary
+
+Concept: this note owns the route from parsed PCL command form to firmware
+handler address and then to the checked-in semantic owner note. It does not own
+the full side effects of every handler; once parser loop `0x11774` selects a
+terminal handler, the command-family note named here owns RAM writes,
+downstream consumers, page/image objects, publication, render scheduling, and
+remaining boundaries.
+
+Primary route:
+
+- Host bytes enter through `0xa904` and parser wrapper/tokenizer
+  `0xda9a -> 0xdaf0 -> 0xdb74`.
+- Parser loop `0x11774` selects normal table `0x112a4` or alternate/data table
+  `0x116f6`.
+- Each table row is a six-byte tuple:
+  `byte_to_match, next_mode, handler_long`.
+- Prefix rows update parser mode and leave output to a later terminal row.
+  Terminal rows either call a handler, run the zero-handler terminal reset
+  path, schedule a delayed payload handler through `0x121cc`, append bytes in
+  alternate/data mode, or return to the parser without page output.
+- Handler-owner routing is the handoff to notes such as
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [direct-control-codes.md](direct-control-codes.md),
+  [transparent-print-data.md](transparent-print-data.md#owner-summary),
+  [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md), and
+  [downloaded-fonts.md](downloaded-fonts.md).
+
+Field groups:
+
+- Canonical parser state: mode byte `0x782999`, alternate/data flag
+  `0x782c18`, table roots `0x112a4` / `0x116f6`, six-byte parser records
+  rooted at `0x78299e`, parser callback pointer `0x78299a`, delayed pending
+  flag `0x782a1a`, delayed handler pointer `0x782a1c`, and saved delayed
+  record `0x782a20..0x782a25`.
+- Parser scratch: numeric and nonnumeric scratch cursors `0x782a3e` /
+  `0x782a26`, scratch buffers `0x782a42..` and `0x782a2a..`, and matched-byte
+  buffer `0x783196..0x783199` while tokenizer helpers are combining a command
+  family.
+- Firmware bookkeeping: prefix/setup handlers such as `0x11eb6`, `0x11ec8`,
+  `0x11eda`, `0x11ff6`, `0x12008`, and `0x1201e`; lowercase rewind helper
+  `0x11f4c`; delayed restore boundary `0x12218`; generic alternate/data drain
+  helpers `0x1228a` / `0x12328`; append sink `0xe002`; and control-pair side
+  helper `0xd99a`.
+- Canonical page/render state: none is owned by the dispatch table itself.
+  Page or render state begins when the selected handler writes cursor/layout,
+  font, macro, raster, rectangle, VFC, page-root, publication, or host-output
+  state in its owner note.
+- Hardware/external state: outside this map unless it changes the admitted byte
+  before `0x11774` or changes bytes consumed by a delayed payload owner.
+- Unknown: no ROM-local unknown remains for assigning generated normal-table
+  or alternate/data-table rows to a handler group or explicit no-output class;
+  unresolved behavior belongs to the referenced command-family owner notes.
+
+Writers and readers:
+
+- `0xda9a`, `0xdaf0`, and `0xdb74` write parser records and parser scratch.
+- `0x11774` reads parser mode, the active table row, alternate/data state, and
+  the matched byte, then calls the selected handler or terminal reset path.
+- `0x121cc` writes delayed-payload snapshots for binary payload families;
+  `0x12218` restores those records and calls the saved handler in normal mode.
+- Normal command-family handlers consume parsed record fields and then write
+  their own owner state. Alternate/data rows often suppress those writes and
+  preserve syntax or bytes through `0xe002`, `0x11f4c`, or delayed payload
+  boundaries.
+
+Output effect:
+
+- This map has no direct pixel output. Its output effect is routing: it tells a
+  byte-stream reader which semantic owner receives each parsed command form.
+- Parser artifacts such as normal `0x00`, `0x07`, `0x0b`, `ESC ?`, `ESC Z`,
+  and `ESC &lT/t` terminate or continue parser state without becoming imaging
+  commands.
+- Printable bytes, command handlers, delayed payload consumers, macro replay,
+  publication helpers, and host/status side channels can later create page
+  objects, render inputs, stored data, or host-visible response bytes in the
+  referenced owner notes.
+
+Evidence:
+
+- `generated/analysis/ic30_ic13_pcl_command_map.md` is the generated flat
+  command sequence table.
+- `generated/analysis/ic30_ic13_parser_dispatch_tables.md` is the table-row
+  extract for normal table `0x112a4` and alternate/data table `0x116f6`.
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`, and
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` anchor parser
+  dispatch, tokenizer, delayed restore, and payload scheduling behavior.
+- The checked-in `Parser Handler Owner Matrix` and
+  `Supported Stream Dispatch Matrix` below assign generated rows to owner notes
+  and concrete supported byte-stream routes.
+
 ## Parser Tables
 
 - Normal parser pointer table: `0x000112a4`.

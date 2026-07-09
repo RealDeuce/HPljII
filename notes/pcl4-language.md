@@ -600,6 +600,18 @@ Field groups for this index:
   `0x1393a` build text source state, `0x12f2e` writes compact bucket
   objects, and controls mutate cursor and pending-span state. Compact text
   reaches `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers.
+  Normal-table `NUL`, `BEL`, and `VT` rows (`0x00`, `0x07`, `0x0b`) are
+  explicit zero-handler parser entries: they reset parser mode and create no
+  page object, state mutation, publication request, or render work.
+  Alternate/data blank C0 rows `0x00` and `0x07..0x0f` append the byte through
+  `0xe002` instead of page output. Control-Z byte `0x1a` enters local setup
+  `0x11ea4` and mode `2`; normal nested `0x1a` reaches `0x120d2` and calls
+  `0xd04a(0x1a)` only when context byte `0x782eeb + 0x10 * 0x782f06` is `1`,
+  while normal `0x1a X` reaches `0x1219e` and calls `0xd04a(0x100)`.
+  Alternate/data siblings `0x1210c` and `0x121b2` append literal `0x1a` or
+  normalized `0x7f` through `0xe002`. `ESC ?` is consumed inside wrapper
+  `0xda9a`; `ESC Z` belongs to the local `ESC Y ... ESC Z` direct readers, not
+  a global drawing command.
   The concrete baseline `!!` stream maps bytes `21 21` to built-in
   `LINE_PRINTER` glyph `0x20`, compact object
   `00 00 00 00 00 00 00 02 20 00 01 20 02 02`, bridge context slot `0`, and
@@ -609,6 +621,8 @@ Field groups for this index:
   inputs.
   Evidence:
   [direct-control-codes.md](direct-control-codes.md),
+  [display-functions.md](display-functions.md),
+  [pcl-command-map.md](pcl-command-map.md),
   [font-context-metrics.md](font-context-metrics.md),
   `Minimal Stream Walkthrough: !!` in
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), and

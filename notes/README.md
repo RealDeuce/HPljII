@@ -153,7 +153,9 @@ checked-in ROM model:
    `0xff1e` into the page/control pool and
    [active-render-scheduler.md](active-render-scheduler.md): scheduler source
    `0x780eae`, active render pointer `0x783a18`, and bridge
-   `0x1ed84 -> 0x1edc6`.
+   `0x1ed84 -> 0x1edc6`. Its `Scheduler To Renderer Ownership` checkpoint is
+   the handoff map from page roots to render roots, band word, and first
+   renderer consumers.
 7. For pixels, finish in
    [page-raster-imaging.md](page-raster-imaging.md): render entry `0x1ef6a`,
    bucket dispatch `0x1efc2`, rule dispatch `0x1f446`, fixed-list dispatch

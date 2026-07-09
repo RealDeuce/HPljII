@@ -141,8 +141,9 @@ that later derives pixels from it.
 
 Canonical publication and bridge state:
 
-- `0xff1e` publishes a valid current root into a page/control pool record and
-  clears `0x78297a`.
+- Page/control root byte `+0x04`: active/published state. `0x10084` creates a
+  root with `+4 = 1`; `0xff1e` ignores non-active roots, publishes only
+  `+4 == 1`, then writes `+4 = 2` before clearing `0x78297a`.
 - `0x780ea6`: published page/control pool-head pointer written by `0xff1e`.
 - `0x782996`: publication flag set by `0xff1e`.
 - `0x1ed84`: active page-record copy entry that seeds render header words from

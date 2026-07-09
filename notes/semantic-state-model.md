@@ -11828,6 +11828,9 @@ ownership, not a separate renderer.
 
 - Canonical page root:
   - `0x78297a`: current page/control root pointer.
+  - root byte `+0x04`: active/published state. `0x10084` creates roots with
+    `+4 = 1`; `0xff1e` publishes only `+4 == 1`, then writes `+4 = 2` before
+    clearing `0x78297a`.
   - root `+0x1c`: bucket-head array for compact text and raster objects.
   - root `+0x20`: head/link slot for 0x100-byte stream chunks.
   - root `+0x24`: rectangle/rule list head.

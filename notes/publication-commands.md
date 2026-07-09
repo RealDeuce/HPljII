@@ -72,6 +72,9 @@ rebuilds are in [reset-default-environment.md](reset-default-environment.md).
 Canonical page-record fields:
 
 - `0x78297a`: current page root consumed by `0xff1e`.
+- Page root byte `+0x04`: publication state. `0x10084` creates active roots
+  with `+4 = 1`; `0xff1e` publishes only roots whose byte `+4` is `1`, then
+  writes `+4 = 2` before exposing the pool record through `0x780ea6`.
 - Page root `+0x1c`: compact bucket array. The covered publication streams
   publish a compact Line Printer `!` object with prefix
   `00 00 00 00 00 00 00 01 20 00 01`.

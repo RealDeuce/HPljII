@@ -74,7 +74,7 @@ rebuilds are in [reset-default-environment.md](reset-default-environment.md).
   - `mixed page-length stream refreshes cursor before printable page-record
     queue`
 
-## Publication Owner Summary
+## Owner Summary
 
 This note owns the page-control boundary where parser-visible commands stop
 mutating the current page root and publish a page/control record for later

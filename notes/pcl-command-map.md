@@ -220,10 +220,9 @@ boundaries:
 - `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append,
   and guarded `ESC z` status signaling:
   [display-functions.md](display-functions.md#owner-summary).
-- Reset, FF publication, page size, page-length zero/default, orientation,
-  paper source, and copies:
-  [publication-commands.md](publication-commands.md) plus reset provenance in
-  [reset-default-environment.md](reset-default-environment.md).
+- Reset, FF publication, page size, page-length zero/default, orientation, paper source,
+  and copies: [publication-commands.md](publication-commands.md#owner-summary) plus
+  reset provenance in [reset-default-environment.md](reset-default-environment.md).
 - Transparent print data `ESC &p#X`:
   [transparent-print-data.md](transparent-print-data.md).
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:
@@ -239,7 +238,7 @@ boundaries:
   helpers and bitmap composition in
   [page-raster-imaging.md](page-raster-imaging.md).
 - Vertical forms control table payloads and channel jumps:
-  [vertical-forms-control.md](vertical-forms-control.md).
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
 - Font selection, symbol sets, font attributes, pitch mode, SO/SI selected
   context switches, metric producer/consumer behavior, and built-in resource
   selection:
@@ -477,7 +476,7 @@ Normal table `0x112a4`:
   `0x11f82`, `0x11f96`, `0x11ff6`, `0x12008`, and `0x1201e`.
   Owners are [pcl-parser-core.md](pcl-parser-core.md),
   [transparent-print-data.md](transparent-print-data.md),
-  [vertical-forms-control.md](vertical-forms-control.md),
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [symbol-set-selection.md](symbol-set-selection.md), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
@@ -490,8 +489,8 @@ Normal table `0x112a4`:
   `0xf2a8`, `0xf39e`, `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, `0xf692`,
   `0xf75e`, `0xf9e8`, `0xfc74`, `0x10220`, `0x12622`, and `0x1280a`.
   Owners are [direct-control-codes.md](direct-control-codes.md),
-  [publication-commands.md](publication-commands.md),
-  [vertical-forms-control.md](vertical-forms-control.md), and
+  [publication-commands.md](publication-commands.md#owner-summary),
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary), and
   [font-context-metrics.md](font-context-metrics.md). These handlers write
   cursor, motion, selected-font slot, page geometry, span, publication, VFC, or
   page-control state; visible rows appear through later printable, span flush,
@@ -545,11 +544,11 @@ Alternate/data table `0x116f6`:
 - Alternate/data payload and macro exceptions:
   `0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`, `0xdd08`, and `0xcc52`.
   Owners are [transparent-print-data.md](transparent-print-data.md),
-  [vertical-forms-control.md](vertical-forms-control.md),
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
-  [publication-commands.md](publication-commands.md). Counted payloads and
+  [publication-commands.md](publication-commands.md#owner-summary). Counted payloads and
   macro-stop/reset behavior remain active because they delimit stored data or
   reset the environment; most ordinary page-state handlers are suppressed.
 - Alternate display and Control-Z append handlers:
@@ -978,7 +977,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   on a fresh root at coordinate `0x9001`. Wrap-hit `! ESC &l2V !` similarly
   publishes the old-page printable at coordinate `0xde02`, wraps to line `1`,
   writes y `176`, and queues the post-VFC printable at `0xb001`.
-  Evidence is [vertical-forms-control.md](vertical-forms-control.md),
+  Evidence is [vertical-forms-control.md](vertical-forms-control.md#owner-summary),
   `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`, fixtures
   `0x12cfe ESC &l#W loads vertical forms control state`, `mixed VFC definition
   stream consumes payload before printable page-record queue`, `mixed VFC
@@ -1058,7 +1057,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x1ef6a` dispatches the preserved compact object to `0x1effe`.
 
   Evidence is
-  [publication-commands.md](publication-commands.md),
+  [publication-commands.md](publication-commands.md#owner-summary),
   `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
   `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
@@ -1086,9 +1085,9 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   streams that change page-record fields, command-specific header words,
   bridge state, or row-construction inputs.
   Owner notes:
-  [publication-commands.md](publication-commands.md),
+  [publication-commands.md](publication-commands.md#owner-summary),
   [direct-control-codes.md](direct-control-codes.md), and
-  [vertical-forms-control.md](vertical-forms-control.md).
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
 - Transparent/display payload readers:
   `ESC &p#X` enters modes `5 -> 9`, reaches `0x11f5a`, and restores delayed
   handler `0x12452` through `0x121cc` / `0x12218`. `ESC Y ... ESC Z` enters

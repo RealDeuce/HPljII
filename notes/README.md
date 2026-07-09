@@ -46,7 +46,7 @@ standalone deliverables.
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
-  [vertical-forms-control.md](vertical-forms-control.md).
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
 - Manual PCL command names and syntax rows are indexed by
   [pcl4-language.md](pcl4-language.md). Its ROM Semantic Index maps PCL Level
   IV families to first parser handlers, representative byte streams,
@@ -244,9 +244,9 @@ checked-in ROM model:
 - [reset-default-environment.md](reset-default-environment.md) - documented
   `ESC E` reset, default-record producers, retained-record paths, and reset
   publication behavior.
-- [publication-commands.md](publication-commands.md) - documented publication
-  owner boundary, reset, FF, page-size, page-length zero/default, orientation,
-  paper-source, and copies routes to rendered page records or
+- [publication-commands.md](publication-commands.md#owner-summary) -
+  documented publication owner boundary, reset, FF, page-size, page-length
+  zero/default, orientation, paper-source, and copies routes to rendered page records or
   publication-adjacent state.
 - [transparent-print-data.md](transparent-print-data.md#owner-summary) -
   documented `ESC &p#X` delayed payload handling, text/fixed-space routing,
@@ -255,8 +255,9 @@ checked-in ROM model:
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
 - [rectangle-graphics.md](rectangle-graphics.md#owner-summary) - documented
   `ESC *c` rectangle/rule path to solid and patterned rule rendering.
-- [vertical-forms-control.md](vertical-forms-control.md) - documented
-  `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump output effects.
+- [vertical-forms-control.md](vertical-forms-control.md#owner-summary) -
+  documented `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump
+  output effects.
 - [font-context-metrics.md](font-context-metrics.md) - documented font
   context selection, page-root slot install, glyph maps, and descriptor/span
   metric checkpoints.

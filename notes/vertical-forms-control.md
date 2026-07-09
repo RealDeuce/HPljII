@@ -46,6 +46,96 @@ Primary fixtures:
 - `0x1280a VFC alternate high-start recovery entries`
 - `0x12b96 default VFC table channel convention`
 
+## Owner Summary
+
+Concept: this note owns the vertical forms control command family from parser
+dispatch to table state, cursor movement, and page-boundary effects. It covers
+delayed `ESC &l#W` table-definition payloads, lowercase same-family delayed
+record preservation, default-table rebuilds, `ESC &l#V` channel jumps,
+selector-zero behavior, wrap/recovery branches, and the publication split
+where pre-VFC page objects remain renderable on the old page.
+
+Primary route:
+
+- Parser final `0x11f6e` schedules delayed `ESC &l#W` handler `0x12cfe`
+  through `0x121cc`; restore `0x12218` later calls `0x12cfe` with the saved
+  six-byte command record.
+- Table-load route:
+  `0x12cfe -> 0xdace payload bytes -> 0x782dde table words
+  -> 0x782dc2/0x782dd2 text-bottom caches`.
+- Default-table route:
+  `0x12cfe count 0` or layout refresh `0xe5e2 -> 0x12b96
+  -> 0x782dde..0x782edd`.
+- Channel-jump route:
+  `0x1280a -> VMI/top/current-y line computation -> 0x782dde scan
+  -> 0xf06e/0xf34a -> 0x782c8a/0x782c8e`.
+- Page-boundary route:
+  selected `0x1280a` branches call `0xf124 -> 0xff1e` before the following
+  printable byte allocates a fresh page root.
+- Visible output then follows the ordinary printable/page-record/render owners
+  after VFC has changed cursor state or published the old page.
+
+Field groups:
+
+- Canonical VFC table: 128 16-bit words at `0x782dde..0x782edd`; selectors
+  are one-based and map to bit `1 << (selector - 1)`.
+- Canonical layout inputs: VMI `0x783160`, top offset `0x782dce`, vertical
+  cursor `0x782c8e`, horizontal cursor `0x782c8a`, left margin `0x782dd6`,
+  and right margin `0x782dda`.
+- Canonical line bounds: VFC bottom cache `0x782dc2`, text-bottom cache
+  `0x782dd2`, last VFC/page line `0x782ede`, last text line `0x782edf`, and
+  last printable text line `0x782ee0`.
+- Canonical page output: current root `0x78297a`, publication helper
+  `0xf124`, and page-root finalizer `0xff1e`.
+- Derived/cache: line numbers derived from VMI/top/current-y, text-bottom
+  conversions through coordinate helpers, and default-table channel patterns
+  from `0x12b96`.
+- Parser scratch: command-record cursor `0x78299e`, delayed payload state
+  from `0x121cc`, restored `ESC &l#W` records, and bytes consumed by `0xdace`.
+- Firmware bookkeeping: modified-layout flag `0x782ee1`, pending-width latch
+  `0x782a58`, pending cursor/text latch `0x782a6d`, and pending span-enable
+  byte `0x783184`.
+- Unknown: manual HP names for `0x782ede`, `0x782edf`, and `0x782ee0` remain
+  inferred, but their ROM roles are tied to the cited writers and consumers.
+
+Writers and readers:
+
+- `0x12cfe` writes table bytes, clears unused words, derives VFC/text-bottom
+  caches, and clears `0x782ee1`.
+- `0x12b96` writes the complete default 128-word VFC table and VFC bottom
+  cache.
+- `0xe5e2` writes refreshed page layout, default VFC table state, and static
+  font context before VFC, printable, or macro replay consumers run.
+- `0xfe54` writes line-bound caches consumed by table load and channel jumps.
+- `0x1280a` reads selector, VMI, top offset, current cursor, line-bound
+  caches, and table words, then writes cursor state or calls page publication.
+- `0xf06e`, `0xf34a`, and `0xf124` consume margin, span, and page-root state
+  for VFC cursor reset, span flush, and page publication.
+
+Output effect:
+
+- `ESC &l#W` has no immediate pixels; it changes the table and bottom caches
+  consumed by later `ESC &l#V`, vertical overflow, and printable placement.
+- `ESC &l#V` does not draw directly; it moves the cursor before the next
+  printable byte queues a page object.
+- Selector-zero, wrap, and target-after-text branches can publish the current
+  page before the next printable byte starts a fresh page.
+- Non-publishing recovery branches only rewrite cursor state and leave the
+  current page root active.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst` and the
+  direct-control/page-publication listings named above.
+- Fixture evidence is named in the Primary fixtures list above; those streams
+  pin delayed table load, default-table construction, channel convention,
+  cursor-only moves, recovery, wrap, and page-publication splits.
+- No unresolved ROM-local middle edge remains for the documented `ESC &l#W`
+  table-definition or `ESC &l#V` channel-jump contract. Remaining boundaries
+  are manual naming of line-count fields and external physical correlation,
+  not parser, table, page-record, or render-dispatch behavior.
+
 ## Field Groups
 
 Canonical VFC table:

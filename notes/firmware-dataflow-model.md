@@ -609,6 +609,116 @@ Evidence and unresolved edges:
   page-object shape, a publication field, or a render-row input. Physical
   behavior after `0x780e8f` / `0x780e26` remains hardware/MMIO correlation.
 
+## Raster And Rectangle Graphics Object Boundary
+
+Raster and rectangle commands become pixels only after they have built page
+objects. The command handlers own setup state, payload gating, clipping, and
+object insertion; publication and render dispatch consume the resulting bucket
+or rule-list objects later. This boundary is the graphics-family bridge from
+parsed command records to page-image objects.
+
+Raster writers and consumers:
+
+- Resolution/start/end commands write raster-control state before any payload
+  row is accepted. `ESC *t#R` reaches `0x10808`, `ESC *r#A` reaches
+  `0x1075a`, and `ESC *r#B` reaches `0x107fa`; the active raster block lives
+  at `0x783170..0x783182`.
+- Delayed transfer `ESC *b#W` reaches arming handler `0x11f82`, stores
+  handler `0x105d0` through `0x121cc`, and is restored by `0x12218`.
+- Transfer handler `0x105d0..0x10752` rereads the restored record count from
+  the parser buffer, clips/caps or drains payload bytes, writes accepted row
+  state in `0x783170`, and calls `0x13070` only for accepted nonnegative rows.
+- Row producer `0x13070..0x13250` ensures a current root through `0x10084`,
+  derives bucket index/key fields `0x782a7c..0x782a80`, allocates or reuses
+  class-`0x80..0xff` bucket objects under root `+0x1c`, and uses `0x138de` to
+  copy accepted payload bytes into the encoded object body.
+- Dense rows can split across multiple encoded-span objects through
+  `0x132b6..0x13382`. These are page-object construction branches; renderer
+  `0x1f88e` later consumes whichever object chain the producer built.
+
+Rectangle/rule writers and consumers:
+
+- Rectangle setup commands write width, height, fill selector, area-fill id,
+  and pattern state before final fill. The documented setup writers include
+  `0x10e68`, `0x10e22`, `0x10dce`, `0x10a40`, and `0x10ae0`.
+- Final fill `ESC *c#P` reaches `0x10898..0x108f2`. It maps missing or `0P`
+  to solid selector `7`, maps gray and HP pattern selectors through the ROM
+  tables, and calls `0x10b80` only when the effective width and height are
+  nonzero.
+- Clipper/record builder `0x10b80` converts current cursor and rectangle
+  setup into a source record, applying page extent and orientation bounds
+  before insertion.
+- Rule producer `0x13386 -> 0x133aa` derives bucket/key fields through
+  `0x134d6`, allocates a 14-byte rule node through `0x1381c`, and inserts it
+  under page-root `+0x24` in ordered list position. Allocation failure leaves
+  the existing rule-list head unchanged.
+- `0x1edc6` later copies source root `+0x24` to render root `+0x1c` and
+  normalizes rule continuation fields before renderer `0x1f446` consumes the
+  list.
+
+Publication and render handoff:
+
+- Raster objects publish and bridge as bucket-chain objects:
+  source root `+0x1c` becomes render root `+0x18`; dispatcher `0x1efc2`
+  sends class `0x80..0xff` objects to encoded-raster renderer `0x1f88e`.
+- Rule objects publish and bridge as rule-list objects:
+  source root `+0x24` becomes render root `+0x1c`; renderer `0x1f446`
+  dispatches selector `7` to solid helper `0x1f596` and non-solid selectors
+  to pattern helper `0x1f4e0`.
+- Mixed streams prove these object classes compose through one page root. The
+  path
+  `0xd04a`, `0x10898`, delayed `0x105d0`, `0xff1e`, `0x1ed84`,
+  `0x1edc6`, and `0x1ef6a` renders compact text, selector-7 rules, and
+  encoded raster rows in the documented bucket/rule order.
+
+State classification:
+
+- Canonical graphics state:
+  raster block `0x783170..0x783182`, rectangle setup fields, current root
+  `0x78297a`, raster bucket objects under root `+0x1c`, rule nodes under root
+  `+0x24`, published source roots, and render roots `+0x18` / `+0x1c`.
+- Derived/cache state:
+  raster bucket/key fields `0x782a7c..0x782a80`, dense-row split capacities,
+  rectangle clipped source records, rule bucket/key fields, render-band fields
+  `0x783a20`, `0x783a22`, and `0x783a28`, and rule continuation words
+  normalized by `0x1edc6`.
+- Parser scratch:
+  six-byte graphics command records, delayed `ESC *b#W` snapshot
+  `0x782a20..0x782a25`, restored transfer count, payload drain bytes, and
+  handler-local setup parameters before committed graphics fields.
+- Firmware bookkeeping:
+  delayed-payload fields `0x782a1a` / `0x782a1c`, stream allocator cursors
+  `0x782a70` / `0x782a72` / `0x782a76`, no-room/retry state, publication flag
+  `0x782996`, and render-work progress.
+- Hardware/external state:
+  none for ROM-local raster/rectangle page-object construction or bitmap
+  helper dispatch. Physical engine pacing starts after the rendered band
+  buffer exists.
+
+Evidence and unresolved edges:
+
+- Detail owners are [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Controlling worked paths are `Raster Row`, `Raster Transfer Gates And Modes`,
+  `Rectangle Rule`, `Rectangle Rule Selectors And Clipping`, and `Mixed
+  Text/Rule/Raster Page Record`.
+- Key listings and reports include
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_rectangle_handlers_010898.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+  `generated/analysis/ic30_ic13_raster_graphics_flow.md`.
+- Exact unresolved boundaries are not parser dispatch, delayed restore,
+  page-root allocation, publication, bridge, or render-dispatch ownership for
+  the documented graphics streams. Remaining ROM-local work starts from byte
+  streams that change `0x105d0` gate/cap/drain behavior, `0x13070` /
+  `0x13250` object shape, `0x132b6` dense-row splitting, rectangle clipping,
+  `0x133aa` list ordering/allocation, bridge fields, or helper row
+  construction in `0x1f88e`, `0x1f446`, `0x1f596`, or `0x1f4e0`.
+
 ## Publication And Page-Control Boundary
 
 Page-boundary commands do not draw their own pixels. They decide when the

@@ -119,7 +119,9 @@ checked-in ROM model:
    payload stop points. For layout routes, use
    `Page Geometry And Layout State Boundary` to connect page-length, VMI, LPI,
    top-margin, text-length, wrap, and perforation commands to later placement,
-   overflow, publication, and render effects.
+   overflow, publication, and render effects. For raster and rectangle routes,
+   use `Raster And Rectangle Graphics Object Boundary` to connect graphics
+   setup and payload commands to page objects and render helpers.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under

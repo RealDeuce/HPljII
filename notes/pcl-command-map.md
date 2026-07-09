@@ -40,7 +40,7 @@ Primary route:
   path, schedule a delayed payload handler through `0x121cc`, append bytes in
   alternate/data mode, or return to the parser without page output.
 - Handler-owner routing is the handoff to notes such as
-  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary),
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
@@ -171,7 +171,7 @@ delayed payload through `0x12218`, reset parser record and scratch cursors, and
 produce no direct page-record output. Since they match explicit table rows,
 they do not reach the selected-context unmatched-byte fallback that can send
 other bytes to printable handler `0xd04a`. The low-level path is documented in
-[pcl-parser-core.md](pcl-parser-core.md).
+[pcl-parser-core.md](pcl-parser-core.md#owner-summary).
 
 The alternate/data table has blank mode-zero C0 rows for `0x00` and
 `0x07..0x0f`. Those rows preserve the current byte in the append stream
@@ -209,7 +209,7 @@ boundaries:
 - Host fetch, parser selection, parser records, delayed payload restore, blank
   rows, `ESC ?`, `ESC Z`, and `ESC &lT/t`:
   [host-byte-fetch.md](host-byte-fetch.md),
-  [pcl-parser-core.md](pcl-parser-core.md), and
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary), and
   [firmware-dataflow-model.md](firmware-dataflow-model.md) worked paths
   `Host Byte Source Priority`, `Command Record And Payload Dispatch`, and
   `Explicit No-Output Parser Rows`.
@@ -284,7 +284,7 @@ these ROM-defined boundaries before jumping to command-family notes:
    six-byte parser record `0x78299e..0x7829a3`, parser cursor
    `0x78299a`, parsed numeric value fields, and delayed-payload restore
    state. The parser core contract is in
-   [pcl-parser-core.md](pcl-parser-core.md).
+   [pcl-parser-core.md](pcl-parser-core.md#owner-summary).
 3. Parser loop `0x11774` indexes either normal table `0x112a4` or
    alternate/data table `0x116f6`. Prefix rows change the command-family mode;
    lowercase finals either keep the family mode or call rewind helper
@@ -326,7 +326,7 @@ classes before any page pixels can be derived:
   rows append through `0xe002`. They preserve bytes for macro/data contexts
   but do not immediately call `0xd04a`, cursor-control handlers, page-layout
   handlers, or render producers. The append-vs-execute split is documented in
-  [pcl-parser-core.md](pcl-parser-core.md) and
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary) and
   [macro-data-chain.md](macro-data-chain.md#owner-summary).
 - Explicit no-output parser byte:
   normal-table blank C0 rows `0x00`, `0x07`, and `0x0b` match table entries,
@@ -476,7 +476,7 @@ Normal table `0x112a4`:
 - Parser setup, prefixes, and delayed-payload arming:
   `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11f5a`, `0x11f6e`,
   `0x11f82`, `0x11f96`, `0x11ff6`, `0x12008`, and `0x1201e`.
-  Owners are [pcl-parser-core.md](pcl-parser-core.md),
+  Owners are [pcl-parser-core.md](pcl-parser-core.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md),
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
@@ -538,7 +538,7 @@ Alternate/data table `0x116f6`:
 - Parser setup and family continuation:
   `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11f4c`, `0x11fd2`,
   `0x11fe4`, and `0x11ff6`.
-  Owners are [pcl-parser-core.md](pcl-parser-core.md),
+  Owners are [pcl-parser-core.md](pcl-parser-core.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [symbol-set-selection.md](symbol-set-selection.md). In alternate/data mode,
   these preserve parser syntax, rewind lowercase continuation records, or run

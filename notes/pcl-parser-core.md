@@ -34,7 +34,7 @@ Primary parser-core fixtures:
 - `0x1228a consumes absolute delayed payload count without echo`
 - `0x12358 direct alternate path echoes positive payload bytes only`
 
-## Parser Front-Door Owner Summary
+## Owner Summary
 
 This note owns the transition from one admitted byte to a parser outcome. It
 does not own command-family side effects after a terminal handler starts

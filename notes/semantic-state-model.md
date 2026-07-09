@@ -1183,7 +1183,7 @@ status names for the selected record bytes and the hardware bits behind
 
 Status: composed as the parser setup and stateful tokenizer-helper cluster
 for `0x11ea4..0x11f4c`. The low-level ledger remains in
-[pcl-parser-core.md](pcl-parser-core.md), with disassembly evidence in
+[pcl-parser-core.md](pcl-parser-core.md#owner-summary), with disassembly evidence in
 `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`,
 `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`, and
 summary evidence in
@@ -1419,7 +1419,7 @@ preserves the unified state block and fixture ledger.
 
 Status: composed as the `ESC Y` command-family reader from parser dispatch to
 append/text-routing loop. The low-level ledger remains in
-[pcl-parser-core.md](pcl-parser-core.md), with disassembly evidence in
+[pcl-parser-core.md](pcl-parser-core.md#owner-summary), with disassembly evidence in
 `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
 
 Concept: `ESC Y` is not a one-byte mode bit in this firmware. It enters an

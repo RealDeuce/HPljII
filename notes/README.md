@@ -30,13 +30,14 @@ standalone deliverables.
 - Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md#owner-summary), which
   documents `0xa904` source priority, data-chain replay, direct host paths, and
   the normalized byte passed to parser wrapper `0xda9a`.
-- Parser state is owned by [pcl-parser-core.md](pcl-parser-core.md): parser
-  mode `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
+- Parser state is owned by
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary): parser mode
+  `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
   normal/alternate tables, and delayed payload restore
-  `0x121cc -> 0x12218`. Its `Inbound Byte Outcome Contract` is the
-  branch-level owner for deciding whether a normalized byte becomes printable
-  output, alternate/data append, a matched command handler, a zero-handler
-  reset, a no-match fallback, callback continuation, or parser-external return.
+  `0x121cc -> 0x12218`. Its `Inbound Byte Outcome Contract` is the branch-level
+  owner for deciding whether a normalized byte becomes printable output,
+  alternate/data append, a matched command handler, a zero-handler reset, a
+  no-match fallback, callback continuation, or parser-external return.
 - Command dispatch is indexed by
   [pcl-command-map.md](pcl-command-map.md#owner-summary).
   Individual command families then move to owner notes such as
@@ -120,10 +121,11 @@ checked-in ROM model:
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch.
 3. Classify the parser outcome in
-   [pcl-parser-core.md](pcl-parser-core.md): follow `0xda9a` / `0xdaf0` /
-   `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`,
-   six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and
-   delayed restore `0x121cc -> 0x12218`. For counted binary payload commands,
+   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` /
+   `0xdaf0` / `0xdb74` into parser loop `0x11774`, preserving parser mode
+   `0x782999`, six-byte records at `0x78299e..`, alternate/data flag
+   `0x782c18`, and delayed restore `0x121cc -> 0x12218`. For counted binary
+   payload commands,
    use `Binary Payload Lifecycle` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md). For
    definition-mode or replayed bytes, use `Alternate/Data And Macro Replay
@@ -227,7 +229,7 @@ checked-in ROM model:
 - [host-byte-fetch.md](host-byte-fetch.md#owner-summary) - documented
   `0xa904` host byte-source multiplexer, direct I/O handshakes, caller
   semantics, and semantic checkpoint.
-- [pcl-parser-core.md](pcl-parser-core.md) - documented parser byte
+- [pcl-parser-core.md](pcl-parser-core.md#owner-summary) - documented parser byte
   wrapper, tokenizer, dispatch loop, delayed-payload handoff, and semantic
   checkpoint.
 - [display-functions.md](display-functions.md#owner-summary) - documented

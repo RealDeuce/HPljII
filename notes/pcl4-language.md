@@ -648,7 +648,12 @@ Field groups for this index:
   CR handler `0xf02c` applies CR+LF and makes the following printable queue at
   compact coordinate `0x3b00`. Cursor stream `ESC &a2C!` commits x through
   `0xf4ca` before the following printable queues at compact coordinate
-  `0x0a02`.
+  `0x0a02`. Cursor-stack stream `ESC &f0S ESC &a2C ESC &f1S!` uses
+  `0xf75e`, `0xf39e`, `0xf75e`, and `0xd04a`: selector `0` pushes cursor x
+  `0x782c8a` and `y + 0x782dbe` into stack `0x782c96..0x782d36`; selector
+  `1` pops when above base `0x782c96`, restores x/y with extent clamps, clears
+  pending/right-limit latches, and lets the following printable queue from the
+  restored cursor instead of the intervening `ESC &a2C` position.
   Evidence:
   [direct-control-codes.md](direct-control-codes.md) and
   `Text Cursor And Direct Controls` in

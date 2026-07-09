@@ -4782,9 +4782,20 @@ Address-level cluster map:
   `0x782dce`, current y `0x782c8e`, and line caches
   `0x782ede/0x782edf/0x782ee0`, then either resets cursor x/y for the next
   printable byte or calls `0xf124 -> 0xff1e` so the old page is published
-  before following printable output queues on a fresh page. Residuals are only
-  variants that change VFC table bytes, channel target choice, publication
-  split, or following object coordinates.
+  before following printable output queues on a fresh page. The adjacent
+  page-layout route `ESC &l#L` is owned by
+  [direct-control-codes.md](direct-control-codes.md) and
+  [pcl-command-map.md](pcl-command-map.md): handler `0xee64` rewinds the
+  parser record, clears perforation-skip byte `0x783191` for selector `0`,
+  sets it for selector `1`, and leaves other selectors without a state write.
+  Shared overflow helper `0xf36c` is the visible consumer; it reads cursor y
+  `0x782c8e`, text-bottom/perforation limit `0x782dc2`, and byte `0x783191`,
+  then calls `0xf124 -> 0xff1e` only when the nonzero limit is exceeded and
+  perforation skip is enabled. Otherwise it returns without publishing the
+  current page, so later printable/raster objects stay on the same page root.
+  Residuals are only variants that change VFC table bytes, channel target
+  choice, publication split, perforation limit/cursor/skip state, or following
+  object coordinates.
 
 - Printable text, direct controls, and cursor placement:
   `!!`, `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`,

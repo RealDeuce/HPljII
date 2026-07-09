@@ -4728,13 +4728,25 @@ Address-level cluster map:
   `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and final `T` writer
   `0xc7e0`; common refresh `0xc580` calls `0x13eb8`, candidate filtering,
   `0x144d2` current-context install, and `0x14c64` map rebuild. Symbol-set
-  finals through `0x120be -> 0x1be22` write requested words
-  `0x782ef4` / `0x782f04`; final `@` uses ROM default-symbol table helpers;
-  final `X` calls `0x17708` and may select built-in or inline/downloaded
-  contexts, or exit before map rebuild and preserve prior visible output.
-  SO/SI controls `0xc6b8` / `0xc68a` select slot `1` or `0`, and `0xc428`
-  installs the selected context into page-root slot state before later
-  printable bytes queue context-indexed compact objects.
+  finals through `0x120be -> 0x1be22` rewind parser record `0x78299e` and,
+  for ordinary final bytes, compute requested symbol word
+  `(abs(parameter) << 5) + final - 0x40`, writing slot `0` at `0x782ef4` or
+  slot `1` at `0x782f04` before setting dirty flags `0x782f2c = 1` and
+  `0x782f2d = 1`. Final `X` restores the previous requested word instead of
+  accepting that ordinary-final computed word, sets marker `0x78287b`, calls
+  font-id selector `0x17708(slot, parameter)`, and enters `0xc580` with dirty
+  flag `2`; successful paths select built-in or inline/downloaded contexts,
+  while non-selected exits stop before `0x14c64` and preserve prior printable
+  output. Final `@` dispatches through table `0x1bde2`: `@0`, `@1`, and `@2`
+  copy ROM/default or previous requested words, `@3` runs the default-font
+  path, and other parameters restore the old requested word. Common refresh
+  `0xc580` is the gate from request state to printable state: dirty `1` can
+  call candidate refresh `0x13eb8`, dirty `2` skips that candidate refresh,
+  `0x144d2` writes current contexts `0x782ee6` / `0x782ef6`, and `0x14c64`
+  rebuilds maps `0x782f32` / `0x783032`. SO/SI controls `0xc6b8` / `0xc68a`
+  select slot `1` or `0`, and `0xc428` installs the selected context into
+  page-root slot state before later printable bytes queue context-indexed
+  compact objects.
 - Page/font scheduler handoff cluster:
   quiesce and resource callers reach `0x19dd2` from `0x447a`, `0x4760`,
   `0xbb16`, and `0x1a3c2`; teardown and scan paths include

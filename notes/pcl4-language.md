@@ -375,6 +375,8 @@ decimal value.
 | Pitch mode compatibility | `ESC &k#S` |
 | VMI in 1/48 inch increments | `ESC &l#C` |
 | Lines per inch | `ESC &l#D` |
+| End-of-line wrap on | `ESC &s0C` |
+| End-of-line wrap off | `ESC &s1C` |
 
 ### Cursor Position
 
@@ -466,8 +468,6 @@ decimal value.
 | Display functions on | `ESC Y` |
 | Display functions off | `ESC Z` |
 | Transparent print data | `ESC &p#X` followed by data |
-| End-of-line wrap on | `ESC &s0C` |
-| End-of-line wrap off | `ESC &s1C` |
 
 ### Status Queries
 

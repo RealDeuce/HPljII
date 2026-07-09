@@ -893,6 +893,70 @@ Reproduction rule:
   coordinates choose buckets, segments, and fallback splits rather than causing
   a parser-time full-page bitmap allocation.
 
+### Page Versus Band Model
+
+The ROM assembles a page as object records, then renders selected bands from
+that object graph. It does not build one full-page bitmap while parsing the
+host byte stream.
+
+Parser-time page state:
+
+- Current page pointer `0x78297a` owns one page/control root. Text, downloaded
+  glyphs, spans, raster rows, rules, and fixed-list output are linked below
+  root fields `+0x1c`, `+0x24`, and `+0x28`.
+- Stream storage helper `0x1381c` allocates variable-size object chunks and
+  updates allocator cursors `0x782a70`, `0x782a72`, and `0x782a76`.
+- Object producers such as `0x12f2e`, `0x12714`, `0x13070`, `0x13250`,
+  `0x133aa`, and `0x136d2` store object headers, packed coordinates, source
+  keys, and payload bytes. They do not choose the final destination buffer.
+
+Publication-time snapshot:
+
+- Publication `0xff1e` moves the current root into the page/control pool,
+  writes pool-head state such as `0x780ea6`, sets publication flag
+  `0x782996`, and clears `0x78297a`.
+- After this point, the published pool record is the page image authority.
+  Later parser commands start a new current root unless they publish or mutate
+  scheduler-visible state.
+
+Render-work copy:
+
+- Scheduler state selects a published source record through `0x780eaa` and
+  active source `0x780eae`.
+- Render-work selector state `0x7820bc` / `0x7820c0` alternates paired render
+  records `0x7820c4` and `0x782128`; active pointer `0x783a18` tells
+  `0x1ef6a` which render record to consume.
+- Bridge `0x1ed84 -> 0x1edc6` copies page roots into render roots: source
+  `+0x1c` to render `+0x18`, source `+0x24` to render `+0x1c`, source
+  `+0x28` to render `+0x20`, and context slots `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
+
+Band-time rendering:
+
+- Active loop `0x1eba4..0x1ecd2` advances render work word `+0x10`, waits or
+  throttles when capacity is insufficient, and calls `0x1ef6a` when the
+  selected band can render.
+- Band setup `0x1ef86` derives current-band rows `0x783a20`, remainder
+  `0x783a22`, destination base `0x783a28`, and stride `0x783a1c` from the
+  active render work record.
+- Bucket dispatcher `0x1efc2` indexes render root `+0x18` by active band word
+  `+0x10`; rule renderer `0x1f446` consumes bridged rule continuation state;
+  fixed-list renderer `0x1f756` consumes render root `+0x20` on its own band
+  cadence.
+- Destination writes go to the current band buffer rooted at `0x783a28`, or
+  to fallback storage rooted at `0x7810b4 + byte_pair_offset` for helper paths
+  that carry rows past the current band. The fallback bytes are still derived
+  from the published object graph, not from reparsing host bytes.
+
+Object ordering:
+
+- Within a band, `0x1ef6a` always runs bucket-chain objects first, rule-list
+  objects second, and fixed-list objects last.
+- Bucket-chain order is the linked order produced before publication. Rule
+  and fixed-list bridge setup initializes continuation fields such as rule
+  `+0x0c` and fixed-list `+0x0a`, so later band calls resume the same objects
+  rather than rebuilding them from parser records.
+
 ## Render Scheduling
 
 The active render scheduler is documented in

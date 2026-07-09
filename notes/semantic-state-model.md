@@ -4599,6 +4599,17 @@ selector mismatch only copies the remembered word and installs no context.
     `0x782f32` or `0x783032`, applies `0x14f16`, and calls `0x1440c` to
     publish the new cache key. The map arrays are therefore derived/cache
     state, not independent parser state.
+  - The narrower active-object predicate `0x14ba4..0x14c5c` compares a
+    caller-supplied signature against one selected candidate record before a
+    cache-preserving return. It requires bytes `+0x18`, `+0x26`, `+0x27`, and
+    `+0x19` to match, range-checks word `+0x1a` when byte `+0x19` is zero,
+    range-checks word `+0x20` with a `+/-0x19` tolerance, and compares the
+    `0x158be` selected-symbol word against the requested word. Roman-8
+    selected word `0x0115` can still match when `0x783f00` is nonzero, and
+    four compatibility pairs at `0x15840` can also allow a mismatch. Its
+    nonzero return preserves the active selected-font state that later
+    printable bytes consume; it does not queue page objects or rebuild maps
+    by itself.
   - Uppercase font-selection terminal wrappers call one request writer and then
     common refresh immediately: `0x12046` calls point-size writer `0xc6ec`,
     `0x1206e` calls style writer `0xc780`, `0x12082` calls spacing writer
@@ -5092,7 +5103,8 @@ install events.
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`: candidate
   activation.
 - `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`: selected
-  object dispatch, map rebuild, and active context update.
+  object dispatch, active-object signature predicate `0x14ba4..0x14c5c`, map
+  rebuild, and active context update.
 - `generated/disasm/ic30_ic13_font_context_install_00c428.lst`: current-font
   context record install into page-root slots.
 - `generated/disasm/ic30_ic13_page_root_font_slot_scan_0196c4.lst`: page-root

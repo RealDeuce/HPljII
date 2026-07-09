@@ -5873,6 +5873,12 @@ Address-level cluster map:
   `0xc428(slot)` reads the selected longword from `0x782ee6` or `0x782ef6`;
   `0xc4fc` finds or installs that longword in one of 16 page-root font slots,
   and later `0x1edc6` copies those slots into render-record contexts.
+  The selected-font cache path is part of the byte-stream contract:
+  `0x13a48` compares the selected snapshot, while `0x14ba4..0x14c5c` can
+  accept an active-object signature match by record bytes, bounded size/range
+  checks, `0x158be` symbol word, Roman-8 `0x0115` compatibility, or the
+  four-pair table at `0x15840`. A cache-preserving return keeps the existing
+  map/context state for later printable bytes; it does not queue page objects.
   Printable source helper `0x1393a` consumes the selected context and
   `0x782f32` or `0x783032` to map the original host byte to a glyph byte
   before `0xd04a -> 0x12f2e -> 0x1387c` queues compact objects.

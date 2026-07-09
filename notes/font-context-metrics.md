@@ -17,6 +17,7 @@ Evidence:
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
 - `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
+- `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
 - `generated/analysis/ic30_ic13_font_context_bridge.md`
@@ -388,6 +389,39 @@ the selected map through the resource or inline path, calls `0x14f16`, then
 `0x782f32` and `0x783032` as pure parser outputs. They are derived caches
 validated against selected candidate `0x7828a8`, active symbol words, and the
 snapshot fields above.
+
+The adjacent active-object predicate at `0x14ba4..0x14c5c` is a narrower
+cache-match test over a caller-supplied active-object signature. It reads the
+candidate record pointer from the slot passed in `A1`, walks a signature tuple
+from `A2`, and returns the slot pointer in `D7` only when every field matches.
+The tested record fields are byte `+0x18`, bytes `+0x26/+0x27`, byte `+0x19`,
+an optional word-range check around word `+0x1a` when `+0x19` is zero, word
+`+0x20` within a `+/-0x19` tolerance, and the `0x158be(selected_record)`
+symbol word. A selected symbol mismatch can still pass when the selected word
+is Roman-8 `0x0115` and `0x783f00` is nonzero, or when the `(selected,
+requested)` word pair appears in the four-entry compatibility table at
+`0x15840`. Otherwise the helper returns zero.
+
+That predicate does not write the selected maps or page objects. It classifies
+whether an already-active record is compatible enough for the caller to keep
+existing selected-font state. Its field groups are:
+
+- canonical inputs:
+  selected active-object slot and record fields
+  `+0x18/+0x19/+0x1a/+0x20/+0x26/+0x27`, requested signature bytes from the
+  caller, and the symbol word returned by `0x158be`;
+- derived/cache inputs:
+  the four compatibility pairs at `0x15840` and flag `0x783f00`;
+- firmware bookkeeping:
+  tuple cursor `A2`, local record pointer `A0`, and return value `D7`;
+- output effect:
+  no immediate pixels, but a nonzero return preserves the current map/cache
+  path that later `0xd04a -> 0x1393a` printable bytes consume.
+
+The exact unresolved boundary for this helper is not a renderer edge: callers
+that build new `A2` signature tuples can expose additional compatibility
+cases, but the predicate body itself is bounded by
+`generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`.
 
 ## Visible Built-In Selection Boundary
 

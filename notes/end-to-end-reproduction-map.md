@@ -2585,6 +2585,11 @@ Render work selection and bridge:
   `0x782128`, writes active render pointer `0x783a18`, initializes geometry
   through `0x1ee9e` when required, or reuses same-geometry fields through
   helper `0x33238`.
+- In the documented scheduler-selection fixture, published source record
+  `0x00d0eaa0` is copied into active source `0x780eae`; selector byte
+  `0x7820bc` switches from `0` to `1`; render work record `0x782128` is
+  selected; and `0x783a18 = 0x782128` becomes the active render pointer
+  consumed by `0x1ef6a`.
 - `0x1ed84` copies active source header fields from `0x780eae` into the
   selected render work record and calls `0x1edc6`.
 - `0x1edc6` copies source bucket root `+0x1c` to render root `+0x18`, source
@@ -2616,6 +2621,22 @@ Active band loop:
   `+0x10` and throttle word `+0x0e`.
 - `0x1ef86` derives per-band caches `0x783a20`, `0x783a22`, `0x783a28`, and
   stride `0x783a1c` before object dispatch starts.
+- The active-loop render fixture starts with active selector `0x7820bc = 1`,
+  paired selector `0x7820c0 = 0`, active record `0x782128`, and paired record
+  `0x7820c4`. With active `+6 = 20`, active remaining rows
+  `+0x10 - +0x16 = 3`, and paired remaining rows `3`, computed capacity is
+  `14`, so `0x1ec8e..0x1ecac` calls `0x1ef6a`, increments active band word
+  `+0x10` from `3` to `4`, and increments throttle word `+0x0e` from `7` to
+  `8`.
+- The capacity-wait sibling uses active `+6 = 10`, active remaining `4`, and
+  paired remaining `1`, producing capacity `5`; `0x1ecb0..0x1ecd2` clears
+  `+0x0e`, signals wait object `0x780182`, and waits through `0x10d0(2)`
+  without calling `0x1ef6a`.
+- The downloaded-glyph scheduler fixture proves the loop-produced band words:
+  after `0xff1e` / `0x1ed84` seed render words `+0x10/+0x16` from zeroed
+  source `+0x18`, `0x1eba4` produces render calls for band words `0..9` and
+  leaves work word `+0x10 = 10`. Only copied buckets `1` and `9` dispatch
+  compact objects in that stream, with bucket `9` producing page row `86`.
 
 Output effect:
 
@@ -2684,7 +2705,8 @@ Evidence:
   `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`,
   `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`,
   `generated/analysis/ic30_ic13_page_record_bridge.md`, and
-  `generated/analysis/ic30_ic13_render_path_references.md`.
+  `generated/analysis/ic30_ic13_render_path_references.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Render Dispatch Walkthrough
 

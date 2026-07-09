@@ -887,7 +887,14 @@ Field groups for this index:
   all pixel-producing families above converge after command-family page-object
   production. Current page root `0x78297a` owns compact bucket roots at
   `+0x1c`, rule roots at `+0x24`, fixed-list roots at `+0x28`, and context
-  slots at `+0x2c..+0x68`. Publication `0xff1e` freezes the active root into
+  slots at `+0x2c..+0x68`. Helper `0x10084` ensures the root and shared
+  allocator `0x1381c` advances stream cursors `0x782a70`, `0x782a72`, and
+  `0x782a76`. Compact text, downloaded glyphs, portrait spans, and encoded
+  raster rows write bucket objects under root `+0x1c` through `0x12f2e` /
+  `0x1387c`, `0x12714` / `0x13520` / `0x135f0`, and `0x13070` / `0x13250`.
+  Rectangle/rule objects write the ordered list at root `+0x24` through
+  `0x13386 -> 0x133aa`; fixed-list or landscape span objects write root
+  `+0x28` through `0x136d2`. Publication `0xff1e` freezes the active root into
   a page/control pool record; bridge `0x1ed84 -> 0x1edc6` copies source roots
   into render-record roots `+0x18`, `+0x1c`, `+0x20`, and context slots
   `+0x24..+0x60`. Render entry `0x1ef6a` loads active render record

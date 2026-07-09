@@ -5325,6 +5325,26 @@ Address-level cluster map:
   helper tables. Residual work must change clipping, transfer acceptance/drain
   outcome, allocator state, object bytes, bridge roots, or renderer helper
   inputs.
+
+  Concrete stream examples are now part of the route index. Chained
+  `ESC *c12a5b0P` reaches handlers `0x10e68`, `0x10e22`, and `0x10898`, then
+  queues selector-7 rule object
+  `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` under page-root `+0x24`.
+  Retried no-room publication can requeue the same selector path after
+  `0x10d22 -> 0xff1e -> 0x10084`; render bridge `0x1edc6` copies the rule
+  list to render-record `+0x1c`, and `0x1f446` dispatches solid selector `7`
+  to `0x1f596`. Primary raster stream
+  `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` queues mode-0 raster object
+  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` under page-root `+0x1c`; its
+  class byte `0x80` selects encoded raster dispatch, mode byte `0` selects
+  helper `0x1f8da`, word `+0x06 = 4` is copied payload capacity, and key
+  `+0x08 = 0x0001` is the packed coordinate. Dense accepted mode-0 rows can
+  split before publication into `0x00f2` then `0x003a` objects; `0x13250`
+  inserts the later object at the bucket head, so the published chain is
+  newest-first when `0x1ed84` / `0x1ef6a` consume it. Evidence is
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix),
+  [rectangle-graphics.md](rectangle-graphics.md), and
+  [raster-graphics.md](raster-graphics.md).
 - Publication and render-scheduler cluster:
   reset, FF, page-size, page-length zero/default, orientation, paper-source,
   copies, VFC publication, and no-room retries converge on `0xff1e`.

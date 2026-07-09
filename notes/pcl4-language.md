@@ -612,6 +612,29 @@ Field groups for this index:
   [host-byte-fetch.md](host-byte-fetch.md),
   [macro-data-chain.md](macro-data-chain.md), and
   [pcl-command-map.md](pcl-command-map.md).
+- Parser records and delayed payload admission:
+  parser loop `0x11774` indexes the normal table `0x112a4` or alternate/data
+  table `0x116f6` using mode byte `0x782999`. Tokenizers `0xdb74` and
+  `0xdaf0` build six-byte command records rooted at `0x78299e`: flags at
+  `+0`, final byte at `+1`, signed integer parameter at `+2`, and signed
+  fractional parameter at `+4`. Lowercase finals can leave a family record
+  pending or rewind through helper `0x11f4c` instead of running a terminal
+  semantic handler immediately. Delayed-payload setup `0x121cc` rewinds the
+  active record cursor, sets pending byte `0x782a1a`, stores handler pointer
+  `0x782a1c`, and saves the current six-byte record at `0x782a20..0x782a25`.
+  Terminal restore `0x12218` copies that saved record back to the live parser
+  record, clears the pending flag, and calls the saved handler in normal mode.
+  In alternate/data mode it routes through `0x12358`, which calls wrapper
+  `0x1228a` only when that exact generic wrapper was armed; otherwise positive
+  payload counts append through `0xe002`. This shared boundary is why
+  transparent data `0x12452`, VFC table load `0x12cfe`, raster transfer
+  `0x105d0`, downloaded descriptor `0x15d0a`, and downloaded payload
+  `0x16c14` all reopen restored parser records before consuming raw bytes.
+  Evidence:
+  [pcl-parser-firmware.md](pcl-parser-firmware.md),
+  [pcl-command-map.md](pcl-command-map.md), and
+  `Command Record And Payload Dispatch` in
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 - Printable bytes and C0 controls:
   mode-zero `0x11774` dispatches printable bytes to `0xd04a`; CR/LF/FF/HT/BS
   use `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`. `0xd04a` /

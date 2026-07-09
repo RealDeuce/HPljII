@@ -766,7 +766,15 @@ Field groups for this index:
   selectors return without page output. These rows create no page object by
   themselves; later `ESC (s#W` / `ESC )s#W` descriptor or payload handlers
   consume the selected id/character/current-record state before printable text
-  can queue a downloaded-glyph compact object.
+  can queue a downloaded-glyph compact object. Concrete chain
+  `ESC *c4660d37e5F` stays in parser mode `16` across lowercase finals:
+  `4660d` writes `0x782f2e = 0x1234` through `0x15a56`, `37e` writes
+  `0x782f30 = 0x25` through `0x15a18`, and `5F` dispatches through
+  `0x16df6 -> 0x16e86 -> 0x17108` to mark the current downloaded-font record
+  by moving flag/count state between `0x782782` and `0x782786`. A following
+  nonzero `ESC )s#W` payload handler `0x16c14` consumes `0x782f2e`,
+  `0x782f30`, current-record pool `0x782640..0x782776`, and payload budget
+  `0x783140` before a later printable can select the installed glyph.
   Selected maps affect later printable bytes; downloaded glyphs install
   records that later queue compact objects and render through `0x1effe` /
   `0x1f0d2` / `0x1f1f0` / `0x1f264`. Concrete final-`X` stream

@@ -253,7 +253,7 @@ boundaries:
   [downloaded-fonts.md](downloaded-fonts.md).
 - Macro ID/control commands, macro definition, execute/call replay, overlay
   publication, and data-chain byte replay:
-  [macro-data-chain.md](macro-data-chain.md).
+  [macro-data-chain.md](macro-data-chain.md#owner-summary).
 - External-ready service and page/font scheduler handoff:
   [external-ready-service.md](external-ready-service.md),
   [page-font-scheduler.md](page-font-scheduler.md), and
@@ -278,7 +278,7 @@ these ROM-defined boundaries before jumping to command-family notes:
    to the same `D7` byte contract before the parser sees the byte. Source
    priority and replay ownership are documented in
    [host-byte-fetch.md](host-byte-fetch.md) and
-   [macro-data-chain.md](macro-data-chain.md).
+   [macro-data-chain.md](macro-data-chain.md#owner-summary).
 2. `0xda9a` / `0xdaf0` / `0xdb74` maintain parser state byte `0x782999`,
    six-byte parser record `0x78299e..0x7829a3`, parser cursor
    `0x78299a`, parsed numeric value fields, and delayed-payload restore
@@ -326,7 +326,7 @@ classes before any page pixels can be derived:
   but do not immediately call `0xd04a`, cursor-control handlers, page-layout
   handlers, or render producers. The append-vs-execute split is documented in
   [pcl-parser-core.md](pcl-parser-core.md) and
-  [macro-data-chain.md](macro-data-chain.md).
+  [macro-data-chain.md](macro-data-chain.md#owner-summary).
 - Explicit no-output parser byte:
   normal-table blank C0 rows `0x00`, `0x07`, and `0x0b` match table entries,
   run the terminal reset path through `0x12218`, reset parser scratch, and
@@ -525,11 +525,11 @@ Normal table `0x112a4`:
   later printable bytes and compact-glyph render dispatch.
 - Macro command handlers:
   `0xdd08` and `0xe112`.
-  Owner is [macro-data-chain.md](macro-data-chain.md). `0xe112` stores the
-  current macro id; `0xdd08` defines, stops, executes, calls, overlays,
-  deletes, or marks macro records. Execute/call/overlay paths re-enter
-  `0xa904 -> 0x11774`, so their page effects are the same command-family
-  paths used by live host bytes.
+  Owner is [macro-data-chain.md](macro-data-chain.md#owner-summary). `0xe112`
+  stores the current macro id; `0xdd08` defines, stops, executes, calls,
+  overlays, deletes, or marks macro records. Execute/call/overlay paths
+  re-enter `0xa904 -> 0x11774`, so their page effects are the same
+  command-family paths used by live host bytes.
 
 Alternate/data table `0x116f6`:
 
@@ -537,7 +537,7 @@ Alternate/data table `0x116f6`:
   `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11f4c`, `0x11fd2`,
   `0x11fe4`, and `0x11ff6`.
   Owners are [pcl-parser-core.md](pcl-parser-core.md),
-  [macro-data-chain.md](macro-data-chain.md), and
+  [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [symbol-set-selection.md](symbol-set-selection.md). In alternate/data mode,
   these preserve parser syntax, rewind lowercase continuation records, or run
   setup without the normal immediate page-state side effect.
@@ -547,7 +547,7 @@ Alternate/data table `0x116f6`:
   [vertical-forms-control.md](vertical-forms-control.md),
   [raster-graphics.md](raster-graphics.md),
   [downloaded-fonts.md](downloaded-fonts.md),
-  [macro-data-chain.md](macro-data-chain.md), and
+  [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [publication-commands.md](publication-commands.md). Counted payloads and
   macro-stop/reset behavior remain active because they delimit stored data or
   reset the environment; most ordinary page-state handlers are suppressed.
@@ -1654,7 +1654,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   page-finalization detour: `0xff1e` tests `0x782a92`, `0x782a94`, macro
   record presence, and root retry flag, then `0xe4f4` creates a non-replay
   frame so the stored payload is parsed into the page being published. Evidence
-  is [macro-data-chain.md](macro-data-chain.md),
+  is [macro-data-chain.md](macro-data-chain.md#owner-summary),
   `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
   `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
   fixtures `macro execute data-chain replay feeds page-record stream`,
@@ -1712,7 +1712,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   Both variants cross the same `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`
   publication and render bridge as live host input.
   Owner note:
-  [macro-data-chain.md](macro-data-chain.md).
+  [macro-data-chain.md](macro-data-chain.md#owner-summary).
 - Status and model-response side channels:
   `ESC *r#K` enters mode `7` and `ESC *s#^` enters mode `6`; both dispatch
   wrapper `0x12034`, which appends setup record `0x11efe` and calls

@@ -8108,8 +8108,8 @@ installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: insta
 ## Macro Definition And Data-Chain Replay
 
 The standalone command-family contract is in
-[macro-data-chain.md](macro-data-chain.md). This section preserves the unified
-state block and detailed fixture ledger.
+[macro-data-chain.md](macro-data-chain.md#owner-summary). This section
+preserves the unified state block and detailed fixture ledger.
 
 Status: anchored as one command-family and end-to-end replay cluster.
 The low-level handler ledger is preserved in
@@ -8914,10 +8914,11 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
   span-flush overlay payload publication, transparent-data overlay payload
   publication, or the disabled/missing-record/retry-flag overlay skip gates.
   Remaining macro risk must change a concrete overlay boundary documented in
-  [macro-data-chain.md](macro-data-chain.md): replay-frame fields, skip-gate
-  state, parser/delayed-payload dispatch, page-object fields, bridge roots,
-  continuation fields, or ROM-derived row construction. It is not the
-  `0xdd08` selector-4 to `0xff1e` visible-output path or its skip gates.
+  [macro-data-chain.md](macro-data-chain.md#owner-summary): replay-frame
+  fields, skip-gate state, parser/delayed-payload dispatch, page-object
+  fields, bridge roots, continuation fields, or ROM-derived row construction.
+  It is not the `0xdd08` selector-4 to `0xff1e` visible-output path or its skip
+  gates.
 
 ## Raster Transfer Gate And Encoded Rows
 

@@ -45,7 +45,7 @@ standalone deliverables.
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md),
   [downloaded-fonts.md](downloaded-fonts.md),
-  [macro-data-chain.md](macro-data-chain.md), and
+  [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [vertical-forms-control.md](vertical-forms-control.md).
 - Manual PCL command names and syntax rows are indexed by
   [pcl4-language.md](pcl4-language.md). Its ROM Semantic Index maps PCL Level
@@ -238,9 +238,9 @@ checked-in ROM model:
 - [direct-control-codes.md](direct-control-codes.md#owner-summary) - documented
   CR/LF/FF/HT/BS, line-termination mode, cursor stack, and cursor/margin
   control paths to page-record output.
-- [macro-data-chain.md](macro-data-chain.md) - documented macro definition,
-  execute/call replay, overlay publication, and data-chain byte replay to
-  page-record output.
+- [macro-data-chain.md](macro-data-chain.md#owner-summary) - documented macro
+  definition, execute/call replay, overlay publication, and data-chain byte
+  replay to page-record output.
 - [reset-default-environment.md](reset-default-environment.md) - documented
   `ESC E` reset, default-record producers, retained-record paths, and reset
   publication behavior.

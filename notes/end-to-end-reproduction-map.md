@@ -73,6 +73,35 @@ strobes, and ready signals. Current ROM evidence does not yet map those
 signals to exact MMIO bits; the board-facing boundary is tracked in
 [dc-controller-engine.md](dc-controller-engine.md).
 
+## Reader Entry Points
+
+Use these entry points according to the artifact in hand:
+
+- For a manual PCL command name or syntax row, start with the ROM Semantic
+  Index in [pcl4-language.md](pcl4-language.md). That index maps PCL Level IV
+  command families to first parser handlers, concrete stream examples,
+  page-object bytes, render routes, and owner notes. It is a routing map, not
+  the full proof.
+- For a concrete byte stream, use `Stream Trace Procedure` below, then the
+  `Supported Stream Entry Points` cluster map. Those sections keep the trace
+  byte-oriented: source bytes, parser records, command handler, state fields,
+  page objects, publication, bridge, and render helper.
+- For a known supported family, use `Reproducible Byte-Stream Families`. That
+  section records the current end-to-end contracts for printable/direct
+  controls, layout, font selection, no-output rows, host/status side channels,
+  transparent/display readers, raster/rectangle imaging, VFC, macro replay,
+  publication, downloaded fonts, and mixed page-image composition.
+- For completion/risk work, use `Current Residual Edge Index`,
+  `Pixel-Perfect Coverage And Residual Risks`, and `Next Disassembly Targets`.
+  New ROM tracing should begin only when a stream changes a named parser
+  field, command state field, page-object byte, publication/bridge field,
+  render helper input, or exact unresolved boundary named there.
+
+The same semantic claim should appear at the highest useful level only once:
+the language map names the route, this file composes the route into the
+host-byte-to-pixel model, and the owner note carries the low-level ledger with
+handler addresses, fields, consumers, evidence, and unresolved boundaries.
+
 ## Shared Page-Object Contract
 
 The current checked-in model treats page content as queued ROM objects, not as

@@ -716,7 +716,15 @@ Field groups for this index:
   through `0x13070` / `0x13250`, and copy payload via `0x138de`. Encoded
   raster objects publish through page roots and render via
   `0x1ef6a -> 0x1efc2 -> 0x1f88e`; dense split allocation is bounded at
-  `0x132b6..0x13382`. Concrete stream
+  `0x132b6..0x13382`. Resolution handler `0x10808` updates encoded mode
+  `0x783178` and scale `0x78317e` only while active byte `0x783182` is clear.
+  Start handler `0x1075a` also exits early while `0x783182` is set; otherwise
+  it sets the active byte, seeds origin `0x78317a` from portrait x cursor
+  `0x782c8a`, landscape y cursor `0x782c8e`, or left edge depending on the
+  `*r#A` selector, copies that origin to baseline `0x783170`, and recomputes
+  row byte limit `0x783180`. End handler `0x107fa` clears only `0x783182`,
+  leaving origin, baseline, mode, scale, limit, and row state for later
+  transfers or resolution changes. Concrete stream
   `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` queues encoded raster object
   `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`; byte `+0x04 = 0x80`
   selects raster dispatch, byte `+0x05 = 0` selects mode-0 literal helper

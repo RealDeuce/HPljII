@@ -329,6 +329,74 @@ landscape insertion; and fixture
 `0x1edc6 page-record bridge normalizes rule and fixed lists` for the
 root-to-render bridge.
 
+## Render-Record Bridge Contract
+
+`0x1ed84` and `0x1edc6` are the publication-to-render boundary for page
+objects. They do not parse host bytes and they do not allocate new page
+objects. Their job is to copy the scheduler-selected page/control record into
+the render work record shape that `0x1ef6a` consumes.
+
+Entry `0x1ed84` takes the destination render-record pointer from its stack
+argument, loads the active source page/control record from `0x780eae`, and
+copies source header words before calling `0x1edc6`:
+
+- `0x1ed96`: source word `+0x18` to render word `+0x0a`.
+- `0x1ed9c`: source word `+0x1a` to render word `+0x0c`.
+- `0x1eda2`: source word `+0x18` to render word `+0x16`.
+- `0x1eda8`: source word `+0x18` to render word `+0x10`.
+- `0x1edae`: clear render word `+0x0e`.
+
+Those fields are derived render-work state. The canonical page-image content
+remains the source record's bucket roots, list roots, and context slots.
+
+Helper `0x1edc6` returns immediately when the source record pointer is zero.
+For a nonzero source it copies the three page-object roots without merging
+them:
+
+- `0x1ede2`: source bucket root `+0x1c` to render root `+0x18`.
+- `0x1ede8`: source rule/list root `+0x24` to render root `+0x1c`.
+- `0x1edee`: source fixed-list root `+0x28` to render root `+0x20`.
+
+The bucket root is a pass-through pointer copy. Compact text, downloaded
+glyph, segment-list span, and encoded-raster object bytes remain in their
+producer-written object chains until `0x1efc2` dispatches them from render
+root `+0x18`.
+
+The rule and fixed-list roots are copied and then normalized in place for
+rendering:
+
+- `0x1edf4..0x1ee0e` walks render root `+0x1c`. Each rule node has selector
+  byte `+0x05` ORed with `0x10`, and source height word `+0x0a` copied into
+  render continuation word `+0x0c`.
+- `0x1ee10..0x1ee5e` walks render root `+0x20`. Each fixed-list node has byte
+  `+0x05` ORed with `0x10`, source height word `+0x08` copied into remaining
+  rows word `+0x0a`, byte `+0x0c` set to `1`, and byte `+0x0d` set to `8`.
+
+Those mutations are derived/cache render state. They are not new parser state
+and they are not new page objects. They define the exact object shape later
+seen by `0x1f446` for rule-list rendering and by `0x1f756` for fixed-list
+rendering.
+
+Finally, `0x1ee60..0x1ee94` copies 16 source context slots from
+`+0x2c..+0x68` to render slots `+0x24..+0x60`. Compact renderer helpers such
+as `0x1f008` and `0x1f354` consume those render slots when resolving selected
+font or downloaded-glyph resources for bucket objects. The bridge therefore
+preserves the context selected when the page object was queued; it does not
+re-run font selection.
+
+Output effect: the bridge determines which queued page roots are visible to
+the render entry and which normalized continuation fields rule/fixed helpers
+consume. Pixel order is still determined later by `0x1ef6a`: bucket root
+`+0x18` first, rule root `+0x1c` second, and fixed root `+0x20` last.
+
+Evidence: `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+`0x1ed84..0x1ee9c`; generated report
+`generated/analysis/ic30_ic13_page_record_bridge.md`; fixtures
+`0x1ed84 active page-record copy seeds render-record header words`,
+`0x1edc6 page-record bridge copies compact bucket and context slots`,
+`0x1edc6 page-record bridge normalizes rule and fixed lists`, and
+`0x1edc6 bridge records render-record destination offsets`.
+
 ## Readers And Consumers
 
 - Printable text through `0xd04a` / `0x12f2e` consumes the current root and

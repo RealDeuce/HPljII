@@ -848,6 +848,184 @@ Parser-table handoff anchors:
   restore dispatch calls `0x15d0a` for count zero or `0x16c14` for nonzero
   payloads.
 
+### Command Family Owner Matrix
+
+This matrix is the semantic handoff after parser table dispatch. It names the
+checked-in owner note that must be used for parsed inputs, field writes,
+readers/consumers, page or status effect, evidence, and unresolved boundaries.
+
+Printable text:
+
+- Dispatch anchors:
+  mode-zero `0xd04a`, source builder `0x1393a`, and queue path
+  `0x12f2e -> 0x1387c`.
+- Immediate class:
+  page-object producer.
+- Owner and boundary:
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  `Worked Path: Printable Glyph`; queues compact objects under page-root
+  `+0x1c`.
+
+Direct controls and placement:
+
+- Dispatch anchors:
+  CR/LF/FF/HT/BS handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
+  `0xf2a8`; `&a` handlers `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`,
+  `0xf560`, `0xf60a`; `&k` handlers `0xca8c`, `0xedf8`, and `0xc390`.
+- Immediate class:
+  mostly state-only, with FF publication or span flush when predicates hit.
+- Owner and boundary:
+  [direct-control-codes.md](direct-control-codes.md),
+  `State-Only Command Dependency Map`, `Mixed Direct Controls`, and
+  `Cursor And Margin Placement`; later `0xd04a`, `0x12714`, or `0xff1e`
+  consumes the written state.
+
+Page setup and publication:
+
+- Dispatch anchors:
+  reset `0xcc52`, page-size/orientation/source/copies `0xfc74`, `0x10220`,
+  `0xef62`, `0xeef0`, page length `0xf9e8`, and FF `0xf0f0`.
+- Immediate class:
+  environment writer and publication boundary.
+- Owner and boundary:
+  [publication-commands.md](publication-commands.md),
+  [reset-default-environment.md](reset-default-environment.md),
+  `Reset And Default Environment`, and `FF Publication`; current roots publish
+  through `0xff1e`.
+
+Transparent/display data:
+
+- Dispatch anchors:
+  `ESC &p#X` `0x11f5a -> 0x12452`, normal `ESC Y` `0x12536`, alternate
+  `ESC Y` `0x12120`, and Control-Z siblings `0x120d2`, `0x1219e`,
+  `0x1210c`, and `0x121b2`.
+- Immediate class:
+  direct reader or delayed payload; may re-enter text output or append storage.
+- Owner and boundary:
+  [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md), and `Binary Payload
+  Lifecycle`; visible bytes rejoin `0xd04a` / `0xd0f0`, while alternate bytes
+  append through `0xe002`.
+
+VFC:
+
+- Dispatch anchors:
+  table payload `0x11f6e -> 0x12cfe` and channel jump `0x1280a`.
+- Immediate class:
+  payload state writer, then cursor/page movement consumer.
+- Owner and boundary:
+  [vertical-forms-control.md](vertical-forms-control.md),
+  `Vertical Forms Control`, and `VFC Table And Channel Branch Matrix`;
+  channel jumps consume table state before later text or publication.
+
+Raster graphics:
+
+- Dispatch anchors:
+  resolution/start/end `0x10808`, `0x1075a`, `0x107fa`, and delayed transfer
+  `0x11f82 -> 0x105d0`.
+- Immediate class:
+  setup writers plus encoded-span page-object producer.
+- Owner and boundary:
+  [raster-graphics.md](raster-graphics.md), `Raster Row`, and
+  `Raster Transfer Gates And Modes`; accepted payloads queue encoded-span
+  objects through `0x13070 -> 0x13250`.
+
+Rectangle/rule graphics:
+
+- Dispatch anchors:
+  size/fill setup `0x10e68`, `0x10e22`, `0x10dce`, `0x10a40`,
+  `0x10ae0`, and final fill `0x10898`.
+- Immediate class:
+  setup writers plus rule-object producer.
+- Owner and boundary:
+  [rectangle-graphics.md](rectangle-graphics.md), `Rectangle Rule`, and
+  `Rectangle Rule Selectors And Clipping`; final fill queues rule nodes
+  through `0x10b80`, `0x13386`, and `0x133aa`.
+
+Font selection and metrics:
+
+- Dispatch anchors:
+  symbol/font terminals `0x120be`, `0x12082`, `0x12096`, `0x12046`,
+  `0x1206e`, `0x120aa`, `0x1205a`, plus refresh/selection paths `0xc580`,
+  `0x13eb8`, and `0x14c64`.
+- Immediate class:
+  selected-context/map state writer.
+- Owner and boundary:
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [built-in-resource-scan.md](built-in-resource-scan.md); later printable
+  bytes consume maps, metrics, HMI, and context slots.
+
+Downloaded fonts and glyphs:
+
+- Dispatch anchors:
+  `*c#D/#E/#F` handlers `0x15a56`, `0x15a18`, `0x16df6`, and
+  descriptor/payload `0x11f96 -> 0x15d0a/0x16c14`.
+- Immediate class:
+  resource-record writer and later glyph source.
+- Owner and boundary:
+  [downloaded-fonts.md](downloaded-fonts.md), `Downloaded Glyph`,
+  `Nonzero Resource Payload`, and downloaded-glyph boundary paths; later
+  printable rendering consumes installed fixed/current records.
+
+Macro and data-chain replay:
+
+- Dispatch anchors:
+  macro id/control `0xe112`, `0xdd08`, definition append `0xe002`,
+  execute/call frame `0xe418`, and overlay frame `0xe4f4`.
+- Immediate class:
+  stored-byte producer or replay source.
+- Owner and boundary:
+  [macro-data-chain.md](macro-data-chain.md), `Macro Execute Replay`, and
+  `Macro Overlay Replay Publication`; replayed bytes return through `0xa904`
+  and then ordinary parser routes.
+
+Host/status side channels:
+
+- Dispatch anchors:
+  model-ID/status `0x12034 -> 0x122be`, output FIFO `0xb090`, worker
+  `0xae2c`, status helper `0xaece`, page-status helper `0x2888`, and guarded
+  `ESC z` `0xcd86`.
+- Immediate class:
+  host-visible bytes or service state, no page object.
+- Owner and boundary:
+  [errors-and-status.md](errors-and-status.md),
+  [host-byte-fetch.md](host-byte-fetch.md), and
+  `Host/Status Side-Channel Boundary`; effects are FIFO/status/message state
+  unless a host reacts with later bytes.
+
+Parser artifacts and no-output rows:
+
+- Dispatch anchors:
+  zero-handler rows `0x00`, `0x07`, `0x0b`, `ESC ?`, `ESC Z`,
+  unimplemented `ESC &lT/t`, and generic drain `0x1228a` / `0x12328`.
+- Immediate class:
+  parser reset, direct-reader terminator, or drained payload.
+- Owner and boundary:
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md), and `Explicit No-Output Parser
+  Rows`; no page-object producer runs in normal mode.
+
+Field grouping at this handoff:
+
+- Canonical parser state:
+  parser mode `0x782999`, command-record cursor `0x78299e`, table family
+  selected by `0x112a4` or `0x116f6`, current six-byte record, delayed-payload
+  fields `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, and alternate/data
+  flag `0x782c18`.
+- Canonical page/output state:
+  begins only in the owner row: cursor/layout/font fields, current root
+  `0x78297a`, page objects, macro/data-chain frames, host-output FIFO, or
+  status/message fields.
+- Parser scratch:
+  numeric and byte scratch buffers, lowercase chaining state, synthetic font
+  side records, local reader bytes, and restored payload records before a
+  family consumer commits durable state.
+- Unresolved boundaries:
+  belong to the owner row. The dispatch table itself has no remaining
+  ROM-local unknown for assigning a supported terminal handler to an owner.
+
 The full flattened table audit is in [pcl-command-map.md](pcl-command-map.md):
 normal table `0x112a4` has `214` flattened rows, `78` unique nonzero handlers,
 and `5` zero-handler rows; alternate/data table `0x116f6` has `216`

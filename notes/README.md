@@ -107,7 +107,9 @@ checked-in ROM model:
    parsed inputs, RAM writers, readers/consumers, output effect, and residual
    boundary. The parser command-dispatch anchors in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the
-   common terminal-handler handoffs before the full flattened table.
+   common terminal-handler handoffs before the full flattened table. The
+   `Command Family Owner Matrix` in the same file gives the compact
+   handler-to-owner handoff and output class for each command family.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under

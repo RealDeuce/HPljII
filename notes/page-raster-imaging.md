@@ -173,6 +173,97 @@ middle edge between copied render roots and class dispatch for the object
 classes named here. Remaining unresolved edges are object-class-specific and
 are listed under those sections with their address boundaries.
 
+## Pixel Generation Owner Summary
+
+Concept: this note owns the ROM-local pixel-generation layer after active
+render scheduling presents a render work record to `0x1ef6a`. It maps copied
+render roots to object-class dispatchers, selects compact/text, segment-list,
+encoded-raster, rule, and fixed-list helpers, derives current-band or fallback
+destinations, and documents the direct row stores those helpers perform.
+
+Primary route:
+
+- Scheduler owner selects active render work pointer `0x783a18` and band word
+  render `+0x10`.
+- `0x1ef6a` calls `0x1ef86`, which derives current-band caches
+  `0x783a20`, `0x783a22`, `0x783a28`, and destination stride `0x783a1c`.
+- `0x1ef6a` then dispatches in fixed order: bucket chain through `0x1efc2`,
+  rule list through `0x1f446`, and fixed list through `0x1f756`.
+- Bucket objects at render `+0x18` split by object byte `+4`: compact
+  `0x00..0x3f` enters `0x1effe`, segment-list `0x40..0x7f` enters
+  `0x1f812`, and encoded raster `0x80..0xff` enters `0x1f88e`.
+- Compact objects dispatch through `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
+  `0x1f264`; rule objects dispatch to solid helper `0x1f596` or pattern
+  helper `0x1f4e0`; fixed-list objects render through `0x1f7b0`.
+
+Field groups:
+
+- Canonical render roots: bucket root `+0x18`, rule root `+0x1c`, fixed-list
+  root `+0x20`, and context/resource slots `+0x24..+0x60`, all copied by
+  `0x1edc6`.
+- Canonical object state: bucket object class byte `+4`, selector/mode byte
+  `+5`, count/capacity word `+6`, packed coordinate/key word `+8`, and payload
+  bytes from `+0x0a`; rule/fixed-list selector, key, dimension, and
+  continuation fields documented in the object dispatch checkpoint.
+- Derived/cache state: band split and destination caches `0x783a20`,
+  `0x783a22`, `0x783a28`, destination stride `0x783a1c`, offset table
+  `0x7839f8..`, compact context cache `0x783a2c`, phase byte `0xa001`, and
+  fallback buffer base `0x7810b4 + byte_pair_offset`.
+- Parser scratch: none. Parser records and delayed payload state have already
+  been reduced to page-record objects before publication.
+- Firmware bookkeeping: compact phase byte `0x783a46`, wide-mode caches
+  `0x783a40..0x783a48`, object continuation fields such as rule `+0x0c` and
+  fixed-list `+0x0a`, and exact invalid computed-jump boundaries for compact
+  helper out-of-range cases.
+- Hardware/external state: physical consumption of the already-rendered band by
+  formatter/DC hardware after ROM row-buffer writes.
+
+Writers and readers:
+
+- Page-record producers and bridge write the object roots consumed here:
+  `0x12f2e` / `0x1387c`, `0x12714` / `0x13520` / `0x135f0`, `0x13070` /
+  `0x13250`, `0x13386` / `0x133aa`, `0x136d2`, and `0x1edc6`.
+- `0x1ef86` writes per-band derived caches.
+- `0x1efc2`, `0x1effe`, `0x1f812`, `0x1f88e`, `0x1f446`, and `0x1f756` read
+  class roots and object fields to choose row helpers.
+- `0x1f3d4`, `0x1f414`, and `0x1f626` derive destination pointers and split
+  rows between the current band and fallback buffer.
+- Row-copy helpers from `0x1fa5c..0x207ac`, compact-wide helper `0x2f27c`,
+  encoded-raster mode helpers `0x1f8da`, `0x1f8e6`, `0x1f920`, and `0x1f9c6`,
+  segment-list helper `0x1f862`, and rule/fixed helpers write the actual ROM
+  row data.
+
+Output effect:
+
+- Pixel composition is direct store in dispatch order, not a hidden
+  destination read-modify-write blend. Bucket-chain objects render first,
+  rule-list objects render second, and fixed-list objects render third.
+- Compact text/downloaded glyph pixels come from the copied render context
+  slot plus compact object selector/glyph fields.
+- Encoded raster pixels come from queued raster object mode and payload bytes.
+- Rule pixels come from queued dimensions, selector/pattern state, and clipped
+  continuation rows.
+- Segment-list and fixed-list pixels come from their bridged object fields and
+  continuation counters.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` anchors
+  `0x1ef6a`, `0x1efc2`, and compact class dispatch.
+- `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  anchors compact text/downloaded-glyph helper selection.
+- `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst` anchors
+  destination, rule, segment-list, and fixed-list helpers.
+- `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst` anchors
+  encoded raster modes.
+- `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst` and
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst` anchor compact
+  row-copy tables and wide-glyph row copying.
+- The `Bitmap Object Dispatch Semantic Checkpoint`, `Compact Glyph Row-Copy
+  Semantic Checkpoint`, encoded-raster helper sections, and fixtures named
+  below provide concrete object fields, helper addresses, row-write behavior,
+  and exact unresolved computed-jump boundaries.
+
 ## Page Size Tables
 
 The page-size command handler `ESC &l#A` at `0x00fc74` maps PCL

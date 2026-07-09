@@ -65,10 +65,10 @@ standalone deliverables.
   semantic field index is [semantic-state-model.md](semantic-state-model.md),
   and the detailed dataflow spine is
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
-  `Inbound Byte Route Matrix`, parser command-dispatch anchors,
-  `Page Versus Band Model`, and `Pixel composition contract` are the shortest
-  checked-in path from an admitted byte stream to page objects and rendered
-  pixels.
+  `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
+  command-dispatch anchors, `Page Versus Band Model`, and
+  `Pixel composition contract` are the shortest checked-in path from an
+  admitted byte stream to page objects and rendered pixels.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
@@ -87,7 +87,7 @@ checked-in ROM model:
    Points` and `Stream Trace Procedure` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
    For the compact route through the current spine, start with
-   `Inbound Byte Route Matrix` in
+   `Inbound Byte Route Matrix` and `Minimal End-To-End Example` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md).
 2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md):
    classify each byte source at `0xa904` as live/ring input, pushback,

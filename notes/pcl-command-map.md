@@ -988,6 +988,23 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   bridge copy the rule list through `0x1ed84` / `0x1edc6`; render dispatch
   enters `0x1ef6a -> 0x1f446`, where selector `7` uses solid helper
   `0x1f596` and selectors `0..6` / `8..13` use patterned helper `0x1f4e0`.
+
+  For the primary `ESC *c12a5b0P` stream, the page-root rule object before
+  bridge is:
+
+```text
+00 00 00 00 01 07 4a 00 00 0c 00 05 00 00
+```
+
+  Object byte `+0x04 = 1` is the bucket byte, `+0x05 = 7` is the solid fill
+  selector, key `+0x06 = 0x4a00` encodes placement, width `+0x08 = 12`, and
+  height `+0x0a = 5`. Bridge `0x1edc6` ORs selector byte `+0x05` with
+  `0x10` and copies height to continuation word `+0x0c`, so the renderer sees:
+
+```text
+00 00 00 00 01 17 4a 00 00 0c 00 05 00 05
+```
+
   Evidence is [rectangle-graphics.md](rectangle-graphics.md),
   `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
   `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
@@ -1036,7 +1053,33 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `0x1f88e` consumes object byte `+5 & 3` to select mode helpers: mode `0`
   renders literal rows, mode `1` expands bytes into two rows, mode `2`
   expands byte pairs into three rows and can clip into fallback buffers, and
-  mode `3` expands bytes into four rows. Evidence is
+  mode `3` expands bytes into four rows.
+
+  For the primary `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` stream,
+  accepted mode-0 transfer queues this encoded raster object:
+
+```text
+00 00 00 00 80 00 00 04 00 01 f0 0f aa 55
+```
+
+  Object byte `+0x04 = 0x80` selects encoded raster dispatch, `+0x05 = 0`
+  selects mode helper `0x1f8da`, `+0x06 = 4` is the copied payload capacity,
+  `+0x08 = 0x0001` is the packed coordinate/key, and payload bytes begin at
+  `+0x0a`. The documented rendered row for those payload bytes is:
+
+```text
+................####........#####.#.#.#..#.#.#.#
+```
+
+  Dense accepted rows can split into multiple objects before publication. A
+  mode-0 transfer with accepted count `0x012c` and no suitable current chunk
+  emits a first object with capacity `0x00f2`, advances the packed key through
+  `0x332ee(0x00f2, 1)`, then emits a second object with capacity `0x003a`.
+  Because `0x13250` inserts at the bucket head, the later `0x003a` object
+  points at the earlier `0x00f2` object when `0x1ed84` / `0x1ef6a` consume
+  the chain.
+
+  Evidence is
   [raster-graphics.md](raster-graphics.md),
   `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
   `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,

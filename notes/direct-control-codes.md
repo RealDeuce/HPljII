@@ -170,26 +170,42 @@ Parser scratch:
 Firmware bookkeeping:
 
 - `0x782a57`: right-limit latch set by right-margin and horizontal-position
-  paths.
-- `0x782a58`: previous-width or pending-width latch cleared by cursor moves
-  and set by BS.
-- `0x782a5a`: latched previous width used by BS when alternate metrics mode
-  byte `0x78318e` is set.
-- `0x782a6d`: pending text/cursor latch cleared by cursor-changing paths and
-  set to `0xff` by FF after page eject.
+  paths. `0xf06e`, `0xf2e6..0xf310`, and `0xf4ca` clear it when the
+  committed cursor is no longer pinned to the right limit.
+- `0x782a58`: pending previous-width latch. BS `0xf2a8..0xf310` sets it
+  after backing up the horizontal cursor, shared flush helper `0xf34a` clears
+  it before span publication, and printable text commits clear it after the
+  next advance decision at `0xd24e` or `0xd680`.
+- `0x782a5a`: latched previous text width. Printable text stores it at
+  `0xd1c2` or `0xd5bc`; BS reads it at `0xf2c6` when alternate metrics byte
+  `0x78318e` is set.
+- `0x782a5c`: latched previous text advance. Printable text stores it at
+  `0xd1b6` or `0xd5b6`; later printable advance uses it with
+  `0x782a58/0x782a5a` to center the current source against the previous
+  width.
+- `0x782a6d`: pending text/cursor latch cleared by printable return paths and
+  cursor-changing helpers including `0xf06e`, `0xf0b2`, `0xf124`,
+  `0xf2e6..0xf310`, and `0xf4ca`; FF `0xf0f0` sets it to `0xff` after page
+  eject helper `0xf124`.
 - `0x783184`: pending text span flush enable tested by `0xf34a`.
-- `0x783185`: underline/text-attribute selector written by `ESC &d` handler
-  `0x12622` and consumed by span helpers `0xd4ac` / `0xd8fc`.
+- `0x783185`: underline/text-attribute y-offset selector written by
+  `ESC &d` handler `0x12622` and consumed by span helpers `0xd4ac` /
+  `0xd8fc`.
+- `0x78318e`: alternate metric mode copied from font/context records by
+  `0xc428`, `0xcbd4`, and `0x10220` paths. Printable advance, printable
+  prechecks, and BS consume it at `0xd16a`, `0xd29e`, `0xd586`, `0xd6e0`,
+  and `0xf2bc`.
 
 Unknown:
 
-- Manual-facing names for latches `0x782a57`, `0x782a58`, `0x782a5a`,
-  `0x782a6d`, `0x78318e`, and `0x783185` remain provisional.
+- Manual-facing HP names for latches `0x782a57`, `0x782a58`, `0x782a5a`,
+  `0x782a5c`, `0x782a6d`, `0x78318e`, and `0x783185` remain unknown. Their
+  ROM-local roles above are not provisional for the cited handlers.
 - Broader source-object variants should be added only when they expose new
-  `0xd04a` field values, a new `0x12f2e` queueing shape, or different visible
-  rows. The existing direct-control byte streams already define the covered
-  ROM contract from parsed command through page-record queueing and render
-  entry.
+  `0xd04a` field values, a new `0x12f2e` queueing shape, or different
+  ROM-defined row-construction inputs. The existing direct-control byte
+  streams already define the covered ROM contract from parsed command through
+  page-record queueing and render entry.
 
 ## Writers
 

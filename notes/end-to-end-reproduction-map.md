@@ -8036,6 +8036,19 @@ change rendered pixels, byte-stream compatibility, or final confidence. Most
 entries below are composed ROM contracts with bounded remaining variants rather
 than open middle edges.
 
+The baseline printable-byte contract is the `!!` stream in
+`Minimal Stream Walkthrough: !!` plus the printable-text entry in
+`Supported Stream Entry Points`: normalized bytes `21 21` reach
+`0xa904 -> 0xda9a -> 0x11774 -> 0xd04a`, build flagged `LINE_PRINTER`
+sources through `0x1393a` / `0xd824`, queue compact object
+`00 00 00 00 00 00 00 02 20 00 01 20 02 02` through
+`0x12f2e -> 0x1387c`, publish via `0xff1e`, bridge via
+`0x1ed84 -> 0x1edc6`, and render through
+`0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354` with row-copy helper
+table `0x1fa5c`. This is the reference byte-to-pixel spine for later command
+families that only change parser state, selected context/map, page-object
+shape, publication boundary, or render helper inputs.
+
 1. Font/context span metrics are composed from downloaded descriptor bytes to
    visible span output. The producer side is documented in
    [downloaded-fonts.md](downloaded-fonts.md); the selected-context and

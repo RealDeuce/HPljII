@@ -768,7 +768,15 @@ Field groups for this index:
   current id at `0x783164`, data-chain frames at `0x782d76`, and overlay
   id/state at `0x782a94` / `0x782a92`; `0xa904` gives replay frames
   byte-source priority. Stored bytes re-enter the same parser and renderer as
-  live bytes. Overlay can add text, transparent data, raster, rule/span
+  live bytes. Macro-control selector `0` starts definition mode and stores
+  following bytes through `0xe002`; selector `1` stops definition mode;
+  selectors `2` and `3` execute/call the selected record through `0xe418`;
+  selectors `4` and `5` enable/disable overlay state; selectors `6`, `7`, and
+  `8` delete all, temporary, or current records; and selectors `9` / `10`
+  clear or set record permanence byte `+0x0a`. Definition/delete/permanence
+  controls create no page object by themselves; their output effect appears
+  when stored payload bytes later replay or when overlay state is consumed by
+  publication. Overlay can add text, transparent data, raster, rule/span
   payloads before publication. Concrete overlay stream
   `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X` stores payload `21 0d`;
   publication replays it before root copy, queues compact text object

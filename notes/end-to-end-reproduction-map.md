@@ -5381,7 +5381,24 @@ Address-level cluster map:
   publication variant: `0xeef0` stores nonzero absolute copy count
   `0x782da4`, clamps values above `99`, and does not publish until later
   `FF` / reset / page-boundary publication copies it into pool-header word
-  `+0x0c`. Hardware timing can change when active-band work is scheduled, but
+  `+0x0c`.
+  Concrete publication streams are now part of the route index. For
+  `! ESC E`, `! ESC &l1A`, `! ESC &l1O`, `! ESC &l2H`, and `! ESC &l2X FF`,
+  the pre-command printable queues compact object
+  `00 00 00 00 00 00 00 01 20 00 01` before the publication command mutates
+  page or environment state. `0xff1e` preserves page-root context slot
+  `+0x2c = 0x440946b4`, writes pool state byte `+4 = 2`, stores the
+  published pointer in `0x780ea6`, sets flag `0x782996`, and clears
+  `0x78297a`. For reset, FF, page-size, orientation, and paper-source, the
+  published header preserves default environment/status fields. For
+  `! ESC &l2X FF`, `0xeef0` first writes `0x782da4 = 2`; the following FF
+  publication copies it into pool-header word `+0x0c`. The scheduler then
+  promotes the record through `0x780eae`; `0x1ed84` / `0x1edc6` copy header
+  words, bucket root `+0x1c`, and context slots before
+  `0x1ef6a -> 0x1effe` renders the compact object. Evidence is
+  [publication-commands.md](publication-commands.md) and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+  Hardware timing can change when active-band work is scheduled, but
   not the documented page-object-to-row construction for an already selected
   published record.
 - Macro, data-chain, and overlay cluster:

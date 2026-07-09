@@ -3055,7 +3055,8 @@ Evidence:
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/analysis/ic30_ic13_active_symbol_set_flow.md`,
   `generated/analysis/ic30_ic13_font_context_bridge.md`, and
-  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Built-In Glyph Resource Walkthrough
 

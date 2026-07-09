@@ -74,6 +74,98 @@ rebuilds are in [reset-default-environment.md](reset-default-environment.md).
   - `mixed page-length stream refreshes cursor before printable page-record
     queue`
 
+## Publication Owner Summary
+
+This note owns the page-control boundary where parser-visible commands stop
+mutating the current page root and publish a page/control record for later
+rendering. It does not own object construction before the current root exists,
+nor band rendering after the scheduler has selected the published record.
+
+The publication route is:
+
+- `0xd04a`, `0x12714`, `0x13070`, and `0x13386` / `0x133aa` queue page objects
+  under current root `0x78297a`.
+- Reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
+  orientation `0x10220`, paper-source `0xef62`, VFC/page-eject helper
+  `0xf124`, and no-room retry paths can call `0xf34a` and then `0xff1e`.
+- `0xff1e` validates current root byte `+0x04`, optionally runs the macro
+  overlay replay branch `0xff40..0xffb0`, composes header flags, marks the
+  root published, writes pool head `0x780ea6`, sets publication flag
+  `0x782996`, and clears current root pointer `0x78297a`.
+- Scheduler and render handoff later consume that published pool state through
+  `0x780eaa -> 0x780eae -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+
+Writers feeding this checkpoint:
+
+- Object producers write current-root bucket/list/context fields before
+  publication: compact text under `+0x1c`, spans under `+0x1c`, raster under
+  `+0x1c`, rules under `+0x24`, fixed-list objects under `+0x28`, and context
+  slots under `+0x2c..+0x68`.
+- Page-control handlers write publication-adjacent state: line-termination
+  byte `0x78318f`, copy count `0x782da4`, paper-source byte `0x782da6`,
+  pending header bytes `0x782997` / `0x782998`, status byte `0x780e99`,
+  orientation byte `0x782da3`, and geometry fields consumed by later objects.
+- `0xff1e` writes published-root state: root byte `+0x04 = 2`, root header
+  bytes `+0x07/+0x08/+0x0a/+0x0c`, pool head `0x780ea6`, publication flag
+  `0x782996`, and cleared current root `0x78297a = 0`.
+
+Readers and consumers:
+
+- `0xff1e` consumes current root `0x78297a`, active-state byte `+0x04`,
+  pending page/header bytes, copy/paper-source state, and macro overlay state
+  `0x782a92` / `0x782a94`.
+- The scheduler consumes published pool head `0x780ea6` and promotes records
+  through `0x780eaa` and `0x780eae`.
+- `0x1ed84` and `0x1edc6` consume the selected published page/control record
+  and copy source roots `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render roots
+  `+0x18/+0x1c/+0x20/+0x24..+0x60`.
+- `0x1ef6a` consumes the bridged render record; compact, segment, raster,
+  rule, and fixed-list render helpers produce the ROM-derived rows.
+
+Output effect:
+
+- Publication creates no pixels by itself. It snapshots the current page/image
+  object graph and header state so later scheduler/render code can select it.
+- Reset, FF, page-size, orientation, paper-source, page-length default, VFC,
+  and no-room paths are visible because they decide which already-queued
+  objects are published before environment changes or page-eject state take
+  effect.
+- Missing-root reset is a no-publication outcome: `0xff1e` takes the no-root
+  exit and clears current-root state without producing a published page.
+
+Field classification:
+
+- Canonical page/image state: current root `0x78297a`, root byte `+0x04`,
+  bucket/list roots `+0x1c/+0x24/+0x28`, context slots `+0x2c..+0x68`,
+  published pool head `0x780ea6`, scheduler cursors `0x780eaa/0x780eae`, and
+  publication flag `0x782996`.
+- Canonical page-control state: copy count `0x782da4`, paper-source byte
+  `0x782da6`, orientation byte `0x782da3`, pending header bytes
+  `0x782997/0x782998`, status byte `0x780e99`, and paper-source mirrors
+  `0x780e8f/0x780e26`.
+- Derived/cache state: refreshed page geometry, HMI/VMI, VFC caches,
+  render-record roots, and band caches `0x783a20/0x783a22/0x783a28`.
+- Parser scratch: six-byte command records and host-byte traces consumed by
+  the command handlers before `0xff1e` runs.
+- Firmware bookkeeping: allocator cursors `0x782a70/0x782a72/0x782a76`, root
+  retry and overlay state, pending byte `0x782a6d`, status/service wait
+  helper `0x9ac2`, and macro overlay frame helpers `0xe0a4` / `0xe4f4`.
+- Hardware/external state: physical engine consumption after rendered band
+  buffers, and board-facing timing for status/service events.
+- Unknown: no ROM-local publication, bridge, or render-entry middle edge
+  remains for the documented reset, FF, page-size, page-length, orientation,
+  paper-source, copies, missing-root reset, and macro-overlay publication
+  paths. Remaining work must change a named header flag, current-root field,
+  overlay branch predicate, scheduler pool field, or render input.
+
+Evidence is the sections below,
+[page-record-storage.md](page-record-storage.md),
+[active-render-scheduler.md](active-render-scheduler.md), and
+[page-raster-imaging.md](page-raster-imaging.md#render-entry-owner-summary),
+with disassembly listings `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+
 ## Field Groups
 
 Canonical page-record fields:

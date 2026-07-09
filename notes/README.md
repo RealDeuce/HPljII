@@ -58,9 +58,10 @@ standalone deliverables.
   publication through `0xff1e`.
 - Rendering is owned by
   [active-render-scheduler.md](active-render-scheduler.md#owner-summary) and
-  [page-raster-imaging.md](page-raster-imaging.md): published-record scheduling, active
-  render pointer `0x783a18`, bridge `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`,
-  compact text/downloaded-glyph helpers, rule/fixed-list helpers, and encoded raster
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary):
+  published-record scheduling, active render pointer `0x783a18`, bridge
+  `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`, compact
+  text/downloaded-glyph helpers, rule/fixed-list helpers, and encoded raster
   helper `0x1f88e`.
 - The broad host-byte-to-pixel walkthrough and residual-boundary index is
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). The unified
@@ -166,7 +167,8 @@ checked-in ROM model:
    Its `Scheduler To Renderer Ownership` checkpoint is the handoff map from page roots
    to render roots, band word, and first renderer consumers.
 7. For pixels, finish in
-   [page-raster-imaging.md](page-raster-imaging.md): render entry `0x1ef6a`,
+   [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary):
+   render entry `0x1ef6a`,
    bucket dispatch `0x1efc2`, rule dispatch `0x1f446`, fixed-list dispatch
    `0x1f756`, and helper-specific row construction. The shared
    `Render Helper Boundary Index` in
@@ -277,10 +279,10 @@ checked-in ROM model:
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#owner-summary) - flattened PCL
   command-to-handler map summary from the firmware parser tables.
-- [page-raster-imaging.md](page-raster-imaging.md) - page geometry
-  lookup tables, orientation state, page-record storage, active-render,
-  bitmap object-dispatch, compact row-copy checkpoints, and raster graphics
-  imaging path.
+- [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary) -
+  page geometry lookup tables, orientation state, page-record storage,
+  active-render, bitmap object-dispatch, compact row-copy checkpoints, and
+  raster graphics imaging path.
 - [page-record-storage.md](page-record-storage.md#owner-summary) - documented
   page-root, stream allocator, object-list, publication, and render-record
   bridge contracts.

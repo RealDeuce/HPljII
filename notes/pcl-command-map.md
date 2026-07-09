@@ -41,7 +41,7 @@ Primary route:
   alternate/data mode, or return to the parser without page output.
 - Handler-owner routing is the handoff to notes such as
   [pcl-parser-core.md](pcl-parser-core.md),
-  [direct-control-codes.md](direct-control-codes.md),
+  [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md), and

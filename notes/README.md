@@ -40,7 +40,7 @@ standalone deliverables.
 - Command dispatch is indexed by
   [pcl-command-map.md](pcl-command-map.md#owner-summary).
   Individual command families then move to owner notes such as
-  [direct-control-codes.md](direct-control-codes.md),
+  [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md),
@@ -235,7 +235,7 @@ checked-in ROM model:
 - [display-functions.md](display-functions.md) - documented `ESC Y ... ESC Z`
   display-functions loop, alternate append path, Control-Z siblings, and
   `ESC z` status edge.
-- [direct-control-codes.md](direct-control-codes.md) - documented
+- [direct-control-codes.md](direct-control-codes.md#owner-summary) - documented
   CR/LF/FF/HT/BS, line-termination mode, cursor stack, and cursor/margin
   control paths to page-record output.
 - [macro-data-chain.md](macro-data-chain.md) - documented macro definition,

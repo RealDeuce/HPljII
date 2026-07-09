@@ -58,6 +58,90 @@ These notes track firmware behavior that directly affects page pixels.
 Names are provisional where the ROM state variables are not fully
 cross-referenced yet.
 
+## Owner Summary
+
+This note owns the page/imaging layer that turns command-family side effects
+into page objects, published records, render work, and ROM-local row writes.
+It is the join point after parser and command owners have produced geometry,
+cursor, font, raster, rectangle, span, or publication state. It does not own
+host-byte parsing itself; it owns the page-root fields and render helpers that
+make those parsed commands visible.
+
+Primary routes:
+
+- Page-root allocation:
+  `0x10084` creates or returns current page root `0x78297a`, initializes
+  bucket/list roots and context slots, and is the common prerequisite for
+  text, raster, rule, fixed-list, and span producers.
+- Geometry and motion:
+  page-size handler `0xfc74`, page-length handler `0xf9e8`, orientation
+  handler `0x10220`, coordinate helpers `0x104d8..0x10550`, and VFC handler
+  `0x1280a` update page geometry, text bounds, cursor position, and
+  publication-before-change behavior.
+- Object producers:
+  compact text queues through `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`;
+  span objects through `0xf34a -> 0x12714`; raster rows through
+  `0x105d0 -> 0x138de -> 0x13070` / `0x13250`; and rule/rectangle objects
+  through `0x10898 -> 0x10b80 -> 0x13386` / `0x133aa`.
+- Publication and render bridge:
+  `0xff1e` publishes the current page/control record, `0x1ed84` copies the
+  selected published record into render-work state, and `0x1edc6` copies page
+  roots into render roots and context slots.
+- Render scheduling and dispatch:
+  active scheduler `0x1eba4` reaches render entry `0x1ef6a`; `0x1ef86`
+  derives band and destination caches; `0x1efc2`, `0x1f446`, and `0x1f756`
+  dispatch bucket, rule, and fixed-list roots.
+- Pixel generation:
+  compact text/downloaded glyphs dispatch through `0x1effe`; segment lists
+  through `0x1f812`; encoded raster through `0x1f88e`; rules through
+  `0x1f596` or `0x1f4e0`; fixed lists through `0x1f7b0`; and row helpers
+  under `0x1fa5c..0x207ac` and `0x2f27c` write the ROM-local output rows.
+
+Field groups:
+
+- Canonical page/image state:
+  current page root `0x78297a`, root `+0x1c` compact/raster bucket heads,
+  root `+0x24` rule list, root `+0x28` fixed list, and root
+  `+0x2c..+0x68` font/context slots.
+- Canonical object state:
+  compact/raster bucket object link `+0`, class byte `+4`, selector/mode byte
+  `+5`, count/capacity word `+6`, coordinate/key word `+8`, and payload from
+  `+0x0a`; rule and fixed-list selector, dimension, key, and continuation
+  fields are owned by the rule/fixed sections below.
+- Canonical render state:
+  render roots `+0x18`, `+0x1c`, `+0x20`, render context slots
+  `+0x24..+0x60`, active render pointer `0x783a18`, and render work band word
+  `+0x10`.
+- Derived/cache state:
+  render-band row caches `0x783a20` and `0x783a22`, destination base
+  `0x783a28`, destination stride `0x783a1c`, compact context cache
+  `0x783a2c`, phase byte `0xa001`, and row-helper offset tables.
+- Parser scratch:
+  none at this layer. Parser scratch has been consumed into command state,
+  delayed payload records, or page objects before publication/rendering.
+- Firmware bookkeeping:
+  root allocation cursors, object stream allocator fields, publication pool
+  records, render-work alternation, scheduler throttle/capacity words, and
+  continuation fields mutated for multi-band rule or fixed-list rendering.
+- Hardware/external state:
+  physical formatter/DC consumption after ROM row-buffer writes. This note
+  documents the ROM-local row writes and records hardware behavior only where
+  ROM code reads or writes a concrete RAM/MMIO field.
+- Unknown:
+  remaining unresolved edges must name a command/object field, bridge field,
+  dispatch helper, row-helper input, or hardware/MMIO boundary. There is no
+  requirement for live printer comparison to document the ROM-local routes.
+
+Output effect:
+
+- Parser and command handlers build page state; they do not directly write the
+  final rendered rows.
+- Publication freezes page-root state into records; render bridge copies those
+  records into render roots; render dispatch walks object classes in ROM order.
+- Pixels come from decoded object fields, selected font/context slots, raster
+  payload bytes, rule dimensions/pattern selectors, span/fixed-list fields,
+  and the row-copy helpers documented in the sections below.
+
 ## Reproduction Contract
 
 For documented supported streams, this layer is reproduced when the same

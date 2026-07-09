@@ -228,7 +228,7 @@ boundaries:
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:
   [raster-graphics.md](raster-graphics.md#owner-summary), with encoded-raster render
   helpers and bitmap row composition in
-  [page-raster-imaging.md](page-raster-imaging.md).
+  [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
 - Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including
   the `0x12034 -> 0x122be` `33440A\r\n` producer and host-output FIFO:
   [errors-and-status.md](errors-and-status.md) and
@@ -236,7 +236,7 @@ boundaries:
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary), with rule/span render
   helpers and bitmap composition in
-  [page-raster-imaging.md](page-raster-imaging.md).
+  [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
 - Vertical forms control table payloads and channel jumps:
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
 - Font selection, symbol sets, font attributes, pitch mode, SO/SI selected
@@ -318,7 +318,7 @@ classes before any page pixels can be derived:
   and later reaches page-root publication and render dispatch documented in
   [direct-control-codes.md](direct-control-codes.md),
   [font-context-metrics.md](font-context-metrics.md#owner-summary), and
-  [page-raster-imaging.md](page-raster-imaging.md).
+  [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
 - Alternate/data printable or matched C0 byte:
   when `0x782c18` is nonzero, mode-zero printable bytes and matched blank C0
   rows append through `0xe002`. They preserve bytes for macro/data contexts
@@ -356,7 +356,7 @@ classes before any page pixels can be derived:
   `0x105d0`, text-span flush `0x12714`, downloaded glyph output, and macro
   replay can allocate page-root records or bucket/list objects. The downstream
   object classes are documented in [page-record-storage.md](page-record-storage.md)
-  and [page-raster-imaging.md](page-raster-imaging.md).
+  and [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
 - Publication or render boundary:
   FF `0xf0f0`, reset `0xcc52`, selected page-layout changes, allocation retry,
   VFC jumps, and macro overlay paths can publish page roots through `0xff1e`.

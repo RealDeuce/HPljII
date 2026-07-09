@@ -280,7 +280,7 @@ checked-in ROM model:
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#owner-summary) - flattened PCL
   command-to-handler map summary from the firmware parser tables.
-- [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary) -
+- [page-raster-imaging.md](page-raster-imaging.md#owner-summary) -
   page geometry lookup tables, orientation state, page-record storage,
   active-render, bitmap object-dispatch, compact row-copy checkpoints, and
   raster graphics imaging path.

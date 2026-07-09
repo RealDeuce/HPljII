@@ -518,7 +518,7 @@ Checked-in documentation that composes the downstream path:
 - [symbol-map-patching.md](symbol-map-patching.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md)
 - [page-record-storage.md](page-record-storage.md)
-- [page-raster-imaging.md](page-raster-imaging.md)
+- [page-raster-imaging.md](page-raster-imaging.md#owner-summary)
 
 Fixtures named in those notes pin representative streams:
 

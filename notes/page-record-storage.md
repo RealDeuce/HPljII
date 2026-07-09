@@ -224,10 +224,10 @@ Renderer-facing object class map:
   normalizes that list into render `+0x20`; renderer `0x1f756` consumes it on
   five-band boundaries.
 
-This map is the storage-side join between command-family output and bitmap
-dispatch. It does not replace the detailed renderer contracts in
-[page-raster-imaging.md](page-raster-imaging.md); it identifies the canonical
-page-root field a command writes and the exact render-root field and consumer
+This map is the storage-side join between command-family output and bitmap dispatch. It
+does not replace the detailed renderer contracts in
+[page-raster-imaging.md](page-raster-imaging.md#owner-summary); it identifies the
+canonical page-root field a command writes and the exact render-root field and consumer
 that later derives pixels from it.
 
 Canonical publication and bridge state:
@@ -695,7 +695,7 @@ Evidence and current boundary:
   the band-local mixed output case where bucket-chain rows and a crossing rule
   share the same render band.
 - The supporting renderer details are in
-  [page-raster-imaging.md](page-raster-imaging.md) under
+  [page-raster-imaging.md](page-raster-imaging.md#owner-summary) under
   `Bitmap Object Dispatch Semantic Checkpoint`, with low-level storage evidence
   in `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,

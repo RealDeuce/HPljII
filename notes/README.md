@@ -64,7 +64,11 @@ standalone deliverables.
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). The unified
   semantic field index is [semantic-state-model.md](semantic-state-model.md),
   and the detailed dataflow spine is
-  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
+  `Inbound Byte Route Matrix`, parser command-dispatch anchors,
+  `Page Versus Band Model`, and `Pixel composition contract` are the shortest
+  checked-in path from an admitted byte stream to page objects and rendered
+  pixels.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
@@ -82,6 +86,9 @@ checked-in ROM model:
    concrete stream anchor. If starting from raw bytes, use `Reader Entry
    Points` and `Stream Trace Procedure` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+   For the compact route through the current spine, start with
+   `Inbound Byte Route Matrix` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md).
 2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md):
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch.
@@ -93,14 +100,19 @@ checked-in ROM model:
 4. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
    After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual
-   boundary.
+   boundary. The parser command-dispatch anchors in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the
+   common terminal-handler handoffs before the full flattened table.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
    `+0x28`, and context slots under `+0x2c..+0x68`. The shared
    `Shared Page-Object Contract` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) is the
-   route index for these common object fields.
+   route index for these common object fields. `Page Versus Band Model` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) is the concise
+   explanation of why parsing builds a page-object graph rather than a
+   full-page bitmap.
 6. For publication, follow `0xff1e` into the page/control pool and then
    [active-render-scheduler.md](active-render-scheduler.md): scheduler source
    `0x780eae`, active render pointer `0x783a18`, and bridge
@@ -112,7 +124,9 @@ checked-in ROM model:
    `Render Helper Boundary Index` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) names the
    common helper order, buffer destinations, and exact ROM-local render
-   boundaries.
+   boundaries. The `Pixel composition contract` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) summarizes render
+   call order, active-band and fallback buffers, and direct-store composition.
 8. If the route stops, record the exact boundary as ROM-local unknown,
    hardware/MMIO, missing external resource data, or optional physical
    correlation. Do not replace a missing ROM edge with fixture output or a

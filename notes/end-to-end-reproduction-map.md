@@ -4666,10 +4666,18 @@ Address-level cluster map:
   bytes according to backend selector `0x780e40`. Sibling status producer
   `0xaece` consumes pending-status fields `0x780e22`, `0x783e61`,
   `0x783e60`, `0x780e12`, `0x780e0a`, `0x780e2a`, and `0x780e90` to emit
-  service/status bytes. No FIFO/status consumer feeds `0xd04a`, `0xff1e`,
-  `0x1ed84`, `0x1edc6`, or `0x1ef6a`; the pixel-reproduction residual is only
-  FIFO-induced parser stall or a modeled bidirectional host reacting with
-  different later bytes, plus external protocol/register naming.
+  service/status bytes. The neighboring `ESC z` route is owned by
+  [display-functions.md](display-functions.md) and
+  [pcl-command-map.md](pcl-command-map.md): handler `0xcd86` tests active
+  data-chain frame byte `0x782d76 + 9`, calls status helper `0x9c2c` only
+  when that byte is zero, and otherwise returns without a signal. Helper
+  `0x9c2c -> 0x9b5e` waits on service/status busy bit `0x780e2d.3`, sets
+  markers `0x7821cc` and `0x7822db`, ORs bit `0x08` into accumulator
+  `0x780e2a`, then clears `0x7821cc`. No FIFO/status consumer feeds
+  `0xd04a`, `0xff1e`, `0x1ed84`, `0x1edc6`, or `0x1ef6a`; the
+  pixel-reproduction residual is only FIFO-induced parser stall, `ESC z`
+  service scheduling, or a modeled bidirectional host reacting with different
+  later bytes, plus external protocol/register naming.
 - Font-selection cluster:
   designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
   0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and

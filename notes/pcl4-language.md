@@ -631,7 +631,13 @@ Field groups for this index:
   through `0x13070` / `0x13250`, and copy payload via `0x138de`. Encoded
   raster objects publish through page roots and render via
   `0x1ef6a -> 0x1efc2 -> 0x1f88e`; dense split allocation is bounded at
-  `0x132b6..0x13382`. Evidence:
+  `0x132b6..0x13382`. Concrete stream
+  `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` queues encoded raster object
+  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`; byte `+0x04 = 0x80`
+  selects raster dispatch, byte `+0x05 = 0` selects mode-0 literal helper
+  `0x1f8da`, word `+0x06 = 4` is the copied payload capacity, and key
+  `+0x08 = 0x0001` is the packed coordinate consumed after publication.
+  Evidence:
   [raster-graphics.md](raster-graphics.md).
 - Rectangle/rule graphics:
   `ESC *c` mode `16` routes width/height/fill writers `0x10e68`, `0x10e22`,
@@ -639,7 +645,12 @@ Field groups for this index:
   `0x783166..0x78316e`; `0x10898` clips the active rectangle and queues
   rule-list objects through `0x13386` / `0x133aa`. Solid and patterned rules
   render through `0x1f446`, `0x1f596`, and `0x1f4e0`, including
-  band-crossing continuation. Evidence:
+  band-crossing continuation. Concrete stream `ESC *c12a5b0P` queues
+  selector-7 rule object
+  `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` under page-root `+0x24`;
+  bridge `0x1edc6` copies the rule list to render-record `+0x1c`, and
+  `0x1f446` dispatches selector `7` to solid helper `0x1f596`.
+  Evidence:
   [rectangle-graphics.md](rectangle-graphics.md).
 - Font selection and downloaded fonts:
   primary/secondary setup `0x1201e` / `0x12008`, designation terminal

@@ -7568,8 +7568,16 @@ Current top-level boundaries include:
   exact span-31 selected-segment source edge. Sampled high-row segmented-wide
   glyphs preserve installed rows, publish selector `0x3003`, dispatch bucket
   `8` segment `1` through `0x1f264`, and split into `32` current rows plus
-  `96` fallback rows; the adjacent span-31 siblings through row `0x03ff` stop
-  at fallback A2 source offset `+0xb50`.
+  `96` fallback rows. The span-31 siblings through row `0x03ff` stop at
+  fallback A2 source offset `+0xb50`; below-cap successful siblings continue
+  as selected-segment render cases through rows `0x0481`, `0x0482`,
+  `0x04ff`, `0x0581`, `0x0582`, `0x05ff`, `0x0681`, `0x0682`, `0x06ff`,
+  `0x0781`, `0x0782`, and `0x0787` for the span limits documented in
+  [downloaded-fonts.md](downloaded-fonts.md) and
+  [page-raster-imaging.md](page-raster-imaging.md). Adjacent higher-span
+  products in the `0x04xx`, `0x05xx`, `0x06xx`, and `0x078x` ranges are the
+  parser payload-count boundary below, not additional `0x1f264` source-read
+  gaps.
 - ROM-local parser/payload boundary:
   `Boundary: Downloaded-Glyph Payload Count Cap` documents oversized
   segmented-wide high-row streams that exceed the restored `ESC )s#W` count

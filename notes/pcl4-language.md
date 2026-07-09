@@ -764,6 +764,26 @@ Field groups for this index:
   `33440A\r\n`; they do not create page roots or pixels. Evidence:
   [errors-and-status.md](errors-and-status.md) and
   [host-byte-fetch.md](host-byte-fetch.md).
+- Shared page/render/output convergence:
+  all pixel-producing families above converge after command-family page-object
+  production. Current page root `0x78297a` owns compact bucket roots at
+  `+0x1c`, rule roots at `+0x24`, fixed-list roots at `+0x28`, and context
+  slots at `+0x2c..+0x68`. Publication `0xff1e` freezes the active root into
+  a page/control pool record; bridge `0x1ed84 -> 0x1edc6` copies source roots
+  into render-record roots `+0x18`, `+0x1c`, `+0x20`, and context slots
+  `+0x24..+0x60`. Render entry `0x1ef6a` loads active render record
+  `0x783a18`, derives band caches through `0x1ef86`, then calls bucket-chain
+  renderer `0x1efc2`, rule-list renderer `0x1f446`, and fixed-list renderer
+  `0x1f756` in that order. Bucket objects dispatch compact glyphs through
+  `0x1effe`, segment-list spans through `0x1f812`, and encoded raster through
+  `0x1f88e`. Destination helpers write current-band buffer `0x783a28` or
+  fallback buffer `0x7810b4 + byte_pair_offset` using stride `0x783a1c` and
+  row offsets `0x7839f8..`; documented helpers store generated words or bytes
+  directly rather than blending against previous destination contents.
+  Physical engine consumption of those rendered buffers is the formatter/DC
+  boundary, not another parser command effect. Evidence:
+  [page-raster-imaging.md](page-raster-imaging.md) and
+  [page-record-storage.md](page-record-storage.md).
 
 Confidence is high for this index as a routing map because it is backed by the
 checked-in parser table audit in [pcl-command-map.md](pcl-command-map.md) and

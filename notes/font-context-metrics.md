@@ -75,6 +75,81 @@ Evidence:
   - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   - `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 
+## Owner Summary
+
+This note owns the firmware bridge between parsed font-related commands and
+text pixels. The parser handlers do not draw text. They update requested font,
+symbol, pitch, or slot state; the refresh path chooses a primary or secondary
+font resource; the selected resource is installed into current-font and
+page-root context slots; printable bytes then consume those context slots to
+queue compact text and update span bounds. Render-time code later copies the
+page-root context into render records and resolves the stored glyph indices
+into bitmap rows.
+
+Primary routes:
+
+- Parser font request route:
+  font-attribute terminals and wrappers enter `0xc580`; compatibility
+  pitch-mode handler `0xc390` first rewrites the active parser record and then
+  calls `0xc89c -> 0xc580`.
+- Selection and map route:
+  `0xc580 -> 0x13eb8 -> 0x14398 -> 0x144d2 -> 0x14c64 -> 0x14f16 -> 0x1440c`
+  chooses a candidate, writes `0x782ee6` or `0x782ef6`, rebuilds
+  `0x782f32` or `0x783032`, applies symbol-map patches, and writes selected
+  snapshots.
+- Page-root context route:
+  `0xc580` or SI/SO handlers `0xc68a` / `0xc6b8` call `0xc428`, which calls
+  `0xc4fc` to install the selected context under root `+0x2c..+0x68` and set
+  selected page-root slot `0x78297e`.
+- Printable route:
+  `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0xd3b2/0xd824 -> 0x12f2e`
+  converts one host printable byte into source fields at `0x782d7e` and then
+  queues compact text through `0x1387c`.
+- Span route:
+  `0xd4ac` and `0xd8fc` consume selected glyph metric fields and update
+  pending span state `0x783184..0x78318a`; later flush
+  `0xf34a -> 0x12714 -> 0x126e2` turns that state into page records.
+- Render route:
+  publication `0xff1e` and bridge `0x1edc6` copy page-root font slots into
+  render-record slots `+0x24..+0x60`; compact text dispatch
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` resolves the stored context,
+  mapped glyph byte, and source-class flag to glyph bitmap data.
+
+Canonical state:
+
+- Selection/context: selected slot `0x782f06`, current-font records
+  `0x782ee6` / `0x782ef6`, context fields `+0x00`, `+0x04`, and `+0x05`,
+  selected candidate `0x7828a8`, and selected target `0x7828de`.
+- Maps/symbols: maps `0x782f32` / `0x783032`, active symbol words
+  `0x783144` / `0x783146`, remembered symbol words `0x782f08` / `0x782f0a`,
+  and snapshots `0x783148` / `0x783152`.
+- Page/render output: page-root context slots `+0x2c..+0x68`, live flags
+  `0x78297f+n`, selected page slot `0x78297e`, render context slots
+  `+0x24..+0x60`, active render context `0x783a2c`, and compact text objects
+  under root `+0x1c`.
+- Source/span state: source object `0x782d7e` fields
+  `+0x00/+0x04/+0x0a/+0x0b/+0x10/+0x16`, pending span state
+  `0x783184..0x78318a`, unflagged metrics `+0x2b/+0x2c/+0x2d`, and flagged
+  metrics `+0x16/+0x18/+0x1a`.
+
+Derived/cache state includes selected-font snapshots, transient probe record
+`0x782992`, range flags `0x783132..`, and rebuilt maps. Parser scratch
+includes `0x78299e`, request records, and the synthetic record written by
+`0xc390`. Firmware bookkeeping includes dirty flags `0x782f2c/0x782f2d`,
+active-object predicates, live-slot flags, and the `0xc4fc` full-root return.
+No hardware/MMIO edge is involved in this owner; remaining uncertainty is
+limited to the ROM-local routes listed in `Remaining Edges`.
+
+Output effect:
+
+- Font, symbol, pitch, SI/SO, and final-`X` commands have delayed pixel
+  effects. They alter context, map, metric, or selected-slot state.
+- Printable bytes, transparent/display paths, macro replay, or downloaded
+  glyph paths are the consumers that create visible text objects.
+- The original PCL font request is not what the renderer reads. The renderer
+  reads page-root/render context slots, mapped glyph bytes, source-class flags,
+  and resource or downloaded glyph records.
+
 ## Concept
 
 The firmware does not render text directly from the current PCL font request.

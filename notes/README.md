@@ -46,6 +46,10 @@ standalone deliverables.
   [downloaded-fonts.md](downloaded-fonts.md),
   [macro-data-chain.md](macro-data-chain.md), and
   [vertical-forms-control.md](vertical-forms-control.md).
+- Manual PCL command names and syntax rows are indexed by
+  [pcl4-language.md](pcl4-language.md). Its ROM Semantic Index maps PCL Level
+  IV families to first parser handlers, representative byte streams,
+  page-object bytes or state fields, render routes, and owner notes.
 - Page/image assembly is owned by
   [page-record-storage.md](page-record-storage.md): current root
   `0x78297a`, compact/raster buckets at root `+0x1c`, rules at `+0x24`,
@@ -73,31 +77,36 @@ standalone deliverables.
 Use this short route when reading a supported PCL byte stream through the
 checked-in ROM model:
 
-1. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md):
+1. If starting from a manual command name, use the ROM Semantic Index in
+   [pcl4-language.md](pcl4-language.md) to find the command-family route and
+   concrete stream anchor. If starting from raw bytes, use `Reader Entry
+   Points` and `Stream Trace Procedure` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md):
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch.
-2. Classify the parser outcome in
+3. Classify the parser outcome in
    [pcl-parser-core.md](pcl-parser-core.md): follow `0xda9a` / `0xdaf0` /
    `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`,
    six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and
    delayed restore `0x121cc -> 0x12218`.
-3. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
+4. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
    After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual
    boundary.
-4. When a command creates visible page content, cross into
+5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
    `+0x28`, and context slots under `+0x2c..+0x68`.
-5. For publication, follow `0xff1e` into the page/control pool and then
+6. For publication, follow `0xff1e` into the page/control pool and then
    [active-render-scheduler.md](active-render-scheduler.md): scheduler source
    `0x780eae`, active render pointer `0x783a18`, and bridge
    `0x1ed84 -> 0x1edc6`.
-6. For pixels, finish in
+7. For pixels, finish in
    [page-raster-imaging.md](page-raster-imaging.md): render entry `0x1ef6a`,
    bucket dispatch `0x1efc2`, rule dispatch `0x1f446`, fixed-list dispatch
    `0x1f756`, and helper-specific row construction.
-7. If the route stops, record the exact boundary as ROM-local unknown,
+8. If the route stops, record the exact boundary as ROM-local unknown,
    hardware/MMIO, missing external resource data, or optional physical
    correlation. Do not replace a missing ROM edge with fixture output or a
    hardware assumption.

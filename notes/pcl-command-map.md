@@ -810,7 +810,31 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   root. It does not draw rows itself. Bridge helpers `0x1ed84` / `0x1edc6`
   copy the published bucket roots, rule/fixed-list roots, and context slots
   into the active render record; `0x1ef6a` then dispatches bucket chains such
-  as compact text through `0x1effe`. Evidence is
+  as compact text through `0x1effe`.
+
+  For the representative streams `! ESC E`, `! ESC &l1A`, `! ESC &l1O`,
+  `! ESC &l2H`, and `! ESC &l2X FF`, the pre-command printable queues this
+  compact object before the publication command mutates page/environment
+  state:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+  The covered streams preserve page-root context slot `+0x2c =
+  0x440946b4`. `0xff1e` copies the root into a page/control pool record,
+  writes state byte `+4 = 2`, stores the published pool pointer in
+  `0x780ea6`, sets publication flag `0x782996`, and clears `0x78297a`.
+  For reset, FF, page-size, orientation, and paper-source streams, the
+  published pool header keeps the default environment/status fields. For
+  `! ESC &l2X FF`, copies handler `0xeef0` first stores
+  `0x782da4 = 2`; the following `0xff1e` copies that value into pool-header
+  word `+0x0c`. The scheduler later selects the published record into
+  `0x780eae`; `0x1ed84` copies source header words into the render work
+  record, `0x1edc6` copies bucket root `+0x1c` and context slots, and
+  `0x1ef6a` dispatches the preserved compact object to `0x1effe`.
+
+  Evidence is
   [publication-commands.md](publication-commands.md),
   `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,

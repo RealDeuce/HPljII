@@ -756,8 +756,9 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   pending paper/layout header flag `0x782998`, status/header byte `0x780e99`,
   paper-source output/control bytes `0x780e8f` / `0x780e26`, page code
   `0x782da2`, and orientation byte `0x782da3`. Parser scratch is the
-  six-byte `ESC &l` terminal record for page-size, orientation, paper-source,
-  and copies; FF and reset are direct terminal/control handlers. Firmware
+  six-byte `ESC &l` terminal record for page-size, page-length, orientation,
+  paper-source, and copies; FF and reset are direct terminal/control handlers.
+  Firmware
   bookkeeping is stream allocator state `0x782a70` / `0x782a72` /
   `0x782a76`, page-root bookkeeping byte `0x782990`, page state byte
   `0x782a92`, and publication helper `0xff1e`.
@@ -769,7 +770,11 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   flushes spans, ensures a root, and reaches `0xf124 -> 0xff1e`.
   Page-size `0xfc74` and orientation `0x10220` publish before writing page
   code/orientation and rebuilding geometry, margins, VMI/HMI, VFC, and font
-  context state for later bytes. Paper-source `0xef62` publishes before
+  context state for later bytes. Page-length `0xf9e8` has two publication
+  shapes: nonzero parameters refresh page extent `0x782dba` and following
+  placement, while zero/default can flush pending text through `0xf34a`,
+  publish through `0xff1e`, and then restore default page state. Paper-source
+  `0xef62` publishes before
   writing `0x782da6`, setting `0x782998`, and optionally signaling
   `0x780e8f` / `0x780e26`. Copies `0xeef0` writes nonzero absolute counts,
   clamped at `99`, to `0x782da4`; it does not publish until a later FF or
@@ -787,6 +792,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
   `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
   `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
   `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
   `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
@@ -800,11 +806,15 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   text before geometry change`, `mixed printable/orientation page-record
   stream publishes queued text before landscape change`,
   `mixed printable/paper-source page-record stream publishes queued text`, and
-  `mixed printable/copies/FF stream publishes copy count`. No
+  `mixed printable/copies/FF stream publishes copy count`, plus page-length
+  fixtures `0xf9e8 ESC &l#P converts VMI lines to page length and selects
+  internal page code` and
+  `0xf9e8 ESC &l#P stream reaches page-length handler`. No
   parser-to-publication or publication-to-render ROM middle edge remains for
-  covered reset, FF, page-size, orientation, paper-source, or copies streams;
-  additional work should target streams that change page-record fields,
-  command-specific header words, bridge state, or row-construction inputs.
+  covered reset, FF, page-size, page-length zero/default, orientation,
+  paper-source, or copies-through-FF streams; additional work should target
+  streams that change page-record fields, command-specific header words,
+  bridge state, or row-construction inputs.
   Owner notes:
   [publication-commands.md](publication-commands.md),
   [direct-control-codes.md](direct-control-codes.md), and

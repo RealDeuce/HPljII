@@ -201,12 +201,12 @@ The strongest current byte-stream fixtures include:
   `0x1ef6a`: `plain printable parser trace feeds page-record queue`,
   `host-fetched mixed control stream reaches parser and page-record render`,
   and `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`;
-- reset, FF, page-size, orientation, paper-source, copies, and VFC
-  publication through `0xff1e`: `host-fetched publication streams reach parser
-  and published rows`, `published page records feed 0x1ed84 and 0x1ef6a render
-  entry`, documented first by
-  `Worked Path: Publication Commands To ROM-Derived Page Rows`, and the VFC
-  fixtures named in
+- reset, FF, page-size, page-length zero/default, orientation, paper-source,
+  copies, and VFC publication through `0xff1e`:
+  `host-fetched publication streams reach parser and published rows`,
+  `published page records feed 0x1ed84 and 0x1ef6a render entry`, documented
+  first by `Worked Path: Publication Commands To ROM-Derived Page Rows`, and
+  the VFC fixtures named in
   [vertical-forms-control.md](vertical-forms-control.md);
 - mixed text/selector-7 rule/raster/FF publication through page-record
   storage and final rows: `host-fetched text rectangle raster FF publishes

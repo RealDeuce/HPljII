@@ -4820,17 +4820,19 @@ Address-level cluster map:
   outcome, allocator state, object bytes, bridge roots, or renderer helper
   inputs.
 - Publication and render-scheduler cluster:
-  reset, FF, page-size, orientation, paper-source, copies, VFC publication,
-  and no-room retries converge on `0xff1e`. Published records then run
+  reset, FF, page-size, page-length zero/default, orientation, paper-source,
+  copies, VFC publication, and no-room retries converge on `0xff1e`.
+  Published records then run
   `0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`. Owners are
   [publication-commands.md](publication-commands.md),
   [page-record-storage.md](page-record-storage.md), and
   [active-render-scheduler.md](active-render-scheduler.md). The byte-stream
   route is that command handlers such as reset `0xcc52`, FF `0xf0f0`,
-  page-size `0xfc74`, orientation `0x10220`, paper source `0xef62`, copy count
-  `0xeef0`, VFC page-boundary helper `0xf124`, or allocator retry paths call
-  `0xff1e` after any required pending text/span flush. `0xff1e` consumes
-  current page root `0x78297a`, copies compact/raster bucket root `+0x1c`,
+  page-size `0xfc74`, page-length zero/default `0xf9e8`, orientation
+  `0x10220`, paper source `0xef62`, copy count `0xeef0`, VFC page-boundary
+  helper `0xf124`, or allocator retry paths call `0xff1e` after any required
+  pending text/span flush. `0xff1e` consumes current page root `0x78297a`,
+  copies compact/raster bucket root `+0x1c`,
   rule list `+0x24`, fixed list `+0x28`, context slots `+0x2c..`, pool-header
   state, and copy-count/source fields into the page/control pool, sets
   publication flag `0x782996`, and clears the current root. `0x1ed84` selects
@@ -4839,7 +4841,11 @@ Address-level cluster map:
   `0x1ef6a` dispatches compact/raster buckets, rules, and fixed lists.
   Page-size `ESC &l#A` publishes queued objects before `0xfc74` writes page
   code `0x782da2`, sets pending flag `0x782997`, and rebuilds geometry such
-  as active extents and top offset. Orientation `ESC &l#O` publishes before
+  as active extents and top offset. Page-length nonzero `ESC &l#P` refreshes
+  page extent `0x782dba`, page code `0x782da2`, and later printable placement;
+  page-length zero/default `ESC &l0P` can flush through `0xf34a`, publish
+  through `0xff1e`, and then restore default page state plus optional
+  paper-source output/control state. Orientation `ESC &l#O` publishes before
   `0x10220` writes orientation byte `0x782da3` and installs
   orientation-specific extents, so rendered pixels belong to the
   pre-orientation page root. Paper-source `ESC &l#H` flushes and publishes
@@ -5462,16 +5468,19 @@ Address-level cluster map:
   Evidence is in [publication-commands.md](publication-commands.md), section
   `Published Header Flags`, from `0xffd2..0x1005a`.
   The checked command-family streams are `! ESC E`, `ESC &k2G! FF`,
-  `! ESC &l1A`, `! ESC &l1O`, `! ESC &l2H`, and `! ESC &l2X FF`.
+  `! ESC &l1A`, `! ESC &l0P`, `! ESC &l1O`, `! ESC &l2H`, and
+  `! ESC &l2X FF`.
   Their writers are reset handler `0xcc52` / `0xcc70`, FF handler `0xf0f0`,
-  page-size handler `0xfc74`, orientation handler `0x10220`, paper-source
-  handler `0xef62`, and copies handler `0xeef0`.
+  page-size handler `0xfc74`, page-length handler `0xf9e8`, orientation
+  handler `0x10220`, paper-source handler `0xef62`, and copies handler
+  `0xeef0`.
   The semantic ordering is byte-stream visible: reset, page-size,
-  orientation, and paper-source publish already queued page objects before
-  they mutate the default environment, geometry, orientation, or paper-source
-  state; FF publishes after the `ESC &k2G` line-termination mode applies its
-  CR-style x reset; copies stores `0x782da4` before the following FF
-  publication copies it into pool-header word `+0x0c`.
+  page-length zero/default, orientation, and paper-source publish already
+  queued page objects before or while they mutate default-page, geometry,
+  orientation, or paper-source state; FF publishes after the `ESC &k2G`
+  line-termination mode applies its CR-style x reset; copies stores
+  `0x782da4` before the following FF publication copies it into pool-header
+  word `+0x0c`.
   Page-size `0xfc74`, page-length `0xf9e8`, reset-default helper `0xcda2`,
   and paper-source handler `0xef62` are the ROM-local writers for the pending
   header bytes consumed by `0xff1e`.
@@ -5501,7 +5510,9 @@ Address-level cluster map:
   geometry publications render page records`, `addressed paper-source and
   copies publications render page records`, `host-fetched ESC E clears
   missing page root without publication`, and `host-fetched copies publication
-  preserves 0xeef0 pool header word`.
+  preserves 0xeef0 pool header word`, plus page-length fixtures
+  `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+  page code` and `0xf9e8 ESC &l#P stream reaches page-length handler`.
   Checked-in evidence is [publication-commands.md](publication-commands.md),
   `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Reset
@@ -5509,9 +5520,10 @@ Address-level cluster map:
   Publication Commands To ROM-Derived Page Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Confidence is high for parser handler order, pre-command object preservation,
-  reset/FF/geometry/paper-source/copies side-effect ordering, pool-header
-  defaults and copy-count field, current-root clearing, bridge preservation,
-  and ROM-derived row construction.
+  reset/FF/geometry/page-length-zero/paper-source/copies side-effect ordering,
+  pool-header defaults and copy-count field, current-root clearing, bridge
+  preservation, and ROM-derived row construction for the direct publication
+  streams.
   The unresolved boundary is not ROM-local publication state: final rows are
   documented through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, with
   fixtures serving as model-consistency checks for those interpreted rows.

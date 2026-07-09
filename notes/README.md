@@ -161,8 +161,8 @@ checked-in ROM model:
   `ESC E` reset, default-record producers, retained-record paths, and reset
   publication behavior.
 - [publication-commands.md](publication-commands.md) - documented reset, FF,
-  page-size, orientation, paper-source, and copies publication streams to
-  rendered page records.
+  page-size, page-length zero/default, orientation, paper-source, and copies
+  publication routes to rendered page records or publication-adjacent state.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,

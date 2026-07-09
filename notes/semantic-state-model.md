@@ -7079,34 +7079,23 @@ records.
 
 Confidence is high for the installed glyph resource fields, page-record object
 bytes, render call order, dispatch targets, rule helper, and composed rows
-because they are asserted by fixture
-`host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`.
-Confidence is high for the page-stream producer schedule because fixture
-`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-asserts fetch boundaries, page parser handlers, glyph source fields, delayed
-raster scratch, queue bytes, dispatch targets, and final rows. Confidence is
-high for the byte-24 modeled install-to-page state handoff because fixture
-`downloaded glyph byte-24 state handoff feeds following page handler` asserts
-stream position `24`, final-header/install-header equality, post-install drain,
-next handler `0x10e68`, glyph source fields, page object bytes, raster payload
-offset `28`, and the rendered-row digest. Confidence is high for
-segmented-glyph/raster composition because fixture
-`segmented downloaded glyph composes with raster through 0x1ef6a` asserts the
-installed `0x2003` segment objects, bucket-9 raster object, dispatch targets,
-and composed row digest. High for split-plane segmented-glyph/raster composition
-because fixture `split-plane segmented downloaded glyph composes with raster
-through 0x1ef6a` asserts the split-plane copied payload layout, segment objects,
-same raster object, dispatch targets, and composed row digest. High for
-segmented-glyph/raster FF publication because fixture `segmented downloaded
-glyph raster FF publications render page records` asserts the `0xff1e` bucket
-arrays, published bucket word, render dispatch, and digest equality with the
-active records. High for even-span glyph/rule/raster FF publication because
-fixture `even-span downloaded glyph rule raster FF publication renders page
-record` asserts the `0xff1e` bucket array and rule list, render bucket word
-`5`, rule mutation through `0x1f596`, dispatch to `0x1f88e` and `0x1effe`,
-and row-digest equality with the active record. Confidence is high for the
-final-header handoff between the font-install phase and the page-stream phase
-for the cited fixtures.
+because the disassembly-backed command route reaches the documented writers and
+consumers: font install `0x16c14 -> 0x16498`, printable glyph production
+`0xd04a -> 0x12f2e`, raster transfer `0x105d0 -> 0x13070`, publication
+`0xff1e`, bridge `0x1ed84 -> 0x1edc6`, and render dispatch `0x1ef6a` /
+`0x1f88e` / `0x1effe` / `0x1f596`. The fixtures named in this checkpoint are
+reproducible checks of those documented routes and row-construction inputs, not
+external rendered-row evidence.
+
+The byte-24 install-to-page state handoff is high confidence for the same
+reason: the documented stream boundary preserves the final header, install
+header, `0x783140` drain state, next handler `0x10e68`, glyph source fields,
+page object bytes, and raster payload offset `28`. Segmented, split-plane, and
+even-span glyph/rule/raster publication siblings are high confidence for the
+documented `0xff1e` bucket arrays, rule-list bytes, published bucket words,
+rule mutation through `0x1f596`, and dispatch to `0x1f88e` / `0x1effe`.
+Fixture row digests remain consistency checks for those ROM-derived object and
+helper contracts.
 
 ### Nonzero Resource Payload Checkpoint
 

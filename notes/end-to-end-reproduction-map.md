@@ -3119,6 +3119,16 @@ Renderer-side glyph fields:
   include `(unnamed)` record `0x00004c`, first `COURIER` record `0x000418`,
   first `LINE_PRINTER` record `0x0146b4`, and secondary selected
   `LINE_PRINTER` record `0x02e122`.
+- The row-copy matrix ties those resource bytes to ROM helper targets. Context
+  `0x4008004c`, glyph `0`, entry `0x001088`, width `9`, rows `32`, and span
+  `2` dispatch through helper `0x01fe76`; context `0x44080418`, glyph `0`,
+  entry `0x007baa`, width `28`, rows `29`, and span `4` dispatch through
+  helper `0x0207ac`; context `0x440946b4`, glyph `32`, entry `0x015330`,
+  width `4`, rows `22`, and span `1` dispatch through helper `0x01fa5c`.
+- The ROM-scanned matrix covers spans `1`, `2`, `4`, `6`, and `8`. It records
+  `5730` glyph records across `24` resource records, mode counts
+  `[(0, 420), (1, 5310)]`, no render spans wider than `16` bytes, and no
+  non-mode-1 entries with nonzero bitmap deltas in the verified built-in ROMs.
 
 Output and page-image effect:
 
@@ -3176,7 +3186,8 @@ Evidence:
   `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`,
   `generated/analysis/ic32_ic15_font_records.md`,
   `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
-  `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`.
+  `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 - Focused listings:
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,

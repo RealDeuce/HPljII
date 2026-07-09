@@ -755,6 +755,28 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   therefore indirect but visible: following printable bytes consume the
   committed cursor through `0xd04a -> 0x12f2e`, while publishing VFC branches
   split pre-VFC and post-VFC text across `0xf124 -> 0xff1e` page roots.
+
+  The documented byte-stream effects are concrete page objects. For table load
+  `ESC &l4W 00 00 00 02 !`, `0x12cfe` consumes payload bytes
+  `00 00 00 02` before parser dispatch resumes, then the following printable
+  queues at compact coordinate `0x9001`. Forward channel jump `ESC &l2V !`
+  finds channel `2` at line `1`, resets x through `0xf06e`, writes y `176`,
+  and queues the following printable as a short compact object whose payload
+  entry is glyph `0x20` at coordinate `0xb001`:
+
+```text
+00 00 00 00 00 00 00 01 20 b0 01
+```
+
+  Selector-zero target-equal `ESC &l0V!` leaves a matching top-of-form cursor
+  unchanged and queues `!` at coordinate `0x9e02`. Selector-zero page-eject
+  `! ESC &l0V !` first queues the old-page printable at compact coordinate
+  `0xbe02`, then `0x1280a` runs
+  `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publishes the old root through
+  `0xff1e`, resets x/y to `10` / `126`, and lets the post-VFC printable queue
+  on a fresh root at coordinate `0x9001`. Wrap-hit `! ESC &l2V !` similarly
+  publishes the old-page printable at coordinate `0xde02`, wraps to line `1`,
+  writes y `176`, and queues the post-VFC printable at `0xb001`.
   Evidence is [vertical-forms-control.md](vertical-forms-control.md),
   `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`, fixtures
   `0x12cfe ESC &l#W loads vertical forms control state`, `mixed VFC definition

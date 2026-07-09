@@ -211,6 +211,66 @@ Unknown:
   normal install path; flag `1` also arms the `0x9406` display-output table
   after the text has changed.
 
+### Host Output FIFO Contract
+
+The host-output FIFO is the ROM-visible boundary for parser commands that
+return bytes to the host instead of producing page objects. It is separate
+from the input byte source at `0xa904` and from the page/image path rooted at
+`0x78297a`.
+
+FIFO storage and pointers are canonical host-output state:
+
+- `0x783e92..0x783ed1`: 64-byte circular storage.
+- `0x783ed2`: count word.
+- `0x783ed4`: read pointer.
+- `0x783ed8`: write pointer.
+- `0x7801e2`: wait object signaled when producers or the worker change FIFO
+  availability.
+
+Producer helper `0xb0c0` appends one byte:
+
+- `0xb0c4..0xb0d8` enters the critical section and rejects the append when
+  count `0x783ed2 >= 0x40`, returning `D7 = 0` with no pointer or count
+  change.
+- `0xb0da..0xb102` stores the byte argument at write pointer `0x783ed8`,
+  increments the pointer, and wraps it to `0x783e92` after `0x783ed1`.
+- `0xb110..0xb126` increments count `0x783ed2`, leaves the critical section,
+  and returns `D7 = 1`.
+
+Retry wrapper `0xb090` is the blocking enqueue used by the model-ID response
+producer. It calls `0xb0c0`; on a full FIFO it signals or waits on
+`0x7801e2` through `0x10c8(0x7801e2)` and retries the same byte. After a
+successful append it also signals `0x7801e2` before returning. The byte stream
+therefore preserves order: no later response byte is enqueued until the
+current byte has entered the FIFO.
+
+Consumer helper `0xb022` removes one byte:
+
+- `0xb028..0xb034` enters the critical section and tests count
+  `0x783ed2`.
+- Empty FIFO path `0xb062..0xb070` clears the caller's destination byte,
+  returns `D7 = 0`, and leaves count/pointers unchanged.
+- Nonempty path `0xb036..0xb060` copies byte `[0x783ed4]` to the caller
+  destination, increments the read pointer, and wraps it to `0x783e92` after
+  `0x783ed1`.
+- `0xb072..0xb088` decrements count `0x783ed2`, leaves the critical section,
+  and returns `D7 = 1`.
+
+Output effect: parser-visible response commands such as
+`0x12034 -> 0x122be` enqueue the literal `33440A\r\n` through `0xb090`.
+The output worker `0xae2c` / `0xaece` later consumes either FIFO bytes,
+status bytes, or bridge-service byte `0x13` according to its own priority.
+None of these FIFO operations create page roots, queue page objects, publish
+records, or invoke `0x1ed84` / `0x1ef6a`.
+
+Evidence:
+`generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`;
+`generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`;
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` for
+`0x12034..0x12326`; and
+`generated/analysis/ic30_ic13_pcl_command_map.md` for the parser-table route
+into `0x12034`.
+
 ### Model-ID Command Stream
 
 The concrete parser-visible response stream is:

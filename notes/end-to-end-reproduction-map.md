@@ -86,6 +86,13 @@ Use these entry points according to the artifact in hand:
   `Supported Stream Entry Points` cluster map. Those sections keep the trace
   byte-oriented: source bytes, parser records, command handler, state fields,
   page objects, publication, bridge, and render helper.
+- For the common page/image and pixel-output hop after a command-family note
+  has created page content, use `Shared Page-Object Contract` and
+  `Render Helper Boundary Index` in this file. Those sections collect the
+  page-root fields, publication and bridge fields, render-record roots,
+  helper dispatch order, buffer destinations, and exact ROM-local render
+  boundaries that are shared by printable text, spans, raster, rules, and
+  downloaded glyphs.
 - For a known supported family, use `Reproducible Byte-Stream Families`. That
   section records the current end-to-end contracts for printable/direct
   controls, layout, font selection, no-output rows, host/status side channels,

@@ -97,7 +97,10 @@ checked-in ROM model:
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
-   `+0x28`, and context slots under `+0x2c..+0x68`.
+   `+0x28`, and context slots under `+0x2c..+0x68`. The shared
+   `Shared Page-Object Contract` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) is the
+   route index for these common object fields.
 6. For publication, follow `0xff1e` into the page/control pool and then
    [active-render-scheduler.md](active-render-scheduler.md): scheduler source
    `0x780eae`, active render pointer `0x783a18`, and bridge
@@ -105,7 +108,11 @@ checked-in ROM model:
 7. For pixels, finish in
    [page-raster-imaging.md](page-raster-imaging.md): render entry `0x1ef6a`,
    bucket dispatch `0x1efc2`, rule dispatch `0x1f446`, fixed-list dispatch
-   `0x1f756`, and helper-specific row construction.
+   `0x1f756`, and helper-specific row construction. The shared
+   `Render Helper Boundary Index` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) names the
+   common helper order, buffer destinations, and exact ROM-local render
+   boundaries.
 8. If the route stops, record the exact boundary as ROM-local unknown,
    hardware/MMIO, missing external resource data, or optional physical
    correlation. Do not replace a missing ROM edge with fixture output or a

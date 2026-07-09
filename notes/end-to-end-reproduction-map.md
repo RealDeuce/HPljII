@@ -449,6 +449,20 @@ Printable source and page-object construction:
   field `+0x1c`. For the two `!` bytes, the second byte reuses the compatible
   short compact object while capacity remains and appends another
   glyph/coordinate entry.
+- With initialized `LINE_PRINTER` HMI, the concrete compact object stored for
+  `!!` is:
+
+```text
+00 00 00 00 00 00 00 02 20 00 01 20 02 02
+```
+
+  Object byte `+0x06 = 2` is the short-entry count. The two entries are glyph
+  `0x20` at compact coordinates `0x0001` and `0x0202`; `0x1f3d4` decodes the
+  second coordinate as byte base `+0x04` plus subpixel term `0x12`, placing the
+  second glyph at pixel x `34` in the documented render fixture. This ties the
+  top-level `!!` stream to the same object/row contract as the
+  `Text Source Objects And Compact Buckets` owner note without treating the
+  fixture rows as an external oracle.
 
 Publication, bridge, and render:
 
@@ -521,7 +535,8 @@ Evidence:
   `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
-  and `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`, and
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Text Placement Walkthrough
 

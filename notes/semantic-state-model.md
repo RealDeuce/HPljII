@@ -630,8 +630,8 @@ reset `0x3178`, clear `0x780e32`/`0x780e2e`, and mask status bits in
   producer for frame byte `+0x09` values outside observed `2`, `3`, and `4`.
 - `0x4218..0x44d2` and `0x61e4..0x6362`: no-byte gate writes, byte-source
   reset, selected pool-record cleanup, and service-needed tail are pinned; the
-  exact user-facing trigger names for the two quiesce/reset branches remain
-  provisional.
+  exact user-facing/manual labels for the two quiesce/reset branches remain
+  external correlation.
 
 ## Host Interface Output FIFO
 

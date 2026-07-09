@@ -9,9 +9,10 @@ sources, performs hardware handshakes for direct I/O modes, runs service
 work when the formatter is not ready, and returns either an unsigned byte
 in `D7` or `D7 = -1` for one immediate no-byte/error branch.
 
-Address names are provisional. The ROM proves the control flow and state
-effects below; the exact Centronics/serial MMIO identity still needs board
-or manual correlation.
+ROM-visible address roles are documented below. What remains external is the
+physical connector/interface naming and timing for the MMIO banks; the byte
+source priority, latch side effects, and parser-visible return values are
+firmware-defined.
 
 ## High-Level Behavior
 
@@ -261,10 +262,11 @@ from `0x780f02` to `0x7810b2` in 0x6c-byte steps: records in state byte `1`,
 
 The main parser loop `0x117dc..0x117ee` is the observed consumer of this gate:
 it tests `0x780e3b`, clears it at `0x117e8`, and then calls the
-`0x10c8(0x780202)` wait/helper path. The exact user-facing trigger for the
-two quiesce/reset branches is still provisional, but the reproduction contract
-is concrete: while the gate is active, no live byte source is consumed, and the
-next parser-visible fetch returns `-1` before service work is re-enabled.
+`0x10c8(0x780202)` wait/helper path. The exact user-facing labels for the two
+quiesce/reset branches remain external/manual correlation, but the
+reproduction contract is concrete: while the gate is active, no live byte
+source is consumed, and the next parser-visible fetch returns `-1` before
+service work is re-enabled.
 
 ### Ring Source
 
@@ -575,7 +577,7 @@ Field groups:
   - board-level names and timing for the direct MMIO banks;
   - data-chain frame-byte values outside the observed `+0x09 = 2`, `3`, and
     `4` producers, if any;
-  - exact user-facing trigger names for quiesce/reset branches
+  - exact user-facing/manual labels for quiesce/reset branches
     `0x4218..0x44d2` and `0x61e4..0x6362`.
 
 Writers:
@@ -733,8 +735,8 @@ Unresolved middle edges:
   observed `2`, `3`, and `4`.
 - `0x4218..0x44d2` and `0x61e4..0x6362`: the no-byte gate, byte-source
   reset, selected pool-record cleanup, and service-needed tail are documented;
-  the exact user-facing trigger names for these two quiesce/reset branches are
-  still provisional.
+  the exact user-facing trigger labels for these two quiesce/reset branches
+  remain external/manual correlation.
 
 ## Reproduction Contract
 

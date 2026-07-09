@@ -5427,7 +5427,7 @@ Address-level cluster map:
   display functions use normal reader `0x12536` or alternate/data reader
   `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and
   `0x121b2`. Owners are
-  [transparent-print-data.md](transparent-print-data.md) and
+  [transparent-print-data.md](transparent-print-data.md#owner-summary) and
   [display-functions.md](display-functions.md). The remaining pixel-affecting
   residual is not parser routing; it is the secondary segment-57 resource
   continuation read at firmware range `0x0c0000..0x0c0321`. Transparent
@@ -5465,7 +5465,7 @@ Address-level cluster map:
   `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05
   59 06 06`. Alternate/data reader `0x12120` appends payload
   `21 1a 58 1b 5a` as stored stream `1b 59 21 7f 1b 5a` through `0xe002`.
-  Evidence is [transparent-print-data.md](transparent-print-data.md),
+  Evidence is [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [display-functions.md](display-functions.md), and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - Host/status side-channel cluster:
@@ -6069,7 +6069,8 @@ Address-level cluster map:
   ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
   plus disassembly
   `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`.
-  Reproduction evidence is [transparent-print-data.md](transparent-print-data.md).
+  Reproduction evidence is
+  [transparent-print-data.md](transparent-print-data.md#owner-summary).
   The tracked semantic contract is that `ESC &p#X` is a counted delayed
   byte-stream splice, not an opaque skip. Handler `0x11f5a` schedules
   `0x12452` through `0x121cc`; `0x12218` restores command record
@@ -8557,18 +8558,17 @@ shape, publication boundary, or render helper inputs.
 The next work should follow dataflow, not isolated handlers. Start from these
 boundaries only when new evidence changes the documented state or pixel output.
 
-1. Transparent secondary segment-57 resource decode remains the highest
-   pixel-affecting external-data boundary. The parser, filtering, page-record,
-   bridge, and renderer path is documented in
-   [transparent-print-data.md](transparent-print-data.md) and the Transparent
-   Print Data section above. The unresolved input is physical/resource-window
-   data for firmware range `0x0c0000..0x0c0321`, after verified resource-pair
-   suffix `0x0bfe22..0x0bffff`. Useful next evidence is static
+1. Transparent secondary segment-57 resource decode remains the highest pixel-affecting
+   external-data boundary. The parser, filtering, page-record, bridge, and renderer path
+   is documented in [transparent-print-data.md](transparent-print-data.md#owner-summary)
+   and the Transparent Print Data section above. The unresolved input is
+   physical/resource-window data for firmware range `0x0c0000..0x0c0321`, after verified
+   resource-pair suffix `0x0bfe22..0x0bffff`. Useful next evidence is static
    board/emulator/gate-array decode for that range, or a board-level memory-map
-   explanation for which continuation policy the ROM address bus actually sees.
-   Do not re-trace `0x12452`, transparent filtering, secondary buckets through
-   `448`, or compact renderer arithmetic unless new decode evidence contradicts
-   the current boundary.
+   explanation for which continuation policy the ROM address bus actually sees. Do not
+   re-trace `0x12452`, transparent filtering, secondary buckets through `448`, or
+   compact renderer arithmetic unless new decode evidence contradicts the current
+   boundary.
 2. Reset/default provenance is no longer a ROM-local parser/page/render gap.
    [reset-default-environment.md](reset-default-environment.md) and
    `Default Environment Record Producers` cover the reset consumer, default

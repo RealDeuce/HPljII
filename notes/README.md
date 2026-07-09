@@ -40,7 +40,7 @@ standalone deliverables.
 - Command dispatch is indexed by [pcl-command-map.md](pcl-command-map.md).
   Individual command families then move to owner notes such as
   [direct-control-codes.md](direct-control-codes.md),
-  [transparent-print-data.md](transparent-print-data.md),
+  [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md),
   [downloaded-fonts.md](downloaded-fonts.md),
@@ -250,8 +250,9 @@ checked-in ROM model:
   owner boundary, reset, FF, page-size, page-length zero/default, orientation,
   paper-source, and copies routes to rendered page records or
   publication-adjacent state.
-- [transparent-print-data.md](transparent-print-data.md) - documented
-  `ESC &p#X` delayed payload handling and printable text re-entry.
+- [transparent-print-data.md](transparent-print-data.md#owner-summary) -
+  documented `ESC &p#X` delayed payload handling, text/fixed-space routing,
+  page-record re-entry, and the secondary segmented resource boundary.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
 - [rectangle-graphics.md](rectangle-graphics.md) - documented `ESC *c`

@@ -778,7 +778,7 @@ Field groups for this index:
   `0x9c2c` only when that byte is zero, writes status/service fields
   `0x7821cc`, `0x7822db`, and `0x780e2a`, and creates no page object.
   Evidence:
-  [transparent-print-data.md](transparent-print-data.md) and
+  [transparent-print-data.md](transparent-print-data.md#owner-summary) and
   [display-functions.md](display-functions.md).
 - Raster graphics:
   `ESC *t#R` uses `0x10808`, `ESC *r#A/#B` use `0x1075a` / `0x107fa`, and

@@ -157,7 +157,8 @@ command-family notes; detailed ledgers remain in
   record, `0x1edc6` copies source `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render
   record `+0x18/+0x1c/+0x20/+0x24..+0x60`, and `0x1ef6a` dispatches the active
   band through bucket, rule, fixed-list, compact, segment-list, and raster
-  helpers.
+  helpers. The checked-in owner summary for that join is
+  [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary).
 
 State classification for this shared layer is: canonical state is the current
 page root, queued object records, context slots, and published page/control
@@ -182,7 +183,8 @@ the wrapped source-byte helper targets through `0x1f034` / `0x1f08e`.
 The render helper layer is documented as ROM dataflow from bridged page objects
 to bitmap writes. Its common entry is
 `0x1ef6a -> 0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`, with detailed evidence
-in [page-raster-imaging.md](page-raster-imaging.md#renderbanding-bridge),
+in [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+[page-raster-imaging.md](page-raster-imaging.md#renderbanding-bridge),
 `Bitmap Render Dispatch Contract` in
 [semantic-state-model.md](semantic-state-model.md), and listings
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,

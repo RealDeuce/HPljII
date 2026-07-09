@@ -2452,7 +2452,9 @@ Rule and fixed-width lists are not simple pass-through roots. Bridge helper
 
 Compact bucket roots and context slots are mostly pass-through. The bridge
 contract is documented in
-[page-record-storage.md](page-record-storage.md) and
+[page-record-storage.md](page-record-storage.md),
+[Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+and
 `generated/analysis/ic30_ic13_page_record_bridge.md`.
 
 Reproduction rule:
@@ -2710,8 +2712,10 @@ State classification at this handoff:
   none at render entry. Parser records and payload bytes have already been
   committed into page objects or state records before publication.
 
-The detailed render contracts live in [page-raster-imaging.md](page-raster-imaging.md)
-and the renderer sections of [semantic-state-model.md](semantic-state-model.md).
+The detailed render contracts live in
+[Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+[page-raster-imaging.md](page-raster-imaging.md), and the renderer sections of
+[semantic-state-model.md](semantic-state-model.md).
 Command-family notes point back here when they reach their page-object
 producer and forward to the renderer note that consumes the object.
 

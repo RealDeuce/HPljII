@@ -888,7 +888,45 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   transparent-output boundary is physical/resource-window decode for secondary
   high-control fallback rows that read `0x0c0000..0x0c0321` after the verified
   resource suffix `0x0bfe22..0x0bffff`; that boundary affects built-in glyph
-  bytes, not parser, dispatch, or page-object semantics. Owner notes:
+  bytes, not parser, dispatch, or page-object semantics.
+
+  The command route to that boundary is exact. Stream `SO ESC &p3X ! 80 !`
+  routes SO byte `0x0e` to `0xc6b8`, selects text slot `1`, and installs
+  secondary context `0xc00ae122` into the current page root. `ESC &p3X`
+  restores delayed transparent record:
+
+```text
+80 58 00 03 00 00
+```
+
+  through `0x121cc -> 0x12218 -> 0x12452`; payload bytes `21 80 21` all
+  route to `0xd04a` under the secondary filter state. The `!` bytes map to
+  glyph `0`; byte `0x80` maps to glyph `0x5f` and queues selector-`0x2001`
+  segmented compact objects. Publication and bridge preserve render context
+  slots `(0x440946b4, 0xc00ae122)`.
+
+  Renderer `0x1f354` resolves secondary `LINE_PRINTER` glyph `0x5f` through a
+  bit-30 offset-table entry whose relative offset is zero, so the glyph record
+  starts at file offset `0x02e122`. Segmented renderer `0x1f1f0` applies
+  segment `0x39`, row skip `7296`, selected source file offset `0x03fe22`,
+  firmware source address `0x0bfe22`, and required read range:
+
+```text
+0x0bfe22..0x0c0321
+```
+
+  Bytes `0x0bfe22..0x0bffff` are verified in the IC32/IC15 resource-pair
+  image and have digest
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`.
+  Bytes `0x0c0000..0x0c0321` are outside the verified resource-pair image.
+  Mirror, code-pair continuation, and zero-fill policies produce the same
+  current-band digest
+  `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`, but
+  diverge in fallback rows. The unresolved item is therefore physical
+  ROM/resource decode for `0x0c0000..0x0c0321`, not command dispatch,
+  transparent filtering, page-object construction, bridge state, or compact
+  renderer arithmetic.
+  Owner notes:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).
 - Rectangle and raster imaging:

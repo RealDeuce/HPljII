@@ -4337,6 +4337,15 @@ selector mismatch only copies the remembered word and installs no context.
     those page-root slots into render-record `+0x24..+0x60`, `0x1f008` caches
     the selected render slot in `0x783a2c`, and `0x1f354` interprets bit 30
     plus the low 24 bits to resolve the glyph entry.
+  - `0x196c4` is the matching-resource scan over those same page-root context
+    slots. It masks the caller resource/context longword to 24 bits, walks
+    root `+0x2c + 4*n` for `n = 0..15`, requires live flag
+    `0x78297f+n == 1`, and calls `0x1ba6c` only for a live masked match.
+    Missing root or no match falls through to `0x9ac2` without publication.
+    The matched path runs `0x1ba6c` as
+    `0xf34a -> 0xff1e -> 0xf8fc -> 0xf34a -> 0x9ac2`, so its effect is
+    pending-text flush, current-root publication, default/page-font refresh,
+    second flush, and wait/service.
   Evidence: fixtures
   `live primary current-font RAM install feeds SI page-record rows` and
   `live secondary current-font RAM install feeds SO page-record rows`;

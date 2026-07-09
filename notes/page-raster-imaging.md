@@ -3342,10 +3342,12 @@ Other checked leads:
   rendering is instead through page/control records copied by `0x1edc6`;
   `generated/analysis/ic30_ic13_page_record_bridge.md` decodes the
   queue/list/context-slot copy contract.
-- The later `0x196c4` lead scans page-root `+0x2c` font slots and calls
-  `0x1ba6c` if a slot matches; `0x1ba6c` flushes text, finalizes the
+- The later `0x196c4` lead scans page-root `+0x2c` font slots by masked
+  low-24-bit resource/context value and live flags `0x78297f+n`, then calls
+  `0x1ba6c` only for a live match. `0x1ba6c` flushes text, finalizes the
   current root through `0xff1e`, refreshes page/font state through
-  `0xf8fc`, flushes again, and waits through `0x9ac2`. It is not a
+  `0xf8fc`, flushes again, and waits through `0x9ac2`. Missing root or no
+  live match waits through `0x9ac2` without publication. It is not a
   bucket-chain consumer.
 - `0x780ea6` and nearby aliases are the fixed 0x6c-byte page/control
   record pool used by allocator `0x9a9a`. They are not independent final

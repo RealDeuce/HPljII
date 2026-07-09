@@ -5876,6 +5876,12 @@ Address-level cluster map:
   `0xc428(slot)` reads the selected longword from `0x782ee6` or `0x782ef6`;
   `0xc4fc` finds or installs that longword in one of 16 page-root font slots,
   and later `0x1edc6` copies those slots into render-record contexts.
+  The sibling scan `0x196c4..0x19730` walks the same page-root context slots
+  by masked low-24-bit resource/context value and live flags `0x78297f+n`.
+  A live match calls `0x1ba6c`, which flushes pending text, publishes the
+  current root through `0xff1e`, refreshes page/font defaults through
+  `0xf8fc`, flushes again, and waits through `0x9ac2`; no root or no match
+  waits through `0x9ac2` without publication.
   The selected-font cache path is part of the byte-stream contract:
   `0x13a48` compares the selected snapshot, while `0x14ba4..0x14c5c` can
   accept an active-object signature match by record bytes, bounded size/range

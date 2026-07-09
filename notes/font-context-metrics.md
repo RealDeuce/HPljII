@@ -665,6 +665,21 @@ Dirty-map fixture results:
   `0x78318e`, and may derive `0x78315c` through `0x10550` from selected
   record longword `+0x24`.
 
+The separate `0x196c4..0x19730` helper scans an already-built current page
+root for a resource/context longword. It masks the caller argument to low
+24 bits, returns to wait/service path `0x9ac2` if `0x78297a` is null, then
+walks root context slots `+0x2c + 4*n` for `n = 0..15`. A match requires both
+the masked slot longword to equal the masked caller argument and live flag
+`0x78297f+n == 1`. On the first live match, it calls `0x1ba6c`; if no slot
+matches, it calls `0x9ac2` directly.
+
+Helper `0x1ba6c` is a publication/default-refresh sequence, not a glyph
+renderer: `0xf34a -> 0xff1e -> 0xf8fc -> 0xf34a -> 0x9ac2`. Its output effect
+is to flush pending text, publish the current root when applicable, refresh
+page/font defaults, flush again, and wait/service. It does not inspect compact
+buckets or render glyph rows directly, but it can decide when page-root
+context-slot state is finalized before later rendering.
+
 ## Printable Source Capture
 
 `0x1393a` captures the selected font state before printable placement:

@@ -247,6 +247,73 @@ dropping into the command-family detail notes. The longer ledger is
   byte to create visible output. Owner worked paths are
   `Vertical Forms Control` and `VFC Table And Channel Branch Matrix`.
 
+## Minimal End-To-End Example
+
+The baseline printable stream is two bytes:
+
+```text
+21 21
+```
+
+It is the shortest checked-in example of the full reproduction chain:
+
+```text
+0xa904 -> 0xda9a -> 0x11774 -> 0xd04a -> 0x1393a ->
+0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84 -> 0x1edc6 ->
+0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354
+```
+
+What the ROM does:
+
+- Byte admission:
+  `0xa904` supplies each `0x21` byte to parser wrapper `0xda9a`.
+- Parser dispatch:
+  parser loop `0x11774` is in normal mode zero, so each `0x21` reaches
+  printable handler `0xd04a` rather than a command-family terminal.
+- Text source:
+  in the documented built-in `LINE_PRINTER` case, `0x1393a` maps host byte
+  `0x21` to glyph byte `0x20`, source flag `1`, selected context slot `0`,
+  and the current cursor/metric state.
+- Page object:
+  `0xd824 -> 0x12f2e -> 0x1387c` queues one compact bucket object under
+  page-root `+0x1c`. With initialized `LINE_PRINTER` HMI, the concrete
+  object bytes for `!!` are:
+
+```text
+00 00 00 00 00 00 00 02 20 00 01 20 02 02
+```
+
+- Publication and render bridge:
+  `0xff1e` publishes the current page root, and `0x1ed84 -> 0x1edc6` copies
+  the compact bucket root and context slots into the active render record.
+- Pixel generation:
+  `0x1ef6a` derives band state through `0x1ef86`, dispatches the compact
+  bucket through `0x1efc2 -> 0x1effe`, selects short compact helper `0x1f034`,
+  resolves glyph `0x20` through `0x1f354`, and uses the row-copy table rooted
+  at `0x1fa5c` to write ROM-derived rows into the active band or fallback
+  buffer.
+
+Why this example matters:
+
+- It is the reference spine for state-only command families. Commands such as
+  HMI, cursor placement, font selection, transparent data, macro replay, and
+  VFC change which fields this path consumes, but they still have to rejoin a
+  page-object producer or publication/render path before pixels exist.
+- It separates parser scratch from page state. The parser records are gone by
+  the time `0x12f2e` has queued the compact object; rendering consumes the
+  page object and copied context slots, not the original host bytes.
+- It gives a concrete comparison point for later object classes: raster rows
+  replace the compact producer with `0x13070 -> 0x13250`, rules replace it with
+  `0x13386 -> 0x133aa`, and spans replace it with `0x12714`, but all published
+  objects still cross `0xff1e`, `0x1ed84 -> 0x1edc6`, and `0x1ef6a`.
+
+Evidence:
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md),
+`Minimal Stream Walkthrough: !!`;
+`Worked Path: Printable Glyph` and
+`Worked Path: Text Source Objects And Compact Buckets` below; and
+[page-raster-imaging.md](page-raster-imaging.md).
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

@@ -4034,6 +4034,13 @@ d04a d0f0 d04a d0f0 d04a
   entries.
 - Routed printable values use the same `0xd04a -> 0xd824 -> 0x12f2e ->
   0x1387c` compact text path as ordinary printable bytes.
+- For the documented default-filter stream, the entry-producing loop values
+  are `0x21`, `0x21`, and terminating `0x5a`. They queue glyph bytes `0x20`,
+  `0x20`, and `0x59` at compact coordinates `0x0001`, `0x0403`, and
+  `0x0405`. The intervening `0x05` and terminating `ESC` bytes route through
+  `0xd0f0`: they advance cursor state but do not append compact glyph entries
+  in the pinned built-in source path. The checked-in owner note records the
+  same route as `d04a d0f0 d04a d0f0 d04a`.
 - Publication and render are shared: `0xff1e` publishes the page root,
   `0x1ed84` / `0x1edc6` copy bucket/context roots, and
   `0x1ef6a -> 0x1efc2 -> 0x1effe` renders the compact object.
@@ -4106,7 +4113,8 @@ Evidence:
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
-  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  plus `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal VFC Walkthrough
 

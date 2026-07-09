@@ -4800,9 +4800,25 @@ Address-level cluster map:
   `0x107fa` clears only the active byte; `0x11f82 -> 0x121cc -> 0x12218`
   restores the transfer record; `0x105d0` gates/caps/drains payload bytes;
   `0x13070 -> 0x13250` queues encoded objects under page-root `+0x1c`; and
-  `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders modes `0..3`. Residual work must
-  change clipping, transfer acceptance/drain outcome, allocator state, object
-  bytes, bridge roots, or renderer helper inputs.
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders modes `0..3`. Raster state is the
+  block rooted at `0x783170`: row `+0x02`, accepted byte count `+0x04`,
+  overflow/drain count `+0x06`, encoded mode `+0x08`, baseline/origin
+  `+0x0a`, scale `+0x0e`, row byte limit `+0x10`, and active flag `+0x12`.
+  `0x10808` writes scale/mode only when active flag `+0x12` is clear;
+  `0x1075a` sets the active flag and seeds origin from cursor x `0x782c8a` or
+  cursor y `0x782c8e` according to orientation `0x782da3`; `0x107fa` clears
+  only `+0x12`, allowing later resolution changes to take effect. Transfer
+  handler `0x105d0` rereads restored record word `+2` as the payload count,
+  drains negative or beyond-extent rows without `0x13070`, and calls
+  `0x13070` only for accepted rows. `0x13070` derives bucket `0x782a7c` and
+  packed key `0x782a7e`; `0x13250` links an encoded-span object with class
+  byte `+0x04 = 0x80`, mode byte `+0x05`, rounded payload capacity `+0x06`,
+  key `+0x08`, and payload bytes at `+0x0a`. Renderer `0x1f88e` masks
+  object byte `+0x05 & 3`: mode `0` renders literal rows, modes `1`, `2`,
+  and `3` expand payload bytes into `2`, `3`, or `4` output rows through ROM
+  helper tables. Residual work must change clipping, transfer acceptance/drain
+  outcome, allocator state, object bytes, bridge roots, or renderer helper
+  inputs.
 - Publication and render-scheduler cluster:
   reset, FF, page-size, orientation, paper-source, copies, VFC publication,
   and no-room retries converge on `0xff1e`. Published records then run

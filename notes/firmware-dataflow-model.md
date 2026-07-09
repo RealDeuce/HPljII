@@ -7495,6 +7495,15 @@ resource data, or optional physical correlation outside the ROM-derived model.
 
 Current top-level boundaries include:
 
+- Supported byte-stream routes are not themselves unresolved boundaries. The
+  controlling route index is `Supported Stream Entry Points` in
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), which
+  names the parser, command-family, page-object, publication, scheduler, and
+  render owners for printable text, direct controls, parser artifacts,
+  transparent/display readers, font selection, downloaded fonts,
+  raster/rectangle graphics, macro/VFC, and publication. New ROM-local work
+  should start only when a byte stream changes a named field, object, bridge
+  root, helper target, or row-construction input in one of those owner notes.
 - Hardware/MMIO: direct host-input and host-output register names behind
   `0x8e01`, `0x8801`, `0x8c01`, `0xa601`, `0xaa01`,
   `0xfffee001`, `0xfffee003`, `0xfffee005`, `0xfffee009`,

@@ -43,8 +43,8 @@ Primary route:
   [pcl-parser-core.md](pcl-parser-core.md),
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
-  [raster-graphics.md](raster-graphics.md),
-  [rectangle-graphics.md](rectangle-graphics.md), and
+  [raster-graphics.md](raster-graphics.md#owner-summary),
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 
 Field groups:
@@ -227,7 +227,7 @@ boundaries:
 - Transparent print data `ESC &p#X`:
   [transparent-print-data.md](transparent-print-data.md).
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:
-  [raster-graphics.md](raster-graphics.md), with encoded-raster render
+  [raster-graphics.md](raster-graphics.md#owner-summary), with encoded-raster render
   helpers and bitmap row composition in
   [page-raster-imaging.md](page-raster-imaging.md).
 - Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including
@@ -235,7 +235,7 @@ boundaries:
   [errors-and-status.md](errors-and-status.md) and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
-  [rectangle-graphics.md](rectangle-graphics.md), with rule/span render
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary), with rule/span render
   helpers and bitmap composition in
   [page-raster-imaging.md](page-raster-imaging.md).
 - Vertical forms control table payloads and channel jumps:
@@ -478,7 +478,7 @@ Normal table `0x112a4`:
   Owners are [pcl-parser-core.md](pcl-parser-core.md),
   [transparent-print-data.md](transparent-print-data.md),
   [vertical-forms-control.md](vertical-forms-control.md),
-  [raster-graphics.md](raster-graphics.md),
+  [raster-graphics.md](raster-graphics.md#owner-summary),
   [symbol-set-selection.md](symbol-set-selection.md), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
   mutate parser scratch, append setup records, or save delayed handlers;
@@ -507,11 +507,11 @@ Normal table `0x112a4`:
 - Raster and rectangle imaging handlers:
   `0x1075a`, `0x107fa`, `0x10808`, `0x10898`, `0x10a40`, `0x10ae0`,
   `0x10dce`, `0x10e22`, and `0x10e68`.
-  Owners are [raster-graphics.md](raster-graphics.md) and
-  [rectangle-graphics.md](rectangle-graphics.md). These handlers write raster
-  setup state, rectangle width/height/fill state, or queue rule/raster page
-  objects that later publish through `0xff1e` and render through
-  `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  Owners are [raster-graphics.md](raster-graphics.md#owner-summary) and
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary). These handlers
+  write raster setup state, rectangle width/height/fill state, or queue
+  rule/raster page objects that later publish through `0xff1e` and render
+  through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
 - Font-selection, symbol/designation, and downloaded-font state handlers:
   `0xc390`, `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`,
   `0x12046`, `0x1205a`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`,
@@ -546,7 +546,7 @@ Alternate/data table `0x116f6`:
   `0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`, `0xdd08`, and `0xcc52`.
   Owners are [transparent-print-data.md](transparent-print-data.md),
   [vertical-forms-control.md](vertical-forms-control.md),
-  [raster-graphics.md](raster-graphics.md),
+  [raster-graphics.md](raster-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [publication-commands.md](publication-commands.md). Counted payloads and
@@ -1252,7 +1252,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
 00 00 00 00 01 17 4a 00 00 0c 00 05 00 05
 ```
 
-  Evidence is [rectangle-graphics.md](rectangle-graphics.md),
+  Evidence is [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
   `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
   `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
   fixtures `rectangle command stream queues chained ESC *c rule object`,
@@ -1326,9 +1326,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   points at the earlier `0x00f2` object when `0x1ed84` / `0x1ef6a` consume
   the chain.
 
-Evidence is [Raster Command-To-Pixel Owner
-Summary](raster-graphics.md#raster-command-to-pixel-owner-summary),
-[raster-graphics.md](raster-graphics.md),
+Evidence is [raster-graphics.md](raster-graphics.md#owner-summary),
 `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
 `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
 `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, fixtures `raster
@@ -1336,8 +1334,8 @@ stream ties parser dispatch to queued page object`, `host-fetched raster stream
 preserves 0x1edc6 bridge contract`, `0x13070/0x13250 raster row queues encoded-span
 object`, and `0x1f88e mode-0 raster object renders queued literal row` through `0x1f88e
 mode-3 raster object expands queued bytes into four rows`. Owner notes:
-[rectangle-graphics.md](rectangle-graphics.md) and
-[raster-graphics.md](raster-graphics.md).
+[rectangle-graphics.md](rectangle-graphics.md#owner-summary) and
+[raster-graphics.md](raster-graphics.md#owner-summary).
 - Downloaded-font current-state controls in the `*c` family:
   the same `ESC *` / `*c` parser route enters mode `16`, but finals
   `D/d`, `E/e`, and `F/f` are owned by the downloaded-font state block rather
@@ -2161,7 +2159,7 @@ cursor `0x782c8a`; landscape raster origin seeds from vertical cursor
 `0x105d0`, so raster row byte transfer is tied into the same
 parsed-command/data chain used by macro/download payload handling. The
 full raster command/data, queue, and render-dispatch edge is documented
-in [raster-graphics.md](raster-graphics.md).
+in [raster-graphics.md](raster-graphics.md#owner-summary).
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving
 raster origin/baseline/mode/scale/limit state intact so later resolution
@@ -2173,7 +2171,7 @@ leaves the current mode/scale/limit intact before the next `ESC *b2W`
 row.
 
 Rectangle graphics command edges are documented in
-[rectangle-graphics.md](rectangle-graphics.md). `ESC *c#A/#B` store
+[rectangle-graphics.md](rectangle-graphics.md#owner-summary). `ESC *c#A/#B` store
 explicit positive dot width/height in `0x78316a` / `0x783166`, while
 missing or nonpositive values clear the corresponding state.
 `ESC *c#H/#V` convert decipoints through five 300-dpi subunits per

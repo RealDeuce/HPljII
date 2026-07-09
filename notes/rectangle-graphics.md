@@ -67,6 +67,91 @@ Evidence:
   - `addressed text/rule/multi-row raster publication preserves bucket
     chain`
 
+## Owner Summary
+
+Concept: this note owns the `ESC *c` rectangle/rule graphics family from
+parsed command records to rule-list objects and rendered solid or patterned
+pixels. It covers dot and decipoint size state, area-fill state, fill selector
+mapping, page/cursor clipping, rule object allocation, no-room retry
+publication, page-record bridge normalization, render-list dispatch, and band
+continuation state.
+
+Primary route:
+
+- Parser setup handlers `0x11eb6`, `0x11ec8`, and `0x11eda` keep the
+  `ESC *c` command family active across chained lowercase finals.
+- Size/fill state route:
+  `0x10e68/0x10e22/0x10a40/0x10ae0/0x10dce -> 0x78316a/0x783166/0x78316e`.
+- Fill route:
+  `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa -> page-root rule list +0x24`.
+- No-room route:
+  `0x10d22 -> root+0x15.0 -> 0xff1e -> 0x10084 -> retry clipped source`.
+- Render route:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1f446
+  -> 0x1f596/0x1f4e0`.
+
+Field groups:
+
+- Canonical rectangle state: width `0x78316a`, height `0x783166`, and
+  area-fill id `0x78316e`.
+- Canonical page/cursor inputs: horizontal cursor `0x782c8a`, vertical cursor
+  `0x782c8e`, orientation `0x782da3`, page extents `0x782db8` / `0x782db6`,
+  and current page root `0x78297a`.
+- Canonical rule source: staging record `0x782a88`, including x, y, width,
+  height, and fill selector.
+- Canonical page output: page-root rule-list head `root+0x24`, 14-byte rule
+  objects from `0x133aa`, bridge-normalized render list `+0x1c`, selector
+  byte `+0x05`, packed key `+0x06`, width `+0x08`, height `+0x0a`, and
+  continuation word `+0x0c`.
+- Derived/cache: rule bucket index `0x782a7c`, low bucket byte `0x782a7d`,
+  packed rule key `0x782a7e`, and horizontal phase `0x782dc0`.
+- Parser scratch: parser record cursor `0x78299e` and current six-byte
+  command record consumed by each handler.
+- Firmware bookkeeping: stream allocator state `0x782a70`, `0x782a72`, and
+  `0x782a76`, plus page-root retry flag `root+0x15.0`.
+- Unknown: new streams are unknown only if they change clipped source records,
+  `0x1381c` allocation state, rule object bytes, bridge-normalized lists,
+  no-room publication state, render dispatch, or ROM-derived row construction.
+
+Writers and readers:
+
+- `0x10e68`, `0x10e22`, `0x10a40`, and `0x10ae0` write rectangle dimensions.
+- `0x10dce` writes area-fill id; `0x10898` maps `#P` and fill id to a rule
+  selector or exits without output.
+- `0x10b80` consumes cursor/orientation/page extents, clips the rectangle, and
+  writes source record `0x782a88`.
+- `0x13386` / `0x133aa` consume the source record and allocator state to link
+  a rule object.
+- `0x1edc6` consumes page-root rule list `+0x24` and normalizes it into the
+  active render record.
+- `0x1f446` consumes render-list objects and dispatches solid selector `7` to
+  `0x1f596` or gray/pattern selectors to `0x1f4e0`.
+
+Output effect:
+
+- Size and area-fill commands are state-only until `ESC *c#P` consumes them.
+- A valid, nonempty on-page `ESC *c#P` queues a rule-list object, not pixels.
+- Pixels appear after publication/render scheduling when `0x1f446` walks the
+  normalized rule list for the active band.
+- Rules crossing a band mutate continuation word `+0x0c` so later band walks
+  continue from the same ROM-defined rule object.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst` and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
+- Generated flow evidence is in
+  `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.
+- Fixture evidence is named in the Evidence list above; those streams pin
+  parser routing, clipping, rule object creation, bridge normalization,
+  no-room retry, solid/pattern render helpers, and composition with text and
+  raster objects.
+- No unresolved ROM-local middle edge remains for documented `ESC *c`
+  size/fill, clipped queue, bridge, solid/pattern render, and no-room retry
+  paths. Remaining work must change one of the exact unknown boundaries named
+  above.
+
 ## Parser Boundary
 
 The primary chained stream fixture is:

@@ -42,8 +42,8 @@ standalone deliverables.
   Individual command families then move to owner notes such as
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
-  [raster-graphics.md](raster-graphics.md),
-  [rectangle-graphics.md](rectangle-graphics.md),
+  [raster-graphics.md](raster-graphics.md#owner-summary),
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [vertical-forms-control.md](vertical-forms-control.md).
@@ -251,10 +251,10 @@ checked-in ROM model:
 - [transparent-print-data.md](transparent-print-data.md#owner-summary) -
   documented `ESC &p#X` delayed payload handling, text/fixed-space routing,
   page-record re-entry, and the secondary segmented resource boundary.
-- [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,
+- [raster-graphics.md](raster-graphics.md#owner-summary) - documented `ESC *t`,
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
-- [rectangle-graphics.md](rectangle-graphics.md) - documented `ESC *c`
-  rectangle/rule path to solid and patterned rule rendering.
+- [rectangle-graphics.md](rectangle-graphics.md#owner-summary) - documented
+  `ESC *c` rectangle/rule path to solid and patterned rule rendering.
 - [vertical-forms-control.md](vertical-forms-control.md) - documented
   `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump output effects.
 - [font-context-metrics.md](font-context-metrics.md) - documented font

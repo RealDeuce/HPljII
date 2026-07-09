@@ -8926,8 +8926,8 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 Status: composed as the raster command-family checkpoint from parsed
 `ESC *t#R`, `ESC *r#A`, delayed `ESC *b#W`, and payload bytes to encoded
 page-record objects and `0x1f88e` rendered rows. The low-level ledger remains
-in [raster-graphics.md](raster-graphics.md); this section records the semantic
-state model needed by byte-stream reproduction.
+in [raster-graphics.md](raster-graphics.md#owner-summary); this section records
+the semantic state model needed by byte-stream reproduction.
 
 Concept: raster commands update a state block at `0x783170`, but raster data
 does not render directly. `0x11f82` stores a delayed transfer handler
@@ -8955,7 +8955,7 @@ page root for queued rows, and passes the state block to `0x13070` /
   `modeled raster command stream parses ESC *rB and re-enables resolution
   changes`, `raster active resolution parser trace preserves current mode`,
   and
-  [raster-graphics.md](raster-graphics.md).
+  [raster-graphics.md](raster-graphics.md#owner-summary).
 - Canonical page-record object:
   - object `+0x00`: next pointer in bucket chain.
   - object `+0x04`: class byte `0x80`, selecting encoded raster dispatch.
@@ -9390,7 +9390,8 @@ branches.
 Status: composed as the `ESC *c` rectangle/rule command-family checkpoint
 from parsed width/height/fill commands to rule-list page-record objects,
 bridge normalization, no-room retry, and solid/pattern rendered rows. The
-low-level ledger remains in [rectangle-graphics.md](rectangle-graphics.md).
+low-level ledger remains in
+[rectangle-graphics.md](rectangle-graphics.md#owner-summary).
 
 Concept: rectangle commands accumulate persistent width, height, and fill
 state until `ESC *c#P` asks the firmware to fill a rectangle. Handler
@@ -9627,8 +9628,8 @@ documented in `Macro Definition And Data-Chain Replay`.
   the covered selector-7, gray-selector, pattern-selector, landscape-remap,
   clipping, no-room retry, addressed-storage, publication, and mixed
   text/rule/raster streams. The covered boundary is listed in
-  [rectangle-graphics.md](rectangle-graphics.md). Remaining ROM-local work is
-  limited to byte streams that change clipping output, `0x1381c`
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary). Remaining
+  ROM-local work is limited to byte streams that change clipping output, `0x1381c`
   rollover/allocation state, retry publication fields, rule object bytes,
   bridge state, render dispatch, or ROM-derived row construction.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps

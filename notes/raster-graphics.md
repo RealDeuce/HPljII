@@ -85,7 +85,7 @@ Evidence:
   - `0x1f88e mode-3 raster object expands queued bytes into four rows`
   - `addressed text rectangle raster stream matches page-record output`
 
-## Raster Command-To-Pixel Owner Summary
+## Owner Summary
 
 This note owns the `ESC *t`, `ESC *r`, and `ESC *b` path from parsed command
 records to encoded raster page objects. It does not own parser table matching

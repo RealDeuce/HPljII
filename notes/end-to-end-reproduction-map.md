@@ -7662,7 +7662,8 @@ Address-level cluster map:
   branch boundaries `0x128ae..0x128f4`, `0x12966..0x129c4`,
   `0x129c6..0x12af8`, `0x12a22..0x12a78`, and `0x129ee..0x12b5a`.
   Related publication evidence is checked in under
-  [publication-commands.md](publication-commands.md) and
+  [Publication Owner Summary](publication-commands.md#publication-owner-summary),
+  [publication-commands.md](publication-commands.md), and
   `Publication Commands To ROM-Derived Page Rows` in
   [semantic-state-model.md](semantic-state-model.md), with supporting reports
   `generated/analysis/ic30_ic13_esc_e_reset_flow.md` and

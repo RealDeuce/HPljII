@@ -1056,7 +1056,9 @@ State classification:
 
 Evidence and unresolved edges:
 
-- Detail owners are [publication-commands.md](publication-commands.md),
+- Detail owners are
+  [Publication Owner Summary](publication-commands.md#publication-owner-summary),
+  [publication-commands.md](publication-commands.md),
   [reset-default-environment.md](reset-default-environment.md),
   [page-record-storage.md](page-record-storage.md), and
   [active-render-scheduler.md](active-render-scheduler.md).

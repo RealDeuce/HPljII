@@ -4603,13 +4603,26 @@ Address-level cluster map:
   or publication `0xff1e` consumes the changed cursor/layout state.
   `ESC &k#G` writes line-termination byte `0x78318f` through `0xedf8`; CR,
   LF, and FF consume its bits through `0xf02c`, `0xf08c`, and `0xf0f0`.
-  HT/BS mutate horizontal cursor `0x782c8a`; HMI `ESC &k#H` writes
-  `0x78315c`; wrap `ESC &s#C` writes `0x783190`; cursor stack `ESC &f#S`
-  saves/restores cursor fields. Cursor/margin commands write canonical
-  placement fields `0x782c8a`, `0x782c8e`, `0x782dd6`, and `0x782dda`
-  through `0xf4ca` / `0xf6e2`. Cursor-changing commands can flush pending
-  span state through `0xf34a -> 0x12714` before writing the new cursor; the
-  following printable byte then consumes the changed state through the
+  CR `0xf02c` runs `0xf06e` to copy left margin `0x782dd6` into cursor x
+  `0x782c8a`, flushes pending span state through `0xf34a`, and optionally
+  calls LF helper `0xf0b2` when `0x78318f.7` is set. LF `0xf08c` optionally
+  performs the same CR-style x reset when `0x78318f.6` is set, always flushes
+  through `0xf34a`, and advances cursor y `0x782c8e` by VMI `0x783160`
+  through `0xf0b2`, including vertical overflow/perforation check `0xf36c`.
+  FF `0xf0f0` optionally resets x when `0x78318f.5` is set, flushes spans,
+  ensures a page root, and calls page-eject helper `0xf124 -> 0xff1e`, then
+  marks pending page-eject byte `0x782a6d = 0xff`. HT `0xf1cc` converts HMI
+  `0x78315c` through `0x104fe`, advances to the next eight-column stop from
+  left margin `0x782dd6`, clamps against right margin `0x782dda` or page
+  width `0x782db8`, and writes cursor x `0x782c8a`. BS `0xf2a8` ensures a
+  page root, subtracts HMI or previous-width state, clamps at the left margin,
+  writes cursor x, and sets previous-width latch `0x782a58`. HMI
+  `ESC &k#H` writes `0x78315c`; wrap `ESC &s#C` writes `0x783190`; cursor
+  stack `ESC &f#S` saves/restores cursor fields. Cursor/margin commands write
+  canonical placement fields `0x782c8a`, `0x782c8e`, `0x782dd6`, and
+  `0x782dda` through `0xf4ca` / `0xf6e2`. Cursor-changing commands can flush
+  pending span state through `0xf34a -> 0x12714` before writing the new cursor;
+  the following printable byte then consumes the changed state through the
   printable cluster.
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,

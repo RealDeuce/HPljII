@@ -5455,6 +5455,25 @@ Address-level cluster map:
   then calls `0xf124 -> 0xff1e` only when the nonzero limit is exceeded and
   perforation skip is enabled. Otherwise it returns without publishing the
   current page, so later printable/raster objects stay on the same page root.
+
+  Concrete VFC streams are now part of the route index. Table load
+  `ESC &l4W 00 00 00 02 !` stores prefix `00 00 00 02` at
+  `0x782dde`, derives VFC/text-bottom cache state, consumes the four payload
+  bytes before printable parsing resumes, and leaves the following `!` queued
+  at compact coord `0x9001`. Forward channel jump `ESC &l2V!` finds channel
+  `2` at line `1`, writes y `176`, resets x to left margin `10`, and queues
+  the following `!` at compact coord `0xb001`; before-top y `89` normalizes
+  through `0x128ae..0x128f4` and reaches the same coord. Selector-zero
+  target-equal `ESC &l0V!` leaves an already matching top-of-form cursor in
+  place and queues `!` at compact coord `0x9e02`. Publishing splits are
+  concrete too: `! ESC &l0V !` publishes the pre-VFC `!` at compact coord
+  `0xbe02`, resets x/y to `10` / `126`, and queues the post-VFC `!` on a
+  fresh page at `0x9001`; wrap-hit `! ESC &l2V !` publishes the old printable
+  at `0xde02`, wraps to line `1`, writes y `176`, and queues the fresh-page
+  printable at `0xb001`; target-after-text recovery publishes the old page at
+  absolute coord `0x4e02` and queues the fresh printable at `0x3001`.
+  Evidence is [vertical-forms-control.md](vertical-forms-control.md) and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
   Residuals are only variants that change VFC table bytes, channel target
   choice, publication split, perforation limit/cursor/skip state, or following
   object coordinates.

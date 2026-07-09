@@ -84,6 +84,10 @@ standalone deliverables.
   `0x0bffff`; the transparent secondary segment-57 continuation rule in
   [resource-rom.md](resource-rom.md) is the owner for the remaining
   pixel-affecting resource boundary at `0x0c0000..0x0c0321`.
+- Exact remaining stop points are indexed in
+  [unresolved-boundaries.md](unresolved-boundaries.md), grouped as ROM-local
+  invalid-target/source, missing external resource data, hardware/MMIO,
+  optional external data, or manual/physical correlation.
 
 ## Stream Trace Workflow
 
@@ -275,6 +279,9 @@ checked-in ROM model:
   unresolved middle edges.
 - [resource-rom.md](resource-rom.md) - current findings for the
   IC32/IC15 resource/font ROM pair.
+- [unresolved-boundaries.md](unresolved-boundaries.md) - exact remaining
+  ROM-local, resource-data, hardware/MMIO, optional-data, and physical/manual
+  correlation boundaries.
 - [reverse-engineering-ledger.md](reverse-engineering-ledger.md) -
   current host-interface-to-imaging tracking map and next ROM targets.
 

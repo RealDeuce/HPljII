@@ -348,6 +348,18 @@ mapped glyph byte, compact object, and rendered text rows.
 - bit-30 clear / fixed-record form: rebuilds through `0x14e24` and
   `0x14eb6`, then applies the same `0x14f16` / `0x1440c` tail.
 
+For bit-30 offset-table records, `0x14d9c..0x14e10` is the base-map builder.
+It selects primary map `0x782f32` or secondary map `0x783032` from
+`0x7828de`, reads selected record words `+0x0e` and `+0x10` through
+`0x7828a8`, and treats them as inclusive first and last character codes. It
+zeros every map byte before the first code, writes sequential glyph indexes
+`0, 1, 2, ...` from first through last, then zeros every byte after the last
+code through `0xff`. If the last word is below the first word, the helper
+reports error/status `(0xe7, 0x91)` through `0x128c` at `0x14e12..0x14e1e`.
+The resulting map is derived/cache state: `0x1393a` later consumes the map to
+turn a host byte into a compact glyph byte, while the selected record and its
+offset table remain canonical font state.
+
 The `0x14f16` patcher is documented in
 [symbol-map-patching.md](symbol-map-patching.md). It gates on the selected
 font's normalized Roman-8 word, then uses active symbol words

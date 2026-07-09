@@ -4480,6 +4480,14 @@ selector mismatch only copies the remembered word and installs no context.
     preserves the lower half and clears the upper half; table hits under
     `0x14fce` apply `(dst, src)` byte pairs as `map[dst] = map[src]`; misses
     keep the map initialized by `0x14d9c`/`0x14e24`.
+  - `0x14d9c..0x14e10` offset-table base-map rule:
+    selected record word `+0x0e` is the inclusive first character code and
+    word `+0x10` is the inclusive last character code. The helper selects
+    `0x782f32` or `0x783032` from `0x7828de`, zero-fills bytes before the
+    first code, writes sequential glyph indexes starting at zero from first
+    through last, and zero-fills bytes after the last code through `0xff`.
+    If last is below first, `0x14e12..0x14e1e` reports `(0xe7, 0x91)` through
+    `0x128c`.
   - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
     `selected-symbol-not-roman8`.
   - `0x783032` for non-Roman secondary selection: rebuilt map with patch kind

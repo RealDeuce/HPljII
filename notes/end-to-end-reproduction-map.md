@@ -2964,8 +2964,11 @@ Host byte to glyph entry:
 
 - `0x14c64` rebuilds primary map `0x782f32` or secondary map `0x783032` before
   text is queued. For bit-30 offset-table resources, `0x14d9c` builds a base
-  map from selected record words `+0x0e` and `+0x10`; `0x14f16` applies
-  symbol-set patches when the selected symbol path requires them.
+  map from selected record words `+0x0e` and `+0x10`: bytes before the first
+  code are zero, bytes from first through last become sequential glyph indexes
+  starting at zero, and bytes after the last code are zero. Inverted ranges
+  report `(0xe7, 0x91)` through `0x128c`. `0x14f16` applies symbol-set patches
+  when the selected symbol path requires them.
 - `0x1393a` selects primary map/context when `0x782f06 == 0`, or secondary
   map/context when `0x782f06 != 0`.
 - `0x1393a` stores the mapped byte as the low byte at text object `+0x0b` and

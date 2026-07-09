@@ -4623,7 +4623,21 @@ Address-level cluster map:
   `0x782dda` through `0xf4ca` / `0xf6e2`. Cursor-changing commands can flush
   pending span state through `0xf34a -> 0x12714` before writing the new cursor;
   the following printable byte then consumes the changed state through the
-  printable cluster.
+  printable cluster. `ESC 9` reaches `0xe9ba`, clears left margin
+  `0x782dd6`, copies page width `0x782db8` to right margin `0x782dda`, and
+  affects output only when later CR/HT/text/graphics consume those limits.
+  `ESC =` reaches `0xf176`, ensures a page root, flushes pending span state,
+  advances cursor y `0x782c8e` by half of VMI `0x783160`, and reuses the
+  LF/perforation overflow path. `ESC &a#L/#M` route to `0xeb58` / `0xec0c`:
+  left margin converts columns through HMI `0x78315c`, writes `0x782dd6`, and
+  may move cursor x; right margin converts `abs(parameter) + 1`, writes
+  `0x782dda`, sets latch `0x782a57`, and may clamp cursor x left. `ESC
+  &a#C/#H` route to `0xf39e` / `0xf416` and commit x through `0xf4ca`;
+  `ESC &a#R/#V` route to `0xf560` / `0xf60a` and commit y through `0xf6e2`.
+  Dot-position `ESC *p#X/#Y` route to `0xf48c` / `0xf692`, shift parsed
+  whole-dot values into packed coordinates, and share the same commit helpers.
+  These placement commands draw only through following printable, raster-start,
+  rectangle/rule, VFC, or publication consumers of the committed cursor fields.
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,

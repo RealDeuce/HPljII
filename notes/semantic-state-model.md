@@ -81,6 +81,12 @@ reproduction; they are not PCL parser scratch.
 ### Field Groups
 
 - Canonical startup memory fields:
+  - initial 68000 entry state from the ROM vector table:
+    `SSP = 0x00800000` and reset PC `0x00000110`; exception vectors
+    `2..63` point into the RAM trampoline region `0x00780000..0x0078016e`
+    in six-byte increments. Evidence:
+    `generated/analysis/ic30_ic13_vectors.txt` and
+    [firmware-startup.md](firmware-startup.md).
   - `0x780e5a`: formatter memory-size/code word. Reset helper
     `0x02b2` seeds it to `0x20` and may add `0x80`, `0x40`, or `0x100`
     from `$8c01 >> 3` or the optional `0x05ba` decoded config result.
@@ -274,6 +280,8 @@ but the physical signal names are not.
 
 ### Disassembly Evidence
 
+- `generated/analysis/ic30_ic13_vectors.txt`: initial SSP, reset PC, and
+  exception vectors into the RAM trampoline area.
 - `generated/disasm/ic30_ic13_reset_000110.lst`: reset call sites and
   early SRAM test at `0x0110..0x03e8`.
 - `generated/disasm/ic30_ic13_startup_config_init_00071c.lst`:

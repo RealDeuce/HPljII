@@ -5086,6 +5086,23 @@ The continuation policy is physical/resource-window state:
   current-band digest, and the scanner/candidate-count split above without
   dumping row-level logs on success.
 
+Reproduction stop rule:
+
+- Preserve the ROM-local route through
+  `0x12452 -> 0xd04a -> 0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84 ->
+  0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f1f0`.
+- Render rows whose source bytes are wholly inside verified range
+  `0x0bfe22..0x0bffff` as ordinary ROM-derived output.
+- When renderer `0x1f1f0` advances A2 past firmware address `0x0bffff`, stop
+  fallback-row claims at exact external range `0x0c0000..0x0c0321` unless a
+  board, emulator, or gate-array memory-map source supplies those bytes.
+- Do not silently choose mirror, code-pair, or zero-fill as the model. Those
+  are documented continuation hypotheses with different fallback-row digests,
+  not ROM-selected facts.
+- Do not treat this stop as parser uncertainty. The parser route, delayed
+  payload restore, page-object shape, publication, render bridge, and compact
+  renderer arithmetic are documented up to the source-byte boundary.
+
 The exact unresolved boundary is therefore firmware range
 `0x0c0000..0x0c0321`. Closing it requires static board, emulator, or gate-array
 memory-map evidence; ROM/disassembly evidence can document the candidate

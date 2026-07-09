@@ -1176,7 +1176,38 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   Downloaded glyph row-count streams have a documented selector boundary:
   low-byte rows `0x0001..0x00ff` are reproducible through the compact helpers,
   while high-row short compact siblings `0x0101..0x0103` stop at the unchecked
-  `0x1fe76` fallback jump-table read. Owner notes:
+  `0x1fe76` fallback jump-table read.
+
+  The short compact high-row boundary is still an end-to-end command result,
+  not a missing parser route. A stream such as `ESC )s516W <payload> 3 FF`
+  restores a nonzero `W` record through `0x121cc -> 0x12218 -> 0x16c14`,
+  installs glyph `0x33` through `0x16498`, and preserves installed record row
+  word `0x0102` in record bytes:
+
+```text
+00 00 00 00 0c 01 01 02 00 10 00 00
+```
+
+  The following printable byte then reaches the normal text path
+  `0xd04a -> 0xd824 -> 0x12f2e`, but the printable source exposes only the
+  low row byte to the page-object producer. For rows `0x0101..0x0103`,
+  `0x12f2e` sees low row bytes `0x01..0x03`, derives selector `0x0003`, and
+  publishes bucket `1` through `0xff1e -> 0x1ed84 -> 0x1ef6a`. The installed
+  16-bit row word still controls the compact renderer split: at coordinate
+  `0x6601`, `0x1f414` splits row `0x0102` into `58` current-band rows and
+  `200` fallback rows, with adjacent row counts producing fallback counts
+  `199` and `201`.
+
+  The exact unresolved pixel boundary is after that split. Helper
+  `0x1fe76..0x1fe88` computes `0x1fe8a + 4 * D3`, reads an unchecked longword
+  row-copy target, and jumps through it. Valid entries end at index `128`;
+  entry `128` at `0x2008a` points to code at `0x2008e`, so indices
+  `199..201` read executable row-copy bytes as pointer data. Row `0x0102`
+  fallback index `200` therefore yields target `0x329ad3c0` from code bytes
+  `32 9a d3 c0`. A reproducer can document and preserve every upstream state
+  field for this stream, but it must not claim ROM-defined pixels after the
+  invalid `0x1fe76` table read.
+  Owner notes:
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and

@@ -2071,6 +2071,25 @@ Output effect:
   a compact text object, a selector-7 rule object, and a mode-0 raster object.
   Publication and render later consume those root fields through the ordinary
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` path.
+- The addressed fixture for that stream pins the root contents before
+  rendering: compact text object `0x00d0c004`, selector-7 rule object
+  `0x00d0c02a`, mode-0 raster object `0x00d0c038`, bucket root `+0x1c`,
+  rule-list root `+0x24`, and context slot `+0x2c = 0x440946b4`.
+  The published raster bucket object is:
+
+```text
+00 d0 c0 04 80 00 00 02 00 00 c3 3c
+```
+
+  That object links back to the compact text object, carries class `0x80`,
+  count `2`, and payload bytes `c3 3c`. The rule-list object is:
+
+```text
+00 00 00 00 01 07 5c 01 00 0c 00 05 00 00
+```
+
+  That rule has no next node, bucket/key byte `0x01`, selector `7`, packed key
+  `0x5c01`, width `0x000c`, height `0x0005`, and continuation height `0`.
 - Allocation failure is visible as preserved prior page state. If `0x1381c`
   fails inside `0x133aa`, root `+0x24` is not modified. If it fails inside
   `0x136d2`, root `+0x28` and existing fixed nodes are preserved.
@@ -2121,7 +2140,8 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/analysis/ic30_ic13_page_root_allocation.md`,
   `generated/analysis/ic30_ic13_compact_bucket_allocator.md`, and
-  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+  `generated/analysis/ic30_ic13_page_record_bridge.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Publication Walkthrough
 

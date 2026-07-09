@@ -4650,9 +4650,22 @@ Address-level cluster map:
   `0x10808`, `0x1075a`, `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 ->
   0x13070 -> 0x13250 -> 0x1f88e`. Owners are
   [rectangle-graphics.md](rectangle-graphics.md) and
-  [raster-graphics.md](raster-graphics.md). Residual work must change
-  clipping, transfer acceptance, allocator state, object bytes, bridge roots,
-  or renderer helper inputs.
+  [raster-graphics.md](raster-graphics.md). Rectangle bytes follow
+  `ESC *c#A/#B/#H/#V/#G/#P`: dimension writers `0x10e68`, `0x10e22`,
+  `0x10a40`, and `0x10ae0` populate `0x78316a` / `0x783166`; `0x10dce`
+  writes area-fill id `0x78316e`; `0x10898` maps fill selector; `0x10b80`
+  clips against cursor/orientation/extents; `0x13386 -> 0x133aa` queues the
+  rule object under page-root `+0x24`; `0x1edc6` bridges it to render-record
+  `+0x1c`; and `0x1f446` dispatches solid selector `7` to `0x1f596` or
+  gray/pattern selectors to `0x1f4e0`. Raster bytes follow `ESC *t#R`,
+  `ESC *r#A/#B`, and delayed `ESC *b#W`: `0x10808` writes resolution-derived
+  mode/scale while inactive; `0x1075a` seeds origin, limit, and active state;
+  `0x107fa` clears only the active byte; `0x11f82 -> 0x121cc -> 0x12218`
+  restores the transfer record; `0x105d0` gates/caps/drains payload bytes;
+  `0x13070 -> 0x13250` queues encoded objects under page-root `+0x1c`; and
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders modes `0..3`. Residual work must
+  change clipping, transfer acceptance/drain outcome, allocator state, object
+  bytes, bridge roots, or renderer helper inputs.
 - Publication and render-scheduler cluster:
   reset, FF, page-size, orientation, paper-source, copies, VFC publication,
   and no-room retries converge on `0xff1e`. Published records then run

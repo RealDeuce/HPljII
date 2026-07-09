@@ -678,7 +678,11 @@ Field groups for this index:
   the following `!` queues at compact coordinate `0x9001`. Channel stream
   `ESC &l2V!` scans the table through `0x1280a`, writes y `176`, resets x to
   left margin `10`, and queues the following `!` at compact coordinate
-  `0xb001`.
+  `0xb001`. Perforation stream `ESC &l1L!` dispatches to `0xee64`, sets
+  perforation-skip byte `0x783191`, and leaves the following printable on the
+  ordinary `0xd04a -> 0x12f2e` compact-text route; later vertical overflow
+  helper `0xf36c` consumes `0x782c8e`, VFC/perforation limit `0x782dc2`, and
+  `0x783191` to decide whether to publish through `0xf124 -> 0xff1e`.
   Evidence:
   [vertical-forms-control.md](vertical-forms-control.md).
 - Transparent and display-function data:

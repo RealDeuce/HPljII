@@ -4057,14 +4057,12 @@ for those measurements.
 
 ## Built-In Font Selection To Visible Text
 
-Status: composed as parsed command-family to visible-output checkpoints for
-primary and secondary inline mixed streams, primary/secondary symbol-fallback,
-primary/secondary remembered-symbol recovery,
-primary/secondary live current-font-RAM handoff, and
-parsed-selection-to-current-font-RAM handoff streams. The low-level
-font-selection ledger remains in
-[font-context-metrics.md](font-context-metrics.md); this section records the
-renderer-facing semantic contract for the selected state.
+Status: composed as parsed command-family to visible-output checkpoints for primary and
+secondary inline mixed streams, primary/secondary symbol-fallback, primary/secondary
+remembered-symbol recovery, primary/secondary live current-font-RAM handoff, and
+parsed-selection-to-current-font-RAM handoff streams. The low-level font-selection
+ledger remains in [font-context-metrics.md](font-context-metrics.md#owner-summary); this
+section records the renderer-facing semantic contract for the selected state.
 
 Concept: `ESC (s0p10h12v0s0b3T` writes primary font request fields, refreshes
 the active primary built-in context through `0x13eb8`, rebuilds the primary

@@ -258,7 +258,7 @@ checked-in ROM model:
 - [vertical-forms-control.md](vertical-forms-control.md#owner-summary) -
   documented `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump
   output effects.
-- [font-context-metrics.md](font-context-metrics.md) - documented font
+- [font-context-metrics.md](font-context-metrics.md#owner-summary) - documented font
   context selection, page-root slot install, glyph maps, and descriptor/span
   metric checkpoints.
 - [symbol-set-selection.md](symbol-set-selection.md) - documented

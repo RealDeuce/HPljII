@@ -18,7 +18,7 @@ Primary evidence:
   `0x15184`.
 - [symbol-set-selection.md](symbol-set-selection.md):
   parser path that writes requested and active symbol words.
-- [font-context-metrics.md](font-context-metrics.md):
+- [font-context-metrics.md](font-context-metrics.md#owner-summary):
   `0x14c64` refresh and map rebuild context.
 
 ## Entry Conditions
@@ -244,7 +244,7 @@ Disassembly:
 Supporting checked-in notes:
 
 - [symbol-set-selection.md](symbol-set-selection.md)
-- [font-context-metrics.md](font-context-metrics.md)
+- [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md)
 - [resource-rom.md](resource-rom.md)
 - [page-raster-imaging.md](page-raster-imaging.md)

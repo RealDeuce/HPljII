@@ -138,7 +138,8 @@ final command byte to a later mode. Examples are `ESC`, `ESC &`, `ESC &l`,
 font-designation terminals are the `ESC (#A..^` / `ESC )#A..^` family handled
 by `0x120be`; their command-specific effects are documented in
 [symbol-set-selection.md](symbol-set-selection.md), with selected-font context
-and metric consumers in [font-context-metrics.md](font-context-metrics.md).
+and metric consumers in
+[font-context-metrics.md](font-context-metrics.md#owner-summary).
 Map mutation after a selected context is rebuilt is owned by
 [symbol-map-patching.md](symbol-map-patching.md): `0x14f16` only runs after
 `0x14c64` has produced the primary or secondary base map, and its output is
@@ -246,7 +247,7 @@ boundaries:
   selection:
   [symbol-set-selection.md](symbol-set-selection.md),
   [symbol-map-patching.md](symbol-map-patching.md),
-  [font-context-metrics.md](font-context-metrics.md), and
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [built-in-resource-scan.md](built-in-resource-scan.md).
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current
   resource objects, no-install exits, row/span publication, and compact
@@ -319,7 +320,7 @@ classes before any page pixels can be derived:
   state, builds source text objects through the `0x1393a` / `0x12f2e` path,
   and later reaches page-root publication and render dispatch documented in
   [direct-control-codes.md](direct-control-codes.md),
-  [font-context-metrics.md](font-context-metrics.md), and
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [page-raster-imaging.md](page-raster-imaging.md).
 - Alternate/data printable or matched C0 byte:
   when `0x782c18` is nonzero, mode-zero printable bytes and matched blank C0
@@ -493,7 +494,7 @@ Normal table `0x112a4`:
   Owners are [direct-control-codes.md](direct-control-codes.md),
   [publication-commands.md](publication-commands.md#owner-summary),
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary), and
-  [font-context-metrics.md](font-context-metrics.md). These handlers write
+  [font-context-metrics.md](font-context-metrics.md#owner-summary). These handlers write
   cursor, motion, selected-font slot, page geometry, span, publication, VFC, or
   page-control state; visible rows appear through later printable, span flush,
   VFC publication, FF/reset publication, or render-bridge consumers.
@@ -519,7 +520,7 @@ Normal table `0x112a4`:
   `0x120be`, `0x15a18`, `0x15a56`, and `0x16df6`.
   Owners are [symbol-set-selection.md](symbol-set-selection.md),
   [symbol-map-patching.md](symbol-map-patching.md),
-  [font-context-metrics.md](font-context-metrics.md), and
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
   write font request fields, selected-context/glyph-map state, current
   downloaded-font id or character, and downloaded-font control state. They draw
@@ -587,7 +588,7 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   through `0x12218` without page output. Owner notes:
   [pcl-parser-core.md](pcl-parser-core.md),
   [direct-control-codes.md](direct-control-codes.md), and
-  [font-context-metrics.md](font-context-metrics.md).
+  [font-context-metrics.md](font-context-metrics.md#owner-summary).
 
   Field grouping for this entry path is explicit. Canonical parser state is
   mode byte `0x782999`, alternate/data flag `0x782c18`, the unmatched
@@ -1600,7 +1601,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   invalid `0x1fe76` table read.
   Owner notes:
   [symbol-set-selection.md](symbol-set-selection.md),
-  [font-context-metrics.md](font-context-metrics.md),
+  [font-context-metrics.md](font-context-metrics.md#owner-summary),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Macro definition, replay, and overlay:
@@ -1785,12 +1786,13 @@ documented in the owner notes.
   nonzero, otherwise calls `0xc428(1)` / `0xc4fc`, sets `0x782f06 = 1` when
   the secondary context installs, and makes later printable bytes consume the
   secondary map/context documented in
-  [font-context-metrics.md](font-context-metrics.md).
+  [font-context-metrics.md](font-context-metrics.md#owner-summary).
 - SI `0x0f`, handler `0x00c68a`: selected text context switch to slot `0`;
   sets dirty-map byte `0x782f2d`, skips `0xc428` when `0x782f06` is already
   zero, otherwise calls `0xc428(0)` / `0xc4fc`, clears `0x782f06` when the
   primary context installs, and makes later printable bytes consume the
-  primary map/context documented in [font-context-metrics.md](font-context-metrics.md).
+  primary map/context documented in
+  [font-context-metrics.md](font-context-metrics.md#owner-summary).
 - Control-Z prefix `0x1a`, handler `0x011ea4`, with terminals `0x1a 0x1a`
   and `0x1a X`: normal handlers `0x120d2` / `0x1219e` conditionally feed
   printable text through `0xd04a`, while alternate/data handlers `0x1210c` /
@@ -2907,7 +2909,8 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   streams or the current final-`X` / final-`@` cases.
 - Treat `ESC &k#S/s` pitch-mode as already covered at the producer boundary
   unless it is paired with a stream that changes the selected context or
-  row-construction inputs. [font-context-metrics.md](font-context-metrics.md) documents
+  row-construction inputs.
+  [font-context-metrics.md](font-context-metrics.md#owner-summary) documents
   `0xc390` selectors `0`, `2`, and `4` rewriting synthetic pitch records and
   rejoining `0xc89c` / `0xc580`; `Worked Path: Pitch Mode To Font Refresh` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md) and
@@ -2917,7 +2920,7 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
 - Treat font metric producer behavior as regression expansion unless it
   exposes a new page-visible selected-font boundary. The metric formulas and
   producer/consumer cross-products are documented in
-  [font-context-metrics.md](font-context-metrics.md) and composed under
+  [font-context-metrics.md](font-context-metrics.md#owner-summary) and composed under
   `Selected-Font Metric Producer/Consumer Contract` in
   [semantic-state-model.md](semantic-state-model.md). The exact remaining risk
   is selected-font state combinations that change a concrete consumed field:

@@ -22,7 +22,7 @@ Primary evidence:
 - `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
-- [font-context-metrics.md](font-context-metrics.md)
+- [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md)
 
 The generated report
@@ -441,7 +441,7 @@ Disassembly evidence:
 
 Checked-in documentation that composes the downstream path:
 
-- [font-context-metrics.md](font-context-metrics.md)
+- [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [symbol-map-patching.md](symbol-map-patching.md)
 - [built-in-resource-scan.md](built-in-resource-scan.md)
 - [page-record-storage.md](page-record-storage.md)

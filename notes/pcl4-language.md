@@ -570,9 +570,18 @@ Field groups for this index:
   `0x1393a` build text source state, `0x12f2e` writes compact bucket
   objects, and controls mutate cursor and pending-span state. Compact text
   reaches `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers.
+  The concrete baseline `!!` stream maps bytes `21 21` to built-in
+  `LINE_PRINTER` glyph `0x20`, compact object
+  `00 00 00 00 00 00 00 02 20 00 01 20 02 02`, bridge context slot `0`, and
+  render route `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354`;
+  command-family variants should be compared against that spine when they
+  change cursor state, selected context/map, object shape, or row helper
+  inputs.
   Evidence:
   [direct-control-codes.md](direct-control-codes.md),
-  [font-context-metrics.md](font-context-metrics.md), and
+  [font-context-metrics.md](font-context-metrics.md),
+  `Minimal Stream Walkthrough: !!` in
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), and
   [page-raster-imaging.md](page-raster-imaging.md).
 - Reset, FF, page size, orientation, paper, and copies:
   `ESC E` uses `0xcc52`, FF uses `0xf0f0`, and `ESC &l` mode `10` terminals

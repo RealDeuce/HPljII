@@ -3563,6 +3563,14 @@ Page-object and render effect:
 00 00 00 00 00 00 00 01 20 00 01
 ```
 
+- The replay fixture records the same payload as glyph list `[32]` and
+  coordinate list `[1]`. Its page-record bridge object is the compact prefix
+  above followed by padding:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01 00 00 00
+```
+
 - Replayed CR updates cursor/control state through `0xf02c`; in this `!\r`
   path it does not create a separate page object.
 - Publication `0xff1e` later snapshots the current page root, clears
@@ -3622,7 +3630,8 @@ Evidence:
   `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
   `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
-  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Overlay Publication Walkthrough
 

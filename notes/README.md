@@ -66,10 +66,10 @@ standalone deliverables.
   and the detailed dataflow spine is
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
   `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
-  command-dispatch anchors, `Binary Payload Lifecycle`,
-  `Page Versus Band Model`, and `Pixel composition contract` are the shortest
-  checked-in path from an admitted byte stream to page objects and rendered
-  pixels.
+  command-dispatch anchors, `Binary Payload Lifecycle`, `State-Only Command
+  Dependency Map`, `Page Versus Band Model`, and `Pixel composition contract`
+  are the shortest checked-in path from an admitted byte stream to page objects
+  and rendered pixels.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address

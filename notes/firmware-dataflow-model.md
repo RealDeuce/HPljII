@@ -386,6 +386,116 @@ Evidence:
 [raster-graphics.md](raster-graphics.md), and
 [downloaded-fonts.md](downloaded-fonts.md).
 
+## State-Only Command Dependency Map
+
+Many supported commands intentionally stop before page-object production. They
+are still part of the byte-to-pixel model because later printable, raster,
+rule, span, VFC, FF, or reset handlers consume the fields they write. This map
+is the top-level bridge from parsed command records to later visible effects;
+the detailed owner paths remain the worked paths and family notes cited below.
+
+Text motion and line-control writers:
+
+- `ESC &k#G` handler `0xedf8` writes line-termination byte `0x78318f`.
+  Consumers are CR `0xf02c` bit `7`, LF `0xf08c` bit `6`, and FF `0xf0f0`
+  bit `5`. The output effect is indirect: those consumers move cursor state or
+  publish the pending root before later text/render dispatch.
+- Direct CR/LF/HT/BS handlers `0xf02c`, `0xf08c`, `0xf1cc`, and `0xf2a8`
+  write cursor and pending-width state rather than glyph objects. Later
+  printable handler `0xd04a` consumes horizontal cursor `0x782c8a`, vertical
+  cursor `0x782c8e`, HMI `0x78315c`, and pending-width latches
+  `0x782a58..0x782a5c` before queueing compact text through
+  `0x12f2e -> 0x1387c`.
+- `ESC &k#H` handler `0xca8c` writes packed HMI `0x78315c`. Consumers are
+  printable advance, HT/BS, margin conversion, and `ESC &a#C` column
+  positioning. The documented visible proof is the `ESC &k6H!!` route, where
+  only the second printable byte's compact coordinate changes.
+
+Cursor, margin, and span-boundary writers:
+
+- `ESC &a#L/#M` handlers `0xeb58` and `0xec0c` write margins
+  `0x782dd6` / `0x782dda`, may move cursor `0x782c8a`, and can flush pending
+  span state through `0xf34a -> 0x12714 -> 0x126e2`.
+- `ESC &a#C/#H/#R/#V` handlers `0xf39e`, `0xf416`, `0xf560`, and `0xf60a`
+  commit through helpers `0xf4ca` and `0xf6e2` to write `0x782c8a` or
+  `0x782c8e`. Dot-position handlers `0xf48c` and `0xf692` share the same
+  commit helpers after shifting whole-dot parameters into packed coordinates.
+- Their primary output effect is the coordinate of the following compact text
+  object. Their secondary output effect is a possible selector-`0x4000`
+  segment-list object when a cursor-changing command flushes pending span
+  state before overwriting the cursor.
+
+Vertical layout and page-boundary writers:
+
+- `ESC &l#C/#D` handlers `0xcb00` and `0xc992` write VMI `0x783160`;
+  consumers include LF/FF, `ESC &a#R`, `ESC =`, VFC jump handler `0x1280a`,
+  page-length handler `0xf9e8`, top-margin handler `0xece2`, and printable
+  placement.
+- `ESC &l#E/#F/#L` handlers `0xece2`, `0xea9e`, and `0xee64` write top offset
+  `0x782dce`, bottom/text-length state `0x782dd2` / derived limit
+  `0x782dc2`, and perforation-skip byte `0x783191`. Overflow helper `0xf36c`
+  consumes these fields to decide whether vertical movement stays on the
+  current page or calls page-eject helper `0xf124`.
+- `ESC &s#C` handler `0xedb0` writes wrap byte `0x783190`. Printable
+  prechecks `0xd28a` and `0xd6bc` consume it before object queueing: wrap
+  disabled rejects horizontal overflow, while wrap enabled routes through
+  recovery helper `0xf054` and retries placement.
+
+Graphics setup writers:
+
+- Raster resolution/start handlers `0x10808` and `0x1075a` write raster state
+  block `0x783170..0x783182`, including active byte `+0x12`, baseline/origin
+  `+0x00` / `+0x0a`, encoded mode `+0x08`, scale `+0x0e`, and row byte limit
+  `+0x10`. Delayed transfer consumer `0x105d0` later reads that block when
+  `ESC *b#W` payload bytes are restored through `0x12218`.
+- Rectangle setup handlers `0x10e68`, `0x10e22`, `0x10dce`, `0x10a40`, and
+  `0x10ae0` write rectangle dimensions, fill selector, area-fill id, and
+  pattern state. Final fill handler `0x10898` consumes that setup to queue
+  rule nodes through `0x10b80`, `0x13386`, and `0x133aa`.
+
+State classification:
+
+- Canonical command/page state:
+  cursor `0x782c8a` / `0x782c8e`, margins `0x782dd6` / `0x782dda`, page
+  extents and text limits `0x782dba`, `0x782dc2`, `0x782dce`, HMI/VMI
+  `0x78315c` / `0x783160`, line/wrap/perforation modes
+  `0x78318f..0x783191`, raster block `0x783170..0x783182`, and rectangle
+  setup fields documented in [rectangle-graphics.md](rectangle-graphics.md).
+- Derived/cache state:
+  compact coordinates, pending span bounds, right-limit and previous-width
+  latches, raster row byte limits, and render-band fields after publication.
+- Parser scratch:
+  six-byte command records at `0x78299e`, lowercase chaining mode
+  `0x782999`, parsed relative bit `0`, and numeric/fraction buffers used only
+  until a handler commits a canonical field.
+- Firmware bookkeeping:
+  conversion helpers `0x104d8`, `0x104fe`, `0x10510`, `0x10518`, span flush
+  helper `0xf34a`, page-root ensure/publish helpers `0x10084` / `0xff1e`,
+  and delayed payload restore `0x12218` for raster transfer.
+
+Evidence and remaining boundaries:
+
+- The controlling worked paths are `Mixed Direct Controls`,
+  `Cursor And Margin Placement`, `Page Length, Wrap, And Perforation
+  Controls`, `Raster Row`, `Raster Transfer Gates And Modes`,
+  `Rectangle Rule`, and `Rectangle Rule Selectors And Clipping`.
+- Detail owners are [direct-control-codes.md](direct-control-codes.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [rectangle-graphics.md](rectangle-graphics.md). Key listings include
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`, and
+  `generated/disasm/ic30_ic13_rectangle_handlers_010898.lst`.
+- Confidence is high for the listed writer and consumer addresses because the
+  fields are named by direct handler disassembly and by checked-in worked paths
+  that follow those fields into page-object producers or render dispatch. It
+  is deliberately not a claim that every possible selector value in those
+  command families is fully documented.
+- No ROM-local middle edge remains for the listed writer-to-consumer pairs
+  inside the cited worked paths. Remaining work is command-family expansion:
+  add another row here only when a parsed command writes state that is later
+  consumed by a different documented page-object or render path.
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

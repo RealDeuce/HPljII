@@ -100,8 +100,9 @@ checked-in ROM model:
    six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and
    delayed restore `0x121cc -> 0x12218`. For counted binary payload commands,
    use `Binary Payload Lifecycle` in
-   [firmware-dataflow-model.md](firmware-dataflow-model.md) before jumping to
-   the family owner.
+   [firmware-dataflow-model.md](firmware-dataflow-model.md). For
+   definition-mode or replayed bytes, use `Alternate/Data And Macro Replay
+   Boundary` in the same file before jumping to the family owner.
 4. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
    After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual

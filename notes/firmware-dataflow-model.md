@@ -582,6 +582,114 @@ Evidence and unresolved boundaries:
   `0x11`, physical output-register mapping/timing, sensor naming behind
   service bits, and physical panel output after `0x9182..0x9406`.
 
+## Alternate/Data And Macro Replay Boundary
+
+Alternate/data mode is the parser-side storage boundary for macro definition
+and related data streams. It preserves PCL syntax and payload bytes without
+running most immediate page-state handlers. Later macro execute, call, or
+overlay replay feeds those stored bytes back through `0xa904`, where they
+become ordinary parser input again.
+
+Append-versus-execute split:
+
+- Parser loop `0x11774` chooses normal table `0x112a4` or alternate/data table
+  `0x116f6` from flag `0x782c18`.
+- In normal mode, printable bytes call `0xd04a`, direct controls call their
+  normal handlers, and command-family terminals mutate page, font, raster,
+  rectangle, VFC, status, or macro state.
+- In alternate/data mode, mode-zero printable bytes and no-match bytes append
+  through `0xe002` instead of calling `0xd04a`.
+- Alternate/data zero-handler C0 rows `0x11930..0x11ab8` flush parser scratch
+  through `0x123ae` / `0x123de`, append the matched byte through `0xe002`,
+  and then rejoin the same terminal reset path.
+- Most uppercase family terminals have blank alternate/data handlers, so their
+  parsed bytes do not immediately mutate cursor, layout, selected font,
+  rectangle, or raster-control state.
+- Active exceptions remain intentional: macro stop/control `ESC &f#X` reaches
+  `0xdd08`; display functions use append reader `0x12120`; Control-Z siblings
+  append/report through `0x1210c` / `0x121b2`; delayed payload restore uses
+  `0x12358`; reset `ESC E` still reaches `0xcc52`.
+
+Macro definition and stored bytes:
+
+- `ESC &f#Y` handler `0xe112` writes current macro id `0x783164`.
+- `ESC &f#X` handler `0xdd08` rewinds command-record cursor `0x78299e`,
+  resolves the macro record through `0xe0a4`, and dispatches selectors
+  `0..10`.
+- Selector `0` starts definition mode through `0xdd86`, setting definition
+  flag `0x782c18` and using append sink `0xe002` for following bytes.
+- `0xe002` writes macro definition bytes into linked 0x100-byte chunks rooted
+  by selected macro record `0x782d7a`; record `+0x04` is the raw byte count,
+  including chunk-header bytes.
+- Selector `1` stops definition through `0xddfc`, normalizes the stored count,
+  clears empty records, and leaves nonempty records selectable.
+
+Replay back into the byte stream:
+
+- Execute selector `2` and call selector `3` build data-chain frames through
+  `0xe418`. Covered frame kind bytes are `+9 = 2` for execute and `+9 = 3`
+  for call; frame `+0x00/+0x04` copies the stored payload head and count.
+- Overlay selector `4` stores overlay state in `0x782a92` and saved id
+  `0x782a94`. Page finalization through `0xff1e` can call `0xe4f4`, which
+  builds a non-replay frame with kind byte `+9 = 4`.
+- Host-byte fetch `0xa904` prioritizes active data-chain frame `0x782d76`.
+  Stored bytes therefore re-enter `0xda9a`, `0xdaf0`, `0xdb74`, parser loop
+  `0x11774`, command dispatch, page-object production, publication, and render
+  dispatch using the same paths as live host bytes.
+- Frame cleanup `0xe22c` restores or unwinds the data-chain frame and returns
+  parsing to the previous byte source.
+
+State classification:
+
+- Canonical macro/data state:
+  current macro id `0x783164`, macro record pool `0x782a98`, selected record
+  pointer `0x782d7a`, active data-chain frame `0x782d76`, frame fields
+  `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay state `0x782a92`, and saved
+  overlay id `0x782a94`.
+- Canonical parser state:
+  alternate/data flag `0x782c18`, append-error byte `0x782c19`, parser mode
+  `0x782999`, command-record cursor `0x78299e`, delayed-payload state
+  `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, and alternate/data table
+  `0x116f6`.
+- Derived/cache state:
+  normalized macro payload count, execute/call environment snapshots,
+  overlay replay context, and page/render rows produced after replay.
+- Firmware bookkeeping:
+  append sink `0xe002`, chunk allocator state, host gate bit in `0x780e66`,
+  frame builders `0xe418` / `0xe4f4`, cleanup `0xe22c`, and context refresh
+  helper `0xe65c`.
+- Parser scratch:
+  bytes being appended during definition and bytes replayed from data-chain
+  frames before their command handlers commit durable state.
+
+Output effect and confidence:
+
+- Definition-mode bytes create no immediate page objects unless an active
+  exception command explicitly exits or resets the definition context.
+- Execute/call/overlay replay has no macro-specific renderer. Pixels arise
+  only after replayed bytes pass through normal command-family owners and
+  produce page objects consumed by the usual publication and render paths.
+- Confidence is high for the covered replay boundary because `macro-data-chain`
+  documents stored `! CR`, mixed-control, transparent, raster, margin/cursor,
+  and overlay payloads from `0xe002` storage through `0xa904` replay and
+  page-record/render handoff.
+
+Evidence and unresolved boundaries:
+
+- Detail owners are [macro-data-chain.md](macro-data-chain.md),
+  [pcl-parser-core.md](pcl-parser-core.md), and
+  [host-byte-fetch.md](host-byte-fetch.md).
+- Controlling worked paths are `Macro Execute Replay` and
+  `Macro Overlay Replay Publication`.
+- Key listings are
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  and `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
+- Exact unresolved boundaries are limited to manual-facing names and physical
+  failure behavior for macro context-stack bytes and over-deep call nesting;
+  no ROM-local middle edge remains for the documented append/replay paths.
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

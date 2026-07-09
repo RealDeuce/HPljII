@@ -369,6 +369,8 @@ decimal value.
 | Clear horizontal margins | `ESC 9` |
 | Perforation skip off | `ESC &l0L` |
 | Perforation skip on | `ESC &l1L` |
+| Define vertical forms table | `ESC &l#W` followed by data |
+| Jump to VFC channel | `ESC &l#V` |
 | HMI in 1/120 inch increments | `ESC &k#H` |
 | Pitch mode compatibility | `ESC &k#S` |
 | VMI in 1/48 inch increments | `ESC &l#C` |
@@ -418,6 +420,7 @@ decimal value.
 | Enable floating underline | `ESC &d3D` |
 | Disable underline | `ESC &d@` |
 | Assign font ID | `ESC *c#D` |
+| Set downloaded character code | `ESC *c#E` |
 | Delete all fonts | `ESC *c0F` |
 | Delete temporary fonts | `ESC *c1F` |
 | Delete last specified font ID | `ESC *c2F` |
@@ -425,6 +428,7 @@ decimal value.
 | Make font permanent | `ESC *c5F` |
 | Select primary font by ID | `ESC (#X` |
 | Select secondary font by ID | `ESC )#X` |
+| Download primary/secondary font data | `ESC (s#W` / `ESC )s#W` followed by data |
 
 ### Raster Graphics and Fills
 

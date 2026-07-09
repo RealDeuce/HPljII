@@ -114,10 +114,12 @@ checked-in ROM model:
    `Command Family Owner Matrix` in the same file gives the compact
    handler-to-owner handoff and output class for each command family. For
    text/font routes, use `Font Context And Glyph Source Boundary` to connect
-   selected contexts and maps to printable source objects. For layout routes,
-   use `Page Geometry And Layout State Boundary` to connect page-length, VMI,
-   LPI, top-margin, text-length, wrap, and perforation commands to later
-   placement, overflow, publication, and render effects.
+   selected contexts and maps to printable source objects, then use
+   `Downloaded Glyph Boundary Decision Rules` for downloaded-glyph helper and
+   payload stop points. For layout routes, use
+   `Page Geometry And Layout State Boundary` to connect page-length, VMI, LPI,
+   top-margin, text-length, wrap, and perforation commands to later placement,
+   overflow, publication, and render effects.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under

@@ -1045,6 +1045,104 @@ Evidence and unresolved boundaries:
   bridge from selected context/map to source object, page context slot, render
   context slot, and compact renderer is documented for the covered streams.
 
+## Downloaded Glyph Boundary Decision Rules
+
+Downloaded-font streams have two separate questions. The first is whether the
+parser, payload reader, and install helpers create a canonical downloaded
+glyph record. The second is whether a later printable byte selects a
+documented compact renderer path for that installed record. The ROM-local
+boundaries below are renderer/helper stop points after the earlier parser,
+install, page-object, publication, and bridge steps are already known.
+
+Common installed-glyph route:
+
+- Font id and character selection route through `0x15a56` and `0x15a18`.
+- Nonzero `ESC )s#W` records schedule payload handler `0x16c14` through
+  delayed-payload arming `0x121cc` and restore `0x12218`.
+- Successful payload installs reach `0x16498`, writing downloaded glyph table
+  entries, glyph record bytes, bitmap bytes, and continuation bookkeeping.
+- A later printable byte reaches `0xd04a -> 0x1393a`, then
+  `0xd824 -> 0x12f2e -> 0x1387c`, where only the source bytes exposed by the
+  selected context determine compact selector and bucket state.
+- Publication and rendering use the ordinary page path:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
+
+Decision rules:
+
+- Pixel-defined short/segmented rows:
+  installed row words whose source low bytes select documented short,
+  compact-wide, segmented, or segmented-wide helpers and stay within decoded
+  helper/source limits are reproduced through the normal compact render path.
+  Rows `0x0001..0x00ff` and the documented segmented-wide below-cap siblings
+  fall in this class.
+- Short compact high-row stop:
+  if an installed row word such as `0x0102` exposes low row byte `0x02` and
+  therefore queues short selector `0x0003`, `0x1f414` can split the installed
+  row count into fallback count `200`. Helper `0x1fe76` has valid table
+  entries only through index `128`; fallback indices `199..201` cross the
+  unchecked table-read boundary at `0x1fe8a + 4 * D3`.
+- Wrapped width low-byte stop:
+  if an installed width word wraps so the printable source exposes width byte
+  `0x00..0x10`, the page object selects compact mode-0 helper `0x1f034`
+  instead of compact-wide helper `0x1f0d2`. The documented span `0x0102`
+  indexes `0x1f08e + 0x0408 = 0x1f496`, reads target `0x0066cc`, and jumps
+  into unrelated firmware control code rather than a decoded row-copy helper.
+- Segmented-wide fallback-source stop:
+  selector `0x3003` reaches renderer `0x1f264`; documented below-cap
+  neighboring spans render selected segment `1`. The span-31 high-row sibling
+  follows the same parser, install, publication, bridge, and renderer path but
+  stops where the fallback source read reaches modeled A2 offset `+0xb50`.
+- Payload-count stop:
+  oversized segmented-wide high-row streams can exceed restored payload budget
+  `0x7fff` before a glyph is installed. With minimum segmented-wide span `17`,
+  the last below-cap row word is `floor(0x7fff / 17) = 0x0787`; the
+  `0x0788 * 17` sibling stops before `0x16498`, before page-object
+  publication, and before renderer `0x1f264`.
+
+State classification:
+
+- Canonical state:
+  downloaded font id `0x782f2e`, current character `0x782f30`, installed
+  glyph table entries, glyph record row/width words, bitmap payload bytes,
+  selected context slots, page-root bucket objects, and render-record bucket
+  roots.
+- Derived/cache state:
+  source low row byte, source low width byte, selector `0x0003`, `0x1003`,
+  `0x2003`, or `0x3003`, render bucket word, row/span product, segment number,
+  `0x1f414` current/fallback split, row-copy table target, invalid compact
+  target, and parser-cap maximum row `0x0787`.
+- Parser scratch:
+  restored `ESC )s#W` records, payload budget `0x783140`, delayed handler
+  fields `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, drain state
+  `0x12328`, and next-handler state when the stream resumes.
+- Firmware bookkeeping:
+  allocation/release state around `0x16c14` / `0x16498`, continuation fields
+  for partial payload copies, publication flag `0x782996`, and render-work
+  progress.
+- Hardware/external state:
+  none for these four ROM-local downloaded-glyph boundaries.
+
+Evidence and unresolved boundaries:
+
+- Detail owner: [downloaded-fonts.md](downloaded-fonts.md), especially the
+  row-count, width-byte, segmented-wide, payload-cap, and fixed-record
+  checkpoints.
+- Renderer owner: [page-raster-imaging.md](page-raster-imaging.md), compact
+  row-copy helpers around `0x1f414`, `0x1fe76`, `0x1f034`, `0x1f0d2`, and
+  `0x1f264`.
+- Semantic owner:
+  `Downloaded Glyph Row-Count Publication Checkpoint` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Focused boundary sections below:
+  `Boundary: Short Compact Downloaded-Glyph High Rows`,
+  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
+  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source`, and
+  `Boundary: Downloaded-Glyph Payload Count Cap`.
+- Exact unresolved boundaries are the computed helper/source stops named
+  above, not parser dispatch, payload restore, glyph installation, page-root
+  publication, render bridge, or compact-dispatch ownership for the documented
+  streams.
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

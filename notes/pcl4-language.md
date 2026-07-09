@@ -654,6 +654,14 @@ Field groups for this index:
   `1` pops when above base `0x782c96`, restores x/y with extent clamps, clears
   pending/right-limit latches, and lets the following printable queue from the
   restored cursor instead of the intervening `ESC &a2C` position.
+  Underline stream `ESC &d3D! ESC &d@` uses handler `0x12622`, printable path
+  `0xd04a`, and handler `0x12622` again. `ESC &d3D` writes underline/span
+  selector `0x783185 = 1` and re-arms pending span state through `0x126e2`;
+  the printable updates pending span fields `0x783184`, `0x783186`,
+  `0x783188`, and `0x78318a` through `0xd4ac` / `0xd8fc`; final `ESC &d@`
+  flushes through `0x12714 -> 0x126e2`, materializing a selector-`0x4000`
+  segment-list object under page-root `+0x1c` that publishes and renders
+  through `0x1edc6 -> 0x1f812`.
   Evidence:
   [direct-control-codes.md](direct-control-codes.md) and
   `Text Cursor And Direct Controls` in

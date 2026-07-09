@@ -43,9 +43,12 @@ Canonical reader state:
 Canonical normal-output filter state:
 
 - `0x782f06`: selected font/context slot.
-- `0x782eea + 0x10 * slot`: selected context byte copied to `D3`.
+- `0x782eea + 0x10 * slot`: selected-context C0 filter byte copied to `D3`.
+  In normal display-functions loop `0x12536`, zero routes C0 values through
+  `0xd0f0`; nonzero routes them through `0xd04a`.
 - `0x782efa`: fallback high-control filter byte used when high-character flags
-  `0x783132` and `0x783133` are clear.
+  `0x783132` and `0x783133` are clear. In `0x12536`, zero routes
+  `0x80..0x9f` values through `0xd0f0`; nonzero routes them through `0xd04a`.
 - Local stack word `A6-2` in `0x12536`: high-control filter word for
   `0x80..0x9f`.
 
@@ -63,7 +66,7 @@ Firmware bookkeeping:
   value `0x0d`.
 - Control-Z handler siblings:
   - `0x120d2`: conditionally routes literal `0x1a` through printable handler
-    `0xd04a` when selected context byte equals `1`.
+    `0xd04a` when the Control-Z context byte equals `1`.
   - `0x1210c`: appends literal `0x1a` through `0xe002`.
   - `0x1219e`: routes synthetic value `0x100` through `0xd04a`.
   - `0x121b2`: calls `0xd99a` and appends `0x7f` through `0xe002`.
@@ -93,8 +96,8 @@ Unknown:
 - `0x1212a..0x12140` writes literal `ESC Y` through `0xe002`.
 - `0x12142..0x1219c` appends normalized loop values through `0xe002` until
   `ESC Z` or no-byte termination.
-- `0x1253e..0x12582` computes the normal-output selected-context byte and
-  high-control filter word.
+- `0x1253e..0x12582` computes the normal-output selected-context C0 filter byte
+  and high-control filter word.
 - `0x12582..0x1261e` writes visible text/fixed-space effects by calling
   `0xd04a` or `0xd0f0` for each normalized loop value.
 - Both `0x12120` and `0x12536` call `0xd99a` for local `0x1a 0x58`
@@ -143,13 +146,13 @@ payload `21 1a 58 1b 5a`; the recorded append stream is
 `1b 59 21 7f 1b 5a` in macro chunk `0x783988`.
 
 Normal `0x12536` can produce pixels or fixed spacing. Values `0x00..0x1f`
-route through `0xd0f0` only when selected context byte `D3` is zero. Values
-`0x80..0x9f` route through `0xd0f0` only when the high-control filter word is
-zero. All other values route through `0xd04a`.
+route through `0xd0f0` only when selected-context C0 filter byte `D3` is zero.
+Values `0x80..0x9f` route through `0xd0f0` only when the high-control filter
+word is zero. All other values route through `0xd04a`.
 
 The normal-output loop is:
 
-- `0x1253e..0x12582`: compute selected context byte `D3` from
+- `0x1253e..0x12582`: compute selected-context C0 filter byte `D3` from
   `0x782eea + 0x10 * 0x782f06`, then choose local high-control filter word
   `A6-2` from `0x782efa` or `D3` according to high-character flags
   `0x783132` and `0x783133`.
@@ -165,9 +168,9 @@ The normal-output loop is:
 
 Normal-route matrix:
 
-- C0 values `0x00..0x1f`, selected context byte `0`: route through
+- C0 values `0x00..0x1f`, selected-context C0 filter byte `0`: route through
   `0xd0f0`, so they can advance spacing without queueing a compact text entry.
-- C0 values `0x00..0x1f`, selected context byte nonzero: route through
+- C0 values `0x00..0x1f`, selected-context C0 filter byte nonzero: route through
   `0xd04a`, so they are printable display-function bytes.
 - High-control values `0x80..0x9f`, high-control filter word `0`: route
   through `0xd0f0`.
@@ -204,11 +207,13 @@ The four local terminal handlers do not share one global Control-Z meaning:
   to `0x7f` in append-only contexts.
 
 The canonical state for this local family is the parser mode/table row plus
-the selected context byte used only by `0x120d2`. The derived/cache state is
-the slot product returned by `0x332ee`. Firmware bookkeeping is `0xd99a` on the
-alternate/data `0x1a X` terminal. Output effect is either printable-path entry
-through `0xd04a`, macro/data-chain append through `0xe002`, or no output for
-the false branch of `0x120d2`.
+the `0x782eeb + 0x10 * slot` Control-Z context byte used only by `0x120d2`.
+That byte is separate from the `0x782eea + 0x10 * slot` C0 filter byte used by
+normal `ESC Y` loop `0x12536`. The derived/cache state is the slot product
+returned by `0x332ee`. Firmware bookkeeping is `0xd99a` on the alternate/data
+`0x1a X` terminal. Output effect is either printable-path entry through
+`0xd04a`, macro/data-chain append through `0xe002`, or no output for the false
+branch of `0x120d2`.
 
 Byte-stream example `ESC Y display-functions stream reaches page-record
 output` exercises the default-filter normal path for `ESC Y!\x05! ESC Z`:
@@ -218,7 +223,8 @@ compact coords `0x0001`, `0x0403`, and `0x0405`.
 
 Byte-stream example `ESC Y display-functions filter-on routes controls as
 printable` exercises the complementary normal branch. With selected-context
-byte `1` and high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z`
+C0 filter byte `1` and high-control filter `1`, stream
+`ESC Y\x05\x80\x1aX! ESC Z`
 normalizes `0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through
 `0xd04a`, and queues six compact entries with object prefix
 `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05 59 06
@@ -246,7 +252,7 @@ A byte-stream renderer must preserve:
 - the fact that terminating `ESC Z` bytes participate as routed/appended
   values before the loop terminates;
 - local Control-Z mode-2 dispatch is table-dependent: normal `0x1a 0x1a`
-  calls `0x120d2` and only emits printable `0x1a` when the selected context
+  calls `0x120d2` and only emits printable `0x1a` when the Control-Z context
   byte at `0x782eeb + 0x10 * 0x782f06` equals `1`; normal `0x1a X` always
   calls `0xd04a(0x100)`;
 - alternate/data Control-Z siblings append through `0xe002` instead of

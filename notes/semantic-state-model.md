@@ -1429,7 +1429,7 @@ bit `0x8` in warning/status accumulator `0x780e2a` through `0x9b5e`, then
 clears `0x7821cc`.
 
 The neighboring Control-Z handlers are mode-specific consumers, not a global
-byte-source rewrite. Handler `0x120d2` reads the selected context byte at
+byte-source rewrite. Handler `0x120d2` reads the Control-Z context byte at
 `0x782eeb + 0x10 * byte(0x782f06)` and emits `0xd04a(0x1a)` only when that
 byte equals `1`. Handler `0x1210c` appends literal `0x1a` through `0xe002`.
 Handler `0x1219e` emits `0xd04a(0x100)`. Handler `0x121b2` calls `0xd99a`
@@ -1446,7 +1446,8 @@ and appends `0x7f` through `0xe002`.
   Evidence: disassembly `0x12128..0x1219c` and `0x1253e..0x1261e`.
 - Parser scratch/filter state:
   - selected slot `0x782f06`, scaled by `0x332ee`.
-  - selected context byte at `0x782eea + 0x10 * slot`, copied to `D3`.
+  - selected-context C0 filter byte at `0x782eea + 0x10 * slot`, copied to
+    `D3`.
   - fallback high-control filter byte `0x782efa`, used when `0x783132` and
     `0x783133` are clear.
   - local stack word `A6-2` in `0x12536`, holding the high-control filter.
@@ -1530,7 +1531,7 @@ ROM effect is the guarded status-service path at `0xcd86..0xcda0` and
 is nonzero, return without the signal.
 
 Normal `0x12536` can produce pixels or spacing. Values `0x00..0x1f` route
-through `0xd0f0` only when the selected context byte is zero; values
+through `0xd0f0` only when the selected-context C0 filter byte is zero; values
 `0x80..0x9f` route through `0xd0f0` only when the high-control filter word is
 zero; all other values route through `0xd04a`. Therefore `ESC Y ... ESC Z`
 can expose control-looking bytes as visible text under nonzero filters, while
@@ -1544,8 +1545,8 @@ values before exit, queues visible `!`, `!`, and `Z` entries at compact coords
 `0x0001`, `0x0403`, and `0x0405`, and renders row digest
 `c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`.
 Fixture `ESC Y display-functions filter-on routes controls as printable`
-proves the complementary normal branch: with selected-context byte `1` and
-high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
+proves the complementary normal branch: with selected-context C0 filter byte
+`1` and high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
 `0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through `0xd04a`,
 queues six compact entries with object prefix
 `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05 59

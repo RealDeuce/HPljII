@@ -722,10 +722,26 @@ Field groups for this index:
   stream `ESC )s80W ... ESC )s3W f0 f0 f0 !` installs glyph `0x21`, queues
   compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders through the
   same publication/bridge/compact-render pipeline.
+  Downloaded-glyph row and width boundary streams stay on that same route, but
+  split the state a reader must track. Writer `0x16498` preserves canonical
+  downloaded-glyph record fields such as mode byte `+5`, 16-bit row word `+6`,
+  width word `+8`, and bitmap bytes at `+0x0c`; later printable handling
+  through `0xd04a -> 0x1393a -> 0x12f2e` consumes the selected glyph as a
+  page-source object and derives compact selector/bucket state. Publication
+  `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and render dispatch `0x1ef6a ->
+  0x1effe` then feed helper `0x1fe76` for short compact rows, `0x1f0d2` for
+  wide compact rows, `0x1f1f0` for segmented rows, or `0x1f264` for
+  segmented-wide rows. The exact ROM-local output boundaries are the unchecked
+  short-helper fallback table read `0x1fe76 -> 0x1fe8a` above valid index
+  `128`, wrapped low-width mode-0 helper targets through `0x1f034 ->
+  0x1f08e`, segmented-wide span-31 fallback source offset `+0xb50`, and
+  oversized segmented-wide payloads that exceed the restored `ESC )s#W` count
+  cap `0x7fff` before `0x16498` can install a glyph.
   Evidence:
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
-  [downloaded-fonts.md](downloaded-fonts.md).
+  [downloaded-fonts.md](downloaded-fonts.md); row-copy helper details are in
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Macro definition, replay, overlay, and data-chain input:
   `ESC &f#Y` uses `0xe112`, `ESC &f#X` uses `0xdd08`, alternate append uses
   `0xe002`, execute/call frames come from `0xe418`, and overlay frame

@@ -1231,19 +1231,18 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   points at the earlier `0x00f2` object when `0x1ed84` / `0x1ef6a` consume
   the chain.
 
-  Evidence is
-  [raster-graphics.md](raster-graphics.md),
-  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
-  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
-  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`,
-  fixtures `raster stream ties parser dispatch to queued page object`,
-  `host-fetched raster stream preserves 0x1edc6 bridge contract`,
-  `0x13070/0x13250 raster row queues encoded-span object`, and
-  `0x1f88e mode-0 raster object renders queued literal row` through
-  `0x1f88e mode-3 raster object expands queued bytes into four rows`.
-  Owner notes:
-  [rectangle-graphics.md](rectangle-graphics.md) and
-  [raster-graphics.md](raster-graphics.md).
+Evidence is [Raster Command-To-Pixel Owner
+Summary](raster-graphics.md#raster-command-to-pixel-owner-summary),
+[raster-graphics.md](raster-graphics.md),
+`generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, fixtures `raster
+stream ties parser dispatch to queued page object`, `host-fetched raster stream
+preserves 0x1edc6 bridge contract`, `0x13070/0x13250 raster row queues encoded-span
+object`, and `0x1f88e mode-0 raster object renders queued literal row` through `0x1f88e
+mode-3 raster object expands queued bytes into four rows`. Owner notes:
+[rectangle-graphics.md](rectangle-graphics.md) and
+[raster-graphics.md](raster-graphics.md).
 - Downloaded-font current-state controls in the `*c` family:
   the same `ESC *` / `*c` parser route enters mode `16`, but finals
   `D/d`, `E/e`, and `F/f` are owned by the downloaded-font state block rather

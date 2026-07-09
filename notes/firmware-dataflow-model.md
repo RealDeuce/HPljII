@@ -1949,10 +1949,10 @@ Raster graphics:
   `0x11f82 -> 0x105d0`.
 - Immediate class:
   setup writers plus encoded-span page-object producer.
-- Owner and boundary:
-  [raster-graphics.md](raster-graphics.md), `Raster Row`, and
-  `Raster Transfer Gates And Modes`; accepted payloads queue encoded-span
-  objects through `0x13070 -> 0x13250`.
+- Owner and boundary: [Raster Command-To-Pixel Owner
+  Summary](raster-graphics.md#raster-command-to-pixel-owner-summary),
+  [raster-graphics.md](raster-graphics.md), `Raster Row`, and `Raster Transfer Gates And
+  Modes`; accepted payloads queue encoded-span objects through `0x13070 -> 0x13250`.
 
 Rectangle/rule graphics:
 

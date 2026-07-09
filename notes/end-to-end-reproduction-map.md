@@ -7477,96 +7477,80 @@ Address-level cluster map:
   `ESC &l#E`, or `ESC &l#F` paths. Remaining work is broader geometry
   cross-products that expose new consumer behavior; physical output, if
   captured, would be optional correlation outside the ROM render buffer.
-- Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
-  `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
-  row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:
-  [raster-graphics.md](raster-graphics.md),
-  `Raster Transfer Gate And Encoded Rows` in
-  [semantic-state-model.md](semantic-state-model.md), `Worked Path: Raster
-  Transfer Gates And Modes` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), host-fetched
-  raster fixtures, and supporting report
-  `generated/analysis/ic30_ic13_raster_graphics_flow.md`.
-  The primary stream
-  `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` reaches parser handlers
-  `0x10808`, `0x1075a`, and `0x11f82`. `0x11f82` schedules delayed transfer
-  handler `0x105d0` through `0x121cc`; `0x12218` restores record
-  `80 57 00 04 00 00` and calls `0x105d0` when payload bytes are available.
-  The delayed record is not passed by volatile registers only: `0x12218`
-  writes it back to the parser-record buffer, and `0x105d0` reopens
-  `0x78299e - 6` at `0x105e4..0x105f2` before reading count word `+2`.
-  Canonical raster state is rooted at `0x783170`: row coordinate `+0x02`,
-  accepted count `+0x04`, overflow count `+0x06`, mode `+0x08`, origin
-  `+0x0a`, scale `+0x0e`, maximum row byte count `+0x10`, and active flag
-  `+0x12`. Canonical page state is the page-root bucket chain under `+0x1c`
-  and encoded raster objects with class byte `0x80`, mode byte `+0x05`,
-  capacity `+0x06`, packed key `+0x08`, and payload bytes at `+0x0a`.
-  Accepted rows pass through `0x10084`, `0x13070`, `0x13250`, and `0x138de` to
-  queue encoded raster objects such as
-  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`: class byte `0x80`, mode byte
-  `0`, capacity `4`, packed key `0x0001`, and payload bytes at `+0x0a`.
-  Parser scratch is delayed state `0x782a1a`, saved handler `0x782a1c`,
-  snapshot bytes `0x782a20..0x782a25`, the restored `80 57 ...` record,
-  payload offset and bytes, and skipped payload drained through `0xdace` or
-  `0x12328`. The payload copier `0x138de` fetches through `0xa904` and locally
-  normalizes `1a 58` to copied byte `00`.
-  Derived/cache state is row bucket `0x782a7c`, packed key `0x782a7e`,
-  per-object payload capacity `0x782a80`, orientation-derived row longword
-  `D4`, render-record bucket roots copied by `0x1edc6`, and render-band
-  destination fields.
-  Firmware bookkeeping is current page root `0x78297a`, pending service bytes
+- Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed `ESC *b#W`,
+  lowercase transfer chaining, active-raster resolution behavior, row caps,
+  beyond-extent drains, and modes 0/1/2/3. Evidence: [Raster Command-To-Pixel Owner
+  Summary](raster-graphics.md#raster-command-to-pixel-owner-summary),
+  [raster-graphics.md](raster-graphics.md), `Raster Transfer Gate And Encoded Rows` in
+  [semantic-state-model.md](semantic-state-model.md), `Worked Path: Raster Transfer
+  Gates And Modes` in [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  host-fetched raster fixtures, and supporting report
+  `generated/analysis/ic30_ic13_raster_graphics_flow.md`. The primary stream `ESC *t300R
+  ESC *r1A ESC *b4W f0 0f aa 55` reaches parser handlers `0x10808`, `0x1075a`, and
+  `0x11f82`. `0x11f82` schedules delayed transfer handler `0x105d0` through `0x121cc`;
+  `0x12218` restores record `80 57 00 04 00 00` and calls `0x105d0` when payload bytes
+  are available. The delayed record is not passed by volatile registers only: `0x12218`
+  writes it back to the parser-record buffer, and `0x105d0` reopens `0x78299e - 6` at
+  `0x105e4..0x105f2` before reading count word `+2`. Canonical raster state is rooted at
+  `0x783170`: row coordinate `+0x02`, accepted count `+0x04`, overflow count `+0x06`,
+  mode `+0x08`, origin `+0x0a`, scale `+0x0e`, maximum row byte count `+0x10`, and
+  active flag `+0x12`. Canonical page state is the page-root bucket chain under `+0x1c`
+  and encoded raster objects with class byte `0x80`, mode byte `+0x05`, capacity
+  `+0x06`, packed key `+0x08`, and payload bytes at `+0x0a`. Accepted rows pass through
+  `0x10084`, `0x13070`, `0x13250`, and `0x138de` to queue encoded raster objects such as
+  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`: class byte `0x80`, mode byte `0`,
+  capacity `4`, packed key `0x0001`, and payload bytes at `+0x0a`. Parser scratch is
+  delayed state `0x782a1a`, saved handler `0x782a1c`, snapshot bytes
+  `0x782a20..0x782a25`, the restored `80 57 ...` record, payload offset and bytes, and
+  skipped payload drained through `0xdace` or `0x12328`. The payload copier `0x138de`
+  fetches through `0xa904` and locally normalizes `1a 58` to copied byte `00`.
+  Derived/cache state is row bucket `0x782a7c`, packed key `0x782a7e`, per-object
+  payload capacity `0x782a80`, orientation-derived row longword `D4`, render-record
+  bucket roots copied by `0x1edc6`, and render-band destination fields. Firmware
+  bookkeeping is current page root `0x78297a`, pending service bytes
   `0x782c72/0x782c73`, root active/retry bytes, stream allocator state
-  `0x782a70/0x782a72/0x782a76`, allocation/copy stop flag `0x782996`, and
-  post-transfer cursor advancement. `0x107fa` clears only active flag `+0x12`;
-  while `+0x12` is set, `0x10808` resolution changes are ignored.
-  Writers are `0x10808` for resolution-derived mode/scale, `0x1075a` for
-  origin and active state, `0x107fa` for active clear, `0x11f82`/`0x121cc` for
-  delayed transfer state, `0x105d0` for gate counts and row state, `0x10084`
-  for root availability, `0x13070`/`0x13250` for row objects, and `0x138de`
-  for payload bytes.
-  Readers/consumers are `0x105d0` for the restored command record,
-  `0x13070` for raster state, publication `0xff1e`, bridge `0x1ed84` /
-  `0x1edc6`, bucket dispatch `0x1efc2`, and encoded raster renderer
-  `0x1f88e`.
-  Publication and rendering copy the bucket chain through `0xff1e`,
-  `0x1ed84`, and `0x1edc6`; `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders the object.
-  Mode `0` copies literal words, while modes `1`, `2`, and `3` expand payload
-  bytes into two, three, or four output rows through ROM expansion tables.
-  The gate fixtures classify capped transfers, beyond-extent drains, negative
-  rows, consecutive transfers, and active-resolution ignore as object or
-  no-object outcomes before this same render path. Beyond-extent rows drain
-  without ensuring a root; negative rows ensure a root, drain without queueing
-  an object, and advance from row `-1` to `0`.
-  Concrete output evidence includes fixtures `host-fetched raster stream
-  reaches parser and queued pixels`, `host-fetched raster stream preserves
-  0x1edc6 bridge contract`, `0x105d0-modeled raster transfer skip and cap
-  gate`, `modeled raster command stream applies 0x105d0 byte-count cap`,
-  `modeled raster command stream drains beyond-extent transfer without
-  queueing`, `modeled raster command stream drains negative-row transfer and
-  advances`, `0x13070/0x13250 raster row queues encoded-span object`,
-  `0x1f88e mode-0 raster object renders queued literal row`, `0x1f88e
-  mode-1 raster object expands queued bytes into two rows`, `0x1f88e mode-2
-  raster object expands queued byte pair into three rows`, `0x1f88e mode-3
-  raster object expands queued bytes into four rows`, and `host-fetched raster
-  mode streams feed 0x1ed84 and 0x1ef6a`.
-  Mixed composition evidence `host-fetched text rectangle and raster page
-  record feeds 0x1ed84 and 0x1ef6a` and `addressed text/rule/raster field
-  groups reach publication and render entry` exercises the documented
-  page-root, publication, bridge, and band-render path shared by encoded raster
-  objects, compact text, and rule objects.
-  Confidence is high for delayed-record restore, `0x105d0` gate outcomes,
-  root boundary, encoded object layout, bridge preservation, mode helpers,
-  active-resolution behavior, lowercase `*b` chaining, dense
-  capped-new-chunk/current-tail allocation through `0x132b6..0x13382`, and
-  ROM-derived row construction for the cited streams. No unresolved ROM-local
-  raster object, bridge, or render edge remains for the documented paths.
-  Remaining work is new byte streams that expose different `0x105d8..0x10752`,
-  `0x10084..0x10218`, `0x13070..0x13250`, or `0x132b6..0x13382` gate outcomes,
-  accepted counts or drains, allocator state `0x782a70/0x782a72/0x782a76`,
-  split capacity `0x782a80`, encoded object bytes
-  `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte
-  `0x782996`, packed-key advance through `0x332ee`, or mode-specific
-  `0x1f88e` row-construction paths.
+  `0x782a70/0x782a72/0x782a76`, allocation/copy stop flag `0x782996`, and post-transfer
+  cursor advancement. `0x107fa` clears only active flag `+0x12`; while `+0x12` is set,
+  `0x10808` resolution changes are ignored. Writers are `0x10808` for resolution-derived
+  mode/scale, `0x1075a` for origin and active state, `0x107fa` for active clear,
+  `0x11f82`/`0x121cc` for delayed transfer state, `0x105d0` for gate counts and row
+  state, `0x10084` for root availability, `0x13070`/`0x13250` for row objects, and
+  `0x138de` for payload bytes. Readers/consumers are `0x105d0` for the restored command
+  record, `0x13070` for raster state, publication `0xff1e`, bridge `0x1ed84` /
+  `0x1edc6`, bucket dispatch `0x1efc2`, and encoded raster renderer `0x1f88e`.
+  Publication and rendering copy the bucket chain through `0xff1e`, `0x1ed84`, and
+  `0x1edc6`; `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders the object. Mode `0` copies literal
+  words, while modes `1`, `2`, and `3` expand payload bytes into two, three, or four
+  output rows through ROM expansion tables. The gate fixtures classify capped transfers,
+  beyond-extent drains, negative rows, consecutive transfers, and active-resolution
+  ignore as object or no-object outcomes before this same render path. Beyond-extent
+  rows drain without ensuring a root; negative rows ensure a root, drain without
+  queueing an object, and advance from row `-1` to `0`. Concrete output evidence
+  includes fixtures `host-fetched raster stream reaches parser and queued pixels`,
+  `host-fetched raster stream preserves 0x1edc6 bridge contract`, `0x105d0-modeled
+  raster transfer skip and cap gate`, `modeled raster command stream applies 0x105d0
+  byte-count cap`, `modeled raster command stream drains beyond-extent transfer without
+  queueing`, `modeled raster command stream drains negative-row transfer and advances`,
+  `0x13070/0x13250 raster row queues encoded-span object`, `0x1f88e mode-0 raster object
+  renders queued literal row`, `0x1f88e mode-1 raster object expands queued bytes into
+  two rows`, `0x1f88e mode-2 raster object expands queued byte pair into three rows`,
+  `0x1f88e mode-3 raster object expands queued bytes into four rows`, and `host-fetched
+  raster mode streams feed 0x1ed84 and 0x1ef6a`. Mixed composition evidence
+  `host-fetched text rectangle and raster page record feeds 0x1ed84 and 0x1ef6a` and
+  `addressed text/rule/raster field groups reach publication and render entry` exercises
+  the documented page-root, publication, bridge, and band-render path shared by encoded
+  raster objects, compact text, and rule objects. Confidence is high for delayed-record
+  restore, `0x105d0` gate outcomes, root boundary, encoded object layout, bridge
+  preservation, mode helpers, active-resolution behavior, lowercase `*b` chaining, dense
+  capped-new-chunk/current-tail allocation through `0x132b6..0x13382`, and ROM-derived
+  row construction for the cited streams. No unresolved ROM-local raster object, bridge,
+  or render edge remains for the documented paths. Remaining work is new byte streams
+  that expose different `0x105d8..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, or
+  `0x132b6..0x13382` gate outcomes, accepted counts or drains, allocator state
+  `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, encoded object bytes
+  `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte `0x782996`,
+  packed-key advance through `0x332ee`, or mode-specific `0x1f88e` row-construction
+  paths.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule

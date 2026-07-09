@@ -206,6 +206,72 @@ Unknown:
   record, then delegates queue/list/context copying to `0x1edc6`.
 - `0x1edc6` writes render-record bucket, rule, fixed-list, and context roots.
 
+## Ensure-Root Caller Groups
+
+Helper `0x10084` is the page-image creation boundary shared by text, controls,
+graphics, and internally generated sample pages. It is not a renderer and it
+does not classify object bytes. It only decides whether current page root
+`0x78297a` can be reused or whether a new root must be allocated and
+initialized before a producer writes an object.
+
+The call-site grouping is:
+
+- Printable text and display-function recovery:
+  `0xd20a`, `0xd49a`, `0xd63c`, `0xd8ea`, `0xd9ec`, and `0xda4c`.
+  These callers reach `0x10084` after `0xd04a` / `0x1393a` has built a text
+  source record and before `0x12f2e` / `0x1387c` links compact objects under
+  root `+0x1c`.
+- Direct controls and cursor-changing commands:
+  `0xf0b6`, `0xf10c`, `0xf17a`, `0xf2b0`, `0xf576`, and `0xf6ee`.
+  These callers ensure a root before helper paths flush pending spans, commit
+  cursor-dependent page state, or prepare for publication decisions; the
+  visible object is still produced by `0x12714`, `0x12f2e`, or a later page
+  boundary, not by `0x10084`.
+- Raster and rectangle producers:
+  `0x106a4`, `0x106ec`, `0x10d0a`, and `0x10d38`. Raster transfer handler
+  `0x105d0` reaches these roots before encoded rows are stored through
+  `0x13070` / `0x13250`; rectangle/rule setup reaches them before rule
+  objects are inserted through `0x13386` / `0x133aa`.
+- Span and VFC-related setup:
+  `0x12788`, `0x127c4`, and `0x12912`. These call sites prepare the root for
+  pending text-span publication or vertical-forms-control movement before the
+  object-producing helpers link segment-list or fixed-list objects.
+- Firmware sample-page producers:
+  `0x1c2d2`, `0x1ca08`, `0x1e0ee`, `0x1e922`, and `0x30f4e`. These internal
+  printout paths use the same root and storage model as host-driven text:
+  once the root exists, they still queue objects through the normal page-root
+  fields and later publish through `0xff1e`.
+- Publication retry edge:
+  `0xff9a` reaches `0x10084` from the `0xff1e` overlay/retry path after a
+  prior root has been published or cleared and a fresh root is needed before
+  normal publication continues.
+
+Field ownership is the same for every caller. Canonical state is
+`0x78297a`, root byte `+0x04`, root fields `+0x1c/+0x20/+0x24/+0x28`,
+and context slots `+0x2c..+0x68`. Firmware bookkeeping is `0x782a70`,
+`0x782a72`, `0x782a76`, and `0x782990`. Parser scratch belongs to the caller's
+command-family note before `0x10084`; render state begins later at
+`0xff1e -> 0x1ed84 -> 0x1edc6`.
+
+Output effect: `0x10084` makes a page image possible, but it does not decide
+which pixels appear. Pixel effects begin when the caller writes compact,
+raster, rule, fixed-list, or context objects into the root fields above, and
+those fields are later published and rendered.
+
+Evidence:
+`generated/analysis/ic30_ic13_parser_xrefs.md` for the call-site addresses;
+`generated/disasm/ic30_ic13_page_root_allocate_010084.lst` for the
+reuse/allocation/initializer boundary; fixtures
+`0x10084-modeled page-root allocation side effects`,
+`addressed stream page record materializes through 0xff1e and 0x1ed84`, and
+the text, raster, rectangle, span, and sample-page owner notes named by the
+call-site groups above.
+
+Unresolved middle edges: no root-creation field or caller class remains
+unassigned for the call sites above. New work should start only from a caller
+that reaches `0x10084` with a different root field, retry branch, producer
+object shape, publication effect, or render consumer.
+
 ## Rule-List Insertion Order
 
 `0x13386` is the rectangle/rule storage entry. It first calls `0x134d6` on the

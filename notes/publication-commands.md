@@ -483,8 +483,11 @@ published page-root header word `+0x0c`.
 
 ## Output Effect
 
-All six covered publication streams publish the compact Line Printer `!` object
-queued before the publication command. The ROM path is:
+The covered publication streams publish the compact Line Printer `!` object
+queued before the publication command. The nonzero page-length stream is the
+publication-adjacent sibling: it refreshes geometry and cursor state before
+the following printable queues through the same compact text path. The ROM
+path for streams that publish already queued text is:
 
 ```text
 0xd04a -> 0x1387c/0x1381c page-root storage
@@ -495,15 +498,17 @@ queued before the publication command. The ROM path is:
 ```
 
 The named byte-stream and addressed examples exercise that path for reset, FF,
-page-size, orientation, paper-source, and copies. Their row digests are checks
-of the documented ROM-derived row construction, not comparisons to external
-printer output.
+page-size, page-length zero/default, orientation, paper-source, and copies.
+Their row digests are checks of the documented ROM-derived row construction,
+not comparisons to external printer output.
 
 The mixed page-record fixtures separate command side effects from visible
 output. Reset queues `!` through `0x1387c` before `0xcc52` clears or rebuilds
 environment state. FF publishes after the line-termination mode has reset the
 horizontal cursor. Page-size and orientation publish the queued page before
-installing new geometry. Paper source publishes the queued page before setting
+installing new geometry. Page-length zero can publish before restoring default
+page state, while nonzero page length changes later placement without drawing
+immediately. Paper source publishes the queued page before setting
 paper-source output/control bytes. Copies stores count `2` before FF
 publication copies that value to pool-header word `+0x0c`.
 
@@ -579,7 +584,7 @@ timing remain outside this ROM-internal publication contract.
 
 ## Remaining Edges
 
-- `0xff1e..0x1ed84`: final rows are ROM-derived for all six publication
+- `0xff1e..0x1ed84`: final rows are ROM-derived for covered publication
   commands by tracing publication, bridge, and render helpers.
   Physical-device comparison is outside the current static ROM evidence
   standard and is not an oracle for these rows.

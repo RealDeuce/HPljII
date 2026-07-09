@@ -6695,8 +6695,11 @@ Address-level cluster map:
   output, `0x1381c` rollover/allocation state, retry publication fields, rule
   object bytes, bridge state, render dispatch, or ROM-derived row construction.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
-  paths are covered through `0xff1e` for current modeled page records. VFC
-  coverage includes `ESC &l#W` delayed table payloads, lowercase
+  paths are covered through `0xff1e` for current modeled page records. Page
+  length is the publication-adjacent sibling: nonzero `ESC &l#P` refreshes
+  geometry and later placement, while zero/default `ESC &l0P` can publish
+  pending text before restoring default page state. VFC coverage includes
+  `ESC &l#W` delayed table payloads, lowercase
   same-family delayed-record preservation, channel-2 forward and before-top
   jumps, selector-zero top-of-form, selector-zero page eject, wrap hit,
   wrap no-hit, target-after-text publication, and non-publishing recovery
@@ -6718,9 +6721,11 @@ Address-level cluster map:
   pointer `0x780ea6`, publication flag `0x782996`, compact/raster bucket root
   `+0x1c`, rule list `+0x24`, fixed list `+0x28`, context slots `+0x2c..`,
   pool-header state byte `+4`, copy-count word `+0x0c`, and command-side
-  fields such as line-termination mode `0x78318f`, copy count `0x782da4`,
-  paper-source byte `0x782da6`, pending refresh byte `0x782998`, and
-  output/control bytes `0x780e8f` / `0x780e26`.
+  fields such as line-termination mode `0x78318f`, page length/extent
+  `0x782dba`, page code `0x782da2`, pending page-size/page-length byte
+  `0x782997`, copy count `0x782da4`, paper-source byte `0x782da6`, pending
+  refresh byte `0x782998`, and output/control bytes `0x780e8f` /
+  `0x780e26`.
   Canonical VFC state is table `0x782dde..0x782edd`, VMI `0x783160`, top
   offset `0x782dce`, current y/x `0x782c8e` / `0x782c8a`, text margins
   `0x782dd6` / `0x782dda`, text-bottom cache `0x782dd2`, VFC limit
@@ -6737,28 +6742,31 @@ Address-level cluster map:
   latches `0x782a58`, `0x782a6d`, and `0x783184`, `0x9ac2` wait/status
   servicing, `0xf124` page-eject state, and synthetic/nondefault `0xff1e`
   pool-header copies.
-  Covered parser-to-publication streams are `! ESC E` through reset handler
-  `0xcc52`, `ESC &k2G ! FF` through `0xedf8` and `0xf0f0`, `! ESC &l1A`
-  through page-size handler `0xfc74`, `! ESC &l1O` through orientation handler
-  `0x10220`, `! ESC &l2H` through paper-source handler `0xef62`, and
-  `! ESC &l2X FF` through copy-count handler `0xeef0` before FF publication.
-  The command-side fields are copy count `0x782da4`, paper-source byte
-  `0x782da6`, pending paper-source refresh `0x782998`, output bytes
-  `0x780e8f` / `0x780e26`, orientation `0x782da3`, and geometry fields updated
-  after page-size/orientation publication.
+  Covered parser-to-publication and publication-adjacent streams are `! ESC E`
+  through reset handler `0xcc52`, `ESC &k2G ! FF` through `0xedf8` and
+  `0xf0f0`, `! ESC &l1A` through page-size handler `0xfc74`,
+  `ESC &l66P !` and `! ESC &l0P` through page-length handler `0xf9e8`,
+  `! ESC &l1O` through orientation handler `0x10220`, `! ESC &l2H` through
+  paper-source handler `0xef62`, and `! ESC &l2X FF` through copy-count
+  handler `0xeef0` before FF publication. The command-side fields are page
+  length/extent `0x782dba`, page code `0x782da2`, pending layout byte
+  `0x782997`, copy count `0x782da4`, paper-source byte `0x782da6`, pending
+  paper-source refresh `0x782998`, output bytes `0x780e8f` / `0x780e26`,
+  orientation `0x782da3`, and geometry fields updated after
+  page-size/page-length/orientation publication or placement refresh.
   VFC table load `ESC &l#W` uses `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`
   to consume delayed payload bytes into table `0x782dde..0x782edd`, derive
   VFC limit `0x782dc2`, copy text-bottom cache `0x782dd2`, and clear modified
   layout flag `0x782ee1`. VFC channel jumps through `0x1280a` consume that
   table, VMI `0x783160`, top offset `0x782dce`, current y `0x782c8e`, and
   line caches `0x782ede` / `0x782edf` / `0x782ee0`.
-  Writers are `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
-  `0xeef0` for publication-triggering command state; `0xff1e` for published
-  pool records; `0x11f6e` / `0x121cc` for delayed VFC payload scheduling;
-  `0x12cfe` for explicit VFC table load; `0x12b96` and `0xe5e2` for default
-  VFC/layout refresh; `0xfe54` for line-count caches; and `0x1280a`,
-  `0xf06e`, `0xf34a`, and `0xf124` for cursor reset, pending-text flush, and
-  page-boundary effects.
+  Writers are `0xcc52`, `0xf0f0`, `0xfc74`, `0xf9e8`, `0x10220`, `0xef62`,
+  and `0xeef0` for publication-triggering or publication-adjacent command
+  state; `0xff1e` for published pool records; `0x11f6e` / `0x121cc` for
+  delayed VFC payload scheduling; `0x12cfe` for explicit VFC table load;
+  `0x12b96` and `0xe5e2` for default VFC/layout refresh; `0xfe54` for
+  line-count caches; and `0x1280a`, `0xf06e`, `0xf34a`, and `0xf124` for
+  cursor reset, pending-text flush, and page-boundary effects.
   Readers/consumers are parser loop `0x11774`, publication `0xff1e`, bridge
   `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`, VFC consumer `0x1280a`,
   perforation overflow helper `0xf36c`, and later printable text through
@@ -6774,8 +6782,11 @@ Address-level cluster map:
   records`, `addressed paper-source and copies publications render page
   records`, `host-fetched FF geometry and paper-source publications preserve
   0xff1e pool header defaults`, `host-fetched copies publication preserves
-  0xeef0 pool header word`, and `host-fetched ESC E clears missing page root
-  without publication`.
+  0xeef0 pool header word`, `0xf9e8 ESC &l#P converts VMI lines to page length
+  and selects internal page code`, `0xf9e8 ESC &l#P stream reaches page-length
+  handler`, `mixed page-length stream refreshes cursor before printable
+  page-record queue`, and `host-fetched ESC E clears missing page root without
+  publication`.
   Concrete VFC evidence includes fixtures `0x12cfe ESC &l#W loads vertical
   forms control state`, `mixed VFC definition stream consumes payload before
   printable page-record queue`, `mixed VFC lowercase delayed record survives

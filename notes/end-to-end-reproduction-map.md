@@ -4771,9 +4771,22 @@ Address-level cluster map:
   publication flag `0x782996`, and clears the current root. `0x1ed84` selects
   the published source, `0x1edc6` bridges roots into render-record
   `+0x18/+0x1c/+0x20` and context slots, `0x1eba4` schedules band words, and
-  `0x1ef6a` dispatches compact/raster buckets, rules, and fixed lists. Hardware
-  timing can change when active-band work is scheduled, but not the documented
-  page-object-to-row construction for an already selected published record.
+  `0x1ef6a` dispatches compact/raster buckets, rules, and fixed lists.
+  Page-size `ESC &l#A` publishes queued objects before `0xfc74` writes page
+  code `0x782da2`, sets pending flag `0x782997`, and rebuilds geometry such
+  as active extents and top offset. Orientation `ESC &l#O` publishes before
+  `0x10220` writes orientation byte `0x782da3` and installs
+  orientation-specific extents, so rendered pixels belong to the
+  pre-orientation page root. Paper-source `ESC &l#H` flushes and publishes
+  through `0xef62`, then writes environment byte `0x782da6`, pending byte
+  `0x782998`, and software-visible output/control bytes `0x780e8f` /
+  `0x780e26` for changed source state. Copies `ESC &l#X` is the delayed
+  publication variant: `0xeef0` stores nonzero absolute copy count
+  `0x782da4`, clamps values above `99`, and does not publish until later
+  `FF` / reset / page-boundary publication copies it into pool-header word
+  `+0x0c`. Hardware timing can change when active-band work is scheduled, but
+  not the documented page-object-to-row construction for an already selected
+  published record.
 - Macro, data-chain, and overlay cluster:
   macro commands run `0xe112` / `0xdd08`; record selection and storage use
   `0xe0a4` and `0xe002`; execute/call frames use `0xe418` and `0xe22c`;

@@ -3806,6 +3806,18 @@ Page-object and render effect:
   `0xd550 -> 0xd824 -> 0x12f2e -> 0x1387c`.
 - The two routed payload bytes reuse one compatible short compact object under
   current page-root bucket array `+0x1c`, just like direct host stream `!!`.
+- With initialized `LINE_PRINTER` HMI, the object is the same two-entry short
+  compact object documented by the direct printable walkthrough:
+
+```text
+00 00 00 00 00 00 00 02 20 00 01 20 02 02
+```
+
+  The transparent reader owns only the delayed count, payload fetch, and route
+  decisions. Once both bytes have routed to `0xd04a`, object fields
+  `+0x04 = 0`, `+0x05 = 0`, `+0x06 = 2`, glyph bytes `0x20/0x20`, and
+  compact coordinates `0x0001/0x0202` are produced by the normal text source
+  and compact-bucket path.
 - Publication `0xff1e` snapshots the current root, `0x1ed84` seeds the active
   render record, and `0x1edc6` copies bucket/context roots.
 - `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches the compact object to the same
@@ -3864,7 +3876,8 @@ Evidence:
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
-  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  plus `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Secondary Segment-57 Boundary Walkthrough
 

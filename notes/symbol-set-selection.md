@@ -263,10 +263,10 @@ The symbol-specific consumer chain is:
    mapped by `0x1393a`.
 
 The `0x14f16` patch algorithm is documented in
-[symbol-map-patching.md](symbol-map-patching.md). It only table-patches maps
-when the selected font normalizes to Roman-8 (`0x0115`), then uses active
-symbol words `0x783144` / `0x783146` to select hard-coded `0E` / `0U`
-behavior or a `0x14fce` patch table.
+[symbol-map-patching.md](symbol-map-patching.md#owner-summary). It only table-patches
+maps when the selected font normalizes to Roman-8 (`0x0115`), then uses active symbol
+words `0x783144` / `0x783146` to select hard-coded `0E` / `0U` behavior or a `0x14fce`
+patch table.
 
 The printable path then consumes this derived map:
 
@@ -431,7 +431,7 @@ Readers and consumers:
   window.
 - `0x156de` consumes requested/remembered/fallback words.
 - `0x14f16` consumes active words while patching maps.
-- [symbol-map-patching.md](symbol-map-patching.md) documents the patcher
+- [symbol-map-patching.md](symbol-map-patching.md#owner-summary) documents the patcher
   branches and table index.
 - `0xd04a` / `0x1393a` consume the selected slot, current context, and map for
   later printable bytes.
@@ -515,7 +515,7 @@ Disassembly evidence:
 Checked-in documentation that composes the downstream path:
 
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
-- [symbol-map-patching.md](symbol-map-patching.md)
+- [symbol-map-patching.md](symbol-map-patching.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md)
 - [page-record-storage.md](page-record-storage.md)
 - [page-raster-imaging.md](page-raster-imaging.md)

@@ -21,6 +21,63 @@ Primary evidence:
 - [font-context-metrics.md](font-context-metrics.md#owner-summary):
   `0x14c64` refresh and map rebuild context.
 
+## Owner Summary
+
+This note owns map patcher `0x14f16`, the last selected-symbol stage before
+printable bytes map host characters to glyph indices. The patcher is not a
+parser, page-object allocator, or renderer. It mutates the selected 256-byte
+primary or secondary character map after `0x14c64` has built the base map and
+before `0xd04a -> 0x1393a` consumes the map for later text.
+
+Primary route:
+
+- Entry:
+  `0x14c64` calls `0x14f16` after the bit-30 resource builder `0x14d9c` or
+  bit-30-clear inline/downloaded builders `0x14e24` / `0x14eb6`.
+- Roman-8 gate:
+  `0x14f16` reads selected candidate `0x7828a8`; candidate byte bit 6 chooses
+  symbol reader `0x15890` or `0x158be`. If the normalized selected-font symbol
+  is not `0x0115`, the patcher returns without changing the rebuilt map.
+- Slot selection:
+  selected slot `0x7828de` chooses primary map `0x782f32` and active word
+  `0x783144`, or secondary map `0x783032` and active word `0x783146`.
+- Patch cases:
+  active word `0x0005` copies the upper map half down and clears the upper
+  half; active word `0x0015` preserves the lower half and clears the upper
+  half; active words in table `0x14fce` apply `(dst, src)` byte-pair copies
+  and then clear the upper half; table misses leave the rebuilt map unchanged.
+- Downstream consumer:
+  later printable bytes read the patched map through `0xd04a -> 0x1393a`.
+  Compact renderers consume the captured glyph index and do not know whether
+  it came from a base map or a patch.
+
+Field groups:
+
+- Canonical selected state:
+  selected candidate `0x7828a8`, selected slot `0x7828de`, active symbol words
+  `0x783144` / `0x783146`, and maps `0x782f32` / `0x783032`.
+- Derived/cache state:
+  selected-slot map flags `0x783132` / `0x783133` and selected-font snapshots
+  `0x783148` / `0x783152`.
+- Parser scratch:
+  none inside `0x14f16`; parser state has already been reduced to active
+  symbol words by `0x120be`, `0x1be22`, `0xc580`, and `0x156de`.
+- Firmware bookkeeping:
+  ROM table cursor and pair loop state local to `0x14f16`, plus candidate
+  bit-6 helper selection.
+- Unknown:
+  no ROM-local branch target is unknown in `0x14f16..0x14fcc`. Remaining
+  variation is data variation in selected font records, active symbol words,
+  and ROM table pairs.
+
+Output effect:
+
+- The patcher changes future text pixels only by changing the glyph index that
+  a later host byte maps to.
+- It does not alter compact text already queued before the patch.
+- It does not emit page records, publish pages, schedule render work, or draw
+  into output buffers.
+
 ## Entry Conditions
 
 `0x14c64` calls `0x14f16` after one of the selected-map builders has run:

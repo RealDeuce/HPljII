@@ -584,7 +584,7 @@ turn a host byte into a compact glyph byte, while the selected record and its
 offset table remain canonical font state.
 
 The `0x14f16` patcher is documented in
-[symbol-map-patching.md](symbol-map-patching.md). It gates on the selected
+[symbol-map-patching.md](symbol-map-patching.md#owner-summary). It gates on the selected
 font's normalized Roman-8 word, then uses active symbol words
 `0x783144` / `0x783146` to select hard-coded half-map behavior or one of the
 `0x14fce` patch tables.

@@ -139,12 +139,12 @@ effects are documented in
 context and metric consumers in
 [font-context-metrics.md](font-context-metrics.md#owner-summary). Map mutation after a
 selected context is rebuilt is owned by
-[symbol-map-patching.md](symbol-map-patching.md): `0x14f16` only runs after `0x14c64`
-has produced the primary or secondary base map, and its output is only visible when
-later printable bytes consume `0x782f32` or `0x783032` through `0xd04a -> 0x1393a`. The
-`ESC &lT/t` table slot is intentionally labeled as unimplemented: normal uppercase `T`
-has no terminal handler, while lowercase `t` only reaches the generic `0x11f4c` rewind
-used by lowercase chaining rows.
+[symbol-map-patching.md](symbol-map-patching.md#owner-summary): `0x14f16` only runs
+after `0x14c64` has produced the primary or secondary base map, and its output is only
+visible when later printable bytes consume `0x782f32` or `0x783032` through `0xd04a ->
+0x1393a`. The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
+uppercase `T` has no terminal handler, while lowercase `t` only reaches the generic
+`0x11f4c` rewind used by lowercase chaining rows.
 
 Two normal-table rows with blank handlers are parser artifacts rather than
 undocumented imaging commands:
@@ -243,7 +243,7 @@ boundaries:
   context switches, metric producer/consumer behavior, and built-in resource
   selection:
   [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
-  [symbol-map-patching.md](symbol-map-patching.md),
+  [symbol-map-patching.md](symbol-map-patching.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [built-in-resource-scan.md](built-in-resource-scan.md).
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current
@@ -516,7 +516,7 @@ Normal table `0x112a4`:
   `0x12046`, `0x1205a`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`,
   `0x120be`, `0x15a18`, `0x15a56`, and `0x16df6`.
   Owners are [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
-  [symbol-map-patching.md](symbol-map-patching.md),
+  [symbol-map-patching.md](symbol-map-patching.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
   write font request fields, selected-context/glyph-map state, current

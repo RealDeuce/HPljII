@@ -9788,22 +9788,25 @@ allocator transitions, object fields, bridge state, or visible rows.
 
 ## Publication Commands To ROM-Derived Page Rows
 
-Status: composed for six host-facing publication streams that carry an
+Status: composed for the host-facing publication streams that carry an
 already queued compact text object through parser dispatch, `0xff1e`
 publication, `0x1ed84`/`0x1edc6` render-record copy, and `0x1ef6a`
-ROM-derived row construction. The low-level queue and render mechanics are
-shared with
-`Mixed Text/Rule/Raster Page Record`; this section names the command-family
-publication contract.
+ROM-derived row construction. The direct publication set is reset, FF,
+page-size, orientation, paper-source, and copies-through-FF; the page-length
+zero/default branch is the layout-family sibling that can also publish pending
+state through `0xf34a` and `0xff1e`. The low-level queue and render mechanics
+are shared with `Mixed Text/Rule/Raster Page Record`; this section names the
+command-family publication contract.
 
-Concept: reset, FF, page-size, orientation, paper-source, and copy-count
-commands can all force publication of the current page record after a
-printable byte has created a compact text bucket. The visible output is the
-pre-command compact `!` page, while command-specific side effects update
-firmware state around that publication. Fixtures pin this for direct modeled
-streams, host-fetched `0xa904` streams, and addressed reset, FF, page-size,
-orientation, paper-source, and copies records that materialize the compact
-bucket through `0x1387c`/`0x1381c` before publication.
+Concept: reset, FF, page-size, orientation, paper-source, copy-count followed
+by FF, and page-length zero/default can force publication of the current page
+record after a printable byte has created a compact text bucket. The visible
+output is the pre-command compact `!` page, while command-specific side
+effects update firmware state around that publication. Fixtures pin this for
+direct modeled streams, host-fetched `0xa904` streams, page-length zero/default
+handler state, and addressed reset, FF, page-size, orientation, paper-source,
+and copies records that materialize the compact bucket through
+`0x1387c`/`0x1381c` before publication.
 
 ### Field Groups
 
@@ -9815,6 +9818,7 @@ bucket through `0x1387c`/`0x1381c` before publication.
   - orientation: `! ESC &l1O`, handlers `0xd04a`, `0x10220`.
   - paper source: `! ESC &l2H`, handlers `0xd04a`, `0xef62`.
   - copies: `! ESC &l2X FF`, handlers `0xd04a`, `0xeef0`, `0xf0f0`.
+  - page length zero/default: `! ESC &l0P`, handlers `0xd04a`, `0xf9e8`.
   Evidence: fixtures `publication streams tie parser handlers to page-record
   publication boundary` and `host-fetched publication streams reach parser and
   published rows`; page-record stream fixtures
@@ -9896,6 +9900,11 @@ bucket through `0x1387c`/`0x1381c` before publication.
     publication copies that value to pool-header word `+0x0c`; the addressed
     variant leaves cursor x/y at packed `28`/`21`, clears the current page
     root, keeps `page_root_present = 1`, and leaves `0x782990 = 0`.
+  - page-length zero/default `ESC &l0P` flushes pending text through `0xf34a`,
+    publishes through `0xff1e`, waits through `0x9ac2`, mirrors changed
+    paper-source state from `0x782da6` to `0x780e8f`, signals `0x780e26`
+    through `0x9b5e`, and selects default page code `0x780e97` or fallback
+    `2`.
   - `0xeef0 ESC &l#X stores absolute clamped copy count` pins the direct
     copy-count write rules: parameter `0` leaves the prior count unchanged,
     negative parameter `-3` stores absolute count `3`, and parameter `150`
@@ -9905,7 +9914,7 @@ bucket through `0x1387c`/`0x1381c` before publication.
   0xff1e pool header defaults`,
   `addressed paper-source and copies publications render page records`, and
   `host-fetched copies publication preserves 0xeef0 pool header word`.
-- Layout-command side effects outside the six publication streams:
+- Layout-command side effects outside the direct six-command publication set:
   - page-length `ESC &l66P` writes page extent `0x782dba = 3300`, selects
     internal page code `2`, recomputes geometry/text-bottom state, and
     refreshes the following printable cursor to compact coord `0x9001`.
@@ -9947,8 +9956,10 @@ bucket through `0x1387c`/`0x1381c` before publication.
   `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`, and
   `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
 - Parser scratch:
-  - all six host-fetched publication streams drain entirely from the modeled
-    `0xa904` ring source and leave an empty ring.
+  - the six original host-fetched publication streams drain entirely from the
+    modeled `0xa904` ring source and leave an empty ring.
+  - page-length `ESC &l#P` consumes the same six-byte `ESC &l` terminal record
+    before `0xf9e8` branches on the parsed parameter.
   - mixed publication streams and geometry publication streams both route
     through parser loop `0x11774` before their final publication handlers.
   Evidence: fixtures `host-fetched publication streams reach parser and
@@ -9959,9 +9970,10 @@ bucket through `0x1387c`/`0x1381c` before publication.
     publication-command checkpoint.
 - Unknown:
   - no ROM-local publication, bridge, or render-entry field remains unknown for
-    the covered reset, FF, page-size, orientation, paper-source, and copies
-    streams. The remaining boundary is hardware/external engine timing, not
-    parser or page-record behavior.
+    the covered reset, FF, page-size, orientation, paper-source,
+    copies-through-FF, or page-length zero/default streams. The remaining
+    boundary is hardware/external engine timing, not parser or page-record
+    behavior.
 
 ### Writers
 
@@ -9970,8 +9982,10 @@ bucket through `0x1387c`/`0x1381c` before publication.
 - `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and `0xeef0` trigger
   command-family publication or state updates for reset, FF, page-size,
   orientation, paper source, and copies.
-- `0xf9e8`, `0xee64`, and `0xedb0` write page-length, perforation-skip, and
-  wrap-mode layout state used by later printable/page-boundary paths.
+- `0xf9e8` writes page-length state on nonzero parameters and can publish
+  pending state on the zero/default branch.
+- `0xee64` and `0xedb0` write perforation-skip and wrap-mode layout state used
+  by later printable/page-boundary paths.
 - `0xff1e` copies the current root into the published pool record, clears the
   current page root, writes state byte `+4 = 2`, and preserves command-specific
   pool-header fields such as copy count `+0x0c`.
@@ -9981,8 +9995,8 @@ bucket through `0x1387c`/`0x1381c` before publication.
 
 ### Readers And Consumers
 
-- The parser dispatch table at `0x11774` routes the six streams to the handler
-  lists above.
+- The parser dispatch table at `0x11774` routes the publication streams to the
+  handler lists above.
 - `0xff1e` consumes the current page root and page-record bucket root.
 - `0x1ed84`/`0x1edc6` consume the published pool record.
 - `0x1ef6a` consumes the render record in call order
@@ -9991,12 +10005,15 @@ bucket through `0x1387c`/`0x1381c` before publication.
 
 ### Output Effect
 
-All six publication streams render the same compact Line Printer `!` rows
-from the pre-publication printable byte. Fixture
+The direct six publication streams render the same compact Line Printer `!`
+rows from the pre-publication printable byte. Fixture
 `published page records feed 0x1ed84 and 0x1ef6a render entry` asserts the
 full row set, not just the prefix, for reset, FF, page-size, orientation,
-paper-source, and copies. The reset, FF, page-size, orientation,
-paper-source, and copies addressed fixtures also assert that their
+paper-source, and copies. Page-length zero/default reaches the same
+publication helper through `0xf9e8`; its documented output effect here is the
+default-page refresh plus optional paper-source output/control signal, with
+publication routed through `0xf34a` and `0xff1e`. The reset, FF, page-size,
+orientation, paper-source, and copies addressed fixtures also assert that their
 materialized page records render those same rows after `0xff1e`.
 
 The mixed page-record fixtures split the command boundary from rendering:
@@ -10029,11 +10046,12 @@ create a published page record.
 ### Confidence
 
 High for parser handler order, `0xa904` host-fetch draining, published pool
-header fields, command-specific page-size/orientation/copies/paper-source
-side effects, render-record bridge fields, render-entry call order, and
-ROM-derived row construction, including addressed allocator state for all six
-publication streams, because each cited edge has handler, field, or render-helper
-evidence; fixtures exercise the documented paths.
+header fields, command-specific page-size, page-length zero/default,
+orientation, copies, and paper-source side effects, render-record bridge
+fields, render-entry call order, and ROM-derived row construction, including
+addressed allocator state for the six addressed publication streams, because
+each cited edge has handler, field, or render-helper evidence; fixtures
+exercise the documented paths.
 
 ### Fixtures
 
@@ -10072,6 +10090,9 @@ evidence; fixtures exercise the documented paths.
 - `host-fetched copies publication preserves 0xeef0 pool header word`
 - `mixed printable/copies/FF stream publishes copy count`
 - `0xeef0 ESC &l#X stores absolute clamped copy count`
+- `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+  page code`
+- `0xf9e8 ESC &l#P stream reaches page-length handler`
 - `host-fetched publication streams preserve 0x1edc6 bridge contract`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -10106,7 +10127,7 @@ evidence; fixtures exercise the documented paths.
 
 ### Unresolved Middle Edges
 
-- `0xff1e..0x1ed84`: final rows are ROM-derived for all six publication
+- `0xff1e..0x1ed84`: final rows are ROM-derived for the covered publication
   commands by tracing publication, bridge, and render helpers.
   Physical-device comparison is outside the current static ROM evidence
   standard and is not an oracle for these rows.

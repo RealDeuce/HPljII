@@ -2170,12 +2170,12 @@ glyph row-copy fixtures are generated in
 together, pins `0xa904` host byte fetch source-priority fixtures plus
 the semantic host-input/data-chain field model,
 ring-fed host-to-render boundaries for the direct text/control
-page-record stream set through `0x1edc6` bridge fields, the
-reset/FF/page-size/orientation/paper-source/copies publication streams,
-addressed publication allocation variants for reset, FF, page-size,
-orientation, paper-source, and copies, and the primary `ESC *t300R` /
-`ESC *r1A` / `ESC *b4W`
-raster stream through its raster bridge fields,
+page-record stream set through `0x1edc6` bridge fields, the reset, FF,
+page-size, page-length zero/default, orientation, paper-source, and copies
+publication routes, addressed publication allocation variants for reset, FF,
+page-size, orientation, paper-source, and copies, and the primary
+`ESC *t300R` / `ESC *r1A` / `ESC *b4W` raster stream through its raster
+bridge fields,
 pins `0xdaf0`/`0xdb74` tokenizer records, `0x121cc`
 delayed-payload snapshots, and `0x1228a`/`0x12358` alternate payload
 byte-count consumers, pins synthetic direct control-code packed-state

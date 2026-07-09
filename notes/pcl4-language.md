@@ -773,6 +773,10 @@ Field groups for this index:
   `0x12536`, routes loop values `21 05 21 1b 5a` as
   `d04a d0f0 d04a d0f0 d04a`, and queues compact entries at `0x0001`,
   `0x0403`, and `0x0405`.
+  `ESC z` is the display-functions-off status edge at `0xcd86..0xcda0`:
+  it reads the active data-chain frame kind byte at `0x782d76 + 9`, calls
+  `0x9c2c` only when that byte is zero, writes status/service fields
+  `0x7821cc`, `0x7822db`, and `0x780e2a`, and creates no page object.
   Evidence:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).
@@ -890,18 +894,48 @@ Field groups for this index:
   `0xe002`, execute/call frames come from `0xe418`, and overlay frame
   production uses `0xe4f4` from `0xff1e`. Macro records live at `0x782a98`,
   current id at `0x783164`, data-chain frames at `0x782d76`, and overlay
-  id/state at `0x782a94` / `0x782a92`; `0xa904` gives replay frames
-  byte-source priority. Stored bytes re-enter the same parser and renderer as
-  live bytes. Macro-control selector `0` starts definition mode and stores
-  following bytes through `0xe002`; selector `1` stops definition mode;
-  selectors `2` and `3` execute/call the selected record through `0xe418`;
-  selectors `4` and `5` enable/disable overlay state; selectors `6`, `7`, and
-  `8` delete all, temporary, or current records; and selectors `9` / `10`
-  clear or set record permanence byte `+0x0a`. Definition/delete/permanence
-  controls create no page object by themselves; their output effect appears
-  when stored payload bytes later replay or when overlay state is consumed by
-  publication. Overlay can add text, transparent data, raster, rule/span
-  payloads before publication. Concrete overlay stream
+  id/state at `0x782a94` / `0x782a92`.
+
+  Macro-control selector `0` starts definition mode and stores following bytes
+  through `0xe002`; selector `1` stops definition mode; selectors `2` and `3`
+  execute/call the selected record through `0xe418`; selectors `4` and `5`
+  enable/disable overlay state; selectors `6`, `7`, and `8` delete all,
+  temporary, or current records; and selectors `9` / `10` clear or set record
+  permanence byte `+0x0a`. Definition/delete/permanence controls create no
+  page object by themselves; their output effect appears when stored payload
+  bytes later replay or when overlay state is consumed by publication.
+
+  Definition storage is a linked chunk stream, not an immediate parser
+  side-effect: `0xe002` appends only when the active frame kind byte `+9` is
+  zero and append-error byte `0x782c19` is clear, allocates 0x100-byte chunks
+  through `0x170c`, uses the first longword as the next pointer, and counts
+  four header bytes per chunk in record word `+0x04`. Stop selector `1`
+  normalizes that raw count by subtracting the per-chunk headers. Execute and
+  call selectors build replay frames through `0xe418..0xe4f2`: the new frame
+  is 14 bytes after the current `0x782d76` frame, copies selected record
+  head/count into `+0x00/+0x04`, writes byte-source offset `+0x08 = 4`, writes
+  frame kind `+0x09 = 2` for execute or `3` for call, stores a linked
+  environment snapshot at `+0x0a`, sets host gate bit `0x780e66.1` when the
+  count is positive, and pushes a 10-byte context entry for call mode.
+
+  The host-byte source makes replay ordinary input: `0xa904` gives active
+  data-chain frame bytes priority over live ring input, so the stored payload
+  re-enters wrapper `0xda9a`, parser loop `0x11774`, the same command-family
+  handlers, the same page objects, and the same render path as live bytes.
+  When a replay frame reaches its end, `0xa904` calls `0xe22c..0xe408`.
+  Execute frames restore/free linked snapshots, rewind `0x782d76`, and clear
+  the host gate bit if the previous frame has no bytes; call and overlay
+  returns restore context, call `0xe65c(0)`, and may publish through `0xf124`.
+
+  Overlay replay is a publication-time detour, not a separate renderer.
+  Selector `4` stores enabled state in `0x782a92` and saved id `0x782a94`.
+  During `0xff1e`, an eligible overlay record causes `0xe4f4..0xe5e0` to push
+  a macro context entry, snapshot flat state, save cursor longword
+  `0x782c92`, install non-replay frame `0x782d4c` into `0x782d76`, copy
+  record head/count, write `+0x08 = 4`, `+0x09 = 4`, and `+0x0a = 0`, then
+  replay overlay bytes before final root publication. Overlay can add text,
+  transparent data, raster, rule/span payloads before publication.
+  Concrete overlay stream
   `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X` stores payload `21 0d`;
   publication replays it before root copy, queues compact text object
   `00 00 00 00 00 00 00 01 20 00 01`, and lets CR mutate cursor/page state
@@ -936,20 +970,42 @@ Field groups for this index:
   Rectangle/rule objects write the ordered list at root `+0x24` through
   `0x13386 -> 0x133aa`; fixed-list or landscape span objects write root
   `+0x28` through `0x136d2`. Publication `0xff1e` freezes the active root into
-  a page/control pool record; bridge `0x1ed84 -> 0x1edc6` copies source roots
-  into render-record roots `+0x18`, `+0x1c`, `+0x20`, and context slots
-  `+0x24..+0x60`. Render entry `0x1ef6a` loads active render record
-  `0x783a18`, derives band caches through `0x1ef86`, then calls bucket-chain
-  renderer `0x1efc2`, rule-list renderer `0x1f446`, and fixed-list renderer
-  `0x1f756` in that order. Bucket objects dispatch compact glyphs through
-  `0x1effe`, segment-list spans through `0x1f812`, and encoded raster through
-  `0x1f88e`. Destination helpers write current-band buffer `0x783a28` or
-  fallback buffer `0x7810b4 + byte_pair_offset` using stride `0x783a1c` and
-  row offsets `0x7839f8..`; documented helpers store generated words or bytes
-  directly rather than blending against previous destination contents.
+  a page/control pool record. Pool state then carries that record to the
+  renderer: protected published head `0x780ea6`, scheduler cursor `0x780eaa`,
+  active source `0x780eae`, and release cursor `0x780eb2` are initialized by
+  `0x3144..0x3162`, populated through candidate paths `0x1c04..0x2016`,
+  selected by `0x7ec6..0x7f90`, advanced by `0x7722..0x779a`, and copied from
+  `0x780eaa` to `0x780eae` by `0x1eb32..0x1eb50`.
+
+  Render work records are the middle edge between the pool and bitmap
+  dispatch. Startup `0x2feb6` initializes selector bytes `0x7820bc` and
+  `0x7820c0`; `0x1ecd6..0x1ed76` alternates records `0x7820c4` and
+  `0x782128`, writes active pointer `0x783a18`, initializes geometry through
+  `0x1ee9e` when the source geometry changes, or reuses same-geometry fields
+  through `0x33238`. Bridge `0x1ed84 -> 0x1edc6` then copies source roots into
+  render-record roots `+0x18`, `+0x1c`, `+0x20`, and context slots
+  `+0x24..+0x60`.
+
+  The active band loop `0x1eba4..0x1ecd2` decides when the selected render
+  record actually reaches bitmap dispatch. It consumes active/paired
+  work-record fields `+0x06`, `+0x0c`, `+0x0e`, `+0x10`, and `+0x16`, cleans
+  up when `0x780ea5` is set or `+0x0c < +0x10`, throttles when `+0x0e > 0x28`,
+  waits when computed capacity is below `9`, and otherwise calls `0x1ef6a`
+  before incrementing render band word `+0x10` and throttle word `+0x0e`.
+
+  Render entry `0x1ef6a` loads active render record `0x783a18`, derives band
+  caches through `0x1ef86`, then calls bucket-chain renderer `0x1efc2`,
+  rule-list renderer `0x1f446`, and fixed-list renderer `0x1f756` in that
+  order. Bucket objects dispatch compact glyphs through `0x1effe`,
+  segment-list spans through `0x1f812`, and encoded raster through `0x1f88e`.
+  Destination helpers write current-band buffer `0x783a28` or fallback buffer
+  `0x7810b4 + byte_pair_offset` using stride `0x783a1c` and row offsets
+  `0x7839f8..`; documented helpers store generated words or bytes directly
+  rather than blending against previous destination contents.
   Physical engine consumption of those rendered buffers is the formatter/DC
   boundary, not another parser command effect. Evidence:
-  [page-raster-imaging.md](page-raster-imaging.md) and
+  [page-raster-imaging.md](page-raster-imaging.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
   [page-record-storage.md](page-record-storage.md).
 
 Confidence is high for this index as a routing map because it is backed by the

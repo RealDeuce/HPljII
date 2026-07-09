@@ -79,6 +79,115 @@ Primary byte-stream examples:
 - `macro overlay multi-row raster payload publishes with page rule`
 - `macro overlay span-flush payload publishes with page rule`
 
+## Owner Summary
+
+Concept: this note owns macro definition, macro record storage, execute/call
+replay, overlay publication, data-chain frames, and macro context snapshots.
+It documents how `ESC &f#Y` selects macro ids, how `ESC &f#X` selectors create
+or consume stored payload bytes, how replay becomes a `0xa904` byte source,
+and how overlay publication injects stored bytes before page output.
+
+Primary route:
+
+- Parser dispatch routes `ESC &f#Y` to `0xe112` and `ESC &f#X` to `0xdd08`.
+- Definition route:
+  `0xdd08 selector 0/1 -> macro record -> 0xe002 append sink -> linked
+  0x100-byte chunks`.
+- Execute/call route:
+  `0xdd08 selector 2/3 -> 0xe418 frame builder -> 0x782d76 active frame
+  -> 0xa904 data-chain source -> 0x11774 parser dispatch -> command-family
+  handlers -> page records -> render`.
+- Frame-end route:
+  `0xa904 count-end marker -> 0xe22c -> optional context restore -> previous
+  frame/source resumes`.
+- Overlay route:
+  `0xdd08 selector 4/5 -> overlay id/state -> page publication 0xff1e
+  -> 0xe4f4 non-replay frame -> 0xa904/0x11774 stored payload replay
+  -> page publication continues`.
+- Macro replay has no separate renderer. Stored printable, direct-control,
+  raster, rectangle, transparent, and span-producing payloads reuse their
+  normal command-family owners after `0xa904` returns the replay bytes.
+
+Field groups:
+
+- Canonical macro records: current macro id `0x783164`, record pool
+  `0x782a98`, selected record pointer `0x782d7a`, record head `+0x00`, raw
+  byte count `+0x04`, macro id `+0x08`, and permanence byte `+0x0a`.
+- Canonical data-chain frames: current frame pointer `0x782d76`, frame
+  payload head/count at `+0x00/+0x04`, source offset byte `+0x08`, frame kind
+  byte `+0x09`, and snapshot pointer `+0x0a`.
+- Canonical overlay state: overlay state byte `0x782a92`, saved overlay id
+  `0x782a94`, page-root retry gate bit `root+0x14.0`, and publication detour
+  through `0xff1e`.
+- Canonical context state: eight 10-byte macro context records
+  `0x782c1e..0x782c6d`, stack pointer `0x782c6e`, static context record
+  `0x782c64`, and primary/secondary refresh flags at entry bytes `+8/+9`.
+- Canonical heap/payload-chain state: heap inputs `0x780efa` / `0x780efe`,
+  free-unit count `0x780e86`, allocation bitmap pointer `0x783972`, payload
+  base `0x783988`, and allocator cursors `0x783976`, `0x78397a`,
+  `0x78397e`, `0x783982`, and `0x783986`.
+- Derived/cache: normalized macro payload count, replay compact coordinates,
+  overlay render outputs, and rule/raster/text row products created by normal
+  downstream command owners.
+- Parser scratch: definition-mode byte `0x782c18`, append-error byte
+  `0x782c19`, parser record cursor `0x78299e`, alternate/data table routing,
+  and replayed bytes returned by `0xa904`.
+- Firmware bookkeeping: host gate bit 1, allocation-failure report
+  `0xe8f0 -> 0x9b5e(0x780e2e, 4)`, frame-end cleanup `0xe22c`, and snapshot
+  helpers `0xe996`, `0xe972`, and `0xe65c`.
+- Unknown: manual-facing names for context-stack fields and overlay state are
+  inferred from ROM effects; over-deep macro call behavior is not bounded by
+  the observed ROM checks.
+
+Writers and readers:
+
+- `0xe112` writes current macro id `0x783164`.
+- `0xdd08` reads selector records, active frame state, definition state, and
+  selected macro record state before dispatching selectors `0..10`.
+- `0xe002` appends definition bytes into linked payload chunks and updates
+  record count/head fields.
+- `0xe418` writes execute/call data-chain frames; `0xe4f4` writes non-replay
+  overlay frames; `0xe22c` consumes and unwinds ended frames.
+- `0xa904` reads active data-chain frames as a byte source and feeds replayed
+  bytes into the same parser wrapper and dispatch loop as live host bytes.
+- `0xff1e` consumes overlay state during publication; downstream page-record,
+  scheduler, and pixel owners consume the objects produced by replayed bytes.
+
+Output effect:
+
+- Macro definition selectors store bytes only; they do not create immediate
+  page records or pixels.
+- Execute and call selectors make stored bytes visible by turning them into a
+  data-chain source for `0xa904`. The visible output is whatever the replayed
+  byte stream does through ordinary parser and command-family owners.
+- Overlay selectors affect page publication: the stored overlay payload can
+  replay before the base page is finalized, unless the page-root retry gate
+  suppresses the overlay detour.
+- Delete, permanence, and id selectors mutate macro records only, except where
+  later execute/call/overlay selectors observe the changed record set.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`,
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`, and
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`.
+- Generated table and xref evidence is in
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`, and
+  `generated/analysis/ic30_ic13_parser_xrefs.md`.
+- Fixture evidence is named in the Primary byte-stream examples list above;
+  those examples pin record creation, append storage, execute/call replay,
+  frame construction/end, overlay publication, and downstream page-record/render
+  reuse.
+- No unresolved ROM-local middle edge remains for the documented route from
+  macro selector parsing through record storage, execute/call replay via
+  `0xa904`, page-record queueing, overlay publication, and render entry.
+- Remaining boundaries are exact: manual names for macro context/overlay
+  latches and physical behavior after an over-deep call stack are outside the
+  documented ROM-local dataflow.
+
 ## Field Groups
 
 Canonical macro records:

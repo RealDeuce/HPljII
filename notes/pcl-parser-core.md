@@ -34,6 +34,112 @@ Primary parser-core fixtures:
 - `0x1228a consumes absolute delayed payload count without echo`
 - `0x12358 direct alternate path echoes positive payload bytes only`
 
+## Parser Front-Door Owner Summary
+
+This note owns the transition from one admitted byte to a parser outcome. It
+does not own command-family side effects after a terminal handler starts
+writing cursor, font, raster, rectangle, macro, or page state.
+
+The front-door route is:
+
+```text
+0xa904 byte source
+  -> 0xda9a ESC-aware parser byte wrapper
+  -> 0x11774 parser loop
+  -> printable fallback, append sink, table handler, zero-handler reset,
+     callback continuation, delayed-payload restore, or parser return
+```
+
+Writers:
+
+- `0xda9a` writes no parser state, but it decides what byte `0x11774` sees.
+  It returns ordinary bytes unchanged, returns `ESC` after pushing/logging the
+  lookahead byte through `0x9ec0`, and swallows `ESC ? 0x11`.
+- `0xdace` is the sibling payload reader, not the parser wrapper. It reads
+  through `0xa904` and normalizes local payload pair `1a 58` to `0x00`.
+- `0xdb74` writes six-byte command records at `0x78299e`, numeric scratch, and
+  final-byte fields consumed by terminal handlers.
+- `0xdaf0` combines multiple parameter records in the same PCL family and
+  rewinds `0x78299e` when lookahead belongs to the current family.
+- `0x11774` writes parser mode `0x782999`, chooses normal table `0x112a4` or
+  alternate/data table `0x116f6`, records matched bytes in
+  `0x783196..0x783199`, calls nonzero table handlers, and resets parser
+  scratch on terminal zero-handler paths.
+- Setup and callback helpers `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`,
+  `0x11eec`, `0x11ff6`, `0x12008`, and `0x1201e` write callback pointer
+  `0x78299a` or synthetic records so later bytes stay in the active command
+  family.
+- Delayed-payload scheduler `0x121cc` writes pending flag `0x782a1a`, handler
+  pointer `0x782a1c`, and saved record `0x782a20..0x782a25`; restore helper
+  `0x12218` copies that record back to the live cursor and calls the saved
+  handler when parser state returns to mode zero.
+
+Readers and consumers:
+
+- Printable fallback calls `0xd04a` in normal mode. From there, text/font
+  owner notes consume selected context, cursor, source object, page root, and
+  render state.
+- Alternate/data printable and alternate/data blank C0 rows append through
+  `0xe002`. They have no immediate page effect; macro/data-chain replay later
+  consumes the stored bytes as ordinary `0xa904` input.
+- Nonzero table handlers consume the live six-byte record or parser mode and
+  then hand off to [pcl-command-map.md](pcl-command-map.md) owner families.
+- Zero-handler rows consume no command handler but can still call
+  `0x12218`. If delayed payload is pending, the zero-handler terminal boundary
+  is what restores and dispatches the saved payload handler.
+- Delayed payload consumers include transparent reader `0x12452`, VFC reader
+  `0x12cfe`, raster transfer `0x105d0`, font descriptor/current handlers
+  `0x15d0a` and `0x16c14`, and generic drain `0x1228a -> 0x12328`.
+- Parser-external return at `0x117d2..0x11818` services latch `0x780e3b` and
+  macro/page state byte `0x782a92`; it returns before command-family state is
+  mutated.
+
+Outcome classes:
+
+- Printable page output:
+  normal mode-zero printable bytes and selected no-match fallback reach
+  `0xd04a`. Page objects and pixels are downstream of that call, not parser
+  state.
+- State-only command:
+  a matched terminal handler updates persistent state such as cursor, page
+  geometry, selected font, VFC, macro, raster setup, or rectangle dimensions.
+  Output appears only when later bytes consume that state.
+- Binary payload:
+  the parser stores a handler/record pair; payload bytes are read later by the
+  restored handler rather than by the command-table matcher.
+- No-output parser artifact:
+  explicit blank C0 rows, `ESC ?`, display-reader `ESC Z`, `ESC &lT/t`, and
+  generic counted drains reset, append, or synchronize parser state without
+  drawing.
+- Host/status side channel:
+  table handlers such as the model-ID path emit host response bytes through
+  FIFO helpers, not page records.
+
+Field classification at this boundary:
+
+- Canonical parser state:
+  mode `0x782999`, alternate/data flag `0x782c18`, command-record cursor
+  `0x78299e`, six-byte command records, delayed fields
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`, and parser table roots.
+- Parser scratch:
+  byte scratch `0x782a26/0x782a2a..`, numeric scratch
+  `0x782a3e/0x782a42..`, matched-byte buffer `0x783196..0x783199`, and
+  transient lookahead bytes.
+- Firmware bookkeeping:
+  callback pointer `0x78299a`, append sink `0xe002`, logging/pushback helper
+  `0x9ec0`, payload-control helper `0xd99a`, service latch `0x780e3b`, and
+  macro/page state byte `0x782a92`.
+- Canonical page/render state:
+  none is written by the parser loop alone. Page roots, records, publication,
+  scheduler fields, and pixels begin in the command-family owner reached by
+  the parser outcome.
+- Hardware/external state:
+  outside this parser checkpoint after `0xa904` has admitted the byte.
+- Unknown:
+  no ROM-local unknown remains for classifying an admitted byte into these
+  parser outcomes. Remaining unknowns are command-family, resource, or
+  hardware boundaries named by the downstream owner notes.
+
 ## State Blocks
 
 The parser initializes these fields at `0x11774` before entering the byte loop:

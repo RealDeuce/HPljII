@@ -7656,7 +7656,15 @@ confuse canonical state with scratch or cached render values.
   are not PCL state by themselves.
 - Hardware/external state: MMIO bits, formatter/DC signals, physical optional
   resource windows, retained-storage device behavior, and timing sources.
-- Unknown: fields with observed reads/writes but no stable semantic role yet.
+- Unknown or unresolved state:
+  keep unknowns in the owner note that names the exact address range or field.
+  Top-level unresolved groups are secondary segment-57 physical decode at
+  `0x0c0000..0x0c0321`, downloaded-glyph helper targets outside valid compact
+  helper tables such as `0x1fe76 -> 0x1fe8a` above entry `128`, optional
+  resource windows `0x200000..0x3ffffe` and `0x400000..0x5ffffe`,
+  hardware/MMIO physical names and timing, retained-storage device identity,
+  and HP/manual names for fields whose ROM readers and writers are already
+  documented.
 
 ## Unresolved Boundaries
 

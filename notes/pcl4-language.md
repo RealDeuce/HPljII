@@ -841,6 +841,17 @@ Field groups for this index:
   `ESC )s0p16h8v0s0b0T SO !!` writes secondary context `0x782ef6`, map
   `0x783032`, and then queues SO-selected compact rows from page-root slot
   `1`.
+  Symbol-set and font-designation terminals are not drawing commands. Normal
+  finals store requested symbol words through `0x120be -> 0x1be22`,
+  final-`@` dispatches through the ROM default-symbol table, and final-`X`
+  calls `0x17708(slot, parameter)` for font-id selection. Those paths rejoin
+  `0xc580`, selected-context rebuild, and map rebuild before any pixel effect.
+  The `0x14f16` patcher mutates only the rebuilt active map, so the output
+  contract remains: track the requested/active symbol words, selected context,
+  and `0x782f32` / `0x783032` until later printable bytes reach
+  `0xd04a -> 0x1393a`. The owner notes are
+  [symbol-set-selection.md](symbol-set-selection.md) and
+  [symbol-map-patching.md](symbol-map-patching.md).
   Font-control rows in the `ESC *c` family are state/resource controls:
   `ESC *c#D` reaches `0x15a56` and writes current downloaded-font id
   `0x782f2e`, `ESC *c#E` reaches `0x15a18` and writes current character word

@@ -46,6 +46,11 @@ font-designation terminals are the `ESC (#A..^` / `ESC )#A..^` family handled
 by `0x120be`; their command-specific effects are documented in
 [symbol-set-selection.md](symbol-set-selection.md), with selected-font context
 and metric consumers in [font-context-metrics.md](font-context-metrics.md).
+Map mutation after a selected context is rebuilt is owned by
+[symbol-map-patching.md](symbol-map-patching.md): `0x14f16` only runs after
+`0x14c64` has produced the primary or secondary base map, and its output is
+only visible when later printable bytes consume `0x782f32` or `0x783032`
+through `0xd04a -> 0x1393a`.
 The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
 uppercase `T` has no terminal handler, while lowercase `t` only reaches the
 generic `0x11f4c` rewind used by lowercase chaining rows.
@@ -141,6 +146,7 @@ boundaries:
   context switches, metric producer/consumer behavior, and built-in resource
   selection:
   [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-map-patching.md](symbol-map-patching.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [built-in-resource-scan.md](built-in-resource-scan.md).
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current

@@ -2339,6 +2339,17 @@ Output and page-image effect:
 
 - The pre-reset `!` is published before reset rebuilds the environment; it
   renders through the ordinary path `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+- For the checked `! ESC E` publication half, the pre-reset compact object is:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01
+```
+
+  The live entry is glyph `0x20` at compact coordinate `0x0001`. The published
+  page-record window keeps that prefix followed by zero padding in the bucket
+  object area, and the fixture records final reset-side state as current page
+  root `0`, one publication, one root clear, one span flush, HMI
+  `0x00120000`, data-chain pointer `0x782d3e`, and reset status `0`.
 - If no current page root exists, `ESC E` clears/rebuilds state without
   synthesizing a page object or pixels.
 - The post-reset `!` is parsed after `0xcda2`, `0xcbd4`, and `0xe146` have
@@ -2393,7 +2404,8 @@ Evidence:
   `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`,
   `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`,
   `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`, and
-  `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`.
+  `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Paper Source And Copies Walkthrough
 

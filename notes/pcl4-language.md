@@ -666,13 +666,24 @@ Field groups for this index:
   [direct-control-codes.md](direct-control-codes.md) and
   `Text Cursor And Direct Controls` in
   [semantic-state-model.md](semantic-state-model.md).
-- VFC table definition, VFC channel jumps, and perforation skip:
+- Vertical layout, VFC table definition, VFC channel jumps, and perforation
+  skip:
   `ESC &l#W` schedules `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`;
-  `ESC &l#V` uses `0x1280a`; `ESC &l#L` uses `0xee64`. The table loader
-  writes `0x782dde..0x782edd` and line caches; channel jumps consume VMI,
-  current y, top offset, and channel masks; perforation skip writes
-  `0x783191`. Output is cursor-only movement, page publication/recovery, or
-  later overflow page eject; no separate renderer exists. Concrete stream
+  `ESC &l#V` uses `0x1280a`; `ESC &l#L` uses `0xee64`; page length and
+  vertical-layout terminals use `0xf9e8`, `0xcb00`, `0xc992`, `0xece2`, and
+  `0xea9e`. Nonzero `ESC &l#P` converts line counts through VMI `0x783160`,
+  writes page extent `0x782dba`, sets pending header byte `0x782997`, and
+  refreshes geometry/default text length; selector `0P` restores the
+  default-page branch. `ESC &l#C` writes VMI `0x783160` from accepted
+  1/48-inch values; `ESC &l#D` maps accepted LPI selectors to the same VMI
+  field and sets modified-layout byte `0x782ee1`; `ESC &l#E` writes top
+  offset `0x782dce`; `ESC &l#F` writes text-bottom state `0x782dd2` or
+  restores the default bottom for selector `0`. The table loader writes
+  `0x782dde..0x782edd` and line caches; channel jumps consume VMI, current y,
+  top offset, and channel masks; perforation skip writes `0x783191`. Output
+  is cursor-only movement, page publication/recovery, later printable
+  placement, or later overflow page eject; no separate renderer exists.
+  Concrete stream
   `ESC &l4W 00 00 00 02 !` stores the four table bytes at `0x782dde`,
   derives VFC/text-bottom cache state before printable parsing resumes, and
   the following `!` queues at compact coordinate `0x9001`. Channel stream
@@ -684,7 +695,9 @@ Field groups for this index:
   helper `0xf36c` consumes `0x782c8e`, VFC/perforation limit `0x782dc2`, and
   `0x783191` to decide whether to publish through `0xf124 -> 0xff1e`.
   Evidence:
-  [vertical-forms-control.md](vertical-forms-control.md).
+  [vertical-forms-control.md](vertical-forms-control.md),
+  [publication-commands.md](publication-commands.md), and
+  [pcl-command-map.md](pcl-command-map.md).
 - Transparent and display-function data:
   `ESC &p#X` schedules `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
   `ESC Y ... ESC Z` uses normal direct reader `0x12536` or alternate/data

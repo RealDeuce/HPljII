@@ -67,12 +67,12 @@ standalone deliverables.
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
   `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
   command-dispatch anchors, `Binary Payload Lifecycle`, `State-Only Command
-  Dependency Map`, `Host/Status Side-Channel Boundary`,
-  `Publication And Page-Control Boundary`, `Page Versus Band Model`,
-  `Render Scheduling`, `Pixel composition contract`, and `Boundary: Secondary
-  Segment-57 Source` are the shortest checked-in path from an admitted byte
-  stream to page objects, rendered pixels, and exact pixel-affecting stop
-  points.
+  Dependency Map`, `Page Geometry And Layout State Boundary`,
+  `Host/Status Side-Channel Boundary`, `Publication And Page-Control
+  Boundary`, `Page Versus Band Model`, `Render Scheduling`,
+  `Pixel composition contract`, and `Boundary: Secondary Segment-57 Source`
+  are the shortest checked-in path from an admitted byte stream to page
+  objects, rendered pixels, and exact pixel-affecting stop points.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
@@ -114,7 +114,10 @@ checked-in ROM model:
    `Command Family Owner Matrix` in the same file gives the compact
    handler-to-owner handoff and output class for each command family. For
    text/font routes, use `Font Context And Glyph Source Boundary` to connect
-   selected contexts and maps to printable source objects.
+   selected contexts and maps to printable source objects. For layout routes,
+   use `Page Geometry And Layout State Boundary` to connect page-length, VMI,
+   LPI, top-margin, text-length, wrap, and perforation commands to later
+   placement, overflow, publication, and render effects.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under

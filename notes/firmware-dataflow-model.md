@@ -496,6 +496,119 @@ Evidence and remaining boundaries:
   add another row here only when a parsed command writes state that is later
   consumed by a different documented page-object or render path.
 
+## Page Geometry And Layout State Boundary
+
+The page-geometry and layout controls are parsed command families whose first
+effect is state mutation, not pixel generation. Their reproduction role is to
+change the canonical geometry fields consumed by later printable text,
+vertical movement, VFC, raster/rectangle placement, page publication, and
+render dispatch.
+
+Command-family writers:
+
+- Page length `ESC &l#P` dispatches to `0xf9e8..0xfc52`. Nonzero selectors
+  multiply current VMI `0x783160` by the absolute line count, select an
+  internal page code, write page extent `0x782dba`, set pending layout byte
+  `0x782997`, and rebuild derived geometry. Selector zero takes the default
+  branch through `0xfa62..0xfaa6`, flushing pending text through `0xf34a`,
+  publishing through `0xff1e` when a root exists, mirroring paper-source state
+  to `0x780e8f` / `0x780e26`, and restoring default page code `0x780e97` or
+  fallback code `2`.
+- VMI `ESC &l#C` dispatches to `0xcb00..0xcb7c`. It scales accepted
+  1/48-inch values by `75`, writes VMI `0x783160`, and may refresh pending
+  cursor y `0x782c8e` through `0xcb82..0xcbca`.
+- LPI `ESC &l#D` dispatches to `0xc992..0xca82`. It admits only the ROM LPI
+  set, maps selector `0` to `12`, converts `3600 / LPI` to packed VMI, writes
+  `0x783160`, sets modified-layout byte `0x782ee1`, and may refresh
+  `0x782c8e`.
+- Top margin `ESC &l#E` dispatches to `0xece2..0xed54`. It scales line count
+  through current VMI, rejects zero VMI and positions beyond page extent
+  `0x782dba`, writes top offset `0x782dce`, restores default text length, and
+  rebuilds line caches and the default VFC table.
+- Text length `ESC &l#F` dispatches to `0xea9e..0xeb56`. It scales through
+  VMI, rejects lengths that do not fit below `0x782dce`, writes bottom state
+  `0x782dd2`, or restores the default bottom for selector zero.
+- Perforation skip `ESC &l#L` dispatches to `0xee64..0xeeaa`. Selector `1`
+  sets byte `0x783191`; selector `0` clears it; other selectors leave it
+  unchanged.
+- Wrap mode `ESC &s#C` dispatches to `0xedb0..0xedf6`. Selector `0` sets
+  wrap byte `0x783190`; selector `1` clears it; other selectors leave it
+  unchanged.
+- Page-layout `ESC &l#T` has no terminal page-layout handler in the parser
+  table. Lowercase `ESC &l#t` reaches rewind helper `0x11f4c`, which only
+  subtracts one six-byte record from `0x78299e` so the next chained `&l` final
+  can reuse the family context.
+
+Consumers and output effect:
+
+- Printable placement and precheck handlers consume this state before page
+  objects exist. Printable handler `0xd04a`, placement helper `0xd824`, and
+  queue path `0x12f2e -> 0x1387c` consume cursor, VMI/HMI, top/bottom, wrap,
+  and page-extent fields to choose compact coordinates or reject placement.
+- Wrap consumers `0xd28a` and `0xd6bc` read `0x783190`. With wrap clear,
+  horizontal overflow rejects the glyph before queueing; with wrap set, the
+  precheck calls recovery helper `0xf054` and retries from recovered x `0`.
+- Vertical overflow helper `0xf36c` consumes cursor y `0x782c8e`, derived
+  text-bottom/perforation limit `0x782dc2`, and perforation byte `0x783191`.
+  It calls page-eject helper `0xf124` and returns `D7 = 0` only when the
+  cursor is beyond a nonzero limit and perforation skip is enabled; otherwise
+  it returns `D7 = 1` without publication.
+- Page length, VMI/LPI, top-margin, and text-length changes affect following
+  printable bytes, LF/FF, `ESC &a#R`, `ESC =`, VFC channel jumps, raster
+  origins, rectangle clipping, span flushing, publication, and render output
+  by changing the fields those consumers read.
+- The concrete visible-output examples are `ESC &l66P !`, which writes page
+  extent `0x782dba = 3300` and queues the following printable at compact
+  coordinate `0x9001`, and `ESC &l1L !`, which proves perforation-skip state
+  can be written before the following printable takes the ordinary compact
+  object path.
+
+State classification:
+
+- Canonical geometry/layout state:
+  page code `0x782da2`, page extent `0x782dba`, VMI `0x783160`, top offset
+  `0x782dce`, bottom/text-length state `0x782dd2`, cursor x/y
+  `0x782c8a` / `0x782c8e`, wrap byte `0x783190`, perforation-skip byte
+  `0x783191`, default page code `0x780e97`, paper-source byte `0x782da6`,
+  and software-visible output/control bytes `0x780e8f` / `0x780e26`.
+- Derived/cache state:
+  text-bottom/perforation limit `0x782dc2`, table-derived geometry words
+  `0x782db2`, `0x782db4`, `0x782dc0`, refreshed compact coordinates,
+  line caches from `0xfe54`, default VFC table from `0x12b96`, and render-band
+  fields derived later by `0x1ef86`.
+- Parser scratch:
+  six-byte `&l` and `&s` command records at `0x78299e`, parsed integer and
+  fractional words, lowercase chaining state from `0x11f4c`, and handler-local
+  scaled values before a canonical field is committed.
+- Firmware bookkeeping:
+  modified-layout byte `0x782ee1`, pending cursor/text byte `0x782a6d`,
+  pending layout publication byte `0x782997`, publication/root-clear state in
+  `0xff1e`, and page-finalization state reached through `0xf124`.
+- Hardware/external state:
+  physical meaning and timing of output/control bytes after the `ESC &l0P`
+  mirror to `0x780e8f` / `0x780e26`; ROM-local layout and page-object effects
+  are documented before that hardware boundary.
+
+Evidence and unresolved edges:
+
+- Detail owners are [direct-control-codes.md](direct-control-codes.md),
+  [publication-commands.md](publication-commands.md), and
+  [pcl-command-map.md](pcl-command-map.md).
+- Controlling worked paths are `Page Length, Wrap, And Perforation Controls`,
+  `Cursor And Margin Placement`, `Publication Commands To ROM-Derived Page
+  Rows`, and `Vertical Forms Control`.
+- Key listings and reports include
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`,
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
+  `generated/analysis/ic30_ic13_direct_control_code_flow.md`.
+- Exact unresolved boundaries are not parser-to-handler edges for the listed
+  commands. Remaining ROM-local work starts only from a stream that changes a
+  named field above, a consumer branch in `0xd28a` / `0xd6bc` / `0xf36c`, a
+  page-object shape, a publication field, or a render-row input. Physical
+  behavior after `0x780e8f` / `0x780e26` remains hardware/MMIO correlation.
+
 ## Publication And Page-Control Boundary
 
 Page-boundary commands do not draw their own pixels. They decide when the

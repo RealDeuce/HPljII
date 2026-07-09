@@ -139,6 +139,80 @@ lifetime outside `0x1710`, exact physical formatter/DC timing, and ROM-local
 downloaded-glyph helper variants such as the high-row `0x1fe76` fallback and
 the wrapped source-byte helper targets through `0x1f034` / `0x1f08e`.
 
+## Render Helper Boundary Index
+
+The render helper layer is documented as ROM dataflow from bridged page objects
+to bitmap writes. Its common entry is
+`0x1ef6a -> 0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`, with detailed evidence
+in [page-raster-imaging.md](page-raster-imaging.md#renderbanding-bridge),
+`Bitmap Render Dispatch Contract` in
+[semantic-state-model.md](semantic-state-model.md), and listings
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+
+Field grouping for this render layer is explicit. Canonical inputs are the
+render-record roots copied by `0x1edc6`: bucket root `+0x18`, rule root
+`+0x1c`, fixed root `+0x20`, context slots `+0x24..+0x60`, and the object
+fields under those roots. Derived/cache state is render stride `0x783a1c`,
+band caches `0x783a20/0x783a22/0x783a28`, compact context cache `0x783a2c`,
+destination phase `$a001`, fallback base `0x7810b4 + byte_pair_offset`, row
+tables `0x1f08e` / `0x1f1ac`, chunk helper table `0x2f2ac`, and raster
+expansion tables `0x30914` / `0x30b14`. Parser scratch is absent at this
+layer because `0x12f2e`, `0x13070`, `0x133aa`, `0x136d2`, or `0x12714` have
+already converted command records and payload bytes into page objects.
+Firmware bookkeeping is continuation mutation in rule/fixed/span objects and
+wide-copy phase `0x783a46`. Hardware/external state begins after the ROM has
+written the band buffer; physical engine consumption is not a ROM-local row
+helper input.
+
+Writers are the page-object producers and bridge: `0x12f2e` / `0x1387c` for
+compact text and downloaded glyph objects, `0x13070` / `0x13250` for raster
+objects, `0x13386` / `0x133aa` for rule objects, `0x136d2` for fixed-list
+objects, `0x12714` / `0x13520` / `0x135f0` for span objects, and `0x1edc6` for
+render-record roots. Readers are `0x1efc2` for bucket classes, `0x1effe` for
+compact subdispatch, `0x1f034` / `0x1f0d2` / `0x1f1f0` / `0x1f264` for compact
+text and downloaded glyphs, `0x1f812` for segment spans, `0x1f446` with
+`0x1f4e0` / `0x1f596` for rules, `0x1f756` for fixed-list spans, and
+`0x1f88e` with `0x1f8da` / `0x1f8e6` / `0x1f920` / `0x1f9c6` for encoded
+raster modes.
+
+The output effect is direct current-band or fallback-buffer writes derived
+from object fields and ROM tables. Compact helpers resolve glyphs through
+`0x1f354`, split current/fallback rows through `0x1f414`, then copy rows
+through `0x1f08e` main-width helpers, `0x1f1ac` remainder helpers, or
+`0x2f27c` full 16-byte chunks. Raster helper `0x1f88e` writes literal or
+expanded payload rows according to mode bits and tables `0x30914` / `0x30b14`.
+Rule and span helpers mutate remaining-row fields when a band split leaves
+continuation work. Concrete checked-in examples include the final-`X` compact
+object prefixes, downloaded printable `!` object, `ESC &d3D ! ESC &d@` span
+object, mode-0 raster object, selector-7 rule objects, and mixed text/rule/
+raster page streams documented in [pcl-command-map.md](pcl-command-map.md)
+and [page-raster-imaging.md](page-raster-imaging.md).
+
+The unresolved render-helper boundaries are exact:
+
+- `0x1fe76..0x1fe88` short compact span-2 row helper loads table base
+  `0x1fe8a`, shifts `D3` by two, reads a longword target, and jumps. Valid
+  entries end at row index `128`; higher fallback counts read executable code
+  bytes beginning at `0x2008e` as pointer data. The documented row-`0x0102`
+  downloaded-glyph fallback count `200` reads target `0x329ad3c0`.
+- `0x1f034 -> 0x1f08e` wrapped-width mode-0 cases use the full span word as a
+  table index instead of a legal byte width. For span `0x0102`, entry address
+  `0x1f08e + 0x0408 = 0x1f496` contains bytes `00 00 66 cc`, producing jump
+  target `0x0066cc`; listing
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst` shows
+  that target is not a row-copy helper.
+- `0x1f264` segmented-wide high-row span-31 siblings are bounded at fallback
+  source offset `+0xb50` for the documented row products. Adjacent below-cap
+  siblings continue as selected-segment render cases, while oversized
+  row/span products stop earlier at the `0x16c14` / restored `ESC )s#W`
+  payload-count cap `0x7fff` and never create a page object.
+
+Those boundaries are ROM-local invalid-target or source-read boundaries, not
+unknown parser dispatch, page-object publication, render scheduling, or
+physical output comparison gaps.
+
 ## Objective Coverage Matrix
 
 Use this section to map the current checked-in documentation back to the

@@ -690,6 +690,120 @@ Evidence and unresolved boundaries:
   failure behavior for macro context-stack bytes and over-deep call nesting;
   no ROM-local middle edge remains for the documented append/replay paths.
 
+## Font Context And Glyph Source Boundary
+
+Printable bytes do not render directly from PCL font request fields. Font and
+symbol commands first choose a primary or secondary current-font context,
+rebuild a host-character-to-glyph map, install a context slot in the current
+page root, and only then let `0xd04a` create compact text objects. Rendering
+later resolves glyph data from the context slots copied by `0x1edc6`.
+
+Selection and map pipeline:
+
+- Primary/secondary symbol-set terminals reach `0x120be`, which calls
+  `0x1be22` and then common refresh `0xc580`.
+- Font attribute writers such as `0x12082`, `0x12096`, `0x12046`,
+  `0x1206e`, `0x120aa`, and `0x1205a` update requested fields and refresh
+  through `0xc580`.
+- `0xc580` consumes dirty flags `0x782f2c` / `0x782f2d`, selected slot
+  `0x782f06`, page-root live flags `0x78297f..`, and current-font context
+  records before deciding whether to call candidate refresh `0x13eb8` and
+  page-root installer `0xc428`.
+- `0x13eb8` filters candidate windows through symbol, height, spacing, pitch,
+  and resource attributes, then writes selected candidate state consumed by
+  `0x144d2` and `0x14c64`.
+- `0x14c64` rebuilds active maps `0x782f32` and `0x783032`, using selected
+  candidate or downloaded/current records plus symbol patching through
+  `0x14f16`.
+
+Printable source and render handoff:
+
+- SI/SO handlers `0xc68a` and `0xc6b8` switch selected slot `0x782f06`,
+  choosing whether later printable bytes use primary map/context or secondary
+  map/context.
+- Printable handler `0xd04a` calls `0x1393a`, which reads selected slot
+  `0x782f06`, current-font context `0x782ee6` or `0x782ef6`, and glyph map
+  `0x782f32` or `0x783032`.
+- `0x1393a` writes source object `0x782d7e`: selected context longword at
+  `+0x00`, glyph or fixed-record pointer at `+0x04`, mapped glyph byte at
+  `+0x0b`, and source-class flag at `+0x10`.
+- Queue writers `0xd3b2` and `0xd824` install the current context slot into
+  page-root `+0x2c..+0x68`, write live flag `0x78297f + slot`, and pass the
+  slot number to compact producer `0x12f2e`.
+- Bridge `0x1edc6` copies page-root context slots to render
+  `+0x24..+0x60`. Compact renderer `0x1effe` and resolver `0x1f354` consume
+  those copied slots when deriving glyph rows.
+
+Glyph source classes:
+
+- Built-in resource contexts use bit-30 offset-table/resource records scanned
+  from verified `IC32,IC15` resource bytes and selected through candidate
+  windows documented in [built-in-resource-scan.md](built-in-resource-scan.md).
+- Inline/downloaded contexts use installed downloaded-font/current records
+  produced by `0x15a56`, `0x15a18`, `0x16df6`, `0x15d0a`, `0x16c14`,
+  `0x1719c`, `0x172c0`, and related downloaded-font helpers.
+- The compact renderer does not care whether the slot came from a built-in or
+  downloaded source except through the context bits, map output, glyph pointer,
+  source-class flag, and record payload fields copied into page/render state.
+
+State classification:
+
+- Canonical font state:
+  selected slot `0x782f06`, current contexts `0x782ee6` / `0x782ef6`,
+  requested symbol words `0x782ef4` / `0x782f04`, active symbol words
+  `0x783144` / `0x783146`, glyph maps `0x782f32` / `0x783032`, page-root
+  context slots `+0x2c..+0x68`, and render context slots `+0x24..+0x60`.
+- Canonical glyph source state:
+  built-in resource records and bitmap payloads, downloaded/current records,
+  source object `0x782d7e`, mapped glyph byte `+0x0b`, glyph/fixed pointer
+  `+0x04`, and source-class flag `+0x10`.
+- Derived/cache state:
+  selected candidate pointer `0x7828a8`, active candidate windows, selected
+  resource snapshots `0x783148` / `0x783152`, symbol patch results, HMI/cache
+  values, and compact renderer context cache `0x783a2c`.
+- Parser scratch:
+  six-byte font command records, parsed requested font fields
+  `0x782eec..0x782f06`, synthetic pitch records from `0xc390`, descriptor
+  staging for downloaded fonts, and optional-symbol staging bytes.
+- Firmware bookkeeping:
+  dirty/refresh flags, page-root slot allocation through `0xc428` / `0xc4fc`,
+  candidate active bits, downloaded payload allocation records, and resource
+  scan windows.
+
+Output effect and confidence:
+
+- Font-selection commands create no glyph pixels by themselves. Their visible
+  effect begins when a later printable byte reaches `0xd04a` and source
+  capture consumes the selected context/map.
+- Context-slot copying is a required pixel boundary: compact payload bytes
+  alone are insufficient because `0x1f354` resolves glyph rows from the copied
+  render context slot.
+- Confidence is high for the covered built-in, symbol-set, font-ID, pitch, and
+  downloaded-glyph routes because the cited notes follow command records into
+  `0xc580`, `0x13eb8`, `0x14c64`, `0x1393a`, `0x12f2e`, `0x1edc6`, and
+  compact render helpers.
+
+Evidence and unresolved boundaries:
+
+- Detail owners are [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
+  [downloaded-fonts.md](downloaded-fonts.md), and
+  [symbol-map-patching.md](symbol-map-patching.md).
+- Controlling worked paths are `Font Selection To Visible Glyphs`,
+  `Selected Font Metrics To Span Output`, `Downloaded Glyph`,
+  `Nonzero Resource Payload`, and `Fixed-Record Resource Object`.
+- Key listings are `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+  `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+  `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+- Remaining boundaries are the explicitly named downloaded-glyph renderer
+  helper/source edges and external optional-resource windows. The ROM-local
+  bridge from selected context/map to source object, page context slot, render
+  context slot, and compact renderer is documented for the covered streams.
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

@@ -110,7 +110,9 @@ checked-in ROM model:
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the
    common terminal-handler handoffs before the full flattened table. The
    `Command Family Owner Matrix` in the same file gives the compact
-   handler-to-owner handoff and output class for each command family.
+   handler-to-owner handoff and output class for each command family. For
+   text/font routes, use `Font Context And Glyph Source Boundary` to connect
+   selected contexts and maps to printable source objects.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under

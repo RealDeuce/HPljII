@@ -3408,6 +3408,19 @@ Object-chain effect:
   chunk, the first object is capped at capacity `0x00f2`, the second object
   carries the remaining `0x003a` bytes, and the later `0x003a` object becomes
   the bucket head because `0x13250` inserts each object at the head.
+- The resulting two-object chain has these renderer-facing object fields from
+  `+0x04` onward:
+
+```text
+80 00 00 f2 <initial packed key> <payload bytes 0x0000..0x00f1>
+80 00 00 3a <advanced packed key> <payload bytes 0x00f2..0x012b>
+```
+
+  Both objects are class `0x80`, mode `0`. The first loop copies `0x00f2`
+  payload bytes, subtracts that capacity from raster state `+0x04`, and
+  advances the packed key through `0x332ee(0x00f2, 1)`. The second loop copies
+  the remaining `0x003a` bytes, leaves the new chunk with `0x782a70 = 0x00b8`,
+  and becomes the page-root bucket head pointing back to the earlier object.
 - For the documented current-tail case with `0x782a70 = 0x0014`, a request
   larger than the tail writes `0x782a80 = 0x000a`, emits one ten-byte object
   from the tail, clears `0x782a70`, advances the packed key, and loops for the
@@ -3464,7 +3477,8 @@ Evidence:
   `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
-  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Macro Replay Walkthrough
 

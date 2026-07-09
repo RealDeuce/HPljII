@@ -29,6 +29,105 @@ Primary fixtures:
 - `ESC Y display-functions filter-on routes controls as printable`
 - `0x12120 ESC Y alternate append stores normalized display bytes`
 
+## Owner Summary
+
+Concept: this note owns the `ESC Y ... ESC Z` display-functions reader
+family, its alternate/data append form, local Control-Z terminal siblings, and
+the `ESC z` display-functions-off/status edge. It documents how those parser
+terminals either feed ordinary text imaging, preserve bytes for macro/data
+replay, emit local Control-Z variants, or touch status state without creating
+a page object.
+
+Primary route:
+
+- Parser dispatch selects normal `ESC Y` handler `0x12536` or alternate/data
+  `ESC Y` handler `0x12120` from the command tables documented in
+  [pcl-command-map.md](pcl-command-map.md#owner-summary).
+- Both handlers read loop bytes through host source `0xa904` and terminate on
+  no-byte return or the local normalized `ESC Z` pair.
+- Normal reader route:
+  `0x12536 -> 0xa904 -> local 0x1a 0x58 normalization -> 0xd0f0/0xd04a
+  -> direct-control printable path -> page-record storage -> render`.
+- Alternate/data route:
+  `0x12120 -> 0xe002(ESC) -> 0xe002(Y) -> 0xa904 loop -> local
+  0x1a 0x58 normalization -> 0xe002(value)` until local `ESC Z`.
+- Local Control-Z parser terminals route through `0x120d2`, `0x1210c`,
+  `0x1219e`, or `0x121b2`; their output is either printable text through
+  `0xd04a`, append-only bytes through `0xe002`, or no output.
+- `ESC z` handler `0xcd86` is a guarded status edge: it reads active data-chain
+  frame byte `+9` and can call status helper `0x9c2c`, but it does not create
+  a page record.
+
+Field groups:
+
+- Canonical reader state: local `D4` ESC-before-Z flag, normalized loop value
+  `D5`, and selected termination on local `ESC Z` or `0xa904 == -1`.
+- Canonical filter state: selected font slot `0x782f06`, C0 filter byte
+  `0x782eea + 0x10 * slot`, fallback high-control filter byte `0x782efa`,
+  and high-character flags `0x783132` / `0x783133`.
+- Canonical append state: append sink `0xe002` and macro/data chunk
+  destination visible at `0x783988` in the alternate append fixture.
+- Canonical status state: active data-chain frame pointer `0x782d76`, service
+  busy bit `0x780e2d.3`, markers `0x7821cc` and `0x7822db`, and warning bit
+  `0x780e2a.3`.
+- Derived/cache: local high-control filter word at `A6-2`, selected-context
+  slot product from `0x332ee`, and normalized `0x7f` value produced from local
+  `0x1a 0x58` pairs after `0xd99a`.
+- Parser scratch: mode-2 local Control-Z dispatch rows and command records
+  that route bytes to `0x120d2`, `0x1210c`, `0x1219e`, or `0x121b2`.
+- Firmware bookkeeping: `0xd99a` reporting/normalization side effect and
+  status helper `0x9c2c`.
+- Unknown: manual-facing names for status latches are unknown; their ROM-local
+  writes and consumers are the `0xcd86 -> 0x9c2c -> 0x9b5e` boundary.
+
+Writers and readers:
+
+- `0x12536` reads host bytes and filter fields, then calls `0xd0f0` for
+  default-filter fixed-space handling or `0xd04a` for printable imaging.
+- `0x12120` writes literal `ESC Y` and normalized payload bytes through
+  `0xe002`.
+- `0x120d2` conditionally calls `0xd04a(0x1a)` after reading the selected
+  Control-Z context byte; `0x1219e` always calls `0xd04a(0x100)`.
+- `0x1210c` writes literal `0x1a` through `0xe002`; `0x121b2` calls `0xd99a`
+  and writes normalized `0x7f` through `0xe002`.
+- `0xcd86` reads data-chain frame state; `0x9c2c` writes status markers and
+  calls `0x9b5e(0x780e2a, 0x8)`.
+- Downstream consumers are the direct-control printable/fixed-space owner,
+  macro/data-chain replay owner, page-record storage owner, and active render
+  owner.
+
+Output effect:
+
+- Normal `ESC Y` can create compact text objects because its routed bytes enter
+  `0xd04a`; default-filtered control ranges can instead enter fixed-space
+  handler `0xd0f0`.
+- Alternate/data `ESC Y` creates no immediate pixels. It preserves bytes in
+  the append sink for later macro/data-chain replay.
+- Local Control-Z terminals are table-dependent; they are not one global
+  control code. Each terminal's page, append, or no-output behavior is listed
+  below with its exact handler address.
+- `ESC z` creates no page object and no pixels; its observable ROM effect is
+  the guarded status-marker path.
+
+Evidence and boundaries:
+
+- Disassembly evidence is in
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`, and
+  `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`.
+- Generated table evidence is in
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
+  `generated/analysis/ic30_ic13_pcl_command_map.md`.
+- Fixture evidence is named in the Primary fixtures list above; those streams
+  pin the normal page-record route, filter-on printable route, and alternate
+  append route.
+- No unresolved ROM-local middle edge remains inside `0x12536..0x1261e`,
+  `0x12120..0x1219c`, the local Control-Z handlers, or the
+  `0xcd86 -> 0x9c2c` status boundary.
+- Remaining boundaries are external status-consumer naming and any physical
+  interpretation of the status bits, not parser, page-record, or render
+  routing.
+
 ## Field Groups
 
 Canonical reader state:

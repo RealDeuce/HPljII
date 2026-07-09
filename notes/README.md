@@ -37,7 +37,8 @@ standalone deliverables.
   branch-level owner for deciding whether a normalized byte becomes printable
   output, alternate/data append, a matched command handler, a zero-handler
   reset, a no-match fallback, callback continuation, or parser-external return.
-- Command dispatch is indexed by [pcl-command-map.md](pcl-command-map.md).
+- Command dispatch is indexed by
+  [pcl-command-map.md](pcl-command-map.md#owner-summary).
   Individual command families then move to owner notes such as
   [direct-control-codes.md](direct-control-codes.md),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
@@ -129,27 +130,25 @@ checked-in ROM model:
    Boundary` in the same file before jumping to the family owner. For
    explicit ignored rows, wrapper artifacts, or generic counted drains, use
    `Parser Artifact And No-Output Boundary`.
-4. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
-   After a terminal handler is named, continue in the family owner note for
-   parsed inputs, RAM writers, readers/consumers, output effect, and residual
-   boundary. The parser command-dispatch anchors in
-   [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the
-   common terminal-handler handoffs before the full flattened table. The
-   `Command Family Owner Matrix` in the same file gives the compact
-   handler-to-owner handoff and output class for each command family. For
-   text/font routes, use `Font Context And Glyph Source Boundary` to connect
-   selected contexts and maps to printable source objects, and use
-   `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`, final `X`, or
-   final `@` changes requested symbols, maps, or `0x14f16` patching. Then use
-   `Downloaded Glyph Boundary Decision Rules` for downloaded-glyph helper and
-   payload stop points. For transparent/display readers, use
-   `Transparent And Display Reader Boundary` before crossing into text output,
-   alternate/data append, or status behavior. For layout routes, use
-   `Page Geometry And Layout State Boundary` to connect page-length, VMI, LPI,
-   top-margin, text-length, wrap, and perforation commands to later placement,
-   overflow, publication, and render effects. For raster and rectangle routes,
-   use `Raster And Rectangle Graphics Object Boundary` to connect graphics
-   setup and payload commands to page objects and render helpers.
+4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
+   index. After a terminal handler is named, continue in the family owner note for
+   parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.
+   The parser command-dispatch anchors in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the common
+   terminal-handler handoffs before the full flattened table. The `Command Family Owner
+   Matrix` in the same file gives the compact handler-to-owner handoff and output class
+   for each command family. For text/font routes, use `Font Context And Glyph Source
+   Boundary` to connect selected contexts and maps to printable source objects, and use
+   `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`, final `X`, or final `@`
+   changes requested symbols, maps, or `0x14f16` patching. Then use `Downloaded Glyph
+   Boundary Decision Rules` for downloaded-glyph helper and payload stop points. For
+   transparent/display readers, use `Transparent And Display Reader Boundary` before
+   crossing into text output, alternate/data append, or status behavior. For layout
+   routes, use `Page Geometry And Layout State Boundary` to connect page-length, VMI,
+   LPI, top-margin, text-length, wrap, and perforation commands to later placement,
+   overflow, publication, and render effects. For raster and rectangle routes, use
+   `Raster And Rectangle Graphics Object Boundary` to connect graphics setup and payload
+   commands to page objects and render helpers.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md): compact/raster buckets
    live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
@@ -279,7 +278,7 @@ checked-in ROM model:
   and rendered surfaces.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
-- [pcl-command-map.md](pcl-command-map.md) - flattened PCL
+- [pcl-command-map.md](pcl-command-map.md#owner-summary) - flattened PCL
   command-to-handler map summary from the firmware parser tables.
 - [page-raster-imaging.md](page-raster-imaging.md) - page geometry
   lookup tables, orientation state, page-record storage, active-render,

@@ -594,6 +594,24 @@ Field groups for this index:
   above the valid `0x1fe76` table, broader byte-stream variants that change a
   named field/object/helper, and hardware/MMIO timing or physical naming.
 
+- Host byte source and parser admission:
+  byte-source multiplexer `0xa904..0xab8a` reduces live host input, LIFO
+  buffers, data-chain replay frames, ring input, and direct hardware modes to
+  one normalized `D7` byte or `-1`. The observed source priority is service
+  gate, first LIFO stack, active data-chain frame `0x782d76`, second LIFO
+  stack, ring source, and direct hardware source. Data-chain frame `+0x00`
+  supplies the payload head, `+0x04` the remaining byte count, `+0x08` the
+  byte-source offset, and `+0x09` the frame kind; execute/call frames built by
+  `0xe418` use kinds `2` / `3`, while overlay publication frame builder
+  `0xe4f4` uses kind `4`. When a frame reaches its end marker, `0xa904` calls
+  `0xe22c` and restarts source selection. Parser wrapper `0xda9a` and parser
+  loop `0x11774` consume the resulting byte; transparent, display, raster, and
+  downloaded-font payload readers also call `0xa904` directly when their
+  command family owns subsequent raw bytes.
+  Evidence:
+  [host-byte-fetch.md](host-byte-fetch.md),
+  [macro-data-chain.md](macro-data-chain.md), and
+  [pcl-command-map.md](pcl-command-map.md).
 - Printable bytes and C0 controls:
   mode-zero `0x11774` dispatches printable bytes to `0xd04a`; CR/LF/FF/HT/BS
   use `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`. `0xd04a` /

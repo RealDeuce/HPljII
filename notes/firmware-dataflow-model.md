@@ -147,6 +147,106 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 Each worked path names the handlers, ROM fields, output effect, field
 classification, evidence files, and unresolved boundary for that slice.
 
+## Inbound Byte Route Matrix
+
+This matrix is the first byte-oriented index into the worked paths. It lists
+the ROM route a reader should follow from an admitted byte stream before
+dropping into the command-family detail notes. The longer ledger is
+`Supported Stream Entry Points` in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+
+- Printable text:
+  unmatched mode-zero bytes enter
+  `0xa904 -> 0xda9a -> 0x11774 -> 0xd04a -> 0x1393a -> 0x12f2e ->
+  0x1387c`. The route writes compact bucket objects under page-root `+0x1c`,
+  publishes through `0xff1e`, bridges through `0x1ed84 -> 0x1edc6`, and
+  renders through `0x1ef6a -> 0x1efc2 -> 0x1effe`. Owner worked paths are
+  `Printable Glyph`, `Text Source Objects And Compact Buckets`, and
+  `Render Dispatch And Pixel Composition`.
+- Direct controls and placement:
+  mode-zero rows dispatch CR/LF/FF/HT/BS/SO/SI to `0xf02c`, `0xf08c`,
+  `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, and `0xc68a`; cursor and margin
+  commands dispatch to `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf48c`,
+  `0xf560`, `0xf60a`, and `0xf692`. These routes usually write cursor,
+  margin, font-slot, line-termination, or pending-span state first; visible
+  output appears when later printable text, span flush `0xf34a -> 0x12714`,
+  raster/rectangle placement, or publication consumes that state. Owner worked
+  paths are `Mixed Direct Controls`, `Cursor And Margin Placement`, and
+  `Text Span Flush And Fixed-Width Spans`.
+- Page geometry and publication controls:
+  `ESC E`, FF, page size/orientation, paper source, copies, page length,
+  perforation skip, and related `&l` controls route through handlers such as
+  `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, `0xeef0`, `0xf9e8`,
+  and `0xee64`. They mutate page environment, publish pending roots through
+  `0xff1e`, or both. Owner worked paths are `Reset And Default Environment`,
+  `FF Publication`, `Publication Commands To ROM-Derived Page Rows`, and
+  `Page Length, Wrap, And Perforation Controls`.
+- Parser artifacts and no-output rows:
+  normal zero-handler rows `0x00`, `0x07`, and `0x0b`, wrapper-consumed
+  `ESC ?`, local display terminator `ESC Z`, unimplemented `ESC &lT/t`, and
+  generic counted drains remain in parser or delayed-restore code:
+  `0x11774`, `0x11912..0x119bc`, `0x121cc`, `0x12218`, `0x1228a`,
+  `0x12328`, `0x12358`, normal table `0x112a4`, and alternate table
+  `0x116f6`. They create no page roots unless alternate/data append or later
+  replay feeds stored bytes back through `0xa904`. Owner worked path:
+  `Explicit No-Output Parser Rows`.
+- Transparent and display-function readers:
+  `ESC &p#X` routes through
+  `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`; normal `ESC Y ... ESC Z`
+  uses direct reader `0x12536`; alternate/data display reader `0x12120`
+  appends bytes through `0xe002`. Normal transparent/display bytes can reach
+  `0xd04a` / `0xd0f0` and then the compact-text page-object route. Owner
+  worked paths are `Transparent Print Data` and
+  `Display Functions Direct Reader`.
+- Status and host-output side channels:
+  `ESC *r#K` and `ESC *s#^` route through
+  `0x12034 -> 0x122be..0x12326` and enqueue response bytes through host-output
+  FIFO helpers such as `0xb090`; `ESC z` routes through `0xcd86 -> 0x9c2c`
+  when the active data-chain frame kind byte is zero. These routes create
+  host-visible status/service effects, not page objects or render work. Owner
+  worked paths are `Host Interface Output FIFO And Model-ID Backchannel`,
+  `Page Environment Status Bridge`, and `External Ready Service Preemption`.
+- Font selection and downloaded glyphs:
+  built-in selection commands route through parser rows to `0xc580`,
+  `0x13eb8`, `0x144d2`, `0x14c64`, `0xc428`, and `0xc4fc`; downloaded
+  descriptors and payloads route through
+  `0x11f96 -> 0x15d0a/0x16c14 -> 0x1719c/0x16498`. They update selected
+  context/map/resource state first, then later printable bytes consume that
+  state through the compact object route. Owner worked paths are
+  `Font Selection To Visible Glyphs`, `Selected Font Metrics To Span Output`,
+  `Downloaded Glyph`, `Nonzero Resource Payload`, and
+  `Fixed-Record Resource Object`.
+- Macro/data-chain replay:
+  `ESC &f#Y` and `ESC &f#X` route to `0xe112` and `0xdd08`; definition
+  appends through `0xe002`; execute/call frames are built by `0xe418`;
+  overlay publication frames are built by `0xe4f4` from `0xff1e`; frame end
+  cleanup is `0xe22c`. Replayed bytes become ordinary parser input because
+  `0xa904` prioritizes the active `0x782d76` data-chain frame. Owner worked
+  paths are `Macro Execute Replay` and
+  `Macro Overlay Replay Publication`.
+- Raster graphics:
+  `ESC *t#R`, `ESC *r#A/#B`, and delayed `ESC *b#W` route through
+  `0x10808`, `0x1075a`, `0x107fa`, and
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Accepted transfers queue
+  encoded-span objects through `0x13070 -> 0x13250`, publish/bridge like
+  other bucket objects, and render through `0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+  Owner worked paths are `Raster Row` and
+  `Raster Transfer Gates And Modes`.
+- Rectangle/rule graphics:
+  `ESC *c` size/fill commands route through `0x10e68`, `0x10e22`,
+  `0x10dce`, `0x10a40`, `0x10ae0`, and final fill handler `0x10898`.
+  They queue ordered rule nodes through `0x10b80`, `0x13386`, and `0x133aa`,
+  publish/bridge to render root `+0x1c`, and render through `0x1f446`.
+  Owner worked paths are `Rectangle Rule` and
+  `Rectangle Rule Selectors And Clipping`.
+- Vertical forms control:
+  `ESC &l#W` routes through
+  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` uses `0x1280a`.
+  Table load writes VFC state and derived caches; channel jumps consume that
+  state to move the cursor, publish on overflow, or leave a later printable
+  byte to create visible output. Owner worked paths are
+  `Vertical Forms Control` and `VFC Table And Channel Branch Matrix`.
+
 ## Worked Path: Startup Initial State
 
 This path covers the ROM-defined initial state that exists before the first

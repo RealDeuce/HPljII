@@ -1255,13 +1255,38 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   bytes consume the selected slot, map, and context through
   `0xd04a -> 0x1393a -> 0x12f2e`, mark the page-root font slot live, publish
   through `0xff1e`, and render through `0x1ed84` / `0x1edc6` / `0x1ef6a`.
+  The concrete `X` final output edge is now tied to visible object records.
+  Host-fetched `ESC (7X!!` reaches `0xa904`, parser handlers `0x11eb6`,
+  `0x1201e`, and `0x120be`, selects built-in context `0xc0089fb0` through
+  `0x17708`, and the following printable `!!` queues compact text-object
+  prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02` before the
+  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path. The secondary sibling
+  host-fetched `ESC )8X SO !!` uses setup `0x12008`, selects context
+  `0xc00ae122`, crosses SO handler `0xc6b8`, reuses page-root slot `1`
+  through `0xc4fc`, and queues prefix
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`. Bit-30-clear
+  inline/downloaded selections use the same final-`X` parser route but select
+  context `0x00000100`: primary `ESC (4660X!` rebuilds map `0x782f32` and
+  queues `00 00 00 00 00 00 00 01 01 66 01 00 00 00`; secondary
+  `ESC )4660X SO !` rebuilds `0x783032`, crosses `0xc6b8`, and queues
+  `00 00 00 00 00 01 00 01 01 66 01 00 00 00`. The documented
+  non-selected `0x17708` exits stop before `0x14c64`; following printable
+  bytes therefore render from the prior context instead of the requested font
+  id, with pinned examples `ESC (7X!!` using context `0xc008004c` and prefix
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and `ESC )8X SO !!`
+  using prior secondary context `0xc40ad87a` and prefix
+  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`.
   Evidence is `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
   `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
   `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
   `generated/analysis/ic30_ic13_active_symbol_set_flow.md`, fixtures
   `symbol-set parser trace covers X and @ special cases`,
   `font-ID built-in selection feeds visible page-record rows`,
+  `font-ID secondary built-in selection feeds visible SO page-record rows`,
+  `font-ID primary inline/downloaded selection feeds visible page-record
+  rows`, `font-ID inline/downloaded selection feeds visible page-record rows`,
   `font-ID non-selected exits keep prior visible rows`,
+  `font-ID secondary non-selected exits keep prior SO visible rows`,
   `real default-table caller stream uses ROM-backed words`, and
   `real final-@ default-table streams select visible built-ins`.
   No unresolved middle edge remains for ordinary symbol finals, final `X`, or

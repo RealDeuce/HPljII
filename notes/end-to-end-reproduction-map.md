@@ -4638,6 +4638,16 @@ Address-level cluster map:
   whole-dot values into packed coordinates, and share the same commit helpers.
   These placement commands draw only through following printable, raster-start,
   rectangle/rule, VFC, or publication consumers of the committed cursor fields.
+  Underline/text-attribute command `ESC &d...` reaches tokenizer/handler
+  `0x12622`: selector stream `ESC &d3D` writes underline/span selector
+  `0x783185 = 1` and re-arms pending span state through `0x126e2`, while
+  following printable text updates pending span fields `0x783184`,
+  `0x783186`, `0x783188`, and `0x78318a` through metric consumers
+  `0xd4ac` / `0xd8fc`. A later `ESC &d@`, CR, left-margin change, or vertical
+  cursor change can flush that pending block through `0xf34a -> 0x12714 ->
+  0x126e2`, materializing selector-`0x4000` segment-list objects under
+  page-root `+0x1c`; publication then bridges them through `0x1edc6` and
+  segment-list renderer `0x1f812`.
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,

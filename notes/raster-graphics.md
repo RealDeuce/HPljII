@@ -85,6 +85,108 @@ Evidence:
   - `0x1f88e mode-3 raster object expands queued bytes into four rows`
   - `addressed text rectangle raster stream matches page-record output`
 
+## Raster Command-To-Pixel Owner Summary
+
+This note owns the `ESC *t`, `ESC *r`, and `ESC *b` path from parsed command
+records to encoded raster page objects. It does not own parser table matching
+before `0x11f82`, nor the shared render scheduler after a published record has
+entered `0x1ef6a`; those boundaries are linked below.
+
+The route for accepted raster rows is:
+
+- `0x10808` handles `ESC *t#R` and writes raster scale/mode state when raster
+  active byte `0x783182` is clear.
+- `0x1075a` handles `ESC *r#A`, sets active byte `0x783182`, seeds origin and
+  baseline fields, and recomputes the row byte limit.
+- `0x11f82 -> 0x121cc -> 0x12218` delays `ESC *b#W` until the payload phase
+  and restores the six-byte transfer record.
+- `0x105d0` gates the transfer, drains skipped payload bytes, writes transfer
+  counts in the `0x783170` block, ensures a current page root through
+  `0x10084`, and calls `0x13070` for accepted rows.
+- `0x13070 -> 0x13250 -> 0x138de` computes the bucket/key, allocates one or
+  more encoded raster objects under page-root `+0x1c`, and copies payload
+  bytes into object `+0x0a..`.
+- `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e` publishes,
+  bridges, dispatches, and renders the encoded objects.
+
+Writers:
+
+- `0x10808` writes raster block `+0x08`, `+0x0e`, and `+0x10` from the parsed
+  resolution and page extent.
+- `0x1075a` writes active byte `+0x12`, origin/baseline fields `+0x0a` and
+  `+0x00`, and limit `+0x10`; `0x107fa` clears only active byte `+0x12`.
+- `0x11f82` schedules delayed transfer handler `0x105d0` through
+  `0x121cc`; `0x12218` restores the saved command record before payload
+  consumption.
+- `0x105d0` writes current row `+0x02`, accepted count `+0x04`, overflow/drain
+  count `+0x06`, and retry/publication state when `0x13070` reports no room.
+- `0x13070` writes derived bucket index `0x782a7c`, packed key `0x782a7e`, and
+  object words `+0x06/+0x08`; `0x13250` links object class `0x80..0xff`;
+  `0x138de` writes copied payload bytes.
+
+Readers and consumers:
+
+- `0x105d0` consumes restored command record word `+2`, active raster state
+  `0x783170`, page extent/clamp fields `0x782db4` and `0x782dc6`, current root
+  `0x78297a`, and payload bytes through `0xdace` for drains.
+- `0x138de` consumes accepted payload bytes through direct `0xa904` reads with
+  local `0x1a 0x58` handling before storing object payload bytes.
+- `0xff1e`, `0x1ed84`, and `0x1edc6` consume the page-root bucket chain and
+  copy it into render root `+0x18`.
+- `0x1efc2` routes high-bit bucket objects to `0x1f88e`; `0x1f88e` consumes
+  object byte `+0x05 & 3`, payload count `+0x06`, packed key `+0x08`, and
+  payload bytes `+0x0a..`.
+
+Output effect:
+
+- Resolution and start/end commands are state-only until a later transfer uses
+  them. `ESC *r#B` clears active state and re-enables later `ESC *t#R` changes.
+- Accepted `ESC *b#W` rows create encoded raster objects under page-root
+  `+0x1c`. Beyond-extent and negative-row transfers consume payload through
+  `0xdace` but skip `0x13070`, so they produce no page object.
+- Encoded raster pixels come from object fields plus `0x1f88e` helper choice:
+  mode `0` renders literal rows, mode `1` expands bytes into two rows, mode
+  `2` expands byte pairs into three rows and can split into fallback storage,
+  and mode `3` expands bytes into four rows.
+
+Field classification:
+
+- Canonical raster state: block `0x783170`, including baseline `+0x00`, row
+  `+0x02`, accepted count `+0x04`, overflow/drain count `+0x06`, encoded mode
+  `+0x08`, origin `+0x0a`, scale `+0x0e`, row byte limit `+0x10`, and active
+  byte `+0x12`.
+- Canonical page/image state: current root `0x78297a`, bucket root `+0x1c`,
+  encoded object class byte `+0x04`, mode byte `+0x05`, count `+0x06`, key
+  `+0x08`, and payload bytes `+0x0a..`.
+- Derived/cache state: bucket index `0x782a7c`, packed key `0x782a7e`,
+  allocation capacity `0x782a80`, copied render root `+0x18`, band caches
+  `0x783a20/0x783a22/0x783a28`, destination stride `0x783a1c`, and fallback
+  storage rooted at `0x7810b4`.
+- Parser scratch: delayed payload byte `0x782a1a`, saved handler
+  `0x782a1c`, saved record `0x782a20..0x782a25`, restored command-record
+  cursor `0x78299e`, and the live `ESC *b#W` record until `0x105d0` reads it.
+- Firmware bookkeeping: allocator state `0x782a70/0x782a72/0x782a76`, copy-stop
+  flag `0x782996`, root retry flag `+0x15.0`, and chunk allocator behavior in
+  `0x132b6..0x13382`.
+- Hardware/external state: none inside this command-family edge after payload
+  bytes have been admitted by `0xa904` / `0xdace`; physical engine consumption
+  begins after shared render buffers are written.
+- Unknown: no ROM-local middle edge remains for the documented `ESC *t#R`,
+  `ESC *r#A/#B`, accepted row, drain, dense split, and modes `0..3` render
+  paths. Future work starts only from byte streams that change a concrete
+  transfer gate, allocator split, object field, payload-copy stop, packed-key
+  advance, or `0x1f88e` helper input named here.
+
+Evidence is the sections below, [pcl-command-map.md](pcl-command-map.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[semantic-state-model.md](semantic-state-model.md), with disassembly listings
+`generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`, and
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`. The primary
+stream example is `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`, which queues the
+encoded object `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` and renders through
+mode-0 `0x1f88e`.
+
 ## Parser Boundary
 
 The primary byte-stream fixture is:

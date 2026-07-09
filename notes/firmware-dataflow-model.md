@@ -207,12 +207,15 @@ dropping into the command-family detail notes. The longer ledger is
   worked paths are `Host Interface Output FIFO And Model-ID Backchannel`,
   `Page Environment Status Bridge`, and `External Ready Service Preemption`.
 - Font selection and downloaded glyphs:
-  built-in selection commands route through parser rows to `0xc580`,
-  `0x13eb8`, `0x144d2`, `0x14c64`, `0xc428`, and `0xc4fc`; downloaded
-  descriptors and payloads route through
+  symbol-set and font-designation terminals `ESC (` / `ESC )`, final `X`, and
+  final `@` route through `0x120be -> 0x1be22 -> 0xc580`, then through
+  candidate/map consumers such as `0x13eb8`, `0x144d2`, `0x14c64`, `0x14f16`,
+  `0xc428`, and `0xc4fc`; downloaded descriptors and payloads route through
   `0x11f96 -> 0x15d0a/0x16c14 -> 0x1719c/0x16498`. They update selected
   context/map/resource state first, then later printable bytes consume that
-  state through the compact object route. Owner worked paths are
+  state through the compact object route. Owner boundaries and worked paths are
+  `Font Context And Glyph Source Boundary`,
+  `Symbol Set And Map Patch Boundary`,
   `Font Selection To Visible Glyphs`, `Selected Font Metrics To Span Output`,
   `Downloaded Glyph`, `Nonzero Resource Payload`, and
   `Fixed-Record Resource Object`.

@@ -802,6 +802,26 @@ host-fetched `ESC (4660X!` and `ESC )4660X SO !` reach
 queue unflagged object prefixes, preserve bridge context slots, and render
 the selected inline/downloaded rows.
 
+Disassembly `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`
+shows the map builder itself. `0x14e24` selects map `0x782f32` for primary or
+`0x783032` for secondary from `0x7828de`, clears map bytes `0x00..0x1f`, then
+tests candidate character indexes `0x00..0x5f` through `0x14eb6`; accepted
+entries store their index byte and rejected entries store zero. After that
+first 96-entry pass, selected fixed-record byte `+0x0e` decides whether the
+upper half can contain entries: zero clears map bytes `0x80..0xff`, while
+nonzero clears `0x80..0x9f` and tests the next 96 candidate indexes through
+`0x14eb6` for map bytes `0xa0..0xff`.
+
+Helper `0x14eb6(index)` reads the selected candidate low-24 address from
+`0x7828a8`, adds table base `+0x40`, then selects the eight-byte table entry
+for the requested index. Entry type bytes `(1,2)` use longword `+4` as a
+relative pointer and accept only when the target word is nonzero. Other entries
+accept only when both type bytes are nonzero and masked longword `+4` is
+nonzero. The helper returns zero for accepted map entries and one for rejected
+entries, matching the `0x14e24` store-or-clear branches. Those map bytes are
+derived/cache state consumed later by `0x1393a`; the fixed-record table and
+bitmap payload remain canonical installed font state.
+
 The allocation-failure fixture
 `0x16c14 allocation failure releases existing payload through 0x1887a` starts
 with a current-record hit for id `0x1234`, record flags `0x40`, old payload

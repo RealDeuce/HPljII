@@ -5994,6 +5994,10 @@ Address-level cluster map:
   records. Its visible output is still later printable text, with
   `0x14e24`, `0x1393a`, `0x12f2e`, `0x1edc6`, and `0x1ef6a` consuming the
   fixed-record table and bitmap bytes.
+  `0x14e24..0x14f12` builds the active map from the fixed-record table:
+  accepted `0x14eb6` entries copy their candidate index into `0x782f32` or
+  `0x783032`, rejected entries become zero, and selected byte `+0x0e`
+  decides whether upper-half map entries can be produced.
   Covered visible variants include short selector `0x0003` through `0x1fe76`,
   wide selector `0x1003` through `0x1f0d2`, segmented selector `0x2000` /
   `0x2003` through `0x1f1f0`, segmented-wide selector `0x3003` through

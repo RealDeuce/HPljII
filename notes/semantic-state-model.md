@@ -7361,6 +7361,18 @@ fixture proves the same derived path with width `3`, rows `2`, object prefix
 `00 00 00 00 00 03 00 01 01 76 01`, and rows reconstructed from source bytes
 `a0 a1 b0` and `c0 c1 d0`.
 
+The `0x14e24..0x14f12` map-builder rule is part of that derived state.
+`0x14e24` chooses primary map `0x782f32` or secondary map `0x783032` from
+`0x7828de`, clears `0x00..0x1f`, tests 96 low-half indexes through
+`0x14eb6`, then uses selected fixed-record byte `+0x0e` to decide the upper
+half: zero clears `0x80..0xff`, while nonzero clears `0x80..0x9f` and tests
+96 more indexes into `0xa0..0xff`. `0x14eb6` reads the eight-byte fixed-record
+table entry at selected address `+0x40 + index * 8`; entry type `(1,2)`
+accepts only when the relative target word is nonzero, and other nonzero type
+pairs accept only when masked longword `+4` is nonzero. The helper returns
+zero for accepted entries, so accepted map bytes store the candidate index and
+rejected map bytes store zero.
+
 Parser scratch is the restored delayed-handler descriptor record
 `80 57 00 00 00 00`, payload byte budget `0x783140`, and continuation block
 `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,

@@ -103,6 +103,76 @@ specific object fields, selected-font state, publication fields, helper
 dispatch, or row-construction inputs, not from broad claims about live printer
 timing.
 
+## Render Entry Owner Summary
+
+The render entry path is the checked-in join between page/image object
+producers and pixel writers. The route is:
+
+- `0xff1e` publishes the current page/control record.
+- `0x1ed84` copies the selected published record into the active render work
+  record.
+- `0x1edc6` bridges source page roots into render roots.
+- `0x1eba4` advances the active band loop.
+- `0x1ef6a` renders one capacity-approved band.
+- `0x1ef86` derives per-band row and destination caches before object-class
+  dispatch.
+
+Writers feeding this checkpoint are the page object producers already
+documented in this note: compact text through `0x12f2e` and `0x1387c`,
+segment/span objects through `0x12714`, `0x13520`, and `0x135f0`, raster
+objects through `0x13070`, `0x13250`, and `0x138de`, rule objects through
+`0x13386` and `0x133aa`, fixed-list objects through `0x136d2`, publication
+through `0xff1e`, render-root bridge `0x1edc6`, and band setup `0x1ef86`.
+
+Readers and consumers are the render dispatchers and row helpers:
+`0x1ef6a` consumes the active render work record, `0x1efc2` walks compact
+bucket chains, `0x1f446` walks rule lists, `0x1f756` walks fixed lists,
+`0x1effe` routes compact objects to `0x1f034`, `0x1f0d2`, `0x1f1f0`, and
+`0x1f264`, `0x1f812` renders segment objects, `0x1f88e` renders encoded
+raster spans, `0x1f596` and `0x1f4e0` render solid and patterned rules,
+`0x1f3d4`, `0x1f414`, and `0x1f626` choose destination spans, and row-copy
+helpers from `0x1fa5c..0x207ac` write the selected band or fallback buffer.
+
+The output effect is not a parser-time bitmap. Parser and command handlers
+build page roots and object records; render entry copies those roots into
+render records; object dispatch interprets the copied records and writes rows.
+Compact text and downloaded glyph output depend on the queued compact object
+fields plus the copied font/context slots. Raster output depends on encoded
+mode and payload bytes in queued raster records. Rectangle and rule output
+depends on queued dimensions, clipping, fill selector, and pattern/solid
+dispatch. Segment and fixed-list output depends on the object fields consumed
+by `0x1f812` and `0x1f756`. The physical engine consumes rendered band data
+after this ROM-local checkpoint.
+
+Field ownership:
+
+- Canonical page/image state: source page roots `+0x1c`, `+0x24`, `+0x28`,
+  context slots `+0x2c..+0x68`, render roots `+0x18`, `+0x1c`, `+0x20`, and
+  render context slots `+0x24..+0x60`.
+- Derived/cache state: render-band rows `0x783a20`, remainder `0x783a22`,
+  destination base `0x783a28`, destination stride `0x783a1c`, phase byte
+  `0xa001`, and glyph/cache pointer `0x783a2c`.
+- Parser scratch: none at this checkpoint; parser scratch has already been
+  consumed into page objects or discarded before publication.
+- Firmware bookkeeping: continuation fields in rule and fixed objects, active
+  render pointer `0x783a18`, render work band word `+0x10`, work throttle word
+  `+0x0e`, scheduler cursors, and work-record selection fields.
+- Hardware/external state: physical formatter and DC behavior after ROM row
+  buffer writes.
+- Unknown: new byte streams that change root fields, object fields, dispatch
+  selection, row-helper inputs, or the physical mapping after ROM output
+  remain exact follow-up edges rather than assumptions about this checkpoint.
+
+Concrete evidence lives in the sections below and in
+`notes/active-render-scheduler.md`: `Render/Banding Bridge` documents
+`0x1ed84` and `0x1edc6`, `Active Render Scheduler Semantic Checkpoint`
+documents `0x1eba4`, `0x1ef6a`, and `0x1ef86`, `Pixel Writer And Buffer Map`
+documents destination helpers, and `Object Class Dispatch` documents the class
+routes from render roots to row writers. There is no additional ROM-local
+middle edge between copied render roots and class dispatch for the object
+classes named here. Remaining unresolved edges are object-class-specific and
+are listed under those sections with their address boundaries.
+
 ## Page Size Tables
 
 The page-size command handler `ESC &l#A` at `0x00fc74` maps PCL

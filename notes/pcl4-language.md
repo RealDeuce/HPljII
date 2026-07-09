@@ -623,7 +623,14 @@ Field groups for this index:
   compact object `00 00 00 00 00 00 00 01 20 00 01`, then reset publishes
   through `0xff1e`, stores the published pointer in `0x780ea6`, sets
   publication flag `0x782996`, clears current root `0x78297a`, and renders
-  the preserved page through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  the preserved page through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Paper-source
+  stream `! ESC &l2H` reaches `0xef62`, publishes the queued compact object
+  before state mutation, then writes selector value `0x80` to paper-source
+  byte `0x782da6`, mirrors `0x780e8f = 0x80`, signals `0x780e26`, and sets
+  pending refresh byte `0x782998 = 1`. Copy-count stream `! ESC &l2X FF`
+  reaches `0xeef0`, stores `0x782da4 = 2` without publishing, and the
+  following FF publication copies that value into pool-header word `+0x0c`
+  before the same `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
   Evidence:
   [publication-commands.md](publication-commands.md),
   [reset-default-environment.md](reset-default-environment.md), and

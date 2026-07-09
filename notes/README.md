@@ -66,9 +66,10 @@ standalone deliverables.
   and the detailed dataflow spine is
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
   `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
-  command-dispatch anchors, `Page Versus Band Model`, and
-  `Pixel composition contract` are the shortest checked-in path from an
-  admitted byte stream to page objects and rendered pixels.
+  command-dispatch anchors, `Binary Payload Lifecycle`,
+  `Page Versus Band Model`, and `Pixel composition contract` are the shortest
+  checked-in path from an admitted byte stream to page objects and rendered
+  pixels.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
   [built-in-resource-scan.md](built-in-resource-scan.md). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
@@ -96,7 +97,10 @@ checked-in ROM model:
    [pcl-parser-core.md](pcl-parser-core.md): follow `0xda9a` / `0xdaf0` /
    `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`,
    six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and
-   delayed restore `0x121cc -> 0x12218`.
+   delayed restore `0x121cc -> 0x12218`. For counted binary payload commands,
+   use `Binary Payload Lifecycle` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) before jumping to
+   the family owner.
 4. Use [pcl-command-map.md](pcl-command-map.md) only as the dispatch index.
    After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual

@@ -469,6 +469,13 @@ decimal value.
 | End-of-line wrap on | `ESC &s0C` |
 | End-of-line wrap off | `ESC &s1C` |
 
+### Status Queries
+
+| Function | Command |
+| --- | --- |
+| Model/status side-channel query | `ESC *r#K` followed by query byte |
+| Model/status side-channel query sibling | `ESC *s#^` followed by query byte |
+
 ## Emulator Takeaways
 
 - Treat the appendix command names as entry points into the ROM dataflow, not

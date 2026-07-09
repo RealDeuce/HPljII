@@ -5122,6 +5122,27 @@ Address-level cluster map:
   0x126e2`, materializing selector-`0x4000` segment-list objects under
   page-root `+0x1c`; publication then bridges them through `0x1edc6` and
   segment-list renderer `0x1f812`.
+  Concrete direct-control and layout streams are now part of the route index.
+  `ESC &k1G!\r!` reaches `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`;
+  mode byte `0x80` makes CR apply CR+LF, and the second glyph queues in
+  compact bucket `0` at coordinate `0x3b00`. Siblings `ESC &k2G!\n!` and
+  `ESC &k0G HT BS !` route through `0xf08c` and `0xf1cc` / `0xf2a8`,
+  queueing post-control compact coordinates `0x3b00` and `0x0a01`.
+  Placement streams `ESC &a2C!`, `ESC &a1R!`, `ESC &a2c+1R!`, and
+  `ESC *p30x30Y!` commit cursor state through `0xf4ca` / `0xf6e2` before
+  the following printable queues compact coordinates `0x0a02`, `0x1001`,
+  `0x1a02`, and `0x9402`. Layout streams share the same delayed-output
+  rule: `ESC &l66P !` writes page-length state through `0xf9e8` and the
+  following printable queues glyph `0x20` at `0x9001`; `ESC &l3E !` updates
+  top-margin state through `0xece2` before the following printable also
+  queues at `0x9001`; and `ESC &l1L !` writes perforation byte `0x783191`
+  through `0xee64` before the ordinary printable path queues the visible
+  object. Span-flush stream `ESC &a6L!` materializes selector-`0x4000`
+  segment-list object `00 00 00 00 40 00 00 01 32 00 03 00 00 10` through
+  `0xf34a -> 0x12714`, then re-arms span state for the following printable
+  at compact coordinate `0x0207`. Evidence is
+  [direct-control-codes.md](direct-control-codes.md) and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,

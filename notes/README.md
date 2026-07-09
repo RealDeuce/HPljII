@@ -44,7 +44,7 @@ standalone deliverables.
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md),
-  [downloaded-fonts.md](downloaded-fonts.md),
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [vertical-forms-control.md](vertical-forms-control.md).
 - Manual PCL command names and syntax rows are indexed by
@@ -269,7 +269,7 @@ checked-in ROM model:
 - [built-in-resource-scan.md](built-in-resource-scan.md) - documented
   IC32/IC15 resource scan, candidate windows, built-in record filters, and
   glyph-row evidence.
-- [downloaded-fonts.md](downloaded-fonts.md) - documented soft-font
+- [downloaded-fonts.md](downloaded-fonts.md#owner-summary) - documented soft-font
   descriptor, payload, validation/no-install, current-record, and
   downloaded-glyph render paths.
 - [font-sample-page.md](font-sample-page.md) - documented firmware-generated

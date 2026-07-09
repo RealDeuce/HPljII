@@ -1227,7 +1227,8 @@ work can close the right gap instead of re-tracing already-covered consumers.
 - Claim: downloaded-font payload can be installed and printed from a host
   stream. Evidence: fixtures `host-fetched printable byte uses installed
   downloaded glyph page object` and `combined host-fetched font download stream
-  prints installed glyph`; documented in [downloaded-fonts.md](downloaded-fonts.md).
+  prints installed glyph`; documented in
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
   Status: parser-produced host stream to visible downloaded glyph rows.
 - Claim: a downloaded-resource descriptor can feed `0xd4ac` span rows.
   Evidence: fixture `host-fetched 0x1719c payload metrics feed d4ac span

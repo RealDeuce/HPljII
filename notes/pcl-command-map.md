@@ -45,7 +45,7 @@ Primary route:
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md), and
-  [downloaded-fonts.md](downloaded-fonts.md).
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 
 Field groups:
 
@@ -250,7 +250,7 @@ boundaries:
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current
   resource objects, no-install exits, row/span publication, and compact
   downloaded-glyph render boundaries:
-  [downloaded-fonts.md](downloaded-fonts.md).
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Macro ID/control commands, macro definition, execute/call replay, overlay
   publication, and data-chain byte replay:
   [macro-data-chain.md](macro-data-chain.md#owner-summary).
@@ -480,9 +480,9 @@ Normal table `0x112a4`:
   [vertical-forms-control.md](vertical-forms-control.md),
   [raster-graphics.md](raster-graphics.md),
   [symbol-set-selection.md](symbol-set-selection.md), and
-  [downloaded-fonts.md](downloaded-fonts.md). These handlers mutate parser
-  scratch, append setup records, or save delayed handlers; pixel/page effects
-  begin only when the restored family consumer runs.
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
+  mutate parser scratch, append setup records, or save delayed handlers;
+  pixel/page effects begin only when the restored family consumer runs.
 - Printable-context, direct-control, cursor, layout, and publication handlers:
   `0xc68a`, `0xc6b8`, `0xc992`, `0xca8c`, `0xcb00`, `0xcc52`, `0xe9ba`,
   `0xea9e`, `0xeb58`, `0xec0c`, `0xece2`, `0xedb0`, `0xedf8`, `0xee64`,
@@ -519,9 +519,10 @@ Normal table `0x112a4`:
   Owners are [symbol-set-selection.md](symbol-set-selection.md),
   [symbol-map-patching.md](symbol-map-patching.md),
   [font-context-metrics.md](font-context-metrics.md), and
-  [downloaded-fonts.md](downloaded-fonts.md). These handlers write font
-  request fields, selected-context/glyph-map state, current downloaded-font id
-  or character, and downloaded-font control state. They draw only through
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
+  write font request fields, selected-context/glyph-map state, current
+  downloaded-font id or character, and downloaded-font control state. They draw
+  only through
   later printable bytes and compact-glyph render dispatch.
 - Macro command handlers:
   `0xdd08` and `0xe112`.
@@ -546,7 +547,7 @@ Alternate/data table `0x116f6`:
   Owners are [transparent-print-data.md](transparent-print-data.md),
   [vertical-forms-control.md](vertical-forms-control.md),
   [raster-graphics.md](raster-graphics.md),
-  [downloaded-fonts.md](downloaded-fonts.md),
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [publication-commands.md](publication-commands.md). Counted payloads and
   macro-stop/reset behavior remain active because they delimit stored data or
@@ -1389,7 +1390,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   remaining downloaded-font boundaries are the descriptor/resource payload
   variants and compact-renderer row forms called out in the owner note.
   Owner note:
-  [downloaded-fonts.md](downloaded-fonts.md).
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Font selection and downloaded-font payloads:
   primary `ESC (` reaches prefix handler `0x1201e`; secondary `ESC )`
   reaches `0x12008`; designation terminals in mode `4` share `0x120be`.
@@ -1602,7 +1603,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
-  [downloaded-fonts.md](downloaded-fonts.md).
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Macro definition, replay, and overlay:
   `ESC &f` enters mode `17`. `Y/y` reaches macro-id handler `0xe112`;
   `X/x` reaches macro-control handler `0xdd08`; `S/s` reaches cursor-stack

@@ -7466,10 +7466,11 @@ to recover the odd-width bitmap layout.
 
 Unresolved middle edges after this checkpoint are exact variant cross-products,
 not the documented bit-30-clear current-record/continuation path itself.
-[downloaded-fonts.md](downloaded-fonts.md) now decomposes the branch
-boundaries: current-record stale-continuation clear `0x16612..0x1664e`,
-character/type admission `0x16656..0x166ba`, fixed-record table addressing and
-preexisting-entry release `0x16692..0x16700`, descriptor/object-prefix gates
+[downloaded-fonts.md](downloaded-fonts.md#owner-summary) now decomposes the
+branch boundaries: current-record stale-continuation clear
+`0x16612..0x1664e`, character/type admission `0x16656..0x166ba`, fixed-record
+table addressing and preexisting-entry release `0x16692..0x16700`,
+descriptor/object-prefix gates
 `0x16702..0x16716`, allocation/copy `0x16718..0x16754`, primary/secondary
 active-context refresh `0x16770..0x16870`, allocation-failure bookkeeping
 `0x167b6..0x167d8`, status-`2` continuation save `0x167e0..0x16838`,

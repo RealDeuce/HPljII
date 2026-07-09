@@ -133,13 +133,17 @@ boundaries:
 - Transparent print data `ESC &p#X`:
   [transparent-print-data.md](transparent-print-data.md).
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:
-  [raster-graphics.md](raster-graphics.md).
+  [raster-graphics.md](raster-graphics.md), with encoded-raster render
+  helpers and bitmap row composition in
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including
   the `0x12034 -> 0x122be` `33440A\r\n` producer and host-output FIFO:
   [errors-and-status.md](errors-and-status.md) and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
-  [rectangle-graphics.md](rectangle-graphics.md).
+  [rectangle-graphics.md](rectangle-graphics.md), with rule/span render
+  helpers and bitmap composition in
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Vertical forms control table payloads and channel jumps:
   [vertical-forms-control.md](vertical-forms-control.md).
 - Font selection, symbol sets, font attributes, pitch mode, SO/SI selected

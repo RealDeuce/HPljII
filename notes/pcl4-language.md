@@ -803,7 +803,8 @@ Field groups for this index:
   `0x1f8da`, word `+0x06 = 4` is the copied payload capacity, and key
   `+0x08 = 0x0001` is the packed coordinate consumed after publication.
   Evidence:
-  [raster-graphics.md](raster-graphics.md).
+  [raster-graphics.md](raster-graphics.md) and
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Rectangle/rule graphics:
   `ESC *c` mode `16` routes width/height/fill writers `0x10e68`, `0x10e22`,
   `0x10dce`, and fill command `0x10898`. Size/id handlers write
@@ -821,7 +822,8 @@ Field groups for this index:
   bridge `0x1edc6` copies the rule list to render-record `+0x1c`, and
   `0x1f446` dispatches selector `7` to solid helper `0x1f596`.
   Evidence:
-  [rectangle-graphics.md](rectangle-graphics.md).
+  [rectangle-graphics.md](rectangle-graphics.md) and
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Font selection and downloaded fonts:
   primary/secondary setup `0x1201e` / `0x12008`, designation terminal
   `0x120be`, attribute wrappers around `0xc930`, `0xc89c`, `0xc6ec`,

@@ -355,14 +355,17 @@ controlling artifact.
   bytes, or named model-consistency fixtures. Fixture output is never the
   primary semantic claim.
 - Explicit unresolved boundaries:
-  maintained in `Current Residual Edge Index`, `Pixel-Perfect Coverage And
-  Residual Risks`, `Next Disassembly Targets`, and `Unresolved Boundaries` in
+  maintained first in [unresolved-boundaries.md](unresolved-boundaries.md),
+  with route-specific context in `Current Residual Edge Index`,
+  `Pixel-Perfect Coverage And Residual Risks`, `Next Disassembly Targets`, and
+  `Unresolved Boundaries` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Current bounded
   residual classes are secondary segment-57 resource decode
-  `0x0c0000..0x0c0321`, ROM-local downloaded-glyph helper boundaries, host
-  physical interface naming/timing, formatter/DC physical timing, and new
-  ROM-local command variants only when they change named state or
-  row-construction inputs.
+  `0x0c0000..0x0c0321`, ROM-local downloaded-glyph helper invalid
+  target/source boundaries, host physical interface naming/timing, optional
+  resource-window contents, retained-storage/service persistence, formatter/DC
+  physical timing, and new ROM-local command variants only when they change
+  named state or row-construction inputs.
 
 ## Stream Trace Procedure
 

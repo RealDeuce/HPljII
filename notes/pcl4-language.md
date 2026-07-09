@@ -788,7 +788,16 @@ Field groups for this index:
   `ESC *r#K` and `ESC *s#^` route through `0x12034 -> 0x122be` and
   host-output helper `0xb090`. They consume status/model predicates and output
   bytes through the host FIFO. They emit host-visible response bytes such as
-  `33440A\r\n`; they do not create page roots or pixels. Evidence:
+  `33440A\r\n`; they do not create page roots or pixels. Concrete stream
+  `ESC *r1K 0x11` reaches wrapper `0x12034`, setup helper `0x11efe`, and
+  producer `0x122be..0x12326`; active record word `+2 = 1` plus query byte
+  `0x11` makes the producer walk literal `33440A\r\n` at `0x12280..0x12288`
+  and enqueue each byte through `0xb090`. The `ESC *s#^ 0x11` sibling reaches
+  the same producer from parser mode `6`. Canonical host-output state is FIFO
+  count `0x783ed2`, read pointer `0x783ed4`, write pointer `0x783ed8`, and
+  storage `0x783e92..0x783ed1`; a full FIFO can stall this parser-side
+  producer, but no FIFO/status consumer feeds page roots or render helpers.
+  Evidence:
   [errors-and-status.md](errors-and-status.md) and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Shared page/render/output convergence:

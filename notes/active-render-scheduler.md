@@ -49,6 +49,94 @@ Primary fixtures:
 - `0x1eba4/0x1ef6a active render loop advances or yields bands`
 - `0x1eba4 scheduler band words render published downloaded glyph`
 
+## Owner Summary
+
+Concept: this note owns the scheduler handoff after `0xff1e` has published a
+page/control record and before bitmap object helpers interpret render roots.
+It selects the published source record, chooses one of two render work records,
+copies source page roots into render-record roots through
+`0x1ed84 -> 0x1edc6`, advances the band word, and calls `0x1ef6a` only on the
+capacity-approved render branch.
+
+Primary route:
+
+- Publication owner `0xff1e` leaves a published page/control pool chain at
+  `0x780ea6`.
+- Candidate selection `0x7ec6..0x7f90` and cursor advance
+  `0x7722..0x779a` promote a source into scheduler cursor `0x780eaa`.
+- Scheduler entry `0x1eb32..0x1eb50` copies the selected source to active
+  source pointer `0x780eae`.
+- Work-record selector `0x1ecd6..0x1ed76` chooses `0x7820c4` or `0x782128`,
+  writes active render pointer `0x783a18`, and calls `0x1ed84`.
+- Bridge `0x1ed84 -> 0x1edc6` copies source bucket/rule/fixed/context roots to
+  render roots.
+- Active loop `0x1eba4..0x1ecd2` presents render work `+0x10` as the current
+  band word and calls `0x1ef6a` only when the render branch is eligible.
+
+Field groups:
+
+- Canonical scheduler state: protected pool head `0x780ea6`, scheduler cursor
+  `0x780eaa`, active source `0x780eae`, release/advance cursor `0x780eb2`,
+  render-work selector bytes `0x7820bc` / `0x7820c0`, paired work records
+  `0x7820c4` / `0x782128`, active render pointer `0x783a18`, active band word
+  render `+0x10`, and throttle/progress word render `+0x0e`.
+- Canonical render-record state after bridge: render bucket root `+0x18`, rule
+  root `+0x1c`, fixed-list root `+0x20`, and context slots `+0x24..+0x60`.
+- Derived/cache state: band setup outputs `0x783a20`, `0x783a22`,
+  `0x783a28`, destination stride `0x783a1c`, candidate-slot array
+  `0x780e6e[]`, and status/engine latches such as `0x78399e`,
+  `0x78399f`, `0x78398c`, `0x783990`, `0x7839ac`, `0x7828f9`,
+  `0x780e32`, `0x780e36`, `0x780e6d`, and `0x780e67`.
+- Firmware bookkeeping: active flags `0x780ea4` / `0x780ea5`, active-pool
+  copy-window fields `0x7839d2` / `0x7839d4`, timer/status divider bytes
+  `0x78017f..0x780181`, and wait-object records selected by `0x123a`.
+- Parser scratch: none. Parser and command-family state has already become
+  page-record storage before this owner runs.
+- Hardware/external state: formatter/DC signal names and physical timing for
+  MMIO-backed readiness, copy, and wait predicates.
+- Unknown: stable semantic name for `0x7839d4` beyond active-pool copy-window
+  bookkeeping.
+
+Writers and readers:
+
+- `0x3144..0x3162` initializes page/control pool cursors.
+- `0x7ec6..0x7f90`, `0x7722..0x779a`, and `0x1eb32..0x1eb50` select and copy
+  the published source record into scheduler state.
+- `0x2feb6` initializes paired render-work selector state.
+- `0x1ecd6..0x1ed76` writes active render pointer `0x783a18` and calls
+  `0x1ed84`.
+- `0x1ed84` / `0x1edc6` read source roots and write render roots.
+- `0x1eba4..0x1ecd2` reads active flags, capacity predicates, and band word,
+  then either calls `0x1ef6a`, waits, throttles, or cleans up.
+- `0x1ef6a`, `0x1efc2`, `0x1f446`, and `0x1f756` are downstream renderer
+  consumers; object interpretation and row writes are owned by
+  [page-raster-imaging.md](page-raster-imaging.md).
+
+Output effect:
+
+- The scheduler does not create page objects and does not choose compact,
+  segment-list, encoded-raster, rule, or fixed-list helper variants.
+- Its output is the active render context: which published record is selected,
+  which work record receives copied roots, which render roots are visible, and
+  which band word reaches `0x1ef6a`.
+- Hardware and wait-object paths can pace, stall, or wake scheduler execution,
+  but they do not change the page-object model unless they mutate one of the
+  ROM-visible scheduler or render-record fields above.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst` anchors
+  source selection, work-record choice, active-loop predicates, and band
+  advancement.
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst` anchors
+  the bridge fields written by `0x1ed84` / `0x1edc6`.
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` anchors the first
+  renderer consumers after scheduler handoff.
+- The fixtures listed above exercise selected-record handoff, same-geometry
+  reuse, candidate promotion, wait-object scheduling, active-loop branch
+  outcomes, and scheduler-produced band words reaching a published downloaded
+  glyph.
+
 ## Field Groups
 
 Canonical page/control pool state:

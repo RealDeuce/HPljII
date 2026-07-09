@@ -133,7 +133,8 @@ checked-in ROM model:
    common helper order, buffer destinations, and exact ROM-local render
    boundaries. The `Pixel composition contract` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarizes render
-   call order, active-band and fallback buffers, and direct-store composition.
+   call order, active-band and fallback buffers, object-class handoff, and
+   direct-store composition.
 8. If the route stops, record the exact boundary as ROM-local unknown,
    hardware/MMIO, missing external resource data, or optional physical
    correlation. Do not replace a missing ROM edge with fixture output or a

@@ -1564,6 +1564,55 @@ Bucket objects are classed by object byte `+4`:
 - `0x40..0x7f`: segmented list rendering.
 - `0x80..0xff`: encoded raster rendering.
 
+Object class to renderer handoff:
+
+- Compact text and downloaded glyphs:
+  producers `0xd04a -> 0x12f2e -> 0x1387c` store bucket objects under source
+  root `+0x1c` with class byte `+4` in `0x00..0x3f`. Bridge `0x1edc6` copies
+  the bucket root to render `+0x18` and context slots `+0x2c..+0x68` to
+  render `+0x24..+0x60`. Bucket dispatcher `0x1efc2` calls compact dispatcher
+  `0x1effe`, which selects helpers such as `0x1f034`, `0x1f0d2`,
+  `0x1f1f0`, and `0x1f264`.
+- Portrait text-span segment lists:
+  producer `0x12714` reaches `0x13520` / `0x1354a` / `0x135f0`, then stores
+  class `0x40..0x7f` objects under source root `+0x1c` through `0x1387c`.
+  Bridge `0x1edc6` exposes those objects at render `+0x18`; `0x1efc2`
+  dispatches them to segment-list renderer `0x1f812`.
+- Encoded raster rows:
+  delayed transfer consumer `0x105d0` calls `0x13070 -> 0x13250` to store
+  class `0x80..0xff` bucket objects under source root `+0x1c`. Bridge
+  `0x1edc6` exposes them at render `+0x18`; `0x1efc2` dispatches them to
+  raster renderer `0x1f88e`, which selects expansion helpers from object byte
+  `+5 & 3`.
+- Rectangle/rule objects:
+  final fill path `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa` stores ordered
+  nodes under source root `+0x24`. Bridge `0x1edc6` copies and normalizes the
+  list into render `+0x1c`; renderer `0x1f446` consumes it and dispatches
+  pattern or solid helpers.
+- Landscape/fixed-list spans:
+  producer `0x12714` reaches `0x136d2` in landscape orientation and stores
+  fixed-list nodes under source root `+0x28`. Bridge `0x1edc6` copies and
+  normalizes that list into render `+0x20`; renderer `0x1f756` consumes it on
+  its fixed-list cadence.
+
+State classification at this handoff:
+
+- Canonical page state:
+  source root fields `+0x1c`, `+0x24`, `+0x28`, and context slots
+  `+0x2c..+0x68`; object header bytes such as bucket `+4`, count/capacity
+  `+6`, and rule/fixed selector bytes.
+- Derived/cache render state:
+  render roots `+0x18`, `+0x1c`, `+0x20`, render context slots
+  `+0x24..+0x60`, current-band fields `0x783a20`, `0x783a22`, and
+  destination base `0x783a28`.
+- Firmware bookkeeping:
+  bridge-normalized rule/fixed continuation fields, active render pointer
+  `0x783a18`, render work band word `+0x10`, and fallback row storage rooted
+  at `0x7810b4`.
+- Parser scratch:
+  none at render entry. Parser records and payload bytes have already been
+  committed into page objects or state records before publication.
+
 The detailed render contracts live in [page-raster-imaging.md](page-raster-imaging.md)
 and the renderer sections of [semantic-state-model.md](semantic-state-model.md).
 Command-family notes point back here when they reach their page-object

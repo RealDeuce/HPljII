@@ -1907,6 +1907,20 @@ Publication and later consumers:
   before the new geometry takes effect. Page size uses the `0xfc74` /
   `0xf34a` / `0xff1e` edge; orientation uses the `0x10220` /
   `0xf34a` / `0xff1e` edge.
+- In both documented streams, the pre-command printable is the ordinary
+  one-entry compact text object. The fixture report records the published
+  object window as:
+
+```text
+00 00 00 00 00 00 00 01 20 00 01 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+  Its live compact prefix is the null next link, one-entry selector/count
+  fields, and payload entry glyph `0x20` at compact coordinate `0x0001`.
+  The geometry command publishes that object before writing the new page code
+  or orientation, so the rendered rows are the pre-geometry rows while later
+  objects consume the newly installed geometry fields.
 - The published pre-command root flows through the ordinary render path:
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1eba4 -> 0x1ef6a`.
 - Following printable placement consumes geometry fields through the text path
@@ -1979,7 +1993,8 @@ Evidence:
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/analysis/ic30_ic13_page_geometry_tables.md`, and
-  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+  `generated/analysis/ic30_ic13_page_record_bridge.md`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Page Assembly Walkthrough
 

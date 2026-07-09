@@ -611,7 +611,14 @@ Field groups for this index:
   writes `0x782dde..0x782edd` and line caches; channel jumps consume VMI,
   current y, top offset, and channel masks; perforation skip writes
   `0x783191`. Output is cursor-only movement, page publication/recovery, or
-  later overflow page eject; no separate renderer exists. Evidence:
+  later overflow page eject; no separate renderer exists. Concrete stream
+  `ESC &l4W 00 00 00 02 !` stores the four table bytes at `0x782dde`,
+  derives VFC/text-bottom cache state before printable parsing resumes, and
+  the following `!` queues at compact coordinate `0x9001`. Channel stream
+  `ESC &l2V!` scans the table through `0x1280a`, writes y `176`, resets x to
+  left margin `10`, and queues the following `!` at compact coordinate
+  `0xb001`.
+  Evidence:
   [vertical-forms-control.md](vertical-forms-control.md).
 - Transparent and display-function data:
   `ESC &p#X` schedules `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
@@ -620,7 +627,11 @@ Field groups for this index:
   and re-enters printable/control paths; display readers append/report bytes
   without ordinary page-state effects. Transparent bytes can become compact
   text through the same `0xd04a` path. Display-functions are parser/input
-  behavior, not page imaging. Evidence:
+  behavior, not page imaging. Concrete stream `ESC &p2X!!` restores delayed
+  record `80 58 00 02 00 00`, consumes payload bytes `21 21`, routes both
+  through `0xd04a`, and queues the same compact coordinates `0x0001` and
+  `0x0202` as the direct printable `!!` baseline before publication/render.
+  Evidence:
   [transparent-print-data.md](transparent-print-data.md) and
   [display-functions.md](display-functions.md).
 - Raster graphics:
@@ -673,7 +684,12 @@ Field groups for this index:
   id/state at `0x782a94` / `0x782a92`; `0xa904` gives replay frames
   byte-source priority. Stored bytes re-enter the same parser and renderer as
   live bytes. Overlay can add text, transparent data, raster, rule/span
-  payloads before publication. Evidence:
+  payloads before publication. Concrete overlay stream
+  `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X` stores payload `21 0d`;
+  publication replays it before root copy, queues compact text object
+  `00 00 00 00 00 00 00 01 20 00 01`, and lets CR mutate cursor/page state
+  without adding a second visible object.
+  Evidence:
   [macro-data-chain.md](macro-data-chain.md).
 - Status/model side channels:
   `ESC *r#K` and `ESC *s#^` route through `0x12034 -> 0x122be` and

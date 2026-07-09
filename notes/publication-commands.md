@@ -7,6 +7,7 @@ covers:
 - `ESC E`: software reset
 - `FF`: form feed / page eject
 - `ESC &l#A`: page size
+- `ESC &l#P`: page length in lines and default-page branch
 - `ESC &l#O`: orientation
 - `ESC &l#H`: paper source
 - `ESC &l#X` followed by `FF`: copies
@@ -22,6 +23,7 @@ rebuilds are in [reset-default-environment.md](reset-default-environment.md).
 - `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
 - `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`
+- `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`
 - `generated/disasm/ic30_ic13_orientation_handler_010220.lst`
 - `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`
 - `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`
@@ -66,6 +68,11 @@ rebuilds are in [reset-default-environment.md](reset-default-environment.md).
   - `host-fetched copies publication preserves 0xeef0 pool header word`
   - `mixed printable/copies/FF stream publishes copy count`
   - `0xeef0 ESC &l#X stores absolute clamped copy count`
+  - `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+    page code`
+  - `0xf9e8 ESC &l#P stream reaches page-length handler`
+  - `mixed page-length stream refreshes cursor before printable page-record
+    queue`
 
 ## Field Groups
 
@@ -169,7 +176,8 @@ Unknown:
 
 ## Command Streams
 
-The canonical parser-to-publication streams are:
+The canonical parser-to-publication and publication-adjacent layout streams
+are:
 
 - `! ESC E`: handlers `0xd04a`, `0xcc52`; reset publishes queued text, then
   resets environment.
@@ -177,6 +185,10 @@ The canonical parser-to-publication streams are:
   text after line-termination CR behavior.
 - `! ESC &l1A`: handlers `0xd04a`, `0xfc74`; page-size change publishes
   queued text before geometry update.
+- `ESC &l66P!`: handlers `0xf9e8`, `0xd04a`; page length refreshes geometry
+  and cursor state before the following printable queues.
+- `! ESC &l0P`: handlers `0xd04a`, `0xf9e8`; the zero-parameter default-page
+  branch can publish queued text before restoring default page state.
 - `! ESC &l1O`: handlers `0xd04a`, `0x10220`; orientation change publishes
   queued text before landscape update.
 - `! ESC &l2H`: handlers `0xd04a`, `0xef62`; paper-source change publishes
@@ -263,6 +275,13 @@ that belongs to the next page or environment:
   absolute parameter, publishes through `0xf34a` / `0xff1e` on the explicit
   change path, maps accepted page-size selectors to page code `D5`, then
   rewrites page geometry and VFC-derived limits for the next page.
+- Page length `0xf9e8..0xfc52` rewinds the six-byte parser record, takes the
+  absolute line count, converts nonzero counts through current VMI
+  `0x783160`, selects an internal page code from orientation-specific
+  thresholds, sets pending header flag `0x782997`, writes page extent
+  `0x782dba`, and refreshes geometry. Its zero-parameter branch flushes and
+  publishes pending text through `0xf34a` / `0xff1e` before restoring default
+  page length and paper-source output state for following pages.
 - Orientation `0x10220..0x103e6` rewinds the parser record, rejects parameters
   `>= 2` and unchanged orientation, publishes through `0xf34a` / `0xff1e`, then
   writes `0x782da3` and rebuilds orientation-dependent geometry, VMI/HMI, font
@@ -322,6 +341,39 @@ The final layout refresh at `0xfdfe..0xfe32` writes top offset
 `0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`. The return path at
 `0xfe38..0xfe52` clears macro/page state byte `0x782a92` unless it already
 equals `2`.
+
+### Page Length Handler Details
+
+`ESC &l#P` enters `0xf9e8` with the parsed six-byte parameter record still in
+the parser buffer. `0xf9e8..0xfa14` rewinds `0x78299e`, reads record word `+2`,
+converts negative values to absolute values, and reads current VMI
+`0x783160`. If VMI is zero, the handler exits without changing geometry,
+publication state, or cursor placement.
+
+For nonzero line counts, `0xfa26..0xfa48` multiplies current VMI by the line
+count and converts the packed result to a whole-dot page extent. The selector
+ladder at `0xfa48..0xfb18` compares that extent against
+orientation-dependent thresholds: portrait checks `0x782daa`, `0x782dae`,
+`0x782dac`, and `0x782db0`, selecting codes `6`, `2`, `1`, or `5`; landscape
+checks `0x782daa`, `0x782dac`, and `0x782dae`, selecting codes `6`, `1`, or
+`2`. Values beyond all thresholds return without changing page geometry.
+
+The zero-parameter branch at `0xfa62..0xfaa6` is the publication-affecting
+side of this handler. It flushes pending text through `0xf34a`, publishes the
+current root through `0xff1e`, waits through `0x9ac2`, compares current
+paper-source byte `0x782da6` with previous output byte `0x780e8e`, and when
+they differ mirrors `0x782da6` to output byte `0x780e8f` and signals control
+word `0x780e26` through `0x9b5e`.
+
+The shared commit at `0xfb20..0xfb5a` sets pending layout byte
+`0x782997`, brackets the update with `0x15a6` / `0x15ac`, writes internal page
+code `0x782da2`, and either restores default page length through `0xf9ac`
+for the zero branch or writes the computed extent to `0x782dba` for nonzero
+selectors. If default code `0x780e97` is zero, the zero branch falls back to
+page code `2`. The geometry refresh at `0xfb60..0xfc52` rewrites table-derived
+geometry words, top offset `0x782dce`, text-bottom state, margins, and cursor
+state through the same helpers consumed by later printable, raster, rectangle,
+VFC, and publication paths.
 
 ### Orientation Handler Details
 
@@ -402,6 +454,9 @@ published page-root header word `+0x0c`.
 - `0xf0f0` handles FF and publishes the current root through `0xff1e`.
 - `0xfc74` handles page size and publishes the current root before changing
   geometry, then sets pending header flag `0x782997`.
+- `0xf9e8` handles page length. Nonzero values write `0x782dba` and
+  `0x782997` before refreshing geometry; zero publishes pending text before
+  restoring the default page code and paper-source output state.
 - `0x10220` handles orientation and publishes the current root before changing
   orientation and active extents.
 - `0xef62` handles paper source, publishing queued text and then writing
@@ -458,6 +513,12 @@ The command-specific side effects are pinned at the same boundary:
   handler's `0xf34a` / `0xff1e` edge before storing page code `6` and
   recomputing portrait geometry. The addressed variant uses stream chunk
   `0x00d0a000`.
+- `ESC &l66P !` stores page extent `0x782dba = 3300`, selects internal page
+  code `2`, marks pending layout byte `0x782997`, refreshes cursor placement,
+  and queues the following `!` compact object at coordinate `0x9001`.
+- `ESC &l0P` takes the default-page branch: it can publish pending text
+  through `0xff1e`, mirror `0x782da6` to `0x780e8f`, signal `0x780e26`, and
+  restore the default page code from `0x780e97` or fallback `2`.
 - `! ESC &l1O` publishes the compact text object through the orientation
   handler's `0xf34a` / `0xff1e` edge before storing orientation `1` and
   switching to landscape geometry. The addressed variant uses stream chunk
@@ -483,6 +544,9 @@ A byte-stream renderer must preserve:
 
 - publication before reset, page-size, orientation, and paper-source side
   effects mutate the environment;
+- page-length nonzero updates before later placement consumes `0x782dba`,
+  `0x782da2`, and refreshed cursor state, plus page-length zero publishing
+  pending text before restoring default page state;
 - FF publication after line-termination mode has applied CR-style horizontal
   reset when `ESC &k2G` is active;
 - copies state written by `0xeef0` before a later FF publication copies it
@@ -496,7 +560,7 @@ A byte-stream renderer must preserve:
 - `0x1ed84` / `0x1edc6` bridge preservation of compact bucket and context
   slot state;
 - ROM-derived compact row construction through the same render helpers for
-  reset, FF, page-size, orientation, paper-source, and copies.
+  reset, FF, page-size, page-length, orientation, paper-source, and copies.
 
 ## Confidence
 
@@ -504,14 +568,14 @@ High for parser handler order, host-byte draining, page-record storage,
 published pool headers, command side effects, render bridge fields, and render
 entry call order because the claims are backed by handler ranges
 `0xcc52..0xcc98`, `0xf0f0..0xf172`, `0xfc74..0xfe52`,
-`0x10220..0x103e6`, `0xef62..0xf02a`, `0xeef0..0xef38`, publication helper
-`0xff1e..0x10080`, bridge helpers `0x1ed84` / `0x1edc6`, and the named
-byte-stream examples.
+`0xf9e8..0xfc52`, `0x10220..0x103e6`, `0xef62..0xf02a`,
+`0xeef0..0xef38`, publication helper `0xff1e..0x10080`, bridge helpers
+`0x1ed84` / `0x1edc6`, and the named byte-stream examples.
 
 Medium only for byte-stream variants that create a new publication-side field,
-bucket shape, bridge state, or rendered row outside the six command streams
-listed above. Physical printer correlation and engine timing remain outside
-this ROM-internal publication contract.
+bucket shape, bridge state, placement state, or rendered row outside the
+covered command streams listed above. Physical printer correlation and engine
+timing remain outside this ROM-internal publication contract.
 
 ## Remaining Edges
 
@@ -520,7 +584,8 @@ this ROM-internal publication contract.
   Physical-device comparison is outside the current static ROM evidence
   standard and is not an oracle for these rows.
 - No parser-to-publication or publication-to-render ROM middle edge remains for
-  the covered reset, FF, page-size, orientation, paper-source, and copies
-  streams. Additional ROM work should target streams that change page-record
-  fields, command-specific pool-header words, bridge state, or row-construction
-  inputs.
+  the covered reset, FF, page-size, page-length zero/default branch,
+  orientation, paper-source, and copies streams. No parser-to-placement middle
+  edge remains for the covered nonzero page-length stream. Additional ROM work
+  should target streams that change page-record fields, command-specific
+  pool-header words, bridge state, placement state, or row-construction inputs.

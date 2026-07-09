@@ -5291,6 +5291,25 @@ Address-level cluster map:
   pixel-reproduction residual is only FIFO-induced parser stall, `ESC z`
   service scheduling, or a modeled bidirectional host reacting with different
   later bytes, plus external protocol/register naming.
+  Concrete side-channel streams are now part of the route index.
+  `ESC *r1K 0x11` reaches wrapper `0x12034`, setup helper `0x11efe`, and
+  producer `0x122be..0x12326`; the active record word `+2 = 1` and query byte
+  `0x11` make the producer walk literal `33440A\r\n` at `0x12280..0x12288`
+  and enqueue each byte through blocking FIFO helper `0xb090`. The sibling
+  `ESC *s#^ 0x11` reaches the same wrapper from parser mode `6`; both
+  commands reject other query bytes through `0x9ec0` instead of FIFO output.
+  FIFO helper `0xb0c0` appends while count `0x783ed2 < 0x40`, wraps write
+  pointer `0x783ed8` across storage `0x783e92..0x783ed1`, and `0xb090` waits
+  on `0x7801e2` when full. Worker `0xae2c` drains the FIFO through backend
+  selector `0x780e40`: mode `0` writes through `0xaf7c` and can first emit
+  `0xaece` service/status bytes, mode `1` discards queued FIFO bytes, and
+  other nonzero modes send them through `0xafcc -> 0xa1d6`. Status example
+  `0xaece` emits service byte `0x13` when `0x783e61` is set, and otherwise
+  builds base-`0x30` status bytes from `0x780e12`, `0x780e90`, `0x780e2a`,
+  `0x780e0a`, and reason byte `0x783e60`. Evidence is
+  [errors-and-status.md](errors-and-status.md),
+  [host-byte-fetch.md](host-byte-fetch.md), and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - Font-selection cluster:
   designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
   0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and

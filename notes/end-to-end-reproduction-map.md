@@ -937,6 +937,115 @@ Evidence:
   `generated/analysis/ic30_ic13_pcl_command_map.md`, and
   `generated/analysis/ic30_ic13_parser_xrefs.md`.
 
+## Minimal Generic Counted Payload Drain Walkthrough
+
+This is the top-level path for counted `W/w` payloads that use the generic
+drain wrapper rather than a command-family payload owner such as raster,
+transparent text, VFC, or downloaded fonts. It documents binary payload bytes
+that are consumed for parser compatibility but do not directly produce page
+objects.
+
+Representative parser edge:
+
+```text
+stateful command family sees parsed count # and final W/w
+payload bytes follow immediately in the host stream
+```
+
+Parser and delayed-payload scheduling:
+
+- Stateful helpers `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` recognize
+  `W/w` as a counted-payload boundary and schedule wrapper `0x1228a` through
+  `0x121cc`. The local `ESC &d` tokenizer at `0x12622..0x12654` uses the same
+  wrapper for `W/w`.
+- `0x121cc` rewinds the active command-record cursor by six bytes, then writes
+  delayed-payload pending flag `0x782a1a = 1`, saved handler
+  `0x782a1c = 0x1228a`, and saved six-byte command record
+  `0x782a20..0x782a25` only when no delayed payload is already pending.
+- When the parser returns to mode zero, terminal reset path `0x12218` restores
+  the saved record to `0x78299e`, clears pending flag `0x782a1a`, dispatches
+  saved handler `0x1228a` in normal mode, and then clears saved handler
+  longword `0x782a1c`.
+
+Generic drain behavior:
+
+- `0x1228a` rewinds the restored record, reads signed word `+2`, takes the
+  absolute value as the byte count, and calls `0x12328`.
+- `0x12328` consumes that many payload bytes through `0xdace`. The payload
+  reader calls `0xa904`, treats fetch `D7 = -1` as an early negative return,
+  and applies its local `0x1a 0x58` rule before the byte is counted as
+  consumed.
+- Normal generic drains do not echo bytes through `0xe002`, do not call
+  printable handler `0xd04a`, and do not call a command-family payload handler.
+
+Alternate/data mode:
+
+- If `0x12218` dispatches while alternate/data mode `0x782c18` is nonzero, it
+  calls `0x12358` with wrapper argument `0x1228a`.
+- When saved handler `0x782a1c` is already `0x1228a`, `0x12358` calls the same
+  generic drain wrapper. This preserves generic counted-drain behavior for
+  stateful `W/w` payloads even in alternate/data mode.
+- When saved handler differs from `0x1228a`, `0x12358` does not call that
+  saved command-family handler. It rewinds the restored record, returns
+  immediately for nonpositive counts, and for positive counts drains bytes
+  through `0xdace` while echoing each normalized byte through append helper
+  `0xe002`.
+- That alternate/data branch is why raster, transparent-text, and font payload
+  handlers do not run from alternate/data mode unless the parser returns to
+  normal mode before delayed restore.
+
+Output effect:
+
+- The generic `0x1228a -> 0x12328` path has no page-root, page-object,
+  publication, bridge, render, or pixel output. Its effect is byte-stream
+  synchronization: payload bytes are removed from the host stream so the next
+  parser byte starts after the counted payload.
+- The alternate/data non-wrapper branch has no immediate page output either,
+  but it preserves payload bytes in the active macro/data append stream through
+  `0xe002`, so those bytes can become future replay input if that stored data
+  is later executed.
+
+State classification:
+
+- Canonical parser state:
+  parser mode `0x782999`, alternate/data mode `0x782c18`, active six-byte
+  command record at `0x78299e`, and the restored count word at record `+2`.
+- Parser scratch:
+  tokenizer byte/numeric scratch used before `0x121cc`, plus the payload bytes
+  while they are being drained through `0xdace`.
+- Firmware bookkeeping:
+  delayed-payload pending flag `0x782a1a`, saved handler `0x782a1c`, saved
+  command record `0x782a20..0x782a25`, generic drain wrapper `0x1228a`, drain
+  helper `0x12328`, alternate/data dispatcher `0x12358`, and append helper
+  `0xe002`.
+- Canonical page/render state:
+  none. Any later page output must come from parser bytes after the drain or
+  from separately replayed bytes appended through `0xe002`.
+- Hardware/external:
+  the original physical source of the payload bytes before `0xa904`.
+- Unknown:
+  no ROM-local parser middle edge remains for generic counted drains. Remaining
+  work is command-family specific only when a saved handler is not the generic
+  wrapper or when appended alternate/data bytes are later replayed.
+
+Evidence:
+
+- Checked-in explanations:
+  [pcl-parser-core.md](pcl-parser-core.md), especially `Delayed Payload
+  Scheduler` and `Parser Record Semantic Checkpoint`, and
+  [direct-control-codes.md](direct-control-codes.md) for the local `ESC &d`
+  `W/w` tokenizer boundary.
+- Focused listings and extracts:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`, and
+  `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+- Fixture checks:
+  `0x121cc snapshots delayed payload handler and parsed record`,
+  `0x12218 restores delayed parsed record and dispatches saved handler`,
+  `0x1228a consumes absolute delayed payload count without echo`, and
+  `0x12358 direct alternate path echoes positive payload bytes only`.
+
 ## Minimal Ignored/No-Output Parser Walkthrough
 
 This is the smallest top-level ignored/no-output parser spine. It separates
@@ -4340,11 +4449,14 @@ Address-level cluster map:
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,
-  `0x12218`, `0x12358`, normal table `0x112a4`, and alternate table
-  `0x116f6`. Owners are [pcl-parser-core.md](pcl-parser-core.md) and
-  [pcl-command-map.md](pcl-command-map.md). The residual is a new table row
-  or delayed-restore branch that changes saved parser record state or reaches
-  a page-object owner.
+  `0x12218`, `0x1228a`, `0x12328`, `0x12358`, normal table `0x112a4`, and
+  alternate table `0x116f6`. Owners are
+  [pcl-parser-core.md](pcl-parser-core.md) and
+  [pcl-command-map.md](pcl-command-map.md), with
+  `Minimal Generic Counted Payload Drain Walkthrough` covering the no-output
+  `W/w` wrapper path. The residual is a new table row or delayed-restore
+  branch that changes saved parser record state or reaches a page-object
+  owner.
 - Transparent/display-reader cluster:
   transparent data uses `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
   display functions use normal reader `0x12536` or alternate/data reader

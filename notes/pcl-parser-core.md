@@ -332,6 +332,75 @@ It either calls a semantic handler such as `0xd04a`, a command-family handler,
 or `0x12218` delayed-payload restore; appends bytes to alternate/data storage
 through `0xe002`; or resets parser scratch with no page-object producer.
 
+## Inbound Byte Outcome Contract
+
+After fetch wrapper `0xda9a` returns a normalized byte, parser loop `0x11774`
+reduces that byte to one of the following ROM-visible outcomes. This is the
+top-level byte-to-parser-result contract; command-family notes own the later
+state and page-object details after a nonzero handler is called.
+
+- Parser-external service or return: `0x117d2..0x11818` first services latch
+  `0x780e3b` by clearing it and repeatedly calling `0x10c8` with `0x780202`.
+  It then treats macro/page state byte `0x782a92 == 0x63` as a parser return
+  boundary, rewrites the byte to `1`, and exits without routing the current
+  normalized byte through a command handler.
+- Normal printable byte: in mode zero with normal parser table selection
+  (`0x782999 == 0`, `0x782c18 == 0`) and `(D5 & 0x7f) >= 0x20`,
+  `0x1181a..0x11886` calls printable handler `0xd04a(D5)`. The parser loop is
+  only the dispatcher; text placement and page-record production are owned by
+  the printable/text path.
+- Alternate/data printable byte: the same printable range with nonzero
+  alternate/data selector `0x782c18` calls append helper `0xe002(D5)` instead
+  of `0xd04a`. The byte is preserved for the active data stream, macro stream,
+  or replay context, and the parser fetches again without immediate page-state
+  mutation.
+- Table-matched command byte: `0x11840..0x119a4` selects the normal table
+  (`0x112a4` / `0x112a8`) or alternate/data table (`0x116f6` / `0x116fa`),
+  scans six-byte rows, records the matched byte in `0x783196..0x783199` when
+  there is room, and calls the nonzero handler longword at row `+2`. The row's
+  next-mode byte becomes the parser mode in the terminal path.
+- Matched zero-handler row: `0x119a6..0x119f4` is an explicit no-command-output
+  transition for normal-table rows whose handler longword is zero. It resets
+  parser scratch and cursor state, stores the next mode in `0x782999`, and
+  calls delayed-payload restore `0x12218` only when the next mode is zero.
+- Alternate/data zero-handler append row: `0x11930..0x11ab8` handles the
+  corresponding alternate/data blank rows. Before the same terminal reset, it
+  can flush byte scratch through `0x123ae`, flush numeric scratch through
+  `0x123de`, and append the matched byte through `0xe002`.
+- Mode-zero no-match normal fallback: `0x118b2..0x11900` consults selected
+  context byte `0x782ee6 + 16 * 0x782f06 + 5`. Value `1` routes the byte to
+  printable handler `0xd04a(D5)`; any other value ignores the byte and fetches
+  again.
+- Mode-zero no-match alternate/data append: `0x11b82..0x11b8a` appends the
+  byte through `0xe002(D5)` when no alternate/data table row matched and the
+  parser mode is zero.
+- Nonzero-mode callback no-match: `0x11b32..0x11b7e` passes the byte to active
+  callback pointer `0x78299a`. If the callback returns to mode zero, the loop
+  clears parser cursors and pending delayed-payload byte `0x782a1a`; otherwise
+  it keeps the command-family mode active and fetches again.
+
+Field grouping for this parser contract:
+
+- Canonical parser state: mode byte `0x782999`, normal/alternate table slices
+  at `0x112a4..0x116fa`, parser record fields `0x78299e..0x7829a3`, and
+  selected context index `0x782f06`.
+- Parser scratch: byte and numeric scratch cursors `0x782a26` / `0x782a3e`,
+  local matched-byte buffer `0x783196..0x783199`, and delayed-payload pending
+  fields `0x782a1a` / `0x782a1c`.
+- Firmware bookkeeping: active callback pointer `0x78299a`,
+  alternate/data selector `0x782c18`, service latch `0x780e3b`,
+  macro/page state byte `0x782a92`, error/report helper `0x9ec0`, append
+  helper `0xe002`, and delayed restore helper `0x12218`.
+- Canonical page/render state: not written directly by parser loop `0x11774`.
+  Page/image effects begin only after a called semantic handler such as
+  `0xd04a` or a command-family handler mutates the downstream owner state.
+
+Evidence: `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` contains
+the branch ranges listed above;
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md` contains the table
+rows and handler longwords; [pcl-command-map.md](pcl-command-map.md) maps
+those rows to checked-in command-family owner notes.
+
 ## Stateful Parser Helpers
 
 The helper family at `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` handles multi-record

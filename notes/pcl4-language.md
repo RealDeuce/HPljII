@@ -370,6 +370,7 @@ decimal value.
 | Perforation skip off | `ESC &l0L` |
 | Perforation skip on | `ESC &l1L` |
 | HMI in 1/120 inch increments | `ESC &k#H` |
+| Pitch mode compatibility | `ESC &k#S` |
 | VMI in 1/48 inch increments | `ESC &l#C` |
 | Lines per inch | `ESC &l#D` |
 
@@ -681,6 +682,9 @@ Field groups for this index:
   first route boundaries. Selection updates requested fields and maps via
   `0xc580`, `0x13eb8`, `0x144d2`, and `0x14c64`; downloaded
   descriptors/payloads use `0x15d0a`, `0x16c14`, `0x1719c`, and `0x16498`.
+  Pitch-mode `ESC &k#S/s` is routed through handler `0xc390`, which accepts
+  selectors `0`, `2`, and `4`, rewrites synthetic pitch records, and rejoins
+  `0xc89c -> 0xc580` before any later printable output.
   Selected maps affect later printable bytes; downloaded glyphs install
   records that later queue compact objects and render through `0x1effe` /
   `0x1f0d2` / `0x1f1f0` / `0x1f264`. Concrete final-`X` stream

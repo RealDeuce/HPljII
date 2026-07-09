@@ -421,6 +421,28 @@ supporting evidence; the checked-in owner notes are the semantic source of truth
   are `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers under
   `0x1effe`.
 
+  The pending-span path has a concrete page-object form, not just a state
+  side effect. `ESC &d3D ! ESC &d@` sets underline/text-attribute selector
+  byte `0x783185 = 1` through `0x12622`; the intervening printable byte
+  routes through `0xd04a -> 0xd550 -> 0xd824`, and flagged span consumer
+  `0xd8fc` updates pending span state `0x783184..0x78318a` from selected
+  context words `+0x16`, `+0x18`, and `+0x1a`. Final `ESC &d@` reaches
+  `0x12622`, calls `0x12714`, and emits this portrait segment-list object
+  under page-root `+0x1c`:
+
+```text
+00 00 00 00 40 00 00 01 3a 00 03 00 00 12
+```
+
+  Object byte `+0x04 = 0x40` selects segment-list rendering, word `+0x06 = 1`
+  records one six-byte entry, key `0x3a00` locates the span, entry y is `3`,
+  and entry width is `18`. CR handler `0xf02c`, left-margin handler `0xeb58`,
+  and vertical-cursor handler `0xf560` can flush the same pending block through
+  `0xf34a -> 0x12714 -> 0x126e2` before overwriting cursor state. Publication
+  and bridge copy the object through `0xff1e -> 0x1ed84 -> 0x1edc6`; bucket
+  dispatcher `0x1efc2` sends class `0x40` to `0x1f812`, which consumes the
+  six-byte entry and calls `0x1f862` to write counted mask spans.
+
   Evidence is `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,

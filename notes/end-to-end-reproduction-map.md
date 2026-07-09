@@ -3286,6 +3286,15 @@ Publication, bridge, and render:
   `object[5] & 0x03 == 0`. Mode `0` copies literal payload words into the
   destination row; the row contents come from the object payload bytes and the
   ROM writer path, not from an external row comparison.
+- For the object above, the ROM-derived literal row is:
+
+```text
+................####........#####.#.#.#..#.#.#.#
+```
+
+  This row is the direct consequence of payload bytes `f0 0f aa 55`, packed
+  coordinate/key `0x0001`, mode helper `0x1f8da`, and the bridged render root
+  consumed by `0x1efc2 -> 0x1f88e`.
 
 State classification:
 
@@ -3336,7 +3345,8 @@ Evidence:
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
   `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
-  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, plus
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
 ## Minimal Dense Raster Split Walkthrough
 

@@ -5405,6 +5405,29 @@ Address-level cluster map:
   non-replay frame with kind `+0x09 = 4` before publication when the enabled
   record exists, while disabled, missing-record, or retry-flag gates publish
   the base page unchanged.
+
+  Concrete replay effects are now part of the route index. Minimal overlay
+  stream `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X` stores payload
+  `21 0d`; publication replays it before root copy, queues compact one-glyph
+  object prefix `00 00 00 00 00 00 00 01 20 00 01`, and then CR advances
+  cursor/page state without adding a second visible object. Repeated enabled
+  overlay publication keeps the macro record canonical and composes that same
+  replayed text with page-specific selector-7 rule objects such as
+  `00 00 00 00 01 07 88 01 00 0c 00 03 00 00` and
+  `00 00 00 00 01 07 e4 00 00 08 00 04 00 00`. Skip gates are concrete:
+  disabled overlay mode, missing record from `0xe0a4(0x782a94)`, or page-root
+  retry flag `+0x14.0` skip `0xe4f4`, so a base printable/rule page such as
+  rule object `00 00 00 00 01 07 a2 00 00 06 00 02 00 00` publishes
+  unchanged. Stored payload variants prove overlay replay uses ordinary owners:
+  `ESC &p2X!!` routes through transparent restore `0x12452` and queues compact
+  text prefix `00 00 00 00 00 00 00 02 20 00 01 20 02 02`; stored
+  `! ESC *t300R ESC *r0A ESC *b2W c3 3c` reaches delayed raster handler
+  `0x105d0` and queues mode-0 raster object
+  `00 00 00 00 80 00 00 02 00 00 c3 3c`; stored `ESC &a6L!` flushes
+  selector-`0x4000` segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10`. Evidence is
+  [macro-data-chain.md](macro-data-chain.md) and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - VFC cluster:
   `ESC &l#W` uses delayed route
   `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` consumes the table

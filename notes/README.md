@@ -27,7 +27,7 @@ For a concrete host byte stream, the checked-in owner notes are the controlling
 artifact. Generated listings and fixture logs support those notes; they are not
 standalone deliverables.
 
-- Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md), which
+- Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md#owner-summary), which
   documents `0xa904` source priority, data-chain replay, direct host paths, and
   the normalized byte passed to parser wrapper `0xda9a`.
 - Parser state is owned by [pcl-parser-core.md](pcl-parser-core.md): parser
@@ -115,7 +115,7 @@ checked-in ROM model:
    For the compact route through the current spine, start with
    `Inbound Byte Route Matrix` and `Minimal End-To-End Example` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md).
-2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md):
+2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md#owner-summary):
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch.
 3. Classify the parser outcome in
@@ -228,9 +228,9 @@ checked-in ROM model:
   hashes, package markings, interleave order, and rejected order probes.
 - [firmware-startup.md](firmware-startup.md) - first annotated 68000
   reset/startup findings from the executable ROM pair.
-- [host-byte-fetch.md](host-byte-fetch.md) - documented `0xa904` host
-  byte-source multiplexer, direct I/O handshakes, caller semantics, and
-  semantic checkpoint.
+- [host-byte-fetch.md](host-byte-fetch.md#owner-summary) - documented
+  `0xa904` host byte-source multiplexer, direct I/O handshakes, caller
+  semantics, and semantic checkpoint.
 - [pcl-parser-core.md](pcl-parser-core.md) - documented parser byte
   wrapper, tokenizer, dispatch loop, delayed-payload handoff, and semantic
   checkpoint.

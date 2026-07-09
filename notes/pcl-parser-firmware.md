@@ -47,7 +47,7 @@ behavior is:
   normal page-state handler, but it still preserves parser state transitions
   and selected payload boundaries.
 - This file is a trace and address ledger for parser firmware. The canonical
-  behavioral contracts live in [host-byte-fetch.md](host-byte-fetch.md),
+  behavioral contracts live in [host-byte-fetch.md](host-byte-fetch.md#owner-summary),
   [pcl-parser-core.md](pcl-parser-core.md), [pcl-command-map.md](pcl-command-map.md),
   and the command-family owner notes.
 
@@ -57,7 +57,7 @@ row-generation claims belong to the downstream owner notes.
 
 ## Host Byte Fetch Anchor
 
-See [host-byte-fetch.md](host-byte-fetch.md) for the tracked explanation
+See [host-byte-fetch.md](host-byte-fetch.md#owner-summary) for the tracked explanation
 of routine `0x0000a904`.
 
 See [pcl-parser-core.md](pcl-parser-core.md) for the tracked explanation

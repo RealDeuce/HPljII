@@ -52,7 +52,7 @@ standalone deliverables.
   IV families to first parser handlers, representative byte streams,
   page-object bytes or state fields, render routes, and owner notes.
 - Page/image assembly is owned by
-  [page-record-storage.md](page-record-storage.md): current root
+  [page-record-storage.md](page-record-storage.md#owner-summary): current root
   `0x78297a`, compact/raster buckets at root `+0x1c`, rules at `+0x24`,
   fixed-list objects at `+0x28`, context slots at `+0x2c..+0x68`, and
   publication through `0xff1e`.
@@ -150,15 +150,13 @@ checked-in ROM model:
    `Raster And Rectangle Graphics Object Boundary` to connect graphics setup and payload
    commands to page objects and render helpers.
 5. When a command creates visible page content, cross into
-   [page-record-storage.md](page-record-storage.md): compact/raster buckets
-   live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
-   `+0x28`, and context slots under `+0x2c..+0x68`. The shared
-   `Shared Page-Object Contract` in
-   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) is the
+   [page-record-storage.md](page-record-storage.md#owner-summary): compact/raster
+   buckets live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
+   `+0x28`, and context slots under `+0x2c..+0x68`. The shared `Shared Page-Object
+   Contract` in [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) is the
    route index for these common object fields. `Page Versus Band Model` in
-   [firmware-dataflow-model.md](firmware-dataflow-model.md) is the concise
-   explanation of why parsing builds a page-object graph rather than a
-   full-page bitmap.
+   [firmware-dataflow-model.md](firmware-dataflow-model.md) is the concise explanation
+   of why parsing builds a page-object graph rather than a full-page bitmap.
 6. For publication and scheduling, follow `Publication And Page-Control
    Boundary` and `Render Scheduling` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md), then follow
@@ -284,9 +282,9 @@ checked-in ROM model:
   lookup tables, orientation state, page-record storage, active-render,
   bitmap object-dispatch, compact row-copy checkpoints, and raster graphics
   imaging path.
-- [page-record-storage.md](page-record-storage.md) - documented page-root,
-  stream allocator, object-list, publication, and render-record bridge
-  contracts.
+- [page-record-storage.md](page-record-storage.md#owner-summary) - documented
+  page-root, stream allocator, object-list, publication, and render-record
+  bridge contracts.
 - [active-render-scheduler.md](active-render-scheduler.md) - documented
   published-record selection, render-work alternation, wait-object state, and
   band-render scheduler contracts.

@@ -121,33 +121,30 @@ Evidence:
 byte_to_match, next_mode, handler_long
 ```
 
-The alternate/data table keeps the same state transitions but suppresses
-many final handlers. That is consistent with a mode that must still
-parse or collect PCL syntax while deferring normal side effects.
-For matched mode-zero C0 rows with blank handlers, alternate/data mode does
-not treat the byte as a normal control command; it appends the byte through
-`0xe002` after the shared scratch-flush helpers and then rejoins the terminal
-parser reset path. Normal mode-zero blank C0 rows instead reset/finalize
-without page-record output or alternate append.
-Lowercase finals that keep the parser in the same command family are
-reported as chaining forms of the matching uppercase PCL command.
-Rows labeled as parser prefixes are setup/scaffolding entries, not terminal
-imaging commands: the handler records the family transition and leaves the
-final command byte to a later mode. Examples are `ESC`, `ESC &`, `ESC &l`,
-`ESC *c`, and the primary/secondary font family prefixes. Rows labeled as
-font-designation terminals are the `ESC (#A..^` / `ESC )#A..^` family handled
-by `0x120be`; their command-specific effects are documented in
-[symbol-set-selection.md](symbol-set-selection.md), with selected-font context
-and metric consumers in
-[font-context-metrics.md](font-context-metrics.md#owner-summary).
-Map mutation after a selected context is rebuilt is owned by
-[symbol-map-patching.md](symbol-map-patching.md): `0x14f16` only runs after
-`0x14c64` has produced the primary or secondary base map, and its output is
-only visible when later printable bytes consume `0x782f32` or `0x783032`
-through `0xd04a -> 0x1393a`.
-The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
-uppercase `T` has no terminal handler, while lowercase `t` only reaches the
-generic `0x11f4c` rewind used by lowercase chaining rows.
+The alternate/data table keeps the same state transitions but suppresses many final
+handlers. That is consistent with a mode that must still parse or collect PCL syntax
+while deferring normal side effects. For matched mode-zero C0 rows with blank handlers,
+alternate/data mode does not treat the byte as a normal control command; it appends the
+byte through `0xe002` after the shared scratch-flush helpers and then rejoins the
+terminal parser reset path. Normal mode-zero blank C0 rows instead reset/finalize
+without page-record output or alternate append. Lowercase finals that keep the parser in
+the same command family are reported as chaining forms of the matching uppercase PCL
+command. Rows labeled as parser prefixes are setup/scaffolding entries, not terminal
+imaging commands: the handler records the family transition and leaves the final command
+byte to a later mode. Examples are `ESC`, `ESC &`, `ESC &l`, `ESC *c`, and the
+primary/secondary font family prefixes. Rows labeled as font-designation terminals are
+the `ESC (#A..^` / `ESC )#A..^` family handled by `0x120be`; their command-specific
+effects are documented in
+[symbol-set-selection.md](symbol-set-selection.md#owner-summary), with selected-font
+context and metric consumers in
+[font-context-metrics.md](font-context-metrics.md#owner-summary). Map mutation after a
+selected context is rebuilt is owned by
+[symbol-map-patching.md](symbol-map-patching.md): `0x14f16` only runs after `0x14c64`
+has produced the primary or secondary base map, and its output is only visible when
+later printable bytes consume `0x782f32` or `0x783032` through `0xd04a -> 0x1393a`. The
+`ESC &lT/t` table slot is intentionally labeled as unimplemented: normal uppercase `T`
+has no terminal handler, while lowercase `t` only reaches the generic `0x11f4c` rewind
+used by lowercase chaining rows.
 
 Two normal-table rows with blank handlers are parser artifacts rather than
 undocumented imaging commands:
@@ -245,7 +242,7 @@ boundaries:
 - Font selection, symbol sets, font attributes, pitch mode, SO/SI selected
   context switches, metric producer/consumer behavior, and built-in resource
   selection:
-  [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   [symbol-map-patching.md](symbol-map-patching.md),
   [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [built-in-resource-scan.md](built-in-resource-scan.md).
@@ -481,7 +478,7 @@ Normal table `0x112a4`:
   [transparent-print-data.md](transparent-print-data.md),
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
-  [symbol-set-selection.md](symbol-set-selection.md), and
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
   mutate parser scratch, append setup records, or save delayed handlers;
   pixel/page effects begin only when the restored family consumer runs.
@@ -518,7 +515,7 @@ Normal table `0x112a4`:
   `0xc390`, `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`,
   `0x12046`, `0x1205a`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`,
   `0x120be`, `0x15a18`, `0x15a56`, and `0x16df6`.
-  Owners are [symbol-set-selection.md](symbol-set-selection.md),
+  Owners are [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   [symbol-map-patching.md](symbol-map-patching.md),
   [font-context-metrics.md](font-context-metrics.md#owner-summary), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These handlers
@@ -536,13 +533,12 @@ Normal table `0x112a4`:
 
 Alternate/data table `0x116f6`:
 
-- Parser setup and family continuation:
-  `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11f4c`, `0x11fd2`,
-  `0x11fe4`, and `0x11ff6`.
-  Owners are [pcl-parser-core.md](pcl-parser-core.md#owner-summary),
+- Parser setup and family continuation: `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`,
+  `0x11f4c`, `0x11fd2`, `0x11fe4`, and `0x11ff6`. Owners are
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
-  [symbol-set-selection.md](symbol-set-selection.md). In alternate/data mode,
-  these preserve parser syntax, rewind lowercase continuation records, or run
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary). In alternate/data
+  mode, these preserve parser syntax, rewind lowercase continuation records, or run
   setup without the normal immediate page-state side effect.
 - Alternate/data payload and macro exceptions:
   `0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`, `0xdd08`, and `0xcc52`.
@@ -1600,7 +1596,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   field for this stream, but it must not claim ROM-defined pixels after the
   invalid `0x1fe76` table read.
   Owner notes:
-  [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
@@ -2397,7 +2393,7 @@ final `@` runs a numeric table where `3@` is the documented default-font
 command and `@0..@2` are firmware-supported table/copy variants. The
 active selected words later consumed by glyph-map patching are `0x783144`
 and `0x783146`; this path is documented in
-[symbol-set-selection.md](symbol-set-selection.md), with
+[symbol-set-selection.md](symbol-set-selection.md#owner-summary), with
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md` retained as a
 supporting generated table/cross-reference report.
 

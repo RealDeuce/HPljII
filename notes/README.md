@@ -261,7 +261,7 @@ checked-in ROM model:
 - [font-context-metrics.md](font-context-metrics.md#owner-summary) - documented font
   context selection, page-root slot install, glyph maps, and descriptor/span
   metric checkpoints.
-- [symbol-set-selection.md](symbol-set-selection.md) - documented
+- [symbol-set-selection.md](symbol-set-selection.md#owner-summary) - documented
   `ESC (` / `ESC )` symbol-set, final-`@`, and final-`X` paths into
   font-context refresh and glyph-map selection.
 - [symbol-map-patching.md](symbol-map-patching.md) - documented

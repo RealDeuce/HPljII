@@ -16,7 +16,7 @@ Primary evidence:
 - `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`:
   complete extracted patch-table index and byte pairs through final target
   `0x15184`.
-- [symbol-set-selection.md](symbol-set-selection.md):
+- [symbol-set-selection.md](symbol-set-selection.md#owner-summary):
   parser path that writes requested and active symbol words.
 - [font-context-metrics.md](font-context-metrics.md#owner-summary):
   `0x14c64` refresh and map rebuild context.
@@ -243,7 +243,7 @@ Disassembly:
 
 Supporting checked-in notes:
 
-- [symbol-set-selection.md](symbol-set-selection.md)
+- [symbol-set-selection.md](symbol-set-selection.md#owner-summary)
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md)
 - [resource-rom.md](resource-rom.md)

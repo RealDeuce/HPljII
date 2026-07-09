@@ -29,6 +29,79 @@ The generated report
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md` remains supporting
 table/cross-reference evidence. This file is the checked-in behavioral note.
 
+## Owner Summary
+
+This note owns the parsed `ESC (` and `ESC )` symbol/font-designation command
+family. These commands write requested symbol or font-id state, then enter the
+shared font refresh bridge. They do not queue page objects directly. Their
+pixel effect is delayed until later printable bytes consume the selected
+current-font context and character map through `0xd04a -> 0x1393a`.
+
+Primary routes:
+
+- Parser entry:
+  normal `ESC (` uses `0x1201e -> 0x11f26` to append a slot-0 setup record;
+  normal `ESC )` uses `0x12008 -> 0x11efe` to append a slot-1 setup record.
+  Terminal wrapper `0x120be` calls `0x1be22` and then `0xc580`.
+- Ordinary symbol-set finals:
+  `0x1be22` computes
+  `(abs(parameter) << 5) + final_byte - 0x40`, writes `0x782ef4` or
+  `0x782f04`, and sets dirty flags `0x782f2c = 1` and `0x782f2d = 1`.
+- Final `X`:
+  `0x1be22 -> 0x1c066 -> 0x17708` treats the parameter as a font id, restores
+  the prior requested symbol word, and marks dirty value `2`. Successful
+  helper paths select a built-in or inline/downloaded candidate; non-selected
+  exits preserve the prior selected context.
+- Final `@`:
+  `0x1be22 -> 0x1bec8` dispatches through table `0x1bde2`. Parameters `0`,
+  `1`, and `2` copy default/requested symbol words; parameter `3` runs the
+  default-font helper path; other values restore the previous word and return.
+- Refresh and map route:
+  `0xc580` decides whether to call `0x13eb8` and/or `0xc428`. Candidate
+  refresh consumes requested, remembered, and fallback symbol words through
+  `0x156de`; `0x144d2` writes current-font context records, `0x14c64`
+  rebuilds maps, and `0x14f16` applies Roman-8-compatible patch rules.
+- Output route:
+  SI/SO handlers `0xc68a` / `0xc6b8` choose primary or secondary selected
+  slot `0x782f06`. Later printable bytes read the selected context and map,
+  queue compact text, and reach rendering through the font-context owner.
+
+Field groups:
+
+- Canonical parser/request state:
+  synthetic slot records from `0x11f26` / `0x11efe`, active parser cursor
+  `0x78299e`, requested symbol words `0x782ef4` / `0x782f04`, and selected
+  text slot `0x782f06`.
+- Canonical selected state:
+  active symbol words `0x783144` / `0x783146`, current-font contexts
+  `0x782ee6` / `0x782ef6`, rebuilt maps `0x782f32` / `0x783032`, and
+  page-root context slot `0x78297e`.
+- Derived/cache state:
+  remembered symbol words `0x782f08` / `0x782f0a`, fallback/default tables
+  `0x782f0c..0x782f28`, selected-font snapshots `0x783148` / `0x783152`,
+  candidate list counts/cursors `0x78278e..0x7827b4`, active window
+  `0x78287c` / `0x7827b8`, and transient context `0x782992`.
+- Parser scratch:
+  final byte, integer parameter, optional fractional parameter, and slot setup
+  words parsed by `0xdaf0` and consumed by `0x1be22` / `0xc580`.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c` / `0x782f2d`, transient full-root flag `0x78298f`,
+  font-id/default side-effect marker `0x78287b`, and selected candidate
+  helpers `0x7828de` / `0x7828a8`.
+- Unknown/external:
+  the built-in resource window is documented for the listed `0N`, `10U`,
+  `11U`, final-`@`, and final-`X` streams. Cartridge or other absent resource
+  record contents are external data boundaries, but the ROM-local selection
+  addresses remain `0x13eb8`, `0x156de`, `0x17708`, `0x14c64`, and `0x14f16`.
+
+Output effect:
+
+- The command family changes requested symbol/font-id state and derived maps.
+- It does not alter compact text objects already queued on the page.
+- Later printable bytes are the visible consumers: they read the selected map
+  and context through the font-context bridge, then publication/render code
+  turns the resulting compact text objects into pixels.
+
 ## Parser Entry
 
 Normal `ESC (` and `ESC )` setup is in

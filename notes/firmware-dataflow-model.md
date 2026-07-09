@@ -3375,6 +3375,13 @@ Cursor command behavior:
 - Dot-position handlers `0xf48c` and `0xf692` shift the parsed whole-dot
   value into the packed coordinate domain, then commit through `0xf4ca` or
   `0xf6e2`.
+- Shared coordinate helpers `0x104d8`, `0x104fe`, `0x10510`, and
+  `0x10518` define the common packed whole/fraction arithmetic used by these
+  cursor commands, default VMI conversion, rectangle decipoints, and raster
+  gates. Their detailed contract is in
+  [direct-control-codes.md](direct-control-codes.md): helper results are
+  scratch until a caller stores `D7` into canonical fields such as
+  `0x782c8a`, `0x782c8e`, `0x78315c`, `0x783160`, `0x78316a`, or `0x783166`.
 
 Command behavior to page objects:
 

@@ -519,6 +519,36 @@ lowercase chaining across horizontal and vertical handlers. Fixture
 dot-position siblings. The parser-to-page-record fixtures named above then
 carry each converted cursor state through the following printable byte.
 
+Shared coordinate helper boundaries:
+
+- `0x104d8..0x104ee` converts a signed long subunit count into the packed
+  cursor form used by `0x782c8a`, `0x782c8e`, HMI/VMI, rectangle decipoints,
+  and raster origins. It first clamps the input through `0x104f0` to
+  `-0x5ffff..0x5ffff`, divides by `12`, swaps the quotient/remainder into
+  packed whole/fraction order, and normalizes negative remainders by borrowing
+  one whole unit and adding `12` subunits through the `0x10548` fixup.
+- `0x104f0..0x104fc` is the signed clamp helper. Callers supply the absolute
+  clamp limit in `D6`; the helper clamps `D7` to `[-D6, +D6]`.
+- `0x104fe..0x1050e` converts a packed whole/fraction pair back to signed
+  subunits by multiplying the whole word by `12` and adding the fraction word.
+  HT, cursor arithmetic, default line-spacing conversion, and page-layout math
+  consume this form when they need integer subunit counts.
+- `0x10510..0x1054e` is the shared add/subtract helper for packed
+  whole/fraction pairs. Entry `0x10510` negates the second pair before
+  falling into `0x10518`, so callers use it for subtraction. Entry `0x10518`
+  adds whole words, clamps the whole part through `0x104f0` with limit
+  `0x7ffe`, adds fraction words, carries fractions `>= 12` into the whole
+  word, and borrows for negative fractions through the same `0x10548` fixup.
+- `0x10550..0x10560` is a derived projection helper used by later layout
+  code: it shifts its input right by two, multiplies the low word by `12`,
+  swaps the product, and returns the high word in `D7`. Existing consumers use
+  it as derived coordinate/cache math, not as parser state.
+
+The coordinate helpers write no RAM by themselves. Their output becomes
+canonical only when a caller stores the returned packed value into fields such
+as `0x782c8a`, `0x782c8e`, `0x78315c`, `0x783160`, `0x78316a`, or
+`0x783166`; otherwise it is scratch in `D7`.
+
 Cursor commit helper boundaries:
 
 - `0xf39e..0xf414`: `ESC &a#C` rewinds the parsed record, converts the integer

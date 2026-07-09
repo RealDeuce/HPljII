@@ -1694,6 +1694,26 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `vertical-decipoint parser trace feeds page-record queue`,
   `vertical layout parser trace feeds page-record queue`, and
   page-length `ESC &l66P!` and `ESC &l0P` notes in the ledger.
+- Shared packed-coordinate helper contract:
+  - `0x104d8..0x104ee` converts a signed long subunit count into packed
+    whole/fraction form. It clamps through `0x104f0` to
+    `-0x5ffff..0x5ffff`, divides by `12`, swaps quotient/remainder into
+    packed order, and normalizes negative remainders through the `0x10548`
+    borrow path.
+  - `0x104fe..0x1050e` converts packed whole/fraction words back to signed
+    subunits by multiplying the whole word by `12` and adding the fraction.
+  - `0x10510..0x1054e` adds or subtracts packed pairs. Entry `0x10510`
+    negates the second pair, then `0x10518` adds whole words, clamps the
+    whole part to `-0x7ffe..0x7ffe`, carries fractions `>= 12`, and borrows
+    for negative fractions.
+  - `0x10550..0x10560` is derived projection math used by later layout code;
+    it is not a parser record or page object.
+  These helpers write no RAM. Their returned `D7` becomes canonical only when
+  callers store it into cursor/layout fields such as `0x782c8a`, `0x782c8e`,
+  `0x78315c`, `0x783160`, `0x78316a`, or `0x783166`; otherwise it is
+  arithmetic scratch. Evidence:
+  `generated/disasm/ic30_ic13_coordinate_math_0104d8.lst` and
+  [direct-control-codes.md](direct-control-codes.md).
 - Canonical page-size/orientation geometry:
   - `0x782da2`: internal page code written by `ESC &l#A` handler `0xfc74`.
   - `0x782da3`: orientation byte written by `ESC &l#O` handler `0x10220`.

@@ -14,6 +14,55 @@ physical connector/interface naming and timing for the MMIO banks; the byte
 source priority, latch side effects, and parser-visible return values are
 firmware-defined.
 
+## Owner Summary
+
+Concept: `0xa904` is the canonical inbound byte-source owner. It does not
+parse PCL and does not globally normalize `0x1a 0x58`; it selects one source,
+returns one value in `D7`, or returns `D7 = -1` for the immediate gated no-byte
+branch. Parser wrapper `0xda9a`, payload readers such as `0xdace`, `0x12452`,
+`0x105d0`, and `0x168dc`, and macro replay all consume this same return
+channel before applying their own command-family rules.
+
+Primary route:
+
+- Live/ring input: ring state `0x783e54` / `0x783e56` feeds `0xa904`, then
+  parser wrapper `0xda9a` and dispatch loop `0x11774`.
+- Replay input: active frame `0x782d76` feeds `0x9f6a`, returns through
+  `0xa904`, and re-enters the same parser/page-record path as live input.
+- Pushback input: helper `0x9ec0` writes first or second LIFO stacks
+  `0x783e8c` / `0x783e8e` and `0x783e76` / `0x783e78`; `0xa904` consumes
+  those stacks before the ring or direct hardware.
+- Direct hardware input: selector `0x780e40` chooses the short
+  `0x8e01` / `0x8801` / `0x8c01` bank or the long
+  `0xfffee005` / `0xfffee001` / `0xfffee009` bank.
+
+Field groups:
+
+- Canonical byte-source state: first stack, active data-chain frame, second
+  stack, ring count/pointers/bounds, direct selector `0x780e40`, and service
+  gates `0x7821cd`, `0x7821cc`, `0x780e66`, and `0x780e3b`.
+- Derived/cache state: ring free capacity from `0xa6f4`, low-water threshold
+  `0x783e5e`, status-escape cursor `0x783e62`, and direct-mode shadows
+  `0x7828ec`, `0x7828fa`, `0x7828fb`, and `0x780e2e`.
+- Parser scratch: none is owned here; parser scratch begins after a returned
+  byte reaches `0xda9a`, `0x11774`, a delayed payload reader, or a
+  command-family handler.
+- Hardware/external state: physical names and timing for the two direct-MMIO
+  input banks and the bridge/output MMIO registers remain external.
+- Unknown: any data-chain frame byte `+0x09` producer outside observed values
+  `2`, `3`, and `4`, plus manual labels for quiesce/reset branches
+  `0x4218..0x44d2` and `0x61e4..0x6362`.
+
+Output effect:
+
+- `0xa904` does not allocate page objects or pixels. Its reproduction effect is
+  source equivalence: ring bytes, macro replay bytes, pushback bytes, and
+  direct hardware bytes enter downstream parser and imaging owners through the
+  same `D7` channel.
+- Pixel-visible consequences start only when consumers such as `0xd04a`,
+  `0xf02c`, `0x12452`, `0x105d0`, or downloaded-font readers use the returned
+  bytes to update page state or payload objects.
+
 ## High-Level Behavior
 
 `0xa904` chooses the next byte in this order:
@@ -520,7 +569,7 @@ For reproduction, do not normalize `0x1a 0x58` globally at the byte source.
 The byte source returns bytes; each consumer family applies its own local
 control-pair behavior.
 
-## Semantic Checkpoint
+## Detailed Owner Evidence
 
 This cluster is covered as the normalized byte-source boundary, not as a
 physical I/O-board model. The firmware-observable contract is that all parser,

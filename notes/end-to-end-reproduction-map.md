@@ -5067,6 +5067,25 @@ Address-level cluster map:
   selected row-copy helper. The supported stream residual is any later byte
   stream that changes selected context/map, source class, compact selector
   shape, bridge context roots, or compact row-copy helper input.
+  Concrete printable streams are now part of the route index. For `!`, byte
+  `0x21` is fetched through `0xa904`, reaches `0xd04a` as an unmatched
+  mode-zero byte, maps through `0x1393a` under built-in `LINE_PRINTER` to
+  glyph `0x20`, glyph entry `0x015330`, source flag `1`, positioned source
+  x `16`, y `0`, and context slot `0`. `0x12f2e -> 0x1387c` queues short
+  compact object `00 00 00 00 00 00 00 01 20 00 01` under page-root `+0x1c`.
+  Publication copies it through `0xff1e -> 0x1ed84 -> 0x1edc6`; render
+  dispatch `0x1ef6a -> 0x1efc2 -> 0x1effe` selects `0x1f034`, resolver
+  `0x1f354`, and row-copy helper `0x01fa5c`. For `!!`, the same
+  `LINE_PRINTER` HMI and cursor advance place the second glyph at compact
+  coordinate `0x0202` in the same compact object family. The unflagged
+  sibling in `Built-in and downloaded compact text rendering` maps host
+  `0x21` to glyph `0x01`, fixed record `02 03 04 00 00 00 00 80`,
+  source x `22`, y `22`, slot `3`, and the same
+  `0x12f2e -> 0x1387c -> 0x1effe` pipeline. Evidence is
+  `Worked Path: Printable Glyph` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), the concrete
+  two-printable-byte route in [pcl-command-map.md](pcl-command-map.md), and
+  the text renderer section of [page-raster-imaging.md](page-raster-imaging.md).
 - Direct control and placement cluster:
   parser rows dispatch CR/LF/FF/HT/BS/SO/SI to `0xf02c`, `0xf08c`,
   `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, and `0xc68a`; cursor and margin

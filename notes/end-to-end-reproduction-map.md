@@ -4626,9 +4626,24 @@ Address-level cluster map:
   `0x11f96 -> 0x16c14` for nonzero counts. Installed glyphs become page
   objects only after `0x16498` and later printable dispatch through
   `0xd04a -> 0x12f2e`. Owner note is
-  [downloaded-fonts.md](downloaded-fonts.md). Exact residuals are the named
-  compact-helper table/source boundaries in that note, including the
-  unchecked short-compact `0x1fe76` table read above valid index `128`.
+  [downloaded-fonts.md](downloaded-fonts.md). The byte-to-pixel route is:
+  `ESC *c#D/#E/#F` updates current id/character/record bookkeeping through
+  `0x15a56`, `0x15a18`, and `0x16df6`; zero-count `ESC (s0W` /
+  `ESC )s0W` restores through `0x121cc -> 0x12218 -> 0x15d0a` and installs or
+  rejects descriptor/fixed-record state; nonzero `ESC (s#W` / `ESC )s#W`
+  restores through `0x121cc -> 0x12218 -> 0x16c14`; completed character
+  payloads install glyph records through `0x16498`; the following printable
+  byte resolves that state through `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`;
+  publication and pixels then cross `0xff1e -> 0x1ed84 -> 0x1edc6 ->
+  0x1ef6a -> 0x1effe`. Supported visible branches include short compact
+  `0x1fe76`, wide compact `0x1f0d2`, segmented `0x1f1f0`, segmented-wide
+  `0x1f264`, and mixed rule/raster composition with `0x1f446` / `0x1f88e`.
+  Exact residuals are the named compact-helper table/source/count boundaries
+  in `Minimal Downloaded Glyph Boundary Walkthrough`: unchecked short-compact
+  `0x1fe76` table reads above valid index `128`, wrapped width low bytes
+  selecting invalid `0x1f034` targets, span-31 fallback source offset
+  `+0xb50`, and oversized segmented-wide products stopped by the `0x7fff`
+  payload-count cap before `0x16498`.
 - Raster and rectangle cluster:
   rectangle state and rule production run through `0x10898 -> 0x10b80 ->
   0x13386 -> 0x133aa -> 0x1f446`; raster state and encoded rows run through

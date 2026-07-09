@@ -68,6 +68,52 @@ Generated resource extracts are supporting evidence. The checked-in semantic
 contract is the firmware address mapping, field ownership, candidate/glyph
 consumer chain, and explicit continuation boundary above.
 
+### Continuation Decision Rule
+
+The only current resource-byte boundary that changes documented pixels is the
+secondary transparent segment-57 path. A reproducer should handle it in two
+parts:
+
+- Derive rows backed by verified bytes directly from the local resource image.
+  `0x1f354 -> 0x1f1f0` resolves secondary `LINE_PRINTER` glyph `0x5f`,
+  segment `0x39`, source file offset `0x03fe22`, and firmware address
+  `0x0bfe22`. Bytes `0x0bfe22..0x0bffff` are verified `IC32,IC15` data.
+- Stop before claiming fallback rows that need firmware bytes
+  `0x0c0000..0x0c0321`, unless a board, emulator, or gate-array memory-map
+  source supplies those bytes. The mirror, code-pair, and zero-fill
+  continuations are recorded hypotheses, not selected ROM facts.
+
+State ownership at this boundary:
+
+- Canonical resource state: verified `IC32,IC15` bytes through
+  `0x0bffff`, the selected secondary context `0xc00ae122`, glyph table entry
+  `0x5f`, segment number `0x39`, and compact segment object selector
+  `0x2001`.
+- Derived/cache state: file offset `0x03fe22`, firmware source address
+  `0x0bfe22`, verified suffix digest
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`,
+  and the three candidate continuation hashes listed below.
+- Hardware/external state: the actual byte source selected by physical decode
+  for `0x0c0000..0x0c0321`.
+- Unknown: no parser, page-record, bridge, or compact-dispatch edge remains
+  unknown for this path; only the physical resource continuation is unknown.
+
+Output effect:
+
+- The current-band rows that use only the verified suffix are ROM-derived for
+  all three candidate continuation policies.
+- Fallback rows diverge after the verified suffix, so they must remain
+  unresolved until the physical byte source for `0x0c0000..0x0c0321` is known.
+
+Evidence: `tools/probe_resource_window.py --quiet` recomputes the resource and
+firmware hashes from `data/rom_manifest.json` and the ignored local ROM images.
+The same probe verifies suffix length `478`, continuation length `802`,
+candidate first longwords `HEAD`, `0x00800000`, and `0x00000000`, plus scanner
+consequences for mirror, code-pair, and zero-fill policies. The checked-in
+walkthrough is `Minimal Secondary Segment-57 Boundary Walkthrough` in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), with the
+command-family route in [transparent-print-data.md](transparent-print-data.md).
+
 ## Header
 
 The generated header probe

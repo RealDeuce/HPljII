@@ -182,6 +182,96 @@ the fields consumed by `0x1ef6a`: bucket root `+0x18` by `0x1efc2`, rule root
 `+0x1c` by `0x1f446`, fixed-list root `+0x20` by `0x1f756`, and context slots
 `+0x24..+0x60` by compact-glyph and segment renderers.
 
+## Scheduler To Renderer Ownership
+
+This checkpoint joins the scheduler state above to the page-object and bitmap
+dispatch documentation. The scheduler owns selection, work-record choice, and
+band pacing. The renderer owns object interpretation and pixel writes after
+the active record has reached `0x1ef6a`.
+
+The pixel-affecting handoff is:
+
+- Published source selection: `0xff1e` leaves the published pool head in
+  `0x780ea6`; `0x7ec6..0x7f90` and `0x7722..0x779a` move a selected pool
+  record into `0x780eaa`; `0x1eb32..0x1eb50` copies it to active source
+  `0x780eae`.
+- Work-record selection: `0x1ecd6..0x1ed76` selects `0x7820c4` or
+  `0x782128`, writes the chosen pointer to `0x783a18`, and calls `0x1ed84`.
+- Root bridge: `0x1ed84` copies source header words into the selected work
+  record, and `0x1edc6` copies source root `+0x1c` to render `+0x18`,
+  source root `+0x24` to render `+0x1c`, source root `+0x28` to render
+  `+0x20`, and source context slots `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
+- Band dispatch: `0x1eba4..0x1ecd2` uses render work `+0x10` as the active
+  band word. Only the capacity-satisfied branch calls `0x1ef6a`; wait,
+  cleanup, stale-work, and throttle exits do not interpret page objects.
+- Renderer input: `0x1ef6a` derives current-band caches through `0x1ef86`,
+  then dispatches render `+0x18` through `0x1efc2`, render `+0x1c` through
+  `0x1f446`, and render `+0x20` through `0x1f756`.
+
+Field ownership after this handoff:
+
+- Canonical page/image state: source roots `+0x1c`, `+0x24`, `+0x28`, and
+  `+0x2c..+0x68` before `0x1edc6`; render roots `+0x18`, `+0x1c`, `+0x20`,
+  and `+0x24..+0x60` after `0x1edc6`.
+- Canonical scheduler state: pool cursors `0x780ea6`, `0x780eaa`,
+  `0x780eae`, and `0x780eb2`; render-work selector bytes `0x7820bc` and
+  `0x7820c0`; active render pointer `0x783a18`; active band word
+  render `+0x10`.
+- Derived/cache render state: `0x783a20`, `0x783a22`, `0x783a28`,
+  `0x783a1c`, and `0x7839f8..`, all written after the work record has been
+  selected and before or during object dispatch.
+- Firmware bookkeeping: throttle/progress word render `+0x0e`, active flags
+  `0x780ea4` and `0x780ea5`, wait object `0x780182`, and the MMIO-facing
+  status latches that can delay or wake the next band call.
+- Parser scratch: none. Parser-family scratch has already been converted into
+  page-record objects before `0xff1e` publication.
+
+Output effect:
+
+- The scheduler decides which published page/control record reaches the
+  bitmap renderer, which of the two render work records receives the copied
+  roots, and which band word is presented to `0x1ef6a`.
+- The scheduler does not choose compact-glyph, segment-list, encoded-raster,
+  rule, or fixed-list subrenderers. Those choices are made from object fields
+  under render roots `+0x18`, `+0x1c`, and `+0x20`, as documented in
+  [page-raster-imaging.md](page-raster-imaging.md) under
+  `Bitmap Object Dispatch Semantic Checkpoint`.
+- The storage-side producer of those roots is documented in
+  [page-record-storage.md](page-record-storage.md) under
+  `Mixed Page Composition Checkpoint`: compact text/downloaded glyphs,
+  portrait spans, and encoded raster rows use source root `+0x1c`;
+  rectangle/rule objects use source root `+0x24`; fixed-width and landscape
+  span objects use source root `+0x28`.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst` for source-root
+  publication.
+- `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst` for
+  `0x780eaa -> 0x780eae`, render-work selection, active-loop branch
+  predicates, and band advancement.
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst` for
+  the bridge fields copied by `0x1ed84` and `0x1edc6`.
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` for the first
+  renderer consumers after scheduler handoff.
+- Fixtures `0x1eb2a/0x1ecd6 selects published record for render entry`,
+  `0x1eba4/0x1ef6a active render loop advances or yields bands`, and
+  `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+  order` for the selected-record, band-loop, and renderer-call-order
+  branches.
+
+Unresolved middle edges:
+
+- No ROM-local middle edge remains between `0xff1e` publication and
+  `0x1ef6a` object dispatch for the documented roots, work-record selection,
+  or scheduler-produced band word.
+- Remaining scheduler uncertainty is hardware/external: the MMIO and
+  wait-object events that pace when the next documented band call occurs.
+  Those events can change time and readiness, but they do not define another
+  page-object class unless they mutate one of the ROM-visible fields listed
+  above.
+
 ## Writers
 
 - `0xff1e` publishes state byte `+4 = 2`, writes source root longword to

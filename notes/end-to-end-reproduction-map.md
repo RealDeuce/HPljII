@@ -5249,7 +5249,27 @@ Address-level cluster map:
   `Minimal Page/Font Scheduler Handoff Walkthrough`. This cluster produces no
   direct pixels; residuals are physical optional-window contents
   `0x200000..0x3ffffe` / `0x400000..0x5ffffe` and board-level names for
-  `$8000.14/.15`.
+  `$8000.14/.15`. Concrete scheduler exits are now part of the route index.
+  Unchanged optional-window predicates run `0x19fb8(0)`, refresh through
+  `0x1b04c`, and return `D7 = 1`. The status-return branch writes
+  `0x780e8d`, raises mask `0x00000200` through
+  `0x9bee(0x780e2e, 0x00000200)`, calls `0x19fb8(predicate)`, and returns
+  `D7 = 0`. Changed-window exits call `0x1ba92`, `0x178fa`, `0x19d9c`,
+  `0x1a4fa`, and `0x1a900` before returning `D7 = 1`; later pixels can
+  change only when font designation, downloaded-font lookup, printable text,
+  publication, or rendering consumes the changed candidate/context state.
+  Canonical state is resource-window table `0x7828b6..0x7828dd` plus status
+  root `0x780e2e`; derived/cache state is scan pointer/limit state
+  `0x782884` / `0x78288c` / `0x782890` and candidate windows; parser scratch
+  is local predicate bytes `A6-0x29` / `A6-0x2a`; firmware bookkeeping is
+  current downloaded-font records `0x782640..0x782776`, candidate lists, dirty
+  bytes `0x782f2c` / `0x782f2d`, and caller-specific handling of `D7`.
+  Evidence is [page-font-scheduler.md](page-font-scheduler.md) and fixtures
+  `0x19dd2 optional-window change composes refresh helpers`,
+  `0x19dd2 modeled unchanged and status branch exits`,
+  `0x447a/0x4760 consume scheduler return differently`,
+  `0xbb0a external-ready teardown ignores scheduler return`, and
+  `0x1a2e4 font scan ignores scheduler return`.
 - Downloaded-font cluster:
   font control uses `0x15a56`, `0x15a18`, and `0x16df6`; delayed `W`
   payloads use `0x11f96 -> 0x15d0a` for count zero and

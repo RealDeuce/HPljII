@@ -26,6 +26,122 @@ Evidence:
   - `0x41a HEAD scanner would duplicate records under simple resource mirror`
   - `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
 
+Status: composed for parser dispatch through transparent payload consumption,
+normal text/fixed-space routing, compact page-record output, and the secondary
+segmented render boundary. The detailed byte-stream fixtures below preserve the
+low-level ledger; this owner summary is the canonical semantic model for this
+command family.
+
+## Owner Summary
+
+Concept: transparent print data is a counted byte-stream splice, not an opaque
+binary skip. `ESC &p#X` reaches `0x11f5a`, which schedules delayed reader
+`0x12452` through `0x121cc`; restore path `0x12218` reopens the saved six-byte
+record and calls the reader in normal parser mode. `0x12452` consumes raw bytes
+through `0xa904`, normalizes local `0x1a 0x58` to `0x7f`, routes each payload
+value through `0xd04a` or `0xd0f0`, and then leaves page-record construction,
+bridge, and rendering to the ordinary text path.
+
+Primary route:
+
+- Parser command: `ESC &p#X -> 0x11f5a`.
+- Delayed record: `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`.
+- Printable output: `0x12452 -> 0xd04a -> 0x1393a -> 0x12f2e ->
+  0x1387c -> 0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+- Fixed-space/control output: `0x12452 -> 0xd0f0`, which can either advance
+  spacing only in the flagged built-in path or queue substituted host-space
+  text in the documented unflagged fixed-record path.
+
+Field groups:
+
+- Canonical parser state: command record `+2` byte count, live command-record
+  cursor `0x78299e`, delayed pending flag `0x782a1a`, delayed handler pointer
+  `0x782a1c`, and saved command record `0x782a20..0x782a25`.
+- Canonical text/page state: selected context slot `0x782f06`, selected C0
+  filter byte `0x782eea + 0x10 * slot`, fallback high-control filter byte
+  `0x782efa`, high-character flags `0x783132` / `0x783133`, text cursor
+  `0x782c8a`, and downstream page-record roots consumed by `0x12f2e`,
+  `0x1387c`, and `0xff1e`.
+- Derived/cache state: local filter word `A6-2`, normalized payload value
+  `D5`, selected-slot scale result from `0x332ee`, text source scratch
+  `0x782d7e`, compact coordinates such as `0x0001` and `0x0604`, and renderer
+  segment/bucket caches.
+- Parser scratch: fetched payload bytes from `0xa904`, local payload count
+  `D4`, and the temporary `0x1a` probe byte.
+- Firmware bookkeeping: `0xd99a` side effect for local `0x1a 0x58`
+  normalization and the alternate/data restore redirect
+  `0x1226e..0x1227e -> 0x12358(0x1228a)`.
+- Hardware/external state: secondary segment-57 fallback rows require bytes
+  from firmware `0x0c0000..0x0c0321` after verified resource suffix
+  `0x0bfe22..0x0bffff`.
+- Unknown: manual-facing names for the filtering/context bytes
+  `0x782eea + 0x10 * slot`, `0x782efa`, `0x783132`, and `0x783133`.
+
+Writers:
+
+- `0x121cc..0x12210` writes the delayed snapshot.
+- `0x12218..0x12264` restores the saved command record and calls the delayed
+  handler in normal parser mode.
+- `0x1226e..0x1227e` redirects restored delayed payloads through
+  `0x12358(0x1228a)` when alternate/data flag `0x782c18` is set.
+- `0x14d3a..0x14d7e` writes high-character flags `0x783132` and `0x783133`
+  during primary or secondary font/map activation.
+- `0x1c604`, `0x1ceea`, and `0x1e9fc` write primary selected-context filter
+  byte `0x782eea` from font/sample-page setup paths.
+- `0x12452..0x12534` decrements payload count `D4`, applies the local probe,
+  and selects `0xd04a` or `0xd0f0`.
+- `0xd04a` / `0xd824` write compact page-record text objects.
+- `0xd0f0` writes the source object for substituted host space; the flagged
+  built-in path clears source `+4` before `0xd550`, while the unflagged
+  fixed-record path continues through `0xd140` / `0xd3b2`.
+
+Readers and consumers:
+
+- `0xa904` supplies transparent payload bytes.
+- `0x12452` reads command record `+2`, selected-context C0 filter state,
+  fallback high-control filter state, high-character flags, and payload bytes.
+- `0xd04a` / `0x1393a` consume the routed printable value, current font/map
+  context, source record, and cursor state.
+- `0xd0f0` consumes filtered control/high-control bytes as substituted host
+  space under the current source class.
+- `0x12f2e`, `0x1387c`, `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a` consume
+  queued text objects for publication, bridge, and compact text rendering.
+
+Output effect:
+
+- Transparent payload bytes are not parsed as commands while the count is
+  active.
+- `0x1a 0x58` consumes two host bytes and contributes routed value `0x7f`;
+  `0x1a xx` with `xx != 0x58` contributes `xx`.
+- Printable payload values use the same compact text object and render path as
+  normal printable host bytes.
+- Default-filtered C0 and `0x80..0x9f` values enter `0xd0f0`. In the flagged
+  built-in path they advance spacing without compact glyph entries; in the
+  unflagged fixed-record path the substituted host space can queue a compact
+  glyph entry.
+- Nonzero filtered C0 and `0x80..0x9f` values enter `0xd04a` and become normal
+  mapped text entries.
+- Secondary-context high-control bytes use the same `0x12452` decision point
+  after `SO`; the documented `SO ESC &p3X!\x80!` path reaches a segmented
+  compact object and the exact external resource boundary below.
+
+Evidence strength:
+
+- The delayed payload boundary is supported by disassembly
+  `0x11f5a..0x11f6c`, `0x121cc..0x12210`, and `0x12218..0x1227e`.
+- Probe handling and both filter polarities are supported by
+  `0x12452..0x12534`.
+- Printable and fixed-space page effects are supported by the documented
+  downstream paths through `0xd04a`, `0xd0f0`, `0xd550`, `0xd140`, `0xd3b2`,
+  `0x12f2e`, and `0x1387c`, plus the byte-stream fixtures listed above.
+- The remaining middle edge is not parser routing, page-record storage,
+  bridge, or compact-render arithmetic. It is the physical/resource-window
+  byte source for firmware range `0x0c0000..0x0c0321` in the secondary
+  segment-57 fallback rows. The ROM path reaches that range through
+  `0x1f354` and `0x1f1f0` with glyph `0x5f`, segment `0x39`, file source
+  `0x03fe22`, firmware source `0x0bfe22`, and required read window
+  `0x0bfe22..0x0c0321`.
+
 ## Command Boundary
 
 `ESC &p#X` reaches handler `0x11f5a`. The handler is only an arming stub:
@@ -535,114 +651,6 @@ by `$8000.14` / `$8000.15`, using `0x200000..0x3ffffe` and
 paths do not supply a ROM-only answer for `0x0c0000`; they instead prove that
 the segment-57 read falls inside the built-in resource scan range but beyond
 the verified `IC32,IC15` pair.
-
-## Semantic Composition
-
-Concept: transparent print data is a counted byte-stream splice, not a binary
-skip. Handler `0x11f5a` schedules the delayed payload reader, `0x12452`
-normalizes and classifies each byte, `0xd04a` emits visible text objects, and
-`0xd0f0` substitutes host space before following the current source class:
-flagged built-ins advance cursor-only, while unflagged fixed records can queue
-compact text objects.
-
-Field groups:
-
-- Canonical: command record `+2` byte count and text cursor `0x782c8a`.
-- Derived/cache: selected-slot C0 filter byte at
-  `0x782eea + 0x10 * 0x782f06`, fallback high-control filter byte `0x782efa`,
-  high-character/symbol-set flags `0x783132`/`0x783133`, and compact coords
-  such as `0x0001` and `0x0604`.
-- Parser scratch: delayed fields `0x782a1a`, `0x782a1c`, and
-  `0x782a20..0x782a25`.
-- Firmware bookkeeping: local filtering word at `A6-2`.
-- Hardware/external state: secondary segment-57 fallback rows require
-  resource-window bytes from `0x0c0000..0x0c0321` after the verified resource
-  suffix `0x0bfe22..0x0bffff`.
-- Unknown: manual-facing names for the filtering/context bytes remain unknown;
-  no ROM-local parser, payload, page-record, bridge, or compact renderer edge
-  is unknown for the covered primary transparent-data streams.
-
-Writers:
-
-- `0x121cc..0x12210` writes the delayed snapshot.
-- `0x12218..0x12264` restores the saved command record and directly calls the
-  delayed handler in normal parser mode.
-- `0x1226e..0x1227e` redirects restored delayed payloads through
-  `0x12358(0x1228a)` when alternate/data flag `0x782c18` is set.
-- `0x14d3a..0x14d7e` writes high-character flags `0x783132` and `0x783133`
-  while activating the primary or secondary font/map context.
-- `0x1c604`, `0x1ceea`, and `0x1e9fc` write primary selected-context filter
-  byte `0x782eea` from font/sample-page context setup paths.
-- `0x12452..0x12534` decrements the payload count and selects `0xd04a` or
-  `0xd0f0`.
-- `0xd04a`/`0xd824` write compact page-record text objects.
-- `0xd0f0` writes the source object for host space. In the flagged built-in
-  path it clears source `+4` before `0xd550` advances spacing; in the covered
-  unflagged path it continues through `0xd140` / `0xd3b2` and queues the
-  substituted host-space source.
-
-Readers/consumers:
-
-- `0xa904` supplies transparent payload bytes.
-- `0x12452` reads command record `+2`, selected-context C0 filter state,
-  fallback high-control filter state, high-character flags, and payload bytes.
-- `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a` consume the page-record result
-  for visible text output.
-
-Output effect:
-
-- Printable transparent bytes produce the same compact text objects and rows as
-  normal printable host bytes.
-- Default-filtered C0 and `0x80..0x9f` transparent bytes enter `0xd0f0`. In
-  the flagged built-in fixture they advance cursor spacing without compact
-  glyph entries; in the unflagged fixed-record fixture, the substituted host
-  space queues a compact glyph entry.
-- Nonzero filtered C0 and `0x80..0x9f` transparent bytes route through `0xd04a`
-  and become normal compact text entries after symbol-set mapping.
-- Secondary-context high-control bytes follow the same `0x12452` route decision
-  after SO. The `SO ESC &p3X!\x80!` fixture exercises the downstream
-  page-record form where the mapped glyph uses a segmented object rather than a
-  short compact object.
-- A non-`0x58` byte after `0x1a` is not lost and does not route as `0x1a`; it is
-  the payload value consumed by `0xd04a` or `0xd0f0`.
-
-Confidence: high for the delayed payload boundary because
-`0x11f5a..0x11f6c`, `0x121cc..0x12210`, and `0x12218..0x1227e` explicitly show
-the handler pointer, saved command record, normal restore call, and
-alternate/data restore redirect. High for transparent probe handling and both
-filtering polarities because `0x12452..0x12534` contains the counted loop,
-`0x1a 0x58` replacement, `-1` exit, C0 filter, high-control filter, and
-`0xd04a` fallback. High for printable and fixed-space page effects where they
-flow through already documented `0xd04a`, `0xd0f0`, `0xd550`, and page-record
-queue paths. Fixtures named above exercise those branches against concrete
-byte streams and page-record forms; they are not an external rendered-output
-oracle. The secondary segmented fixtures identify the first source-read
-boundary at bucket `456`, not a physical continuation policy.
-
-Unresolved middle edges:
-
-- `0x124f8..0x1252a`: high-control nonzero filtering is now page-visible for a
-  short primary bucket (`0x80`), interior primary samples (`0x81`, `0x88`,
-  `0x90`, and `0x97`), two primary bucket-crossing glyphs (`0x98` and
-  top-of-range `0x9f`), and a secondary segmented page-record boundary
-  (`SO ESC &p3X!\x80!`). The remaining high-control edge is the secondary
-  segment-57 fallback-row physical/resource-window source interpretation at
-  bucket `456`.
-  The compact renderer path is disassembly-backed through `0x1f354` and
-  `0x1f1f0`: glyph `0x5f`, segment `0x39`, file source `0x03fe22`, firmware
-  source `0x0bfe22`, and required byte range `0x0bfe22..0x0c0321`. Only the
-  first `478` bytes are inside the verified `IC32,IC15` resource-pair image.
-  The current-band rows are pinned across mirror, code-pair, and zero-fill
-  continuation policies; only the fallback rows diverge. It is not primary
-  route polarity, sampled primary interior values, or the renderable secondary
-  prefix through bucket `448`. It is also not cartridge-window discovery:
-  disassembly separates the built-in scan range `0x080000..0x0ffffe` from the
-  optional cartridge windows at `0x200000..0x5ffffe`. The scanner fixtures
-  further split the physical hypotheses: a full resource mirror would expose a
-  second `HEAD` chain and `48` records to `0x41a`, while code-pair and
-  zero-fill continuations expose non-`HEAD` markers at offset `0x40000`, keep a
-  single `HEAD` chain, and walk the same `24` records. Startup checksum
-  coverage also stops at `0x0bffff`, before the fallback-row continuation.
 
 ## Reproduction Contract
 

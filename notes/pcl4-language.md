@@ -746,7 +746,16 @@ Field groups for this index:
   descriptors/payloads use `0x15d0a`, `0x16c14`, `0x1719c`, and `0x16498`.
   Pitch-mode `ESC &k#S/s` is routed through handler `0xc390`, which accepts
   selectors `0`, `2`, and `4`, rewrites synthetic pitch records, and rejoins
-  `0xc89c -> 0xc580` before any later printable output.
+  `0xc89c -> 0xc580` before any later printable output. SO/SI are the
+  control-code bridge into those selected font slots: SO handler `0xc6b8`
+  calls `0xc428(1)` / `0xc4fc`, installs page-root context slot `1`, and sets
+  selected slot `0x782f06 = 1`; SI handler `0xc68a` does the same for slot
+  `0`. Composed primary stream `ESC (s0p10h12v0s0b3T SI !!` writes primary
+  context `0x782ee6` and map `0x782f32` before the following printables queue
+  through `0xd04a`. Composed secondary stream
+  `ESC )s0p16h8v0s0b0T SO !!` writes secondary context `0x782ef6`, map
+  `0x783032`, and then queues SO-selected compact rows from page-root slot
+  `1`.
   Font-control rows in the `ESC *c` family are state/resource controls:
   `ESC *c#D` reaches `0x15a56` and writes current downloaded-font id
   `0x782f2e`, `ESC *c#E` reaches `0x15a18` and writes current character word

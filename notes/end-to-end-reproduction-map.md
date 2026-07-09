@@ -5376,7 +5376,13 @@ Address-level cluster map:
   `ESC (s...T` / `ESC )s...T` write request fields through lowercase writers
   `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and final `T` writer
   `0xc7e0`; common refresh `0xc580` calls `0x13eb8`, candidate filtering,
-  `0x144d2` current-context install, and `0x14c64` map rebuild. Symbol-set
+  `0x144d2` current-context install, and `0x14c64` map rebuild. Pitch-mode
+  stream `ESC &k#S/s` reaches handler `0xc390`, accepts selectors `0`, `2`,
+  and `4`, rewrites synthetic pitch records for `10.0000`, `16.6600`, or
+  `12.0000`, and rejoins `0xc89c -> 0xc580`; other selectors exit through
+  `0xc420` without a font refresh. It draws only when later printable bytes
+  consume the selected context/map through the same `0xd04a -> 0x1393a ->
+  0x12f2e` path. Symbol-set
   finals through `0x120be -> 0x1be22` rewind parser record `0x78299e` and,
   for ordinary final bytes, compute requested symbol word
   `(abs(parameter) << 5) + final - 0x40`, writing slot `0` at `0x782ef4` or
@@ -5412,7 +5418,11 @@ Address-level cluster map:
   primary `ESC (7X!!` can render from prior context `0xc008004c` with prefix
   `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and secondary
   `ESC )8X SO !!` can render from prior context `0xc40ad87a` with prefix
-  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`. Evidence is
+  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`. Pitch-mode evidence is the
+  `Pitch Mode Command` section of
+  [font-context-metrics.md](font-context-metrics.md) and `Worked Path: Pitch
+  Mode To Font Refresh` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). Evidence is
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
   and the font-selection owner notes cited above.
 - Page/font scheduler handoff cluster:

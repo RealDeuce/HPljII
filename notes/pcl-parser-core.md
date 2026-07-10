@@ -776,14 +776,60 @@ record when the flag was clear. A second arming call while a delayed payload is
 already pending therefore does not replace the saved handler or saved six-byte
 record.
 
-Known scheduler callers:
+Delayed-payload caller matrix:
 
-- `0x11f82` schedules raster transfer handler `0x105d0`.
-- `0x11f96` schedules font descriptor/setup handler `0x15d0a` when the count in the
-  previous record is zero.
-- `0x11f96` schedules downloaded font/character handler `0x16c14` when that count is
-  nonzero.
-- The stateful helpers schedule wrapper `0x1228a` for generic counted payloads.
+- `ESC &p#X/x` transparent print data:
+  arming stub `0x11f5a`, restored handler `0x12452`, owner
+  [transparent-print-data.md](transparent-print-data.md). The restored
+  handler consumes counted bytes through the transparent reader, then routes
+  accepted bytes to fixed-space/control handling or printable text output
+  through `0xd04a` / `0xd0f0`.
+- `ESC &l#W/w` VFC table load:
+  arming stub `0x11f6e`, restored handler `0x12cfe`, owner
+  [vertical-forms-control.md](vertical-forms-control.md). The restored
+  handler writes VFC table and bottom/cache fields; it produces no immediate
+  pixels. Later `ESC &l#V` and printable output consume the table state.
+- `ESC *b#W/w` raster transfer:
+  arming stub `0x11f82`, restored handler `0x105d0`, owner
+  [raster-graphics.md](raster-graphics.md). The restored handler consumes
+  raster payload bytes, applies transfer gates/caps, and queues raster objects
+  through `0x13070 -> 0x13250`.
+- `ESC (s#W/w`, `ESC )s#W/w`, count zero:
+  arming stub `0x11f96`, restored handler `0x15d0a`, owner
+  [downloaded-fonts.md](downloaded-fonts.md). The restored handler
+  interprets descriptor/current-record data and updates downloaded-resource
+  state used by later printable glyph output.
+- `ESC (s#W/w`, `ESC )s#W/w`, nonzero count:
+  arming stub `0x11f96`, restored handler `0x16c14`, owner
+  [downloaded-fonts.md](downloaded-fonts.md). The restored handler installs
+  font/resource/character payload data; visible output appears only after
+  later font selection and printable bytes.
+- Generic stateful-helper `W/w` payload:
+  arming stubs `0x11ba6`, `0x11c6c`, `0x11d0c`, or `0x11dd2` pass wrapper
+  `0x1228a` through `0x121cc`; restored handler `0x1228a`, owner this note.
+  The restored handler drains `abs(record[+2])` bytes through
+  `0x12328` / `0xdace`; no page object is produced.
+
+State grouping at this delayed-payload boundary:
+
+- Canonical parser state:
+  live command-record cursor `0x78299e`, pending flag `0x782a1a`, saved
+  handler `0x782a1c`, saved record `0x782a20..0x782a25`, and alternate/data
+  selector `0x782c18`.
+- Parser scratch:
+  the matched command family/final bytes and the live six-byte record word
+  `+2` that supplies the payload count.
+- Firmware bookkeeping:
+  scheduler `0x121cc`, restore helper `0x12218`, generic drain
+  `0x1228a -> 0x12328`, and alternate/data redirect `0x12358`.
+- Canonical page/render state:
+  not written by `0x121cc` or `0x12218`. Page, font, VFC, raster, or text
+  effects begin in the restored family handler named above.
+- Unknown:
+  no ROM-local caller/consumer gap remains for the listed delayed-payload
+  families at the scheduler boundary. Any remaining unknown belongs to the
+  downstream owner note for that family or to a hardware/external boundary
+  named there.
 
 `0x12218` restores and dispatches the saved payload. If `0x782a1a != 1`, it returns.
 Otherwise it clears the pending flag, copies the saved six-byte record to the current

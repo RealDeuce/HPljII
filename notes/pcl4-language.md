@@ -1001,6 +1001,20 @@ Field groups for this index:
   Evidence:
   [rectangle-graphics.md](rectangle-graphics.md) and
   [page-raster-imaging.md](page-raster-imaging.md).
+- Direct margin and vertical-placement controls: manual `ESC 9` reaches handler
+  `0xe9ba`, clears left margin `0x782dd6`, copies page width `0x782db8` into right
+  margin `0x782dda`, and clears fractional margin companion `0x782ddc`. Its page effect
+  is delayed until a later consumer such as CR `0xf02c`, HT `0xf1cc`, printable text
+  `0xd04a`, rectangle setup, or raster-start placement reads the updated limits. Manual
+  `ESC =` reaches handler `0xf176`, ensures page root `0x10084`, flushes pending
+  text/span state through `0xf34a`, converts VMI `0x783160` through `0x104fe` /
+  `0x104d8` / `0x10518`, advances vertical cursor `0x782c8e` by half the current VMI,
+  then clears pending page-eject byte `0x782a6d`. The documented visible streams are
+  `ESC 9 CR !` and `ESC = !`, where later handlers consume the margin or vertical-cursor
+  state before queueing compact text through `0x12f2e`. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#owner-summary),
+  [pcl-command-map.md](pcl-command-map.md), and
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#supported-stream-entry-points).
 - Font selection and downloaded fonts:
   primary/secondary setup `0x1201e` / `0x12008`, designation terminal
   `0x120be`, attribute wrappers around `0xc930`, `0xc89c`, `0xc6ec`,

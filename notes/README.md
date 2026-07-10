@@ -42,12 +42,19 @@ standalone deliverables.
   [pcl-command-map.md](pcl-command-map.md#owner-summary).
   Individual command families then move to owner notes such as
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
+  [publication-commands.md](publication-commands.md#owner-summary),
+  [display-functions.md](display-functions.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
+  [font-context-metrics.md](font-context-metrics.md#owner-summary),
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
+  Those notes, not generated tables, own parsed inputs, RAM fields,
+  downstream consumers, page/output effects, confidence, and exact residual
+  boundaries for the selected terminal handler.
 - Manual PCL command names and syntax rows are indexed by
   [pcl4-language.md](pcl4-language.md#owner-summary). Its ROM Semantic Index maps PCL
   Level IV families to first parser handlers, representative byte streams, page-object
@@ -152,6 +159,20 @@ checked-in ROM model:
    overflow, publication, and render effects. For raster and rectangle routes, use
    `Raster And Rectangle Graphics Object Boundary` to connect graphics setup and payload
    commands to page objects and render helpers.
+   Dispatch handoff should be concrete:
+   [publication-commands.md](publication-commands.md#owner-summary) owns
+   reset, FF, page-size, page-length zero/default, orientation, paper-source,
+   copies, and the `0xff1e` publication boundary;
+   [display-functions.md](display-functions.md#owner-summary) owns
+   `ESC Y`, local Control-Z variants, alternate/data append, and `ESC z`
+   status behavior;
+   [font-context-metrics.md](font-context-metrics.md#owner-summary) owns
+   font request refresh, page-root context slots, glyph maps, printable source
+   fields, and span metrics; and
+   [symbol-set-selection.md](symbol-set-selection.md#owner-summary) plus
+   [symbol-map-patching.md](symbol-map-patching.md#owner-summary) own
+   `ESC (` / `ESC )`, final `X`, final `@`, requested symbol words, and
+   map patching before later printable bytes reach `0xd04a`.
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md#owner-summary): compact/raster
    buckets live under root `+0x1c`, rules under `+0x24`, fixed-list objects under

@@ -525,6 +525,89 @@ Branch-outcome ledger:
   restores vertical cursor from origin `+0x0a`. Both orientations clamp final
   vertical cursor against `0x782dc6`.
 
+### Transfer Gate Outcome Matrix
+
+This matrix is the owner-level routing table for new raster-transfer streams.
+A new `ESC *b#W` trace belongs here only when it changes one of these
+predicates, field writes, payload outcomes, object outcomes, cursor outcomes,
+or downstream consumers.
+
+- Beyond page extent:
+  predicate is the coordinate comparison at `0x10634..0x10658` producing
+  `D7 > ((0x782db2 + 1) << 16)`. Handler range `0x1065c..0x10698` drains
+  only positive remaining count `D5` through `0xdace`; `D5 <= 0` or
+  `0xdace == -1` returns immediately. Canonical raster fields `+0x02`,
+  `+0x04`, and `+0x06` are not written, no page root is ensured, no
+  page-object byte is produced, and cursor state is not advanced. The first
+  downstream consumer is only the next parser byte after the drain or early
+  return.
+- In-range capped transfer:
+  predicate is raw count `D5` greater than row byte limit `+0x10`. Handler
+  range `0x10670..0x1068e` writes accepted count `+0x04 = +0x10` and overflow
+  count `+0x06 = raw - +0x10`; `0x106a4..0x106cc` ensures root `0x78297a`,
+  writes row word `+0x02`, and calls `0x13070`. The queued object uses class
+  byte `+0x04 = 0x80`, mode byte from raster state `+0x08`, count word
+  `+0x06 = accepted`, packed key `+0x08`, and accepted payload bytes
+  `+0x0a..`; overflow bytes are drained by the `0x13070` exit through
+  `0x12328`. Later consumers are publication `0xff1e`, bridge `0x1ed84 ->
+  0x1edc6`, bucket dispatch `0x1efc2`, and encoded-span renderer `0x1f88e`.
+- In-range full transfer:
+  predicate is raw count `D5 <= +0x10`. Handler range `0x1069c..0x106a0`
+  writes accepted count `+0x04 = raw` and clears overflow count `+0x06`; the
+  same `0x10084 -> 0x13070 -> 0x13250 -> 0x138de` producer path queues the
+  encoded object. The object count word and payload length equal the restored
+  command count unless later allocation or copy-stop state splits the row.
+- Negative row:
+  predicate is stored row word from `D4 >> 16` being negative at
+  `0x106ae..0x106b4`. The handler has already stored accepted/overflow counts
+  and ensured root `0x78297a`, but `0x106b6..0x106f6` drains positive payload
+  through `0xdace` and skips `0x13070`. No encoded raster object is linked.
+  If the drain does not return `-1`, exit `0x106f8..0x10752` still advances
+  the modeled raster cursor; the representative negative-row stream advances
+  row state from `-1` to `0`.
+- Accepted nonnegative row with no allocation failure:
+  predicate is `D4 >= 0` and `0x13070` returns a nonzero object pointer.
+  `0x13070..0x13250` derives bucket index `0x782a7c`, packed key
+  `0x782a7e`, allocation capacity `0x782a80`, and one or more class-`0x80`
+  objects under page-root bucket root `+0x1c`. The visible output is deferred
+  until `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+- Accepted nonnegative row with allocation failure:
+  predicate is `0x13070` returning `D7 = 0`. Handler range
+  `0x106d2..0x106f2` sets current root retry flag `root+0x15.0`, publishes
+  the current root through `0xff1e`, and ensures a fresh root through
+  `0x10084`. The gate outcome changes publication/retry state rather than
+  the encoded object format; any later object bytes must be attributed to the
+  post-retry producer state.
+- Transfer failure during drain or copy:
+  predicate is `0xdace == -1` in a drain path or `0x138de == -1` after object
+  allocation. `0x105d0` skips cursor advancement when transfer state is
+  `D5 = -1`; object and publication state depend on which producer boundary
+  had already been crossed. New traces in this class must name whether the
+  stop occurs before `0x10084`, after root ensure but before `0x13070`, or
+  after `0x13250` allocated an object.
+
+State classification for the matrix:
+
+- Canonical raster state is the `0x783170` block: row `+0x02`, accepted count
+  `+0x04`, overflow count `+0x06`, mode `+0x08`, origin `+0x0a`, scale
+  `+0x0e`, row byte limit `+0x10`, and active byte `+0x12`.
+- Canonical page/image state begins only after the root boundary
+  `0x10084`: current root `0x78297a`, encoded objects under root `+0x1c`,
+  object class/mode/count/key/payload bytes, and retry flag `root+0x15.0`.
+- Derived/cache state is bucket index `0x782a7c`, packed key `0x782a7e`,
+  split capacity `0x782a80`, copied render root `+0x18`, and row-construction
+  caches consumed by `0x1f88e`.
+- Parser scratch is the restored six-byte `ESC *b#W` record at
+  `0x78299e - 6`, delayed handler state from `0x121cc` / `0x12218`, and
+  remaining payload count while `0xdace`, `0x138de`, or `0x12328` consumes
+  bytes.
+- Firmware bookkeeping is allocator state `0x782a70/0x782a72/0x782a76`,
+  copy-stop byte `0x782996`, retry publication state, and cursor advancement
+  after non-`-1` completion.
+- Unknown: no ROM-local gate outcome is unknown for the documented branches.
+  Future work must change a named predicate, field, object byte, retry state,
+  bridge root, cursor update, or `0x1f88e` input before this matrix changes.
+
 Fixtures `0x105d0-modeled raster transfer skip and cap gate`, `modeled raster
 command stream applies 0x105d0 byte-count cap`, `modeled raster command stream
 queues inclusive page-extent row`, `modeled raster command stream drains

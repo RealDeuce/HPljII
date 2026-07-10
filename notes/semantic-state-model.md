@@ -7781,62 +7781,63 @@ Canonical state for the installed nonzero resource path is the current-record
 pool `0x782640..0x782776`, selected current id `0x782f2e`, payload pointer in
 record `+6`, candidate list rooted at `0x7827a0`, candidate counters
 `0x78278e`/`0x782790`/`0x782796`/`0x782798`/`0x78279e`, and the allocated
-`0x1719c` payload header. The host-fetched `ESC )s80W` fixture proves parser
-record `80 57 00 50 00 00`, payload length `80`, validation status `1`,
-allocation size `10`, current id `0x1234`, replacement release of old payload
-`0x456789`, installed candidate longword `0x40000000`, and class-one insertion
-at the candidate-list head. Fixture
-`host-fetched resource header plus glyph payload renders offset-table downloaded
-glyph` adds canonical downloaded-pointer glyph state inside that same installed
-payload: table entry `0x00ce`, record delta `0x0180`, record
+`0x1719c` payload header. For `ESC )s80W`, the parser restores command record
+`80 57 00 50 00 00`; `0x16c14` stores payload budget `80`, validation through
+`0x16fae` returns status `1`, `0x17026` computes allocation size `10`, and the
+install path releases old payload `0x456789` before publishing current id
+`0x1234` as candidate longword `0x40000000` at the class-one list head.
+Evidence anchors: `resource payload stream ties ROM parser dispatch to 0x16c14
+install` and `ESC )s80W resource stream installs 0x1719c payload through
+0x16c14`.
+
+That installed resource becomes page-visible only when a later nonzero
+downloaded-character payload populates a glyph entry and a printable byte
+selects it. In the integrated downloaded-pointer route, the second restored
+`ESC )s3W` record reaches `0x16c14 -> 0x16498`; `0x16498` writes table entry
+`0x00ce`, record delta `0x0180`, record
 `00 00 00 00 0c 01 00 03 00 04 00 00`, bitmap offset `0x018c`, bitmap bytes
-`f0 f0 f0`, span `1`, width `4`, and row count `3`. Fixture
-`type-1 and type-2 resource headers accept downloaded glyph payload stream`
-adds the legal setup-type variants for the same downloaded-pointer form:
-type-1 and type-2 headers both allocate payload units `0x100`, allocation size
-`18`, write table entry `0x00ce`, record delta `0x0300`, bitmap offset
-`0x030c`, span `1`, width `4`, and row count `3`. Type-1 installs candidate
-`0x40000000`; type-2 installs candidate `0x44000000`. Fixture
-`type-1 and type-2 resource glyph FF publications render page records` carries
-those same legal headers through `ESC )s3W f0 f0 f0 ! FF`: glyph stream bytes
-`0..8`, printable/FF bytes `8..10`, table entry `0x00ce`, record delta
-`0x0300`, bitmap offset `0x030c`, bucket `1` publication, and context slot
-prefixes `(0x40000000, 0, 0, 0)` and `(0x44000000, 0, 0, 0)`. Fixture
-`type-1 and type-2 resource wide glyph FF publications render page records`
-carries those legal headers through `ESC )s18W` plus 18 bitmap bytes,
-printable `!`, and FF. It installs record
-`00 00 00 00 0c 01 00 01 00 90 00 00`, table entry `0x00ce`, record delta
-`0x0340`, bitmap offset `0x034c`, bucket `1` publication, and the same
-context prefixes `(0x40000000, 0, 0, 0)` and `(0x44000000, 0, 0, 0)`.
-Fixture
-`type-1 and type-2 resource segmented glyph FF publications render page
-records` carries those legal headers through `ESC )s258W` plus 258 bitmap
-bytes, printable `!`, and FF. It installs record
-`00 00 00 00 0c 01 00 81 00 10 00 00`, table entry `0x00ce`, record delta
-`0x0360`, bitmap offset `0x036c`, bitmap size `0x0102`, bucket `9`
-publication, and the same context prefixes `(0x40000000, 0, 0, 0)` and
-`(0x44000000, 0, 0, 0)`. Fixture
-`0x172c0-modeled font resource record scan statuses` pins the current-record
-scan outcomes that feed this install path: existing id status `0`, missing id
-with a free record status `1`, and missing id with no free record status `2`.
-Fixture `0x16c14 routes installed font resource through 0x1bc38 slot` pins the
-successful installed-resource candidate longword `0x44220000`, class-one
-insert slot, shifted candidate list, and updated counters/cursors.
+`f0 f0 f0`, span `1`, width `4`, and row count `3`. Evidence anchor:
+`host-fetched resource header plus glyph payload renders offset-table
+downloaded glyph`.
+
+Legal setup types `1` and `2` follow the same downloaded-pointer form but set
+the installed candidate context differently. Both allocate payload units
+`0x100`, allocation size `18`, table entry `0x00ce`, record delta `0x0300`,
+bitmap offset `0x030c`, span `1`, width `4`, and row count `3`; type `1`
+installs candidate `0x40000000`, while type `2` installs `0x44000000`.
+Following printable `!` and FF publish bucket `1` with context prefixes
+`(0x40000000, 0, 0, 0)` and `(0x44000000, 0, 0, 0)`. The wide sibling changes
+the installed record to `00 00 00 00 0c 01 00 01 00 90 00 00`, record delta
+`0x0340`, bitmap offset `0x034c`, and selector `0x1003`; the segmented sibling
+changes the installed record to `00 00 00 00 0c 01 00 81 00 10 00 00`, record
+delta `0x0360`, bitmap offset `0x036c`, bitmap size `0x0102`, and selector
+`0x2000` with bucket `9` as the published root. Evidence anchors:
+`type-1 and type-2 resource headers accept downloaded glyph payload stream`,
+`type-1 and type-2 resource glyph FF publications render page records`,
+`type-1 and type-2 resource wide glyph FF publications render page records`,
+and `type-1 and type-2 resource segmented glyph FF publications render page
+records`.
+
+Current-record lookup is the shared gate into this install path: `0x172c0`
+returns status `0` for an existing id, status `1` for a missing id with a free
+record, and status `2` when no record slot is available. Successful installs
+then call `0x1bc38`; the class-one sibling installs candidate longword
+`0x44220000`, shifts the candidate list, and updates the associated counters
+and cursors. Evidence anchors: `0x172c0-modeled font resource record scan
+statuses` and `0x16c14 routes installed font resource through 0x1bc38 slot`.
 
 Parser scratch is the delayed handler snapshot and restored record produced by
 `0x11f96`, the byte budget `0x783140` loaded by `0x16c14`, staged descriptor
 state written by `0x16fae`, optional symbol staging, and the post-handler drain
-through `0x16c68 -> 0x12328`. The command-stream fixture pins parser handlers
+through `0x16c68 -> 0x12328`. The command-stream route uses parser handlers
 `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, modes
 `1 -> 4 -> 13 -> 0`, restored handler `0x16c14`, payload offset `6`, and
-payload prefix `00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34`.
-The downloaded-pointer glyph fixture then restores a second fetched record
-`80 57 00 03 00 00` for `ESC )s3W`, starts its payload at offset `5`, consumes
-three bytes through the same `0x16c14 -> 0x16498` handler route, and returns
-with copy status `1`, stream position `3`, and zero remaining byte budget.
-The type-1/type-2 sibling uses the same restored glyph record and handler
-sequence after the host-fetched legal headers, so parser scratch for the glyph
-payload is shared across setup types `0`, `1`, and `2`.
+payload prefix `00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34`. A later
+downloaded-pointer glyph payload restores record `80 57 00 03 00 00` for
+`ESC )s3W`, starts payload at offset `5`, consumes three bytes through the
+same `0x16c14 -> 0x16498` handler route, and returns with copy status `1`,
+stream position `3`, and zero remaining byte budget. Legal setup types `0`,
+`1`, and `2` share that restored glyph record and handler sequence.
 
 Derived/cache state is the selected font map and printable source path. For the
 real `0x16c14` installed candidate, `0x14c64` takes the bit-30 offset-table
@@ -7845,22 +7846,19 @@ branch, writes selected symbol `0x1234`, range `0x0000..0x007f`, map address
 bit-30-clear fixed-record dispatch using the same `0x1719c` payload is an
 isolation control, not the integrated `0x16c14` install form: forcing a
 bit-30-clear slot selects `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `1`,
-and snapshots `0x158be` from byte `+0x17`. That control case is still useful
-because the following fixture proves the allocated payload's fixed-record table
-can queue selector `0x0003` and render three mode-0 rows from bitmap
-`0x00a0`. Fixture
-`host-fetched resource header plus glyph payload renders offset-table downloaded
-glyph` proves the integrated bit-30 resource form after `0x16498`: printable
-`!` maps to glyph `0x21`, resolves through context `0x40000000` to record
-`0x0180`, queues compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders
-the installed `f0 f0 f0` rows beside the `d8fc` span object. Fixture
-`type-1 and type-2 resource headers accept downloaded glyph payload stream`
-proves the same derived lookup for legal setup types `1` and `2`: printable
-`!` resolves through contexts `0x40000000` and `0x44000000` to record
-`0x0300`, and both render the same span/glyph rows as the type-0 integrated
-case.
-The type-1/type-2 publication fixture proves the derived page-record cache is
-also preserved across `0xff1e`: bucket `1` keeps the segment-list span object
+and snapshots `0x158be` from byte `+0x17`. That control case documents the
+allocated payload's fixed-record table shape: it can queue selector `0x0003`
+and render three mode-0 rows from bitmap `0x00a0`. In the integrated bit-30
+resource form after `0x16498`, printable `!` maps to glyph `0x21`, resolves
+through context `0x40000000` to record `0x0180`, queues compact object
+`00 00 00 00 00 00 00 01 21 5a 00`, and renders the installed `f0 f0 f0`
+rows beside the `d8fc` span object. Legal setup types `1` and `2` use the
+same derived lookup: printable `!` resolves through contexts `0x40000000` and
+`0x44000000` to record `0x0300`, and both use the same span/glyph page-object
+shape as the type-0 integrated case.
+
+The type-1/type-2 publication route preserves the derived page-record cache
+across `0xff1e`: bucket `1` keeps the segment-list span object
 `00 00 00 00 40 00 00 01 04 06 03 00 00 14...` followed by compact glyph
 object `00 00 00 00 00 00 00 01 21 5a 00...`, rule and fixed lists stay empty,
 and `0x1ed84`/`0x1ef6a` renders the published rows through segment-list target
@@ -7881,13 +7879,13 @@ bucket `9` contains segment `1`
 `0x1ed84`/`0x1ef6a`, dispatches the segment object through compact target
 `0x1effe`, reaches segmented renderer `0x1f1f0`, and produces row digest
 `f449349d69d7acaff44a3f753253e4ef626057d41a5c8f6d827ce871bfc089b4`.
-Fixture
+The type-2 sibling of that isolation control allocates payload units `0x100`,
+copies symbol bytes at payload offset `0x044a`, maps host bytes `0x23` and
+`0x24` through the constructed inline table, queues wide selector `0x1003` and
+segmented selector `0x2003`, and renders through the compact-wide and
+segmented compact helpers. Evidence anchor:
 `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
-renderer records` is the type-2 sibling of that isolation control: it proves
-setup type `2` allocates payload units `0x100`, copies symbol bytes at
-payload offset `0x044a`, maps host bytes `0x23` and `0x24` through the
-constructed inline table, queues wide selector `0x1003` and segmented selector
-`0x2003`, and renders through the compact-wide and segmented compact helpers.
+renderer records`.
 
 Firmware bookkeeping is candidate insertion through `0x1bc38`, candidate flag
 normalization by `0x16c14`, current-record replacement/release, installed-count
@@ -7898,23 +7896,23 @@ allocation-failure and direct release fixtures cover the shared teardown path
 separately; this checkpoint consumes those results rather than repeating their
 cleanup matrix.
 
-The page-visible effects are split by consumer. The fixed-record isolation
-fixture proves payload bytes at table entry `+0x48` can map printable `!`,
-queue bucket object `00 00 00 00 00 03 00 01 01 66 01`, and render rows
+The page-visible effects are split by consumer. In the fixed-record isolation
+route, payload bytes at table entry `+0x48` map printable `!`, queue bucket
+object `00 00 00 00 00 03 00 01 01 66 01`, and render rows
 `#.#.#.#..#.#.#.#`, `####........####`, and `##....##..####..` beginning at
-x `22`. The `d4ac` metric fixture consumes the same host-fetched resource
-stream as an unflagged context: payload bytes `+0x2b = 0`, `+0x2c = 0`,
+x `22`. The `d4ac` metric route consumes the same host-fetched resource stream
+as an unflagged context: payload bytes `+0x2b = 0`, `+0x2c = 0`, and
 `+0x2d = 0x20` drive high-y `26`, segment-list key `0xa406`, and visible rows
 combining the fixed-record glyph with span-fill pixels. The `d8fc` metric
-fixture consumes the bit-30 offset-table form after installing a glyph pointer
+route consumes the bit-30 offset-table form after installing a glyph pointer
 for printable `!`: payload words `+0x16 = 4`, `+0x18 = 4`, and `+0x1a = 5`
 drive high-y `16`, segment-list key `0x0406`, record delta `0x0180`, bitmap
 `f0 f0 f0`, and visible rows from the flagged glyph plus span-fill pixels.
-The integrated downloaded-pointer fixture proves the same row shape without the
-manual glyph-table mutation used by the metric fixture: the fetched glyph
-payload writes the table entry, record, and bitmap first, then the following
-printable byte and `d8fc` span consumer produce the same compact object and span
-object chain.
+The integrated downloaded-pointer route reaches the same row shape without the
+manual glyph-table mutation used by the metric isolation route: the fetched
+glyph payload writes the table entry, record, and bitmap first, then the
+following printable byte and `d8fc` span consumer produce the same compact
+object and span object chain.
 The type-1/type-2 FF-publication sibling adds the same output effect after page
 eject: `0xf0f0`/`0xff1e` publishes the existing span+glyph bucket, clears the
 current page root, sets the publication flag, and the published record renders
@@ -7929,32 +7927,22 @@ with the span plus segment `0`; the visible segment reaches `0x1f1f0` after
 the shared `0x1ed84`/`0x1ef6a` and `0x1effe` dispatch boundaries.
 
 Confidence is high for the integrated bit-30 resource-header plus
-downloaded-pointer glyph path because fixture
-`host-fetched resource header plus glyph payload renders offset-table downloaded
-glyph` asserts both fetched streams, the installed table entry, record and
-bitmap bytes, context `0x40000000`, queued compact/span objects, and rendered
-rows. Confidence is high for the legal type-1/type-2 header siblings because
-fixture
-`type-1 and type-2 resource headers accept downloaded glyph payload stream`
-asserts setup bytes `1` and `2`, payload units `0x100`, allocation size `18`,
+downloaded-pointer glyph path because the documented ROM route includes both
+fetched streams, the installed table entry, record and bitmap bytes, context
+`0x40000000`, queued compact/span objects, and render dispatch rows. Legal
+type-1/type-2 header siblings are high confidence because the route includes
+setup bytes `1` and `2`, payload units `0x100`, allocation size `18`,
 candidate flags `0x40000000` and `0x44000000`, the same fetched glyph record,
-the installed table entry, resolved downloaded-pointer state, and rendered
-rows.
-High for legal type-1/type-2 FF publication because fixture
-`type-1 and type-2 resource glyph FF publications render page records` asserts
-the fetched glyph/tail boundaries, `0xd04a`/`0xf0f0` tail handlers,
-`0xff1e` bucket/context fields, render dispatch targets, and row equality.
-High for the legal type-1/type-2 wide-publication sibling because fixture
-`type-1 and type-2 resource wide glyph FF publications render page records`
-asserts `ESC )s18W`, the zero-drain return, selector `0x1003`, compact-wide
-object byte `0x10`, render target `0x1f0d2`, candidate context prefixes, and
-the six-row digest
-`3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`.
-High for the legal type-1/type-2 segmented-publication sibling because fixture
-`type-1 and type-2 resource segmented glyph FF publications render page
-records` asserts `ESC )s258W`, restored record `80 57 01 02 00 00`, zero-drain
-return, selector `0x2000`, buckets `1` and `9`, render target `0x1f1f0`,
-candidate context prefixes, and row digest
+the installed table entry, and resolved downloaded-pointer state.
+
+Legal type-1/type-2 FF publication is high confidence because the route
+includes the fetched glyph/tail boundaries, `0xd04a`/`0xf0f0` tail handlers,
+`0xff1e` bucket/context fields, render dispatch targets, and row equality. The
+wide and segmented publication siblings are high confidence because they
+preserve exact selector, object, bucket, context, render-target, and row-digest
+boundaries: `0x1003` / `0x1f0d2` with digest
+`3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`, and
+`0x2000` / `0x1f1f0` with digest
 `f449349d69d7acaff44a3f753253e4ef626057d41a5c8f6d827ce871bfc089b4`.
 
 Unresolved middle edges after this checkpoint are no longer the parser restore,
@@ -7970,10 +7958,10 @@ selected-candidate control case for the `0x1719c` payload layout, not as the
 normal `0x16c14` installed resource form. Disassembly `0x17026..0x1719c`
 copies the sparse payload header only; the integrated `0x16c14` path installs
 candidate longword `0x40000000`, so selected-font dispatch uses the bit-30
-offset-table branch. The forced bit-30-clear candidate proves the
+offset-table branch. The forced bit-30-clear candidate documents the
 `0x14e24`/`0x14eb6` fixed-record map/render form, while the `0x16606`
-descriptor resource path proves normal bit-30-clear resource objects reach the
-same renderer.
+descriptor resource path documents the normal ROM route for bit-30-clear
+resource objects into the same renderer.
 
 ### Fixed-Record Resource Object Checkpoint
 

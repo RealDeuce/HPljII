@@ -7971,10 +7971,15 @@ Unresolved middle edges after this checkpoint are no longer the parser restore,
 allocation, candidate insertion, selected-map dispatch, basic integrated
 bit-30 downloaded-pointer glyph install for legal type-0/type-1/type-2
 headers, legal type-1/type-2 page publication, or page-visible metric
-consumers. The remaining boundaries are variant breadth: downloaded-pointer
-glyph row/span/continuation shapes beyond the covered short, wide, and
-segmented glyphs, and publication variants outside these legal type-1/type-2
-span+glyph records.
+consumers. The remaining boundaries are exact downloaded-pointer field and
+branch changes, not generic breadth: installed glyph record byte `+5`, row
+word `+6`, width word `+8`, bitmap bytes at `+0x0c`, payload return path
+`0x15dcc -> 0x12328` or `0x16c68 -> 0x12328`, compact selector class from
+`0x12f2e`, publication bucket/context roots through `0xff1e`, render target
+selected below `0x1effe`, fixed-record current/continuation branches inside
+`0x16612..0x16870` and `0x15c4c..0x15d08`, short high-row fallback table
+reads below `0x1fe76`, segmented-wide span-31 A2 source boundaries, and
+oversized parser-count-cap stops before `0x16498`.
 The bit-30-clear fixed-record render is deliberately classified as a
 selected-candidate control case for the `0x1719c` payload layout, not as the
 normal `0x16c14` installed resource form. Disassembly `0x17026..0x1719c`

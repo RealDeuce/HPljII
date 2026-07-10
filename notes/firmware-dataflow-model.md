@@ -6652,10 +6652,18 @@ State classification for this path:
   no unresolved middle edge remains for parser restore, allocation, candidate
   insertion, selected-map dispatch, legal type-0/type-1/type-2 short glyphs,
   legal type-1/type-2 FF publication, or the cited metric consumers.
-  Remaining boundaries are variant breadth: downloaded-pointer row, span, and
-  continuation shapes beyond the covered short, wide, and segmented glyphs,
-  plus publication variants outside the documented legal type-1/type-2
-  span+glyph records.
+  Remaining ROM-local downloaded-pointer work starts only when a stream
+  changes one of the exact installed-glyph or publication boundaries named in
+  [downloaded-fonts.md](downloaded-fonts.md#remaining-edges): record byte
+  `+5`, row word `+6`, width word `+8`, bitmap bytes at `+0x0c`, current
+  payload budget and return path through `0x15dcc -> 0x12328` or
+  `0x16c68 -> 0x12328`, compact selector class from `0x12f2e`, bucket/context
+  publication through `0xff1e`, render dispatch through `0x1effe`, selected
+  helpers `0x1fe76`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`, fixed-record
+  branches inside `0x16612..0x16870` / `0x15c4c..0x15d08`, or row-copy/source
+  boundaries such as the short high-row `0x1fe76` invalid table read,
+  segmented-wide span-31 A2 source boundary, and oversized `0x7fff`
+  parser-count cap.
 
 Evidence for this path is in
 [downloaded-fonts.md](downloaded-fonts.md) and

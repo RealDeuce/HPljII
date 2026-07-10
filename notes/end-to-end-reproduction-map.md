@@ -8398,7 +8398,9 @@ shape, publication boundary, or render helper inputs.
    [downloaded-fonts.md](downloaded-fonts.md), with composed checkpoints in
    [semantic-state-model.md](semantic-state-model.md) under `Downloaded Font
    Descriptor And Payload Chain`, `Nonzero Resource Payload Checkpoint`, and
-   `Fixed-Record Resource Object Checkpoint`.
+   `Fixed-Record Resource Object Checkpoint`, plus `Fixed-Record Render
+   Decision Checkpoint` in
+   [downloaded-fonts.md](downloaded-fonts.md#fixed-record-render-decision-checkpoint).
 
    Command and resource route:
 
@@ -8506,6 +8508,8 @@ shape, publication boundary, or render helper inputs.
      [semantic-state-model.md](semantic-state-model.md),
      `Downloaded-Glyph Render Decision Checkpoint` in
      [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+     `Fixed-Record Render Decision Checkpoint` in
+     [downloaded-fonts.md](downloaded-fonts.md#fixed-record-render-decision-checkpoint),
      `Descriptor Metric Semantic Checkpoint` in
      [font-context-metrics.md](font-context-metrics.md), and worked paths
      `Downloaded Glyph`, `Downloaded Glyph Rule/Raster Composition`,

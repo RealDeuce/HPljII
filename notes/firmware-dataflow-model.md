@@ -6293,10 +6293,11 @@ State classification for this path:
   that are not the documented one-piece, linear-continuation,
   split-plane-continuation, partial-resave, or failed-release cases.
 
-Evidence for this path is in
-[downloaded-fonts.md](downloaded-fonts.md) and
-[semantic-state-model.md](semantic-state-model.md), especially
-`Fixed-Record Resource Object Checkpoint`. Key supporting listings are
+Evidence for this path is in [downloaded-fonts.md](downloaded-fonts.md), especially
+[Fixed-Record Render Decision
+Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint), and
+[semantic-state-model.md](semantic-state-model.md), especially `Fixed-Record Resource
+Object Checkpoint`. Key supporting listings are
 `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
 `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
 `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,

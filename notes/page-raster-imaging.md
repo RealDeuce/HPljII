@@ -889,10 +889,14 @@ Field groups:
     through command records such as the raster delayed record restored by
     `0x12218`.
 - Unknown:
-  - heap allocator `0x1710` lifetime and free-list behavior outside the
-    page-record stream.
   - exact live scheduler timing from a published pool record into the active
     render record.
+
+The heap allocator itself is not an unresolved page-record edge here.
+`0x1381c` owns the page-root stream-link side effects after `0x1710` succeeds
+or fails; the shared allocator bitmap/free contract for `0x170c`, `0x1710`,
+and `0x18b4` is composed in `Macro Definition And Data-Chain Replay` in
+[semantic-state-model.md](semantic-state-model.md).
 
 Writers:
 

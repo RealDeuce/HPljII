@@ -172,10 +172,14 @@ writing one of these fields.
 
 The remaining unresolved page/render edges must change a named object field,
 root/list field, publication field, bridge field, scheduler-produced band word,
-or ROM row-helper input. The current explicit residuals are allocator free-list
-lifetime outside `0x1710`, exact physical formatter/DC timing, and ROM-local
-downloaded-glyph helper variants such as the high-row `0x1fe76` fallback and
-the wrapped source-byte helper targets through `0x1f034` / `0x1f08e`.
+or ROM row-helper input. The current explicit residuals are exact physical
+formatter/DC timing and ROM-local downloaded-glyph helper variants such as the
+high-row `0x1fe76` fallback and the wrapped source-byte helper targets through
+`0x1f034` / `0x1f08e`. The heap/free-list contract is not an open page/render
+edge: `0x1381c` owns page-root stream-link side effects, while the shared
+allocator bitmap/free behavior for `0x170c`, `0x1710`, and `0x18b4` is composed
+in `Macro Definition And Data-Chain Replay` in
+[semantic-state-model.md](semantic-state-model.md).
 
 ## Render Helper Boundary Index
 

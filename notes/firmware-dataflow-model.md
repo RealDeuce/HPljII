@@ -4490,10 +4490,12 @@ State classification:
   render scheduler progress.
 - Hardware/external state: none for this ROM-local command bridge.
 - Unknown:
-  no separate pitch-mode renderer exists. Remaining work is a host-byte stream
-  that pairs `ESC &k#S/s` with surrounding font-selection state and proves a
-  different selected context, HMI, compact object, bridge state, or rendered
-  rows. The producer boundary itself is not an unresolved renderer edge.
+  no separate pitch-mode renderer exists, and no ROM-local parser, pitch
+  writer, refresh, or printable handoff edge remains for selectors `0`, `2`,
+  and `4`. New work should start only from a byte stream whose surrounding
+  font state changes `0xc580` branch choice, selected context/map, HMI,
+  compact object shape, bridge state, or ROM-derived rows. The producer
+  boundary itself is not an unresolved renderer edge.
 
 Evidence:
 

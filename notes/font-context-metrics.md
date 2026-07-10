@@ -480,10 +480,67 @@ below: changed pitch state can alter candidate selection, HMI, printable
 cursor advance, page-root context slots, and rendered compact text rows only
 after `0xc580` lets the updated font request reach `0x13eb8` and `0xc428`.
 
+Instruction boundaries:
+
+- `0xc398..0xc3b4` opens the parsed command cursor `0x78299e`, reads selector
+  word `-4(A5)`, folds negative values positive, and dispatches the absolute
+  selector through jump table `0xc370`.
+- `0xc3ba..0xc404` is selector `0`: it writes synthetic pitch integer
+  `10` and fraction `0` into the active record at `+2/+4`, clears word
+  `0x78299e - 10`, advances `0x78299e` by six bytes, calls
+  `0xc89c -> 0xc580`, writes word `1` into the next synthetic record,
+  advances `0x78299e` by `0x0c`, and calls `0xc89c -> 0xc580` again.
+- `0xc406..0xc412` is selector `2`: it writes synthetic pitch integer
+  `16` and fraction `0x19c8`, then falls into the shared
+  `0xc3c4 -> 0xc89c -> 0xc580` path.
+- `0xc414..0xc41e` is selector `4`: it writes synthetic pitch integer
+  `12` and fraction `0`, then falls into the same shared path.
+- `0xc420..0xc426` is the default/nonselected exit. Selectors other than
+  `0`, `2`, or `4` restore registers and return without calling the pitch
+  writer or common refresh.
+
+The common refresh boundary that pitch mode rejoins is `0xc580..0xc686`.
+`0xc580` rewinds `0x78299e` by one six-byte record before testing dirty byte
+`0x782f2c`; if no dirty state is pending it exits at `0xc5c2`. Otherwise it
+uses the record selector word `+2`, validates selector `0` or `1`, and takes
+the same branch cluster used by ordinary font-selection commands: selected-slot
+match can call `0xc428`, selected-slot mismatch can call `0x13eb8`, existing
+page-root/live-font state can force `0x13eb8` with transient byte `0x78298f`,
+and fallback scan can call `0xc4fc`, `0x13eb8`, and `0xc428`. The final
+`0xc666..0xc680` copy updates remembered word table `0x782f08` from
+`0x783144` and clears dirty byte `0x782f2c`.
+
+Field classification for this pitch-mode bridge:
+
+- Canonical state: pitch request word `0x782ef0 + 0x10*slot`, selected slot
+  `0x782f06`, current font context records `0x782ee6` / `0x782ef6`, selected
+  maps `0x782f32` / `0x783032`, page-root context slots, and later compact
+  text objects created by `0xd04a`.
+- Derived/cache state: synthetic record integer/fraction words, selected
+  candidate pointer `0x7828a8`, selected target `0x7828de`, transient context
+  record `0x782992`, HMI `0x78315c`, compact coordinates, and render-band
+  fields after publication.
+- Parser scratch: the original six-byte `ESC &k#S/s` record, the mutated
+  synthetic pitch records, and `0x78299e` cursor advances used only to make
+  `0xc89c` consume those synthetic records.
+- Firmware bookkeeping: dirty bytes `0x782f2c` / `0x782f2d`, transient
+  refresh byte `0x78298f`, page-root live-font flags, `0xc4fc` slot-scan
+  state, publication flag `0x782996`, and render scheduler progress.
+- Hardware/external state: none after the host byte stream has reached parser
+  dispatch.
+- Unknown: no ROM-local pitch-mode parser, writer, refresh, or printable
+  handoff edge remains for selectors `0`, `2`, and `4`. New work should start
+  only from a byte stream whose surrounding font state changes `0xc580` branch
+  choice, selected context/map, HMI, compact object shape, bridge state, or
+  ROM-derived rows.
+
 Evidence:
 
 - `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`: handler body
   `0xc390..0xc426`.
+- `generated/disasm/ic30_ic13_font_update_common_00c580.lst`: common refresh
+  body `0xc580..0xc686`, including `0xc428`, `0xc4fc`, and `0x13eb8` branch
+  calls.
 - ROM table bytes at firmware address `0xc370`:
   `0000 c414 0000 0004 0000 c406 0000 0002
   0000 c3ba 0000 0000 0000 0000 0000 c420`.

@@ -3250,9 +3250,13 @@ object shapes or visible rows.
   over-`0xff` nonzero `0xd99a` exit, over-`0xff` fallback to `0x7f`,
   the primary high-bit mask wrapper, either high-character flag preserving
   a high byte, and selected secondary slot masking without the primary
-  wrapper. Remaining risk is broader high-byte values that change the
-  normalization result, source-object fields, selected map, or ROM-derived
-  row-construction inputs, not these specific normalization outcomes.
+  wrapper. Remaining printable-source work starts only when a stream changes
+  the normalization branch through `0xd99a` or `0xd084..0xd0a6`, selected slot
+  `0x782f06`, high-character flags `0x783132/0x783133`, active maps
+  `0x782f32/0x783032`, source fields
+  `0x782d7e+0x00/+0x04/+0x0a/+0x0b/+0x10`, placement fields
+  `+0x12/+0x14/+0x16`, compact selector/object shape in `0x12f2e`, or
+  ROM-helper row-construction inputs.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
   are fixture-backed for the paired result semantics of `0x782a6e`: ordinary
   continue, horizontal reject with queue suppression, horizontal wrap recovery

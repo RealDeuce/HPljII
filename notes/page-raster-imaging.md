@@ -1405,20 +1405,20 @@ Readers and consumers:
 
 Output effect:
 
-- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
-  the addressed published page/control record is selected as source
+- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` checks
+  the addressed published page/control record being selected as source
   `0x00d0eaa0`, copied into `0x780eae`, assigned render work record
   `0x782128` through `0x783a18`, and rendered to the same rows as the direct
   `0x1ed84`/`0x1ef6a` fixture.
 - Fixture `0x1ecd6 same-geometry render work reuse reaches render entry`
-  proves the sibling branch reuses previous geometry, computes destination
+  checks the sibling branch reusing previous geometry, computing destination
   word `+8` via `0x33238`, and still reaches the same composed rows.
 - Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands`
-  proves render-capacity, capacity-wait, cleanup, and throttle outcomes. In
+  covers render-capacity, capacity-wait, cleanup, and throttle outcomes. In
   the render case it calls `0x1ef6a`, increments active word `+10`, and
   increments throttle word `+0e`.
 - Fixture `0x1eba4 scheduler band words render published downloaded glyph`
-  proves scheduler-produced band words `0..9` drive published downloaded-glyph
+  checks scheduler-produced band words `0..9` driving published downloaded-glyph
   buckets through the copied render record; only buckets `1` and `9` dispatch
   compact objects, and bucket `9` still produces visible row `86`.
 - Service-manual evidence puts beam detect `BD`, formatter video `VDO`,
@@ -1978,42 +1978,42 @@ Readers and consumers:
 Output effect:
 
 - Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists
-  in call order` proves the shared call order and a synthetic layer merge
+  in call order` checks the shared call order and a synthetic layer merge
   through bucket, rule, and fixed-list roots.
 - The layer merge uses direct destination stores. Compact glyph, encoded
   raster, segment-list, rule, and fixed-list helpers write generated source
   words into the active band or fallback buffer in the call order above; no
   documented helper performs a destination read-modify-write blend with earlier
   pixels.
-- Fixture `0x1ef6a page-band walk merges text raster and crossing rule` proves
+- Fixture `0x1ef6a page-band walk merges text raster and crossing rule` checks
   a compact text object, mode-0 raster object, and crossing patterned rule
   compose across two bands while the rule continuation field carries state.
 - Fixture `bridged text, rule, and raster layers compose into one page band`
-  proves parser-shaped bucket, rule, and encoded-raster objects merge to one
+  checks parser-shaped bucket, rule, and encoded-raster objects merging to one
   visible band after `0x1edc6`.
 - Fixture `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` proves a host-fetched downloaded glyph, rule, and raster page stream
+  0x1ef6a` checks a host-fetched downloaded glyph, rule, and raster page stream
   reaches handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`,
   `0x1075a`, and `0x11f82`, queues bucket/rule objects, and renders the same
   composed rows through the dispatch layer.
-- Fixture `0x1f812 segment-list object renders counted mask spans` proves the
+- Fixture `0x1f812 segment-list object renders counted mask spans` checks the
   segment-list class writes counted rows with full-word and trailing-mask
   behavior.
-- Fixture `0x1f756 fixed-width list renders bridged +0x20 object` proves the
+- Fixture `0x1f756 fixed-width list renders bridged +0x20 object` checks the
   fixed-list consumer uses the bridged `+0x20` list and decrements the
   remaining-row field.
 - Fixtures `0x1f446/0x1f596 renders solid black rectangle rule pixels` and
-  `0x1f4e0 renders gray and HP pattern selector matrix` prove solid and
+  `0x1f4e0 renders gray and HP pattern selector matrix` cover solid and
   patterned rule selectors.
 - Fixtures `0x1f88e mode-0 raster object renders queued literal row`,
   `0x1f88e mode-1 raster object expands queued bytes into two rows`,
   `0x1f88e mode-2 raster object expands queued byte pair into three rows`, and
-  `0x1f88e mode-3 raster object expands queued bytes into four rows` prove the
+  `0x1f88e mode-3 raster object expands queued bytes into four rows` cover the
   encoded-raster expansion modes.
 - Fixtures `0x1f034 compact text splits current band and fallback rows`,
   `0x1f0d2 renders wide inline compact payload row`,
   `0x1f1f0 renders segmented inline compact payload row`, and
-  `0x1f264 renders segmented wide inline compact payload row` prove the four
+  `0x1f264 renders segmented wide inline compact payload row` cover the four
   compact glyph subrenderers.
 
 Confidence:

@@ -504,9 +504,10 @@ command-family and page-image structure:
    parser scratch consumed, derived/cache fields, firmware bookkeeping,
    readers/consumers, and no-output side effects. State-only commands remain
    in this step until a later byte consumes their changed fields.
-5. Map page/image objects: when a command creates page content, use [Page Assembly
-   Decision Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint) and
-   its renderer-facing object class map to identify the page-root field written by the
+5. Map page/image objects: when a command creates page content, use `Command-Family To
+   Render Route Table` in this file plus [Page Assembly Decision
+   Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint) and its
+   renderer-facing object class map. Identify the page-root field written by the
    producer: compact/segment/raster buckets under root `+0x1c`, rule list under root
    `+0x24`, fixed list under root `+0x28`, and context slots under root `+0x2c..+0x68`.
 6. Cross the publication and scheduler boundary:
@@ -3052,7 +3053,7 @@ Active band loop:
   paired remaining `1`, producing capacity `5`; `0x1ecb0..0x1ecd2` clears
   `+0x0e`, signals wait object `0x780182`, and waits through `0x10d0(2)`
   without calling `0x1ef6a`.
-- The downloaded-glyph scheduler fixture proves the loop-produced band words:
+- The downloaded-glyph scheduler fixture checks the loop-produced band words:
   after `0xff1e` / `0x1ed84` seed render words `+0x10/+0x16` from zeroed
   source `+0x18`, `0x1eba4` produces render calls for band words `0..9` and
   leaves work word `+0x10 = 10`. Only copied buckets `1` and `9` dispatch

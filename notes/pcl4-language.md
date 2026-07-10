@@ -161,7 +161,8 @@ owner, and whether visible pixels can result.
 
 - Reset, FF, page size, orientation, paper source, copies:
   handlers `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
-  `0xeef0`; owner [publication-commands.md](publication-commands.md).
+  `0xeef0`; owner [Publication Decision
+  Checkpoint](publication-commands.md#publication-decision-checkpoint).
   These handlers publish any old current root through `0xff1e` when required,
   update page environment fields such as `0x782da2`, `0x782da3`,
   `0x782da4`, and `0x782da6`, and leave later objects to render through
@@ -169,10 +170,12 @@ owner, and whether visible pixels can result.
 - Direct controls and text placement:
   C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`,
   SO/SI `0xc6b8` / `0xc68a`, plus cursor/margin helpers; owner
-  [direct-control-codes.md](direct-control-codes.md). These commands mostly
-  change cursor, selected text slot, line-termination, span, and margin state.
-  Visible output occurs when later printable text or a span flush queues
-  compact objects through `0xd04a`, `0x12f2e`, and `0x1387c`.
+  [Direct-Control Output Decision
+  Checkpoint](direct-control-codes.md#direct-control-output-decision-checkpoint).
+  These commands mostly change cursor, selected text slot, line-termination,
+  span, and margin state. Visible output occurs when later printable text or a
+  span flush queues compact objects through `0xd04a`, `0x12f2e`, and
+  `0x1387c`.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
   [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),
@@ -184,44 +187,50 @@ owner, and whether visible pixels can result.
 - Transparent and display readers:
   delayed transparent handler `0x11f5a -> 0x12452` and display readers
   `0x12536` / `0x12120`; owners
-  [transparent-print-data.md](transparent-print-data.md) and
+  [Transparent Payload Decision
+  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
   [display-functions.md](display-functions.md). These are direct byte readers:
   transparent payload and normal `ESC Y` bytes route to `0xd04a` or `0xd0f0`,
   while alternate/display append stores bytes through `0xe002` with no
   immediate page object.
 - Raster graphics:
   `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
-  producer `0x13070`; owner [raster-graphics.md](raster-graphics.md). Raster
-  commands set resolution/mode and queue encoded raster row objects. Pixel
-  generation happens later when bucket walkers dispatch encoded rows to
-  `0x1f88e`, after page-record publication and render-record bridge.
+  producer `0x13070`; owner [Raster Transfer Decision
+  Checkpoint](raster-graphics.md#raster-transfer-decision-checkpoint). Raster
+  commands set resolution/mode and queue encoded raster row objects. Pixel generation
+  happens later when bucket walkers dispatch encoded rows to `0x1f88e`, after
+  page-record publication and render-record bridge.
 - Rectangle/rule graphics:
   rectangle and fill handlers under `0x10898`, object insertion
   `0x13386` / `0x133aa`; owner
-  [rectangle-graphics.md](rectangle-graphics.md). Width/height and selector
-  state become rule-list objects under root `+0x24`. Render entry consumes
-  those rule objects through selector helpers such as `0x1f446`, `0x1f596`,
-  and patterned-rule continuation state.
+  [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
+  Width/height and selector state become rule-list objects under root `+0x24`.
+  Render entry consumes those rule objects through selector helpers such as
+  `0x1f446`, `0x1f596`, and patterned-rule continuation state.
 - VFC and vertical layout: VMI/LPI, page length, VFC table load, and channel jumps;
-  owners [vertical-forms-control.md](vertical-forms-control.md) and the [geometry
-  refresh](publication-commands.md#shared-geometry-refresh-consumer-checkpoint). These
-  commands update VMI, top/text limits, VFC table bytes, and vertical cursor consumers.
-  They create pixels only when following printable, raster, rectangle, or publication
-  paths consume the refreshed coordinates.
+  owners [VFC Outcome Matrix](vertical-forms-control.md#vfc-outcome-matrix) and the
+  shared geometry refresh consumer in
+  [publication-commands.md](publication-commands.md#shared-geometry-refresh-consumer-checkpoint).
+  These commands update VMI, top/text limits, VFC table bytes, and vertical cursor
+  consumers. They create pixels only when following printable, raster, rectangle, or
+  publication paths consume the refreshed coordinates.
 - Macros and alternate/data replay:
   macro controls under `0xdd08`, data-chain builders `0xe418` / `0xe4f4`,
-  and replay through `0xa904`; owner [macro-data-chain.md](macro-data-chain.md).
-  Macro definition stores bytes and suppresses normal immediate handlers in
-  alternate/data contexts. Execute, call, and overlay frames later replay bytes
-  through the same parser and can queue text, spans, raster rows, rules, or
-  publication effects.
+  and replay through `0xa904`; owner
+  [Macro Replay Frame Boundaries](macro-data-chain.md#replay-frame-boundaries).
+  That checkpoint covers macro definition storing bytes and suppressing normal
+  immediate handlers in alternate/data contexts. Execute, call, and overlay
+  frames later replay bytes through the same parser and can queue text, spans,
+  raster rows, rules, or publication effects.
 - Downloaded fonts and characters:
   font descriptor/character payload readers `0x15d0a` and `0x16c14`, plus
   active object dispatch around `0x14ba4`; owner
-  [downloaded-fonts.md](downloaded-fonts.md). Descriptor and bitmap payloads
-  install resources. Printable bytes later select installed glyphs through
-  current font/map state and render through compact/downloaded-glyph helpers
-  including `0x1f0d2`, `0x1f1f0`, and `0x1f264`.
+  [Downloaded-Glyph Render Decision
+  Checkpoint](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint).
+  Descriptor and bitmap payloads install resources. Printable bytes later
+  select installed glyphs through current font/map state and render through
+  compact/downloaded-glyph helpers including `0x1f0d2`, `0x1f1f0`, and
+  `0x1f264`.
 - Host/status side channels:
   model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, and worker
   `0xae2c`; owner [errors-and-status.md](errors-and-status.md). These paths

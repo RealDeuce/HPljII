@@ -138,6 +138,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Publication Commands To ROM-Derived Page Rows`,
   `Worked Path: Page Length, Wrap, And Perforation Controls`,
   `Worked Path: Shared Page-Record Storage And Allocator`,
+  `Page Object Shape Route Index`,
   `Worked Path: Published Record To Active Bands`,
   `Worked Path: Mixed Text/Rule/Raster Page Record`,
   `Worked Path: Compact Glyph Row-Copy Helpers`,
@@ -2557,6 +2558,105 @@ contract is documented in
 [Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix),
 and
 `generated/analysis/ic30_ic13_page_record_bridge.md`.
+
+### Page Object Shape Route Index
+
+This checkpoint is the compact reader path from command-family output to first
+render consumer. It groups page-object state by the ROM field that carries it,
+so a supported byte stream can be followed without re-reading every allocator
+listing.
+
+- Compact text and compact downloaded-glyph objects:
+  producers `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c` and downloaded-glyph
+  printable routes write bucket objects under current root `+0x1c`.
+  Canonical fields are object link `+0x00`, selector byte `+0x04`,
+  context-selector byte `+0x05`, entry count/capacity word `+0x06`, packed
+  coordinate/key word `+0x08`, and compact entries beginning at `+0x0a`.
+  Publication and bridge copy root `+0x1c` to render root `+0x18`; render
+  entry `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches selector bits to
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`, resolving glyph resources
+  through context slots copied from root `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
+- Portrait text-span segment-list objects:
+  span flush `0xf34a -> 0x12714` packages pending span state
+  `0x783184..0x78318a`; portrait insertion uses
+  `0x13520 -> 0x1354a -> 0x135f0` to write class-`0x40` bucket objects under
+  root `+0x1c`. Canonical fields are object link `+0x00`, selector bytes
+  `+0x04/+0x05`, count word `+0x06`, and six-byte segment entries at
+  `+0x0a`. Bridge copies the same bucket root to render `+0x18`; bucket
+  dispatch selects segment-list renderer `0x1f812`, which consumes each
+  segment entry and writes full-word/trailing-mask rows through `0x1f862`.
+- Encoded raster objects:
+  raster transfer `0x105d0` accepts bytes, `0x13070` / `0x13250` build encoded
+  bucket objects under root `+0x1c`, and allocator `0x1381c` / `0x1387c`
+  determines current-tail versus capped-new-chunk object layout. Canonical
+  fields are object class byte `+0x04` in `0x80..0xff`, mode byte `+0x05`,
+  accepted count word `+0x06`, packed key word `+0x08`, and encoded payload
+  bytes at `+0x0a`. Bridge preserves the bucket root at render `+0x18`;
+  `0x1efc2` selects encoded raster renderer `0x1f88e`, where mode
+  `+0x05 & 3` chooses literal, doubled-row, tripled-row, or four-row
+  expansion.
+- Rectangle/rule-list objects:
+  rectangle fill `0x10898` clips the source record, then `0x13386` /
+  `0x133aa` write ordered rule-list nodes under root `+0x24`. Canonical
+  fields are link `+0x00`, fill selector byte `+0x05`, packed coordinate word
+  `+0x06`, width word `+0x08`, original height word `+0x0a`, and continuation
+  word `+0x0c`. Bridge copies root `+0x24` to render `+0x1c` and mutates each
+  node by setting `+0x05.4` and copying `+0x0a` to `+0x0c`; renderer
+  `0x1f446` dispatches selector `7` to solid helper `0x1f596` and other
+  documented selectors through pattern helper `0x1f4e0`.
+- Landscape/fixed-list span objects:
+  the same span flush `0x12714` builds a landscape source package, then
+  `0x136d2` writes ordered fixed-list nodes under root `+0x28`. Canonical
+  fields are link `+0x00`, band/order byte `+0x04`, selector byte `+0x05`,
+  packed key word `+0x06`, and extent word `+0x08`. Bridge copies root
+  `+0x28` to render `+0x20`, sets `+0x05.4`, copies `+0x08` to remaining-row
+  word `+0x0a`, and writes bytes `+0x0c = 1` and `+0x0d = 8`; renderer
+  `0x1f756` consumes the list only on five-band boundaries and writes pattern
+  rows through `0x1f7b0` / `0x1f626`.
+
+Field grouping for this route:
+
+- Canonical state:
+  current page root `0x78297a`, root `+0x1c/+0x24/+0x28`, context slots
+  `+0x2c..+0x68`, page/control pool records published by `0xff1e`, and the
+  object fields listed above.
+- Derived/cache state:
+  bucket keys `0x782a7a..0x782a7e`, stream allocator cursors
+  `0x782a70/0x782a72/0x782a76/0x782a80`, render roots `+0x18/+0x1c/+0x20`,
+  render context slots, band caches `0x783a20/0x783a22/0x783a28`, active
+  context cache `0x783a2c`, and continuation fields written by `0x1edc6`.
+- Parser scratch:
+  none after the object producer runs. Six-byte command records, delayed
+  payload records, and payload byte counters have already been consumed by the
+  command-family owner before `0x12f2e`, `0x13070`, `0x133aa`, `0x135f0`, or
+  `0x136d2` writes page-object state.
+- Firmware bookkeeping:
+  allocation retry bits, publication flag `0x782996`, stream-chunk
+  accounting, and render-work progress. These decide whether an object is
+  retried, published, or rendered, but they are not themselves PCL page
+  objects.
+- Hardware/external state:
+  none inside this object-shape route. Physical engine timing begins after
+  scheduler and device handoff consume already rendered band buffers.
+- Unknown:
+  only exact boundaries already indexed elsewhere, such as invalid compact
+  helper targets, missing secondary resource continuation bytes, or physical
+  engine/MMIO timing. Parser dispatch, object storage, bridge roots, and first
+  renderer consumers are ROM-local and documented for the classes above.
+
+Evidence for this route is
+[page-record-storage.md](page-record-storage.md#page-object-storage-outcome-matrix),
+[page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint),
+[raster-graphics.md](raster-graphics.md#encoded-raster-object-outcome-matrix),
+[rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix),
+[direct-control-codes.md](direct-control-codes.md#printable-source-outcome-matrix), and
+[downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint).
+Key disassembly listings are `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`.
 
 Reproduction rule:
 

@@ -246,6 +246,14 @@ Matrix](page-raster-imaging.md#compact-render-dispatch-outcome-matrix); it ties 
 bits `0x00/0x10/0x20/0x30` to helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`,
 and bounds the invalid computed-jump cases.
 
+The compact producer-to-render summary for all page-object classes is
+`Page Object Shape Route Index` in
+[firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index).
+It groups compact text/downloaded glyphs, portrait segment-list spans,
+encoded raster objects, rectangle rule-list objects, and landscape fixed-list
+spans by producer address, root field, canonical object bytes, bridge field,
+first render consumer, field classification, and exact residual boundary.
+
 State classification for this shared layer is: canonical state is the current
 page root, queued object records, context slots, and published page/control
 records; derived/cache state is bucket index `0x782a7c`, compact coordinate

@@ -78,7 +78,9 @@ standalone deliverables.
   band calls derive the row buffers. The renderer-facing lifetime summary is [Page Image
   Assembly Checkpoint](page-raster-imaging.md#page-image-assembly-checkpoint):
   parser-time page objects are canonical state, while `0x1ef86` band caches are derived
-  render state.
+  render state. For the shortest object-class route from producer to first renderer, use
+  `Page Object Shape Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index).
 - Rendering is owned by
   [active-render-scheduler.md](active-render-scheduler.md#owner-summary) and
   [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary):

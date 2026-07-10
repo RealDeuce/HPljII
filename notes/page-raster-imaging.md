@@ -1543,9 +1543,13 @@ Field groups:
   - direct caller into optional pattern helper `0x247c..0x270c` is not
     located. The helper's accumulator `0x7839d4`, pattern-pointer cache
     `0x7839d8..0x7839f7`, and destination writes to `0x78399a` are
-    documented in [active-render-scheduler.md](active-render-scheduler.md);
-    ordinary active rendering still reaches copied rows through `0x22f4` and
-    page bands through `0x1ef6a`.
+    documented in [active-render-scheduler.md](active-render-scheduler.md).
+    The caller boundary is exact: the long-reference scan lists
+    `0x7839d4` refs at `0x001bf8`, `0x0026c6`, and `0x0026ea`, but no
+    `0x0000247c` target, and the adjacent copy-pass listing returns at
+    `0x2330` / `0x247a` before the separate `0x247c` body. Ordinary active
+    rendering still reaches copied rows through `0x22f4` and page bands
+    through `0x1ef6a`.
 
 Writers:
 

@@ -99,9 +99,13 @@ Field groups:
   MMIO-backed readiness, copy, and wait predicates.
 - Unknown: no ROM-local field-meaning unknown remains for the active-pool
   row-copy accumulator. Direct call sites for the optional
-  `0x247c..0x270c` pattern helper are not located in the current xrefs, so
-  that helper is documented as a bounded side path, not as an ordinary
-  active-render row source.
+  `0x247c..0x270c` pattern helper are not located in the current xrefs:
+  `generated/analysis/ic30_ic13_long_reference_scan.md` lists accumulator
+  `0x7839d4` references at `0x001bf8`, `0x0026c6`, and `0x0026ea`, but no
+  absolute long target for `0x0000247c`; the adjacent copy-pass listing
+  returns at `0x2330` and the coordinate helper returns at `0x247a` before the
+  separate `0x247c` body. The helper is therefore documented as a bounded side
+  path, not as an ordinary active-render row source.
 
 Writers and readers:
 
@@ -212,6 +216,10 @@ Unknown:
 - Direct caller into the optional `0x247c..0x270c` accumulator-to-pattern
   helper is not located. The field writes and consumers are documented from
   disassembly; ordinary active rendering still uses `0x22f4` and `0x1ef6a`.
+  Evidence for the caller boundary is the absence of a `0x0000247c` target in
+  `generated/analysis/ic30_ic13_long_reference_scan.md`, plus the local
+  returns at `0x2330` and `0x247a` in
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`.
 
 ## Band Render Model
 

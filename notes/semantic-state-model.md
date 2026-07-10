@@ -12846,7 +12846,12 @@ record.
   - direct caller into optional pattern helper `0x247c..0x270c` is not
     located. Its accumulator, pattern-pointer cache, and destination writes are
     documented, but ordinary active rendering still reaches copied rows through
-    `0x22f4` and rendered page bands through `0x1ef6a`.
+    `0x22f4` and rendered page bands through `0x1ef6a`. The caller boundary is
+    bounded by `generated/analysis/ic30_ic13_long_reference_scan.md`, which
+    lists `0x7839d4` refs at `0x001bf8`, `0x0026c6`, and `0x0026ea` but no
+    `0x0000247c` absolute target, and by
+    `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, whose adjacent
+    routines return at `0x2330` and `0x247a` before the `0x247c` body.
 
 ### Writers
 

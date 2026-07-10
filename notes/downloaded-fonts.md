@@ -323,6 +323,38 @@ Command and parser routing:
   at `0xff1e`, render scheduling at `0x1ed84`, bucket walk at `0x1ef6a`,
   and compact dispatch at `0x1effe`.
 
+Payload-count budget:
+
+- The tokenizer at `0xdb74` is the first cap for `ESC )s#W` and
+  `ESC (s#W`. It accumulates at most six integer digits and clamps the
+  integer accumulator at `0x7fff` before storing the signed word at parsed
+  record `+2`; see
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`
+  `0xdbe8..0xdc28`.
+- Delayed selector `0x11f96` saves that six-byte record through `0x121cc`.
+  When `0x12218` restores it, descriptor handler `0x15d0a` and resource
+  handler `0x16c14` both rewind `0x78299e` by six bytes, read record word
+  `+2`, take its absolute value, and store the byte budget in `0x783140`.
+  This makes `0x783140` parser payload bookkeeping, not installed font
+  state.
+- Descriptor handler `0x15d0a` drains any budget left after local descriptor
+  work at `0x15dcc -> 0x12328`. Resource handler `0x16c14` does the same at
+  `0x16c68 -> 0x12328` for skip, validation-failure, no-slot, and
+  post-install exits. In both cases the next parser command is not visible
+  until the remaining `0x783140` budget has been consumed.
+- Downloaded-character object writer `0x16498` consumes the same budget
+  through `0x16874` and then either linear reader `0x168dc` or split-plane
+  reader `0x16942`. Those readers decrement `0x783140` for each accepted
+  bitmap byte, preserve unfinished continuation fields when the budget ends
+  early, and return status `2` rather than publishing a complete glyph.
+- For segmented-wide glyphs, the object copy requires `row_word * span`
+  bytes. Since the parser cannot restore more than `0x7fff` bytes for this
+  delayed `W` payload, the largest possible minimum-span segmented-wide
+  object is row `floor(0x7fff / 17) = 0x0787` at span `17`. Row `0x0788` at
+  span `17` requires `0x7ff8` bytes, so this host-fetched stream stops before
+  `0x16498` completes a glyph, before `0x12f2e` can create selector
+  `0x3003`, and before renderer `0x1f264` can run.
+
 Render decision rules:
 
 - Installed glyph commands do not emit pixels immediately. A pixel-producing
@@ -365,13 +397,16 @@ State classification for this decision:
   selectors `0x0003`, `0x1003`, `0x2003`, and `0x3003`.
 - Derived/cache state: selected-map bytes from `0x14e24`, source objects from
   `0x1393a`, compact object fields from `0x12f2e`, published bucket arrays
-  from `0xff1e`, render work words from `0x1ed84`, row-copy helper indexes,
+  from `0xff1e`, render work words from `0x1ed84`, tokenizer clamp result,
+  row/span products used to decide whether a downloaded-character object can
+  complete, parser stop offset for oversized streams, row-copy helper indexes,
   segment source offsets, and wide-mode caches written by `0x1f0d2` /
   `0x1f264`.
 - Parser scratch: delayed-payload state `0x782a1a`, saved handler `0x782a1c`,
   saved records `0x782a20..0x782a25`, payload budget `0x783140`, staged
-  resource/header bytes `0x7827de..0x7827e9`, and bitmap parse fields
-  `0x7827be`, `0x7827c2`, and `0x7827c4`.
+  resource/header bytes `0x7827de..0x7827e9`, remaining payload byte count
+  after descriptor/object readers, and bitmap parse fields `0x7827be`,
+  `0x7827c2`, and `0x7827c4`.
 - Firmware bookkeeping: candidate insertion `0x1bc38`, continuation state
   `0x7827c6..0x7827da`, release helpers `0x1887a`, `0x18b92`, `0x18bf2`,
   `0x17a24`, and `0x17d7c`, and default-context refresh through `0x1b04c`.
@@ -385,9 +420,11 @@ State classification for this decision:
 Evidence:
 
 - Parser and install evidence is in
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
   `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
   `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
   `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`,
   `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
   `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`,
   and `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`.

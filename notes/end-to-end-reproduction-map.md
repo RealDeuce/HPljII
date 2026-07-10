@@ -7707,8 +7707,14 @@ Address-level cluster map:
   and `0x782f28`. Final `X` keeps the prior requested symbol word and calls
   `0x17708(slot, parameter)`, selecting built-in contexts such as
   `0xc0089fb0` / `0xc00ae122` or bit-30-clear inline/downloaded context
-  `0x00000100`; its scan-miss, candidate-slot-miss, class-mismatch, and
-  context-full exits preserve the prior visible context.
+  `0x00000100`. The exact selector branch is documented in
+  [symbol-set-selection.md](symbol-set-selection.md#final-byte-special-cases):
+  `0x17708` temporarily writes the parameter to current font-id field
+  `0x782f2e`, restores the old value at `0x1778c`, and changes visible output
+  only when success tails `0x177cc` or `0x17802` write `0x7828de`,
+  `0x7828a8`, active symbol word `0x783144 + 2*slot`, and rebuilt map state.
+  Scan-miss, candidate-slot-miss, class-mismatch, and context-full exits
+  preserve the prior visible context.
   `0xc428(slot)` installs the selected context into the active page root:
   slot `0` reads `0x782ee6`, slot `1` reads `0x782ef6`, `0xc4fc` finds a
   matching or free page-root context slot, and `0xc428` writes selected

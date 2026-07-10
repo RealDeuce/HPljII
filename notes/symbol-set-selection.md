@@ -187,6 +187,34 @@ Successful `0x17708` paths select a built-in or inline/downloaded font record
 and rebuild the selected map through `0x14c64`; documented non-selected exits
 stop before map rebuild, so following printable bytes use the prior context.
 
+`0x17708` is a preserving selector, not a direct replacement for the current
+downloaded-font id. On entry it saves old `0x782f2e`, writes the final-`X`
+parameter to `0x782f2e`, and calls `0x172c0` to locate a current/downloaded
+record. Every exit rejoins `0x1778c`, which restores the saved `0x782f2e`
+before returning to the `0x1be22` wrapper. The visible difference is whether
+the helper reaches one of the two success tails before that restore:
+
+- `0x17730..0x1778c`: lookup miss leaves no candidate record and restores the
+  old font id without writing selected-candidate state.
+- `0x17746..0x1778c` and `0x1779c..0x1778c`: bit-30-set and bit-30-clear
+  records whose class byte `+0x20` or `+0x16` does not match `0x782da3`
+  restore without map rebuild.
+- `0x1777c..0x1778c` and `0x177ba..0x1778c`: when the target slot is already
+  selected, `0xc4fc` may return `0x11`; that context-full result also
+  restores without reaching `0x14c64`.
+- `0x177cc..0x17800`: bit-30-set success writes selected slot `0x7828de`,
+  selected object `0x7828a8`, derives active symbol word
+  `0x783144 + 2*slot` through `0x15890`, calls `0x1b2fe`, and rebuilds the
+  selected map through `0x14c64`.
+- `0x17802..0x17836`: bit-30-clear success writes the same selected slot and
+  object fields, derives the active symbol word through `0x158be`, calls
+  `0x1b2fe`, and rebuilds through `0x14c64`.
+
+This makes final `X` a state-only command until later text arrives: success
+changes the selected context/map that `0xd04a -> 0x1393a` will consume, while
+lookup miss, class mismatch, and context-full exits deliberately preserve the
+previous printable context.
+
 Final `@` uses table `0x1bde2`:
 
 - Parameter `0` dispatches to `0x1bed4`: copy table word
@@ -568,8 +596,11 @@ selection. The required ROM-visible behavior is:
 - Final `X` is font-id selection, not an ordinary symbol-set word. `0x1be22`
   restores the previous requested word, sets `0x78287b`, calls
   `0x17708(slot, parameter)`, and enters refresh with dirty flag
-  `0x782f2c = 2`. Non-selected exits from `0x17708` preserve the prior
-  printable output context.
+  `0x782f2c = 2`. `0x17708` temporarily writes the parameter to `0x782f2e`
+  for current-record lookup, but restores the old `0x782f2e` at `0x1778c`.
+  Only success tails `0x177cc` and `0x17802` write selected-candidate fields
+  and rebuild a map; lookup miss, class mismatch, and context-full exits
+  preserve the prior printable output context.
 - Final `@` dispatches by parameter through table `0x1bde2`. Parameters
   `0`, `1`, `2`, and `3` are real ROM behaviors that copy default-symbol
   words or run the default-font path; other parameters restore the previous

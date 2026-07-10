@@ -2856,62 +2856,60 @@ common refresh: final `X` restores the previous requested word, sets
 dirty flag `0x782f2c = 2`; normal symbol-set finals and final-`@`
 subtable paths enter `0xc580` with dirty flag `1`.
 
-The direct `0x17708` fixtures now pin the successful font-ID selection
-side effects after that parser boundary. A bit-30 built-in current
-record scans through `0x172c0`, resolves its candidate slot through
-`0x1b4c0`, checks record byte `+0x20` against `0x782da3`, optionally
-reuses a page-root slot through `0xc4fc`, writes selector `0x7828de`,
-stores the candidate slot pointer at `0x7828a8`, writes active word
-`0x783144` through `0x15890`, calls `0x1b2fe`, and dispatches
-`0x14c64`. The bit-30-clear inline/downloaded path is the parallel
-secondary-slot form: it checks byte `+0x16`, writes active word
-`0x783146` through `0x158be`, and enters `0x14c64` for the secondary
-glyph map. Fixture `font-ID built-in selection feeds visible page-record
-rows` now carries the bit-30 built-in success path through visible output:
-host-fetched `ESC (7X!!` reaches parser handlers `0x11eb6`, `0x1201e`, and
-`0x120be`, selects context `0xc0089fb0` through `0x17708`, queues compact
-object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and renders row
-digest `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
-Fixture `font-ID secondary built-in selection feeds visible SO page-record
-rows` carries the class-one bit-30 built-in sibling through visible output:
-host-fetched `ESC )8X SO !!` reaches parser handlers `0x11eb6`, `0x12008`,
-and `0x120be`, selects context `0xc00ae122` through `0x17708`, reuses
-page-root slot `1` through `0xc4fc`, crosses SO handler `0xc6b8`, queues
-compact object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and
-renders row digest
-`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
-Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
-now carries the bit-30-clear success path through visible output too:
-host-fetched `ESC )4660X SO !` reaches parser handlers `0x11eb6`, `0x12008`,
-and `0x120be`, selects context `0x00000100` through `0x17708`, rebuilds
-secondary map `0x783032`, crosses SO handler `0xc6b8`, queues compact object
-prefix `00 00 00 00 00 01 00 01 01 66 01 00 00 00`, and renders row digest
-`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
-Fixture `font-ID primary inline/downloaded selection feeds visible page-record
-rows` covers the slot-0 sibling: host-fetched `ESC (4660X!` reaches parser
-handlers `0x11eb6`, `0x1201e`, and `0x120be`, selects the same
-bit-30-clear context `0x00000100` through `0x17708`, rebuilds primary map
-`0x782f32`, queues compact object prefix
-`00 00 00 00 00 00 00 01 01 66 01 00 00 00`, and renders the same row digest.
-Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
-the direct helper exits that stop before a new map is dispatched: scan miss
-after `0x172c0` status `1`, candidate-slot miss for payload `0x089fb0` with
-no `0x1b4c0` slot, class mismatch at pointer `0x782364` when record class
-`0xff` does not match wanted class `0x00`, and context-full when `0xc4fc`
-returns page slot `0x11`. In all four cases the helper restores saved
-`0x782f2e = 0x2222` and does not call `0x14c64`, so following printable output
-continues from the prior selected font rather than a newly selected font ID.
-Fixture `font-ID non-selected exits keep prior visible rows` pins that
-following output: host-fetched `ESC (7X!!` uses the same parser record and
-then renders `!!` from prior context `0xc008004c`, compact object prefix
-`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and row digest
-`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
-Fixture `font-ID secondary non-selected exits keep prior SO visible rows`
-pins the slot-1 sibling: host-fetched `ESC )8X SO !!` takes the same
-`0x17708` terminal states with no `0x14c64` dispatch, crosses SO handler
-`0xc6b8`, and renders from prior secondary context `0xc40ad87a` with compact
-object prefix `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01` and row digest
-`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
+Final `X` is the font-ID selection form for primary and secondary font
+designation commands. The parser path is `0x11eb6` plus setup `0x1201e` for
+`ESC (` or `0x12008` for `ESC )`, followed by terminal wrapper `0x120be`.
+Wrapper `0x1be22 -> 0x1c066` restores the previous requested symbol word,
+sets `0x78287b`, calls `0x17708(slot, font_id)`, and then marks dirty flags
+`0x782f2c = 2` and `0x782f2d = 1`. The semantic effect is deferred until
+later text: successful `0x17708` tails rebuild the selected map and context,
+while non-selected tails deliberately preserve the previous printable context.
+
+Inside `0x17708`, the helper saves old current-font id `0x782f2e`, writes the
+final-`X` parameter to `0x782f2e`, and scans current/downloaded records through
+`0x172c0`. Every exit rejoins `0x1778c`, restoring the saved `0x782f2e`.
+The bit-30-set success tail resolves a candidate slot through `0x1b4c0`,
+checks record class byte `+0x20` against orientation/class byte `0x782da3`,
+optionally probes page-root slot reuse through `0xc4fc`, writes selector
+`0x7828de`, stores candidate slot pointer `0x7828a8`, writes active word
+`0x783144 + 2*slot` through `0x15890`, calls `0x1b2fe`, and dispatches
+`0x14c64`. The bit-30-clear inline/downloaded success tail is the parallel
+form: it checks class byte `+0x16`, writes the active word through `0x158be`,
+and dispatches `0x14c64` for map `0x782f32` or `0x783032`.
+
+Those success tails feed visible output when printable bytes arrive. Primary
+built-in `ESC (7X!!` selects context `0xc0089fb0`, rebuilds primary map
+`0x782f32`, and the following `!!` queues compact object prefix
+`00 00 00 00 00 00 00 02 00 89 00 00 87 02`; secondary built-in
+`ESC )8X SO !!` selects context `0xc00ae122`, crosses SO handler `0xc6b8`,
+and queues prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`. The
+bit-30-clear font-ID route selects context `0x00000100`: `ESC (4660X!`
+rebuilds primary map `0x782f32` and queues prefix
+`00 00 00 00 00 00 00 01 01 66 01 00 00 00`, while
+`ESC )4660X SO !` rebuilds secondary map `0x783032`, crosses SO, and queues
+prefix `00 00 00 00 00 01 00 01 01 66 01 00 00 00`.
+
+The non-selected tails are equally semantic, because they define what later
+printable bytes do not see. The documented direct exits are scan miss after
+`0x172c0` status `1`, candidate-slot miss for payload `0x089fb0` with no
+`0x1b4c0` slot, class mismatch at pointer `0x782364` when record class `0xff`
+does not match wanted class `0x00`, and context-full when `0xc4fc` returns
+slot `0x11`. In all four cases `0x17708` restores saved
+`0x782f2e = 0x2222` and does not call `0x14c64`; following primary
+`ESC (7X!!` therefore renders from prior context `0xc008004c` with compact
+prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and following secondary
+`ESC )8X SO !!` renders from prior context `0xc40ad87a` with compact prefix
+`00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`.
+
+Evidence anchors: disassembly
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`, fixture
+`font-ID built-in selection feeds visible page-record rows`, fixture
+`font-ID secondary built-in selection feeds visible SO page-record rows`,
+fixture `font-ID primary inline/downloaded selection feeds visible page-record
+rows`, fixture `font-ID inline/downloaded selection feeds visible page-record
+rows`, fixture `0x17708 font-ID non-selected exits preserve prior selection`,
+fixture `font-ID non-selected exits keep prior visible rows`, and fixture
+`font-ID secondary non-selected exits keep prior SO visible rows`.
 
 The harness now pins the concrete common-refresh branch classes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current

@@ -4395,70 +4395,63 @@ Supporting fixture anchors:
 - `live parser symbol-set streams select non-Roman built-ins`
 - `non-Roman symbol streams select visible built-ins`
 
-The parser-exposed final-`@` variants are now a documented symbol-state
-contract, not an unresolved parser curiosity. Fixture
-`symbol-set parser trace covers X and @ special cases` proves that final `X`
-and final `@` use the same terminal handler `0x120be` after setup
-`0x1201e` / `0x12008`: `X` preserves the previous requested word while calling
-font-id helper `0x17708`, `@0`/`@1` read the default-symbol table,
-`@2` copies the current primary requested word to the target slot, and `@3`
-uses the current default-font word. Fixture
-`font-ID built-in selection feeds visible page-record rows` carries the final
-`X` built-in success path through visible output: host-fetched `ESC (7X!!`
-routes through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
-`0x17708` selects candidate pointer `0x782364` / context `0xc0089fb0`,
-`0x14c64` rebuilds primary map `0x782f32`, and the printable `!!` tail queues
-object `00 00 00 00 00 00 00 02 00 89 00 00 87 02` with rendered-row digest
-`73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
-Fixtures `0x17708 font-ID selects concrete built-in candidate` and
-`0x14c64 dispatches concrete selected built-in font` pin the helper-level
-selected pointer, candidate longword, selected symbol, range reason, map
-address, Roman-extension patch, snapshot fields, and call list behind that
-visible final-`X` path.
-Fixture `font-ID secondary built-in selection feeds visible SO page-record
-rows` carries the class-one built-in final-`X` sibling through visible output:
-host-fetched `ESC )8X SO !!` routes through parser handlers `0x11eb6`,
-`0x12008`, and `0x120be`, `0x17708` selects candidate pointer `0x782350` /
-context `0xc00ae122`, reuses page-root slot `1` through `0xc4fc`, `0x14c64`
-rebuilds secondary map `0x783032`, SO handler `0xc6b8` is a selector no-op,
-and the printable `!!` tail queues object
-`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01` with rendered-row digest
-`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
-Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
-carries the secondary bit-30-clear final-`X` success path through visible
-output: host-fetched `ESC )4660X SO !` routes through parser handlers
-`0x11eb6`, `0x12008`, and `0x120be`, `0x17708` selects candidate pointer
-`0x782900` / context `0x00000100`, `0x14c64` rebuilds secondary map
-`0x783032`, SO handler `0xc6b8` leaves secondary selected, and printable `!`
-queues object `00 00 00 00 00 01 00 01 01 66 01 00 00 00` with rendered-row
-digest `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
-Fixture `font-ID primary inline/downloaded selection feeds visible page-record
-rows` covers the slot-0 sibling: host-fetched `ESC (4660X!` routes through
-`0x11eb6`, `0x1201e`, and `0x120be`; `0x17708` selects the same candidate
-pointer `0x782900` / context `0x00000100`, reuses page-root slot `0` through
-`0xc4fc`, rebuilds primary map `0x782f32`, and the following printable `!`
-queues object `00 00 00 00 00 00 00 01 01 66 01 00 00 00` with the same
-rendered-row digest.
-Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
-the helper exits that deliberately stop before map dispatch: record scan miss,
-candidate-slot miss, class mismatch, and full page-root context table. These
-paths restore `0x782f2e = 0x2222`, leave `0x7828a8 = 0` until a candidate slot
-is actually accepted, and never call `0x14c64`. Fixture
-`font-ID non-selected exits keep prior visible rows` carries host-fetched
-`ESC (7X!!` through the same parser record and those four terminal helper
-states, then renders the printable `!!` tail from the previously selected
-primary context `0xc008004c`, object
-`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and row digest
-`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
-Fixture `font-ID secondary non-selected exits keep prior SO visible rows`
-carries the secondary sibling through visible output. Host-fetched
-`ESC )8X SO !!` routes through `0x11eb6`, `0x12008`, and `0x120be`; the
-slot-1 `0x17708` terminal states are again scan miss, candidate-slot miss,
-class mismatch, and context-full, with no `0x14c64` map dispatch. The
-following SO/printable tail consumes preserved secondary context
-`0xc40ad87a`, maps `!` to byte `0x20`, queues object
-`00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and renders row digest
-`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
+The parser-exposed final-`@` and final-`X` variants are documented
+symbol-state contracts, not unresolved parser curiosities. Both use terminal
+handler `0x120be` after setup `0x1201e` / `0x12008`. Final `@` dispatches
+through table `0x1bde2`; `@0`/`@1` read default-symbol words, `@2` copies the
+current primary requested word to the target slot, and `@3` uses the current
+default-font word.
+
+Final `X` is the font-ID selection form. Wrapper `0x1be22 -> 0x1c066`
+restores the previous requested symbol word, writes marker `0x78287b`, calls
+`0x17708(slot, font_id)`, and then sets dirty flags `0x782f2c = 2` and
+`0x782f2d = 1`. Helper `0x17708` saves old current-font id `0x782f2e`,
+temporarily writes the requested font id there for the `0x172c0`
+current-record scan, and restores the saved `0x782f2e` at common exit
+`0x1778c`.
+
+Selected-state writers are the two `0x17708` success tails. The bit-30-set
+tail `0x177cc..0x17800` writes selected slot `0x7828de`, candidate pointer
+`0x7828a8`, active word `0x783144 + 2*slot` through `0x15890`, calls
+`0x1b2fe`, and rebuilds the selected map through `0x14c64`. The
+bit-30-clear tail `0x17802..0x17836` writes the same selected slot and
+candidate pointer, derives the active word through `0x158be`, calls
+`0x1b2fe`, and rebuilds map `0x782f32` or `0x783032` through `0x14c64`.
+Bit-30-set records compare class byte `+0x20` with `0x782da3`; bit-30-clear
+records compare byte `+0x16` with `0x782da3`.
+
+Printable consumers observe only the selected map/context after this state
+update. Primary built-in `ESC (7X!!` selects context `0xc0089fb0`, rebuilds
+map `0x782f32`, and later `0xd04a -> 0x1393a` queues compact object
+`00 00 00 00 00 00 00 02 00 89 00 00 87 02`. Secondary built-in
+`ESC )8X SO !!` selects context `0xc00ae122`, rebuilds map `0x783032`, crosses
+SO handler `0xc6b8`, and queues object
+`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`. Bit-30-clear font-ID selection
+selects context `0x00000100`: `ESC (4660X!` consumes it through primary map
+`0x782f32`, and `ESC )4660X SO !` consumes it through secondary map
+`0x783032` after SO.
+
+Non-selected exits define preserved-output behavior rather than an error path.
+Scan miss after `0x172c0`, candidate-slot miss after `0x1b4c0`, class mismatch
+on `+0x20` / `+0x16`, and context-full `0xc4fc == 0x11` all rejoin
+`0x1778c` without `0x14c64`. They restore `0x782f2e = 0x2222`, leave
+`0x7828a8` unset unless a candidate was accepted, and preserve the existing
+printable context. The primary preserved tail renders `ESC (7X!!` from prior
+context `0xc008004c` with object
+`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; the secondary preserved tail
+renders `ESC )8X SO !!` from prior context `0xc40ad87a` with object
+`00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`.
+
+Evidence: disassembly
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`; fixtures
+`symbol-set parser trace covers X and @ special cases`,
+`font-ID built-in selection feeds visible page-record rows`,
+`font-ID secondary built-in selection feeds visible SO page-record rows`,
+`font-ID primary inline/downloaded selection feeds visible page-record rows`,
+`font-ID inline/downloaded selection feeds visible page-record rows`,
+`0x17708 font-ID non-selected exits preserve prior selection`,
+`font-ID non-selected exits keep prior visible rows`, and
+`font-ID secondary non-selected exits keep prior SO visible rows`.
 Fixture
 `real default-table caller stream uses ROM-backed words` then drives real
 scanned built-in default words through `ESC (0@ ESC )0@ ESC )1@ ESC )2@

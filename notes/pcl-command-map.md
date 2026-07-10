@@ -333,7 +333,7 @@ boundaries:
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Macro ID/control commands, macro definition, execute/call replay, overlay
   publication, and data-chain byte replay:
-  [macro-data-chain.md](macro-data-chain.md#owner-summary).
+  [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
 - External-ready service and page/font scheduler handoff:
   [external-ready-service.md](external-ready-service.md#owner-summary),
   [page-font-scheduler.md](page-font-scheduler.md#owner-summary), and
@@ -580,9 +580,10 @@ output class that a byte-stream reader should follow next.
   macro id/control handlers `0xe112` and `0xdd08`, append sink `0xe002`,
   execute/call frame builder `0xe418`, and overlay frame builder `0xe4f4`
   store or replay byte streams through the same `0xa904` source contract.
-  Continue in [macro-data-chain.md](macro-data-chain.md). Output class:
-  stored input, replayed parser input, overlay publication mutation, or skip
-  gate with base publication.
+  Continue in [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix). Output class:
+  stored input, replayed parser input, overlay publication mutation, or skip gate
+  with base publication.
 - Host/status side-channel commands:
   model/status queries use `0x12034 -> 0x122be` and FIFO helper `0xb090`.
   Continue in [Host/Status Outcome

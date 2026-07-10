@@ -8975,7 +8975,7 @@ shape, publication boundary, or render helper inputs.
    without publication.
 3. Macro replay and overlay publication are composed as stored-byte input
    sources, not as a separate renderer. Checked-in documentation is
-   [macro-data-chain.md](macro-data-chain.md),
+   [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix),
    `Macro Definition And Data-Chain Replay` in
    [semantic-state-model.md](semantic-state-model.md), and the macro worked
    paths in [firmware-dataflow-model.md](firmware-dataflow-model.md).

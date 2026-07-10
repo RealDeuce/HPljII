@@ -217,8 +217,8 @@ owner, and whether visible pixels can result.
 - Macros and alternate/data replay:
   macro controls under `0xdd08`, data-chain builders `0xe418` / `0xe4f4`,
   and replay through `0xa904`; owner
-  [Macro Replay Frame Boundaries](macro-data-chain.md#replay-frame-boundaries).
-  That checkpoint covers macro definition storing bytes and suppressing normal
+  [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
+  That matrix covers macro definition storing bytes and suppressing normal
   immediate handlers in alternate/data contexts. Execute, call, and overlay
   frames later replay bytes through the same parser and can queue text, spans,
   raster rows, rules, or publication effects.
@@ -1240,7 +1240,7 @@ Field groups for this index:
   `00 00 00 00 00 00 00 01 20 00 01`, and lets CR mutate cursor/page state
   without adding a second visible object.
   Evidence:
-  [macro-data-chain.md](macro-data-chain.md).
+  [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
 - Status/model side channels:
   `ESC *r#K` and `ESC *s#^` route through `0x12034 -> 0x122be` and
   host-output helper `0xb090`. They consume status/model predicates and output

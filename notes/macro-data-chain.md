@@ -407,6 +407,152 @@ The disassembly-backed selector boundary is:
 - `0xdf80..0xdfb8`: delete-temporary iterates the same 32 records, clearing only
   records whose permanence byte `+0x0a` is zero.
 
+## Macro Replay Outcome Matrix
+
+This matrix is the command-family contract for `ESC &f#Y`, `ESC &f#X`,
+alternate/data append, execute/call replay, and overlay publication. It
+preserves the detailed selector ledger above while grouping outcomes by what a
+byte-stream renderer must model next: stored input, replayed parser input,
+page-publication mutation, record-only state, or an exact no-output/skip
+boundary.
+
+- Macro id selection:
+  `ESC &f#Y` reaches `0xe112` and writes current macro id `0x783164`.
+  It creates no macro record, frame, page object, or pixels by itself. Later
+  `0xdd08`, `0xe0a4`, and overlay publication consume the selected id.
+  State class is canonical macro selector state. Evidence:
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst` and
+  parser-table rows in `generated/analysis/ic30_ic13_parser_dispatch_tables.md`.
+- Definition start, selector `0`:
+  `0xdd08 -> 0xdd86` starts definition mode by writing definition byte
+  `0x782c18` and selecting or clearing the current macro record. Existing
+  records are cleared through `0xdfba`, the current id `0x783164` is copied to
+  record `+0x08`, lowercase `x` seeds `ESC & f` bytes through `0xe002`, and
+  uppercase `X` seeds zero bytes through `0xddf2..0xddf4` plus the parser-loop
+  branch `0x11a68..0x11a82` when the raw count is already greater than `1`.
+  Output effect is stored input only. Evidence: selector disassembly
+  `0xdd86..0xddfa` and examples `0xdd08 starts and stops empty macro
+  definitions` and `0xe002 appends macro definition bytes into 0x100 chunks`.
+- Definition append:
+  while definition mode is active, alternate/data routes append bytes through
+  `0xe002` instead of dispatching their normal handlers. `0xe002` writes
+  payload bytes into linked 0x100-byte chunks, increments record raw count
+  `+0x04`, and sets append-error byte `0x782c19` on allocation failure. The
+  stored bytes are parser scratch until execute/call/overlay replay returns
+  them through `0xa904`. Evidence: append disassembly `0xe002..0xe0a2` and
+  examples `0xe002 appends macro definition bytes into 0x100 chunks` and
+  `macro command stream respects definition and active-chain guards`.
+- Definition stop, selector `1`:
+  `0xdd08 -> 0xddfc` stops definition mode, normalizes raw count by subtracting
+  four header bytes per chunk, clears empty or auto-prefix-only records through
+  `0xdfba`, and clears `0x782c19` / `0x782c18`. Output effect is macro-record
+  state only. Later execute/call/overlay selectors decide whether the retained
+  payload becomes visible. Evidence: selector disassembly `0xddfc..0xde7a`.
+- Execute and call, selectors `2` and `3`:
+  `0xdd08 -> 0xde7c` or `0xdea2` requires a selected nonempty record and frame
+  space, then calls `0xe418(2)` for execute or `0xe418(3)` for call. `0xe418`
+  writes frame `+0x00/+0x04/+0x08/+0x09/+0x0a`, snapshots environment state,
+  sets host gate bit `0x780e66.1` when byte count is positive, and pushes a
+  10-byte macro context entry for call mode. Consumer `0xa904` gives the frame
+  priority as a byte source and sends replayed bytes to parser loop `0x11774`.
+  Output effect is whatever the replayed bytes do through their ordinary
+  command-family owners. Evidence: `0xe418..0xe4f2`, examples
+  `0xdd08 execute and call push macro data-chain frames`,
+  `0xe418 frame metadata distinguishes execute and call context`, and
+  `macro execute data-chain parser trace feeds page-record stream`.
+- Execute/call guard exits:
+  selector dispatch at `0xdd4c..0xdd78` suppresses most selector work while a
+  data-chain frame is active or while definition mode is active. These exits
+  preserve current record/frame state and create no page output. Evidence:
+  example `macro command stream respects definition and active-chain guards`.
+- Frame-end cleanup:
+  when `0xa904` reaches a frame-end marker, `0xe22c..0xe408` unwinds the
+  frame, frees snapshots, restores context, clears host gate bit when the
+  previous frame has no bytes, and resumes the previous byte source. Call and
+  overlay returns can run `0xe65c(0)` to refresh selected-font context state
+  before later printable bytes. Output effect is firmware bookkeeping plus
+  possible delayed selected-font changes, not immediate pixels. Evidence:
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
+  and example `0xe4f4/0xe22c produce and end data-chain frames`.
+- Overlay enable and disable, selectors `4` and `5`:
+  `0xdd08 -> 0xdec8` enables overlay only when current id lookup succeeds,
+  writing overlay state byte `0x782a92 = 1` and saved id `0x782a94`;
+  otherwise it clears `0x782a92`. Selector `5` clears `0x782a92`. These
+  selectors do not replay bytes immediately. Output effect is delayed
+  publication state consumed by `0xff1e`. Evidence: selector disassembly
+  `0xdec8..0xdefa` and example `macro command stream enables and disables
+  overlay state`.
+- Overlay replay at publication:
+  publication helper `0xff1e` consumes `0x782a92`, saved id `0x782a94`, root
+  flags word `+0x14`, and selected record state. When overlay is enabled, the
+  saved record exists, and the page-root retry flag is clear, it calls
+  `0xe4f4` to create non-replay frame kind `+9 = 4` with source offset
+  `+8 = 4`, then re-enters parser loop `0x11774` before publication
+  continues. Output effect is page-object mutation by the replayed payload
+  before the base page is published. Evidence: `0xe4f4..0xe5e0`, the
+  `Macro Overlay Publication` worked path in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and examples
+  `macro overlay finalization replays before page publication` and
+  `macro overlay replays across repeated page publications`.
+- Overlay skip gates:
+  disabled overlay state, missing or empty record failure from
+  `0xe0a4(0x782a94)`, or current page-root retry flag preserve the base page
+  publication without creating a non-replay frame. Output effect is no overlay
+  page-object mutation. Evidence: example `macro overlay skip gates preserve
+  base page publication`.
+- Record deletion and permanence, selectors `6..10`:
+  selector `6` clears all 32 records through `0xdf4e..0xdf7e`, selector `7`
+  clears only temporary records through `0xdf80..0xdfb8`, selector `8` clears
+  the selected record through `0xdfba`, selector `9` clears permanence byte
+  `+0x0a`, and selector `10` sets permanence byte `+0x0a`. Output effect is
+  record-pool state only; later execute/call/overlay lookup observes the
+  changed pool. Evidence: selector disassembly `0xdefe..0xdfb8` and example
+  `0xdd08 overlay and temporary/permanent macro controls`.
+- Overlay payload command families:
+  replayed overlay bytes do not have a macro-specific renderer. Covered
+  payloads re-enter ordinary owners for printable text, line termination,
+  cursor positioning, margins, transparent data, raster rows, and span flush.
+  Page objects then publish through `0xff1e`, bridge through
+  `0x1ed84 -> 0x1edc6`, and render through `0x1ef6a`. Evidence: overlay
+  examples listed in `Output Effect`, including mixed-control, cursor,
+  vertical-decipoint, chained-margin, transparent, raster, multi-row raster,
+  and span-flush payloads.
+
+State grouping:
+
+- Canonical:
+  macro id `0x783164`, record pool `0x782a98`, selected record pointer
+  `0x782d7a`, record fields `+0x00/+0x04/+0x08/+0x0a`, frame pointer
+  `0x782d76`, frame fields `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay state
+  `0x782a92`, saved overlay id `0x782a94`, and page-root retry flag
+  `root+0x14.0`.
+- Derived/cache:
+  normalized payload count, replayed command-family page objects, selected
+  context refresh results, and rendered row products created by downstream
+  owners after replay.
+- Parser scratch:
+  definition-mode parser routing, command-record cursor `0x78299e`, replayed
+  bytes from `0xa904`, delayed transparent/raster records, and payload
+  counters active inside replayed commands.
+- Firmware bookkeeping:
+  append-error byte `0x782c19`, host gate bit `0x780e66.1`, heap allocation
+  state, snapshot chains, frame cleanup through `0xe22c`, and context
+  push/pop helpers.
+- Hardware/external:
+  none for the ROM-local macro replay model.
+- Unknown:
+  manual names for context-stack and overlay fields, plus physical symptoms of
+  the exact unchecked over-deep context pointer boundary.
+
+Unresolved boundaries:
+
+- No ROM-local middle edge remains for documented definition, execute/call,
+  overlay publication, overlay skip-gate, or listed overlay-payload families.
+  New macro work should start only when a stream changes one of these exact
+  fields: macro record layout, frame fields, skip-gate state, replayed parser
+  dispatch, page-object bytes, bridge roots, continuation fields, selected
+  context input, or ROM-derived row construction.
+
 ## Writers
 
 - `0xe112` writes current macro id `0x783164`.

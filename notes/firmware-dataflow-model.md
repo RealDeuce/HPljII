@@ -1330,7 +1330,8 @@ Output effect and confidence:
 
 Evidence and unresolved boundaries:
 
-- Detail owners are [macro-data-chain.md](macro-data-chain.md),
+- Detail owners are [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix),
   [pcl-parser-core.md](pcl-parser-core.md), and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Controlling worked paths are `Macro Execute Replay` and

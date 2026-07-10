@@ -103,6 +103,117 @@ Output effect:
   and context through the font-context bridge, then publication/render code
   turns the resulting compact text objects into pixels.
 
+## Symbol/Font Designation Outcome Matrix
+
+This matrix composes the delayed-output command family from parsed `ESC (` /
+`ESC )` bytes to the later printable-text consumer. It starts at terminal
+wrapper `0x120be` and stops at the selected context/map state consumed by
+`0xd04a -> 0x1393a`. Page-object creation and pixels happen only after a later
+printable byte arrives.
+
+- Ordinary symbol final:
+  `0x120be -> 0x1be22 -> 0x1c0a4` consumes the synthetic slot record written
+  by `0x1201e` or `0x12008`, computes
+  `(abs(parameter) << 5) + final - 0x40`, writes requested word `0x782ef4` or
+  `0x782f04`, and sets dirty flags `0x782f2c = 1` and `0x782f2d = 1`.
+  Parameters above `0x07ff` return before the requested word changes. No page
+  object is queued.
+- Final `X` font-id selection:
+  `0x1be22 -> 0x1c066 -> 0x17708` restores the prior requested symbol word,
+  sets marker `0x78287b`, temporarily searches font id through `0x782f2e`,
+  then restores the old font id at `0x1778c`. Success tails
+  `0x177cc..0x17800` and `0x17802..0x17836` write selected candidate fields
+  and rebuild through `0x14c64`; lookup miss, class mismatch, selected-slot
+  full status `0x11`, and other documented exits preserve the prior printable
+  context.
+- Final `@` default-symbol/default-font selection:
+  `0x1be22 -> 0x1bec8` dispatches table `0x1bde2`. Parameters `0`, `1`, and
+  `2` copy default or primary requested symbol words; parameter `3` enters the
+  default-font helper path through `0x1b250` or `0x1ad66`; other parameters
+  restore the old requested word and return without dirty flags.
+- Dirty-1 refresh, non-selected slot:
+  `0xc580` handles ordinary-final and final-`@` dirty state. If parsed slot
+  differs from selected text slot `0x782f06`, `0xc5d8..0xc618` calls
+  candidate refresh `0x13eb8(slot)` and skips `0xc428`. This updates active
+  symbol/context/map state for that slot, but it is not visible until SI/SO or
+  later slot selection makes that slot active for printable text.
+- Dirty-1 refresh, selected slot install:
+  when parsed slot equals `0x782f06`, `0xc5e4..0xc666` may call
+  `0x13eb8(slot)` and `0xc428(slot)`. `0x13eb8` resolves requested,
+  remembered, or fallback symbol words through `0x156de`; `0x144d2` writes
+  current-font context `0x782ee6` or `0x782ef6`; `0x14c64` rebuilds map
+  `0x782f32` or `0x783032`; `0xc428` selects or installs page-root context
+  slot `0x78297e`.
+- Dirty-1 full-root skip:
+  when all page-root context live flags `0x78297f..0x78298e` are set,
+  `0xc580` can set transient flag `0x78298f`, probe with `0xc4fc`, and skip
+  the second refresh/install when `0xc4fc` returns full status `0x11`. The
+  output effect is preserved prior printable context for the selected slot.
+- Dirty-2 refresh:
+  final `X` enters `0xc580` with dirty value `2`. `0xc5fc..0xc60e` skips
+  `0x13eb8`; if the parsed slot is selected, it calls only `0xc428(slot)` to
+  expose the context already selected by `0x17708`. If the parsed slot is not
+  selected, no page-root context is installed.
+- Candidate normalization:
+  `0x156de` reads requested word `0x782ef4` or `0x782f04`, remembered word
+  `0x782f08` or `0x782f0a`, and fallback words `0x782f0c..0x782f18`. It uses
+  `0x15850`, `0x15890`, and `0x158be` to keep exact, compatible, or Roman-8
+  fallback candidates, writes active word `0x783144` or `0x783146`, and
+  narrows active candidate window `0x78287c/0x7827b8`.
+- Map rebuild and patch:
+  `0x14c64` rebuilds the selected map from built-in, inline, or downloaded
+  context data. `0x14f16` then applies only the Roman-8-compatible patch
+  cases documented in
+  [Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix).
+  Non-Roman selected built-ins such as `0N`, `10U`, and `11U` are distinct
+  selected records, not Roman-8 records patched into another symbol set.
+- Later printable consumer:
+  `0xd04a -> 0x1393a` reads selected slot `0x782f06`, selected context
+  `0x782ee6` or `0x782ef6`, and selected map `0x782f32` or `0x783032`. It
+  stores the mapped glyph byte in source `+0x0a/+0x0b`; `0xd3b2` or `0xd824`
+  marks the page-root context slot live; `0x12f2e` queues compact text. This
+  is the first page-object output after symbol/font designation.
+
+State classification for the matrix:
+
+- Canonical state:
+  requested words `0x782ef4/0x782f04`, active words
+  `0x783144/0x783146`, current-font contexts `0x782ee6/0x782ef6`, selected
+  text slot `0x782f06`, page-root context slot `0x78297e`, and selected map
+  bytes `0x782f32/0x783032`.
+- Derived/cache state:
+  remembered words `0x782f08/0x782f0a`, fallback/default tables
+  `0x782f0c..0x782f28`, selected candidate pointer/count state
+  `0x7828a8`, `0x78287c`, `0x7827b8`, selected-font snapshots
+  `0x783148/0x783152`, and map patch flag bytes `0x783132/0x783133`.
+- Parser scratch:
+  synthetic slot records from `0x11f26` / `0x11efe`, active terminal record
+  at `0x78299e`, final byte, integer parameter, and optional fractional field.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c/0x782f2d`, transient full-root flag `0x78298f`,
+  marker `0x78287b`, candidate active marks, and `0xc4fc` full-status result
+  `0x11`.
+- Hardware/external state:
+  none for the ROM-local built-in and inline/downloaded selection paths.
+  Absent cartridge or optional resource-window contents are external data for
+  candidate records, not unknown control flow.
+- Unknown:
+  no parser-to-symbol-word, refresh-gate, candidate-normalization, map-patch,
+  or later-printable consumer edge remains unknown for the documented built-in,
+  final-`@`, final-`X`, remembered/fallback, and non-dispatch paths. Remaining
+  symbol-family work must change a concrete `0x13eb8`, `0x156de`, `0x17708`,
+  `0xc580`, `0x14c64`, or `0x14f16` outcome.
+
+Evidence:
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+`generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+[Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix),
+and fixtures named in [Evidence And Boundaries](#evidence-and-boundaries).
+
 ## Parser Entry
 
 Normal `ESC (` and `ESC )` setup is in

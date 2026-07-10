@@ -2132,6 +2132,188 @@ Fixture evidence:
 - `0x1f1f0 renders segmented inline compact payload row`
 - `0x1f264 renders segmented wide inline compact payload row`
 
+#### Compact Render Dispatch Outcome Matrix
+
+This matrix owns the compact-class render branch after page publication and
+bridge. It is the render-side counterpart to the compact selector producer
+matrix in [downloaded-fonts.md](downloaded-fonts.md#compact-selector-outcome-matrix)
+and the printable source-capture checkpoint in
+[font-context-metrics.md](font-context-metrics.md#printable-source-capture-checkpoint).
+
+Compact entry dispatch:
+
+- ROM path:
+  `0x1efc2 -> 0x1effe`.
+- State category:
+  canonical render-record object state and derived context cache.
+- Writers:
+  `0x1edc6` copies page-root compact bucket heads to render root `+0x18` and
+  context slots to render `+0x24..+0x60`; `0x1ef86` has already written
+  band-local destination caches.
+- Readers / consumers:
+  `0x1efc2` selects the bucket from render root `+0x18` using render word
+  `+0x10`, walks each object, and routes class byte `+0x04 & 0xc0 == 0` to
+  `0x1effe`. `0x1effe` reads selector byte `+0x04`, context-slot byte `+0x05`,
+  loads the selected render context into `0x783a2c`, and dispatches through
+  table `0x1f024`.
+- Output effect:
+  no pixels yet; this selects the glyph helper family and active context used
+  by the row-copy layer.
+- Evidence:
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`
+  `0x1efc2..0x1f024`; fixture
+  `0x1efc2 bucket-chain dispatcher selects bucket and object classes`.
+
+Short compact selector:
+
+- ROM path:
+  `0x1f024 -> 0x1f034`.
+- State category:
+  canonical compact object state and derived row-copy state.
+- Writers:
+  `0x12f2e` writes selector class `0x0000 | context_slot` and compact entries
+  containing glyph byte, packed coordinate bytes, and count word `+0x06`.
+- Readers / consumers:
+  `0x1f034` reads the entry count, resolves each glyph through `0x1f354`,
+  decodes the packed coordinate through `0x1f3d4`, splits rows through
+  `0x1f414`, and indexes main helper table `0x1f08e` by span byte count.
+- Output effect:
+  renders built-in short text and downloaded glyphs whose span index reaches a
+  valid row-copy helper.
+- Evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  `0x1f034..0x1f08c`; fixtures
+  `0x1f034 compact text splits current band and fallback rows` and
+  `host-fetched linear downloaded character stream renders through 0x168dc`.
+
+Wide compact selector:
+
+- ROM path:
+  `0x1f024 -> 0x1f0d2`.
+- State category:
+  canonical compact object state and derived wide-row caches.
+- Writers:
+  `0x12f2e` writes selector bit `0x1000` when the printable source exposes a
+  wide span; `0x1f0d2` writes caches `0x783a40`, `0x783a42`, `0x783a44`,
+  `0x783a46`, and `0x783a48`.
+- Readers / consumers:
+  `0x1f0d2` resolves each glyph through `0x1f354`, renders full 16-byte chunks
+  through `0x2f27c`, and dispatches any trailing remainder through table
+  `0x1f1ac`.
+- Output effect:
+  renders valid wide glyph rows from the installed bitmap source; no-remainder
+  spans use only full chunk copies.
+- Evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  `0x1f0d2..0x1f1aa`; fixtures
+  `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+  and `downloaded glyph wide-remainder matrix publishes and renders compact
+  chunks`.
+
+Segmented compact selector:
+
+- ROM path:
+  `0x1f024 -> 0x1f1f0`.
+- State category:
+  canonical compact object state and derived segment-plane state.
+- Writers:
+  `0x12f2e` writes selector bit `0x2000` and four-byte segment entries
+  containing glyph byte, segment byte, and packed coordinate word.
+- Readers / consumers:
+  `0x1f1f0` resolves the glyph through `0x1f354`, applies the segment byte as
+  a `0x80`-row plane offset, clamps the segment row count to at most `0x80`,
+  adjusts A2/A3 source planes, and selects `0x1f08e` row-copy helpers.
+- Output effect:
+  renders the selected segment of tall glyphs, including odd-span split-plane
+  layouts.
+- Evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  `0x1f1f0..0x1f262`; fixture
+  `host-fetched split-plane segmented downloaded character renders through
+  0x1f1f0`.
+
+Segmented-wide compact selector:
+
+- ROM path:
+  `0x1f024 -> 0x1f264`.
+- State category:
+  canonical compact object state and derived segment/wide caches.
+- Writers:
+  `0x12f2e` writes selector bits `0x3000` and segmented-wide entries;
+  `0x1f264` writes the same wide caches as `0x1f0d2` after applying segment
+  source offsets.
+- Readers / consumers:
+  `0x1f264` applies the segment byte, resolves current-band/fallback split
+  through `0x1f414`, renders full 16-byte chunks through `0x2f27c`, and uses
+  `0x1f1ac` for any remainder.
+- Output effect:
+  renders selected wide segments when source rows and bitmap payload are
+  inside the installed glyph boundaries.
+- Evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  `0x1f264..0x1f352`; fixtures
+  `0x16498-backed downloaded character object renders segmented-wide compact
+  row` and `downloaded glyph segmented-wide matrix publishes and renders
+  compact chunks`.
+
+Context and glyph resolver:
+
+- ROM path:
+  `0x1f354`.
+- State category:
+  canonical font/resource state and derived glyph source pointers.
+- Writers:
+  none in this checkpoint; `0x1effe` has already loaded `0x783a2c`.
+- Readers / consumers:
+  bit-30-set contexts use the selected resource offset table and glyph
+  metadata bytes/words `+4/+5/+6/+8`; bit-30-clear contexts use fixed
+  eight-byte entries at `context + 0x40 + 8 * glyph_index`.
+- Output effect:
+  returns A2, optional A3, span byte count, and row count used by the helper
+  selected above.
+- Evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  `0x1f354..0x1f3d2`; generated analysis
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
+
+Field grouping for this matrix:
+
+- Canonical state:
+  render bucket root `+0x18`, render context slots `+0x24..+0x60`, compact
+  object bytes `+0x04/+0x05`, count word `+0x06`, compact payload entries,
+  selected context longword, glyph table entries, fixed glyph records, and
+  bitmap payload bytes.
+- Derived/cache state:
+  active context cache `0x783a2c`, destination caches from `0x1ef86`, split
+  result from `0x1f414`, wide caches `0x783a40..0x783a48`, A2/A3 source
+  planes, and row-copy table targets.
+- Parser scratch:
+  none. Host byte and downloaded payload parser scratch has already become
+  current-font state, installed glyph records, and compact page objects.
+- Firmware bookkeeping:
+  bucket-chain links, entry counters, segment loop counters, and computed-jump
+  table targets.
+- Hardware/external state:
+  none inside this matrix. Physical engine consumption occurs after ROM row
+  buffers are written.
+- Unknown:
+  valid compact selector outcomes above are documented. The remaining
+  ROM-local boundaries are invalid computed targets when wrapped low-byte
+  selectors index outside decoded helper heads, and high-row fallback counts
+  index past valid row-count tables.
+
+Unresolved middle edges:
+
+- `0x1f034 -> 0x1f08e` wrapped-width invalid targets are exact ROM-local
+  computed-jump boundaries, such as span `0x0102` selecting target
+  `0x0066cc` from table bytes at `0x1f496`.
+- `0x1fe76 -> 0x1fe8a` high-row short fallback targets are exact ROM-local
+  row-count table boundaries; row `0x0102` fallback index `200` reads target
+  `0x329ad3c0`.
+- New work in this cluster should start only from object fields that change
+  selector byte `+0x04`, context slot byte `+0x05`, glyph index, row/span
+  metadata, segment byte, current-band split, or row-copy table index.
+
 Disassembly evidence:
 
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:

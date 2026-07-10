@@ -251,7 +251,10 @@ The unresolved render-helper boundaries are exact:
 
 Those boundaries are ROM-local invalid-target or source-read boundaries, not
 unknown parser dispatch, page-object publication, render scheduling, or
-physical output comparison gaps.
+physical output comparison gaps. Reproduction handling is indexed in
+[unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries):
+preserve the ROM-derived upstream state, then stop at the exact invalid helper
+target or source-read boundary instead of inventing rows beyond it.
 
 ## Objective Coverage Matrix
 

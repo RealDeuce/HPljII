@@ -1162,10 +1162,8 @@ above.
 
 ## Mixed Page-Record Composition
 
-The raster transfer path has now been composed with adjacent page producers
-instead of only isolated raster rows. Fixture `host-fetched text rectangle and
-raster page record feeds 0x1ed84 and 0x1ef6a` drains this byte stream through
-the modeled `0xa904` host source:
+This cluster documents the raster transfer path inside a heterogeneous page
+record, not as an isolated row object. The host byte stream is:
 
 ```text
 21 1b 2a 63 31 32 61 35 62 30 50 1b 2a 74 33 30 30 52
@@ -1174,17 +1172,15 @@ the modeled `0xa904` host source:
 
 That is printable `!`, selector-7 rule command `ESC *c12a5b0P`,
 `ESC *t300R`, `ESC *r0A`, and delayed raster transfer
-`ESC *b2W c3 3c`. The stream runner queues all three visible producer
-classes into one current page record before bridge/render:
+`ESC *b2W c3 3c`. It queues all three visible producer classes into one
+current page record before bridge/render:
 
 - compact text through `0xd04a` / `0x12f2e` / `0x1387c`;
 - selector-7 rectangle through `0x10898` / `0x133aa`;
 - mode-0 raster through delayed `0x11f82` / `0x12218` / `0x105d0` /
   `0x13070` / `0x13250`.
 
-The addressed publication fixture `addressed text/rule/raster field groups
-reach publication and render entry` pins the canonical storage shape for the
-same cluster:
+The canonical page-record storage shape for the same cluster is:
 
 - text object at `0x00d0c004`;
 - rule object at `0x00d0c02a`;
@@ -1214,65 +1210,67 @@ Field classes for reproduction:
   rows.
 
 Writers are the parser handlers and page producers listed above, plus `0xff1e`
-when fixture `host-fetched text rectangle raster FF publishes rendered page
-record` finalizes the heterogeneous page record. Readers are `0x1ed84` /
-`0x1edc6`, `0x1ef6a`, `0x1efc2`, raster dispatch `0x1f88e`, compact text
-dispatch `0x1effe`, and rule dispatch `0x1f446`. The output effect is one
-published text/rule/raster page image using the same ROM-derived row path as
-the non-published current-page render for the same byte stream. Fixture
-`addressed text rectangle raster stream matches page-record output` records
-the addressed storage model and page-record renderer composition.
+when the FF path finalizes the heterogeneous page record. Readers are
+`0x1ed84` / `0x1edc6`, `0x1ef6a`, `0x1efc2`, raster dispatch `0x1f88e`,
+compact text dispatch `0x1effe`, and rule dispatch `0x1f446`. The output
+effect is one published text/rule/raster page image using the same ROM-derived
+row path as the non-published current-page render for the same byte stream.
 
-## Additional Command-Family Coverage
+Supporting evidence names for this route are `host-fetched text rectangle and
+raster page record feeds 0x1ed84 and 0x1ef6a`, `host-fetched text rectangle
+raster FF publishes rendered page record`, `addressed text/rule/raster field
+groups reach publication and render entry`, and `addressed text rectangle
+raster stream matches page-record output`.
 
-The same raster command/data model is checked beyond the primary 300-dpi
-mode-0 stream by fixture scripts that exercise the static interpretation.
+## Additional Command-Family Variants
 
-Lower-resolution streams check the resolution thresholds through visible rows:
+The same raster command/data model extends beyond the primary 300-dpi mode-0
+stream.
+
+Lower-resolution streams use the same parser, delayed-transfer, object-queue,
+bridge, and render path with a different `0x10808` mode/scale result:
 
 - `ESC *t150R ESC *r0A ESC *b#W` selects encoded mode `1`;
 - `ESC *t100R ESC *r0A ESC *b#W` selects encoded mode `2`;
 - `ESC *t75R ESC *r0A ESC *b#W` selects encoded mode `3`.
 
-The specific render fixtures are `modeled raster command stream queues and
+For each lower-resolution stream, `0x10808` writes mode byte `+0x08` and scale
+word `+0x0e`, `0x1075a` starts raster state, `0x11f82` delays the transfer,
+`0x12218` restores the transfer record, `0x105d0` gates the payload,
+`0x13070` / `0x13250` queues the encoded object with object byte `+0x05` set
+to the mode, and `0x1efc2 -> 0x1f88e` dispatches the corresponding mode
+helper.
+Supporting evidence names are `modeled raster command stream queues and
 renders 150-dpi mode-1 payload`, `modeled raster command stream queues and
-renders 100-dpi mode-2 payload`, and `modeled raster command stream queues and
-renders 75-dpi mode-3 payload`.
+renders 100-dpi mode-2 payload`, `modeled raster command stream queues and
+renders 75-dpi mode-3 payload`, `raster mode streams tie ROM parser dispatch
+to modeled queued objects`, `host-fetched raster mode streams reach parser and
+rendered rows`, and `host-fetched raster mode streams feed 0x1ed84 and
+0x1ef6a`.
 
-Fixtures `raster mode streams tie ROM parser dispatch to modeled queued
-objects`, `host-fetched raster mode streams reach parser and rendered rows`,
-and `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a` check each
-stream drains from the modeled `0xa904` ring source, routes through
-`0x10808`, `0x1075a`, and `0x11f82`, restores the delayed transfer record,
-queues the expected encoded object, and renders through the page-record bridge.
-Those modes are therefore part of the command-family contract, not separate
-untraced raster variants.
+Repeated transfers reuse the same canonical raster state block while restoring
+independent delayed records. Two uppercase `ESC *b2W` commands restore
+separate `80 57 00 02 00 00` records, consume payloads at offsets `17` and
+`24`, advance raster row state to `2`, and queue encoded objects at packed
+coords `0x0000` and `0x1000`. Lowercase same-family command accumulation stays
+inside the `*b` parser family: stream `ESC *b2w2W` preserves delayed record
+`80 77 00 02 00 00` and consumes payload only after the uppercase terminator
+at offset `19`. Supporting evidence names are `modeled raster command stream
+queues consecutive ESC *b#W rows`, `modeled raster command stream renders
+consecutive queued rows`, `modeled raster command stream accepts lowercase
+same-group resolution chaining`, `modeled raster command stream defers
+lowercase ESC *b w payload until uppercase terminator`, `host-fetched raster
+multi-row and chained streams preserve 0x1edc6 bridge contract`, and
+`host-fetched raster streams feed 0x1ed84 and 0x1ef6a`.
 
-Multi-row and chained-transfer fixtures cover repeated use of the same state
-block. Fixtures `modeled raster command stream queues consecutive ESC *b#W
-rows` and `modeled raster command stream renders consecutive queued rows`
-check that two uppercase `ESC *b2W` commands restore independent
-`80 57 00 02 00 00` records, consume payloads at offsets `17` and `24`,
-advance modeled `row_y` to `2`, and queue objects at coords `0x0000` and
-`0x1000`. Fixture `modeled raster command stream accepts lowercase same-group
-resolution chaining` covers lowercase same-family command accumulation before
-an uppercase final byte. The lowercase stream `ESC *b2w2W` stays in the `*b`
-parser family, preserves delayed record `80 77 00 02 00 00`, and consumes
-payload only after the uppercase terminator at offset `19`. Fixture `modeled
-raster command stream defers lowercase ESC *b w payload until uppercase
-terminator` covers that delayed payload boundary. Fixtures
-`host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
-contract` and `host-fetched raster streams feed 0x1ed84 and 0x1ef6a` check both
-bucket chains survive render-record copying and dispatch through `0x1ef6a`.
-
-The active-state fixtures separate two resolution effects. `ESC *rB` clears
-only active byte `+0x12`, so a later `ESC *t150R` can update mode and scale
-again. While the active byte is still set, `ESC *t75R` is ignored, and the
-following `ESC *b2W` queues a mode-0 object. The fixture checks are
-`raster end parser trace feeds active-clear and resolution re-enable`,
-`host-fetched raster end stream clears active state and re-enables resolution`,
-`raster active resolution parser trace preserves current mode`, and
-`host-fetched active raster resolution stream preserves current mode`.
+Active-state behavior has two distinct outcomes. `ESC *rB` clears only active
+byte `+0x12`, so a later `ESC *t150R` can update mode and scale again. While
+active byte `+0x12` is still set, `ESC *t75R` is ignored, and the following
+`ESC *b2W` queues a mode-0 object using the earlier raster mode. Supporting
+evidence names are `raster end parser trace feeds active-clear and resolution
+re-enable`, `host-fetched raster end stream clears active state and re-enables
+resolution`, `raster active resolution parser trace preserves current mode`,
+and `host-fetched active raster resolution stream preserves current mode`.
 
 ## Reproduction Contract
 

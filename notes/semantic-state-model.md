@@ -10521,11 +10521,11 @@ Concept: reset, FF, page-size, orientation, paper-source, copy-count followed
 by FF, and page-length zero/default can force publication of the current page
 record after a printable byte has created a compact text bucket. The visible
 output is the pre-command compact `!` page, while command-specific side
-effects update firmware state around that publication. Fixtures pin this for
-direct modeled streams, host-fetched `0xa904` streams, page-length zero/default
-handler state, and addressed reset, FF, page-size, orientation, paper-source,
-and copies records that materialize the compact bucket through
-`0x1387c`/`0x1381c` before publication.
+effects update firmware state around that publication. The ROM evidence is the
+shared publication sequence `0xf34a -> 0xff1e` in the reset/FF/layout
+handlers, the page-record materialization path through `0x1387c`/`0x1381c`,
+and the render handoff through `0x1ed84`/`0x1edc6`/`0x1ef6a`; fixtures named
+below anchor representative direct, host-fetched, and addressed byte streams.
 The root-header part of this boundary is composed in
 [publication-commands.md](publication-commands.md#publication-header-copy-checkpoint):
 it ties page-control writers for `0x782997`, `0x780e99`, `0x782998`,
@@ -10609,13 +10609,21 @@ and publication flag `0x782996`.
   `addressed page geometry publications render page records`, and
   `addressed paper-source and copies publications render page records`.
 - Derived/cache command side effects:
-  - page-size `ESC &l1A` leaves page code `6`, orientation `0`, active size
-    `3030 x 2025`, top offset `90`, one pending text flush, one page
-    finalization, page-change flag `1`, and print-engine status `0`.
-  - orientation `ESC &l1O` leaves page code `6`, orientation `1`, active size
-    `2025 x 3030`, vertical offset source `50`, top offset `100`, two pending
-    text flushes, two page finalizations, page-change flag `1`, and
-    print-engine status `0`.
+  - page-size `ESC &l1A`, handler `0xfc74`, rewinds the six-byte parser record,
+    maps parameter `1` to page code `6`, publishes any pre-command page through
+    `0xf34a`/`0xff1e`, stores `0x782da2 = 6`, marks `0x782997 = 1`, clears
+    `0x780e99`, and rebuilds geometry caches. The observed derived state is
+    orientation `0`, active size `3030 x 2025`, top offset `90`, one pending
+    text flush, one page finalization, page-change flag `1`, and print-engine
+    status `0`.
+  - orientation `ESC &l1O`, handler `0x10220`, rejects selectors `>= 2` and
+    returns on no-op selectors, but for a portrait-to-landscape change publishes
+    pending text through `0xf34a`/`0xff1e`, writes `0x782da3 = 1`, refreshes
+    geometry through `0xf9ac`/`0xf87e`/`0x103ea`, derives VMI `0x783160`, and
+    refreshes current font caches through `0x13eb8`. The observed derived state
+    is page code `6`, active size `2025 x 3030`, vertical offset source `50`,
+    top offset `100`, two pending text flushes, two page finalizations,
+    page-change flag `1`, and print-engine status `0`.
   - paper-source selector `2` stores `0x80` at `0x782da6` and sets pending
     status byte `0x782998`; the addressed variant also leaves cursor x at
     packed `5`, cursor y at packed `92.1`, clears the current page root, and
@@ -10641,8 +10649,9 @@ and publication flag `0x782996`.
   `host-fetched copies publication preserves 0xeef0 pool header word`.
 - Layout-command side effects outside the direct six-command publication set:
   - page-length `ESC &l66P` writes page extent `0x782dba = 3300`, selects
-    internal page code `2`, recomputes geometry/text-bottom state, and
-    refreshes the following printable cursor to compact coord `0x9001`.
+    internal page code `2`, recomputes geometry/text-bottom state through
+    `0x9d4e`/`0x9d16`/`0x9e56`/`0xf87e`/`0xea16`/`0xe9ba`, and refreshes the
+    following printable cursor to compact coord `0x9001`.
   - page-length `ESC &l0P` takes the default-page branch, publishes pending
     state, optionally mirrors paper-source byte `0x782da6` to `0x780e8f`,
     signals control word `0x780e26`, and selects default/fallback page code.

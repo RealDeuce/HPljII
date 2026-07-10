@@ -2378,44 +2378,66 @@ page codes:
 - `90` -> internal `0x89`
 - `91` -> internal `0x8a`
 
-It then rebuilds page-related state, including `0x782da2`, `0x782db2`,
-`0x782db4`, `0x782dc0`, `0x782dce`, and `0x782dd0`, and calls shared
-reset/layout helpers also seen in `ESC E`. Executable fixtures now pin
-letter `ESC &l1A` as internal code `6`, width `3030`, height `2025`,
-portrait margin `3150`, top offset `90`, and PCL `80` as internal code
-`0x88` masking to geometry-table index `8`.
+The handler rewinds the six-byte parser record through `0x78299e`, reads the
+absolute parsed parameter, and ignores values outside the table above. If the
+current parser record says a page is present, `0xfc74` first drains pending
+text through `0xf34a`, publishes the current root through `0xff1e`, waits via
+`0x9ac2`, and mirrors changed paper-source state from `0x782da6` to
+`0x780e8f`/`0x780e26`. Accepted values then mark pending page state
+`0x782997 = 1`, clear engine status byte `0x780e99`, store page code
+`0x782da2`, and rebuild page geometry through `0xf9ac`, `0x9d4e`, `0x9d16`,
+`0x9e56`, `0xf87e`, `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`.
+The resulting caches include `0x782db2`, `0x782db4`, `0x782dc0`,
+`0x782dce`, and `0x782dd0`; `0x782a92` is cleared on exit unless delayed
+mode `2` is active. Evidence anchors: disassembly
+`generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst` from
+`0xfc74..0xfdc8`, plus fixtures for `ESC &l1A` and PCL `80` that record
+internal code `6` / `0x88`, geometry-table masking, width/height, top offset,
+and publication-before-geometry behavior.
 
 `ESC &l#O` at `0x010220` accepts orientation values below `2`, updates
 `0x782da3`, rebuilds page geometry, updates `0x783160`, and reloads
 current font/metrics state through tables rooted near `0x782ee6` /
-`0x782ef6`. The letter landscape fixture pins active extents
-`2025x3030`, landscape margin `2175`, printable extent `2125`, top
-offset `100`, and the `0x103ea` threshold sequence
-`2175, 2550, 2480, 2550`; a chained byte-stream fixture drives
-`ESC &l1a1O` through `0xfc74` and `0x10220` with the same final
-landscape state.
+`0x782ef6`. Disassembly `generated/disasm/ic30_ic13_orientation_handler_010220.lst`
+shows the handler rewinds the parser record, rejects values `>= 2`, returns
+without side effects when the requested value already equals `0x782da3`, and
+otherwise publishes pending text through `0xf34a`/`0xff1e` before writing the
+new orientation. The geometry refresh path calls `0xf9ac`, `0xf87e`,
+`0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0x103ea`; derives
+VMI `0x783160` through `0xcfea`/`0xcf52`/`0x104d8`; refreshes both font
+contexts through `0x13eb8`; updates current-font caches `0x78318e` and
+`0x78315c`; and copies active metrics `0x783144`/`0x783146` into remembered
+words `0x782f08`/`0x782f0a`. Evidence anchors for `ESC &l1O` and chained
+`ESC &l1a1O` streams record active extents `2025x3030`, landscape margin
+`2175`, printable extent `2125`, top offset `100`, and the `0x103ea`
+threshold sequence `2175, 2550, 2480, 2550`.
 
 `ESC &l#P` at `0x00f9e8` handles page length in lines. The nonzero
 parameter path reads current VMI from `0x783160`, multiplies it by the
-absolute line count, converts the packed 12-subunit result back to whole
-dots, then selects an internal page code from thresholds loaded by
-`0x103ea`. Portrait checks internal codes `6`, `2`, `1`, then `5`;
-landscape checks `6`, `1`, then `2`. Accepted values finalize pending
-page state, store the selected code in `0x782da2`, store computed page
-extent in `0x782dba`, recompute geometry, default text length, and cursor
-state, and refresh the next text cursor through the same
-`0x782dce + VMI * 18 / 25` rule. The fixture pins `ESC &l66P` at 6 LPI
-as internal code `2`, page extent `3300`, top offset `90`, and following
-printable `!` at compact coord `0x9001`. Zero VMI and too-long page
-lengths are ignored. The zero-parameter branch is now modeled from
-`0xfa62..0xfaa6` and `0xfb4a..0xfc52`: it flushes pending text through
-`0xf34a`, publishes through `0xff1e`, waits through `0x9ac2`, copies
-`0x782da6` to output byte `0x780e8f` and signals `0x780e26` through
-`0x9b5e` when it differs from `0x780e8e`, then chooses default page code
-`0x780e97` or fallback `2`. Fixture `0xf9e8 ESC &l#P converts VMI lines
-to page length and selects internal page code` pins `ESC &l0P` with
-fallback code `2`, extent `3300`, text bottom `3240`, output byte
-`0x80`, and control word `1`.
+absolute line count through `0x104fe`, `0x332ee`, and `0x104d8`, converts the
+packed 12-subunit result back to whole dots, then selects an internal page code
+from thresholds loaded by `0x103ea`. Portrait checks internal codes `6`, `2`,
+`1`, then `5`; landscape checks `6`, `1`, then `2`. Accepted nonzero values
+publish pending text through `0xf34a`/`0xff1e`, mark pending page state
+`0x782997 = 1`, clear `0x780e99`, store `0x782da2`, store the computed page
+extent in `0x782dba`, and recompute page geometry, default text length, and
+cursor state through `0x9d4e`, `0x9d16`, `0x9e56`, `0xf87e`, `0xea16`,
+`0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`. If the requested length is
+shorter than the orientation-adjusted active height, `0xfbca..0xfbf4` shrinks
+`0x782db6` to keep the active printable length under the requested page
+extent. Zero VMI and too-long page lengths return without changing state.
+
+The zero-parameter branch at `0xfa62..0xfaa6` and `0xfb4a..0xfc52` is the
+default-page path: it flushes pending text through `0xf34a`, publishes through
+`0xff1e`, waits through `0x9ac2`, copies `0x782da6` to output byte
+`0x780e8f` and signals `0x780e26` through `0x9b5e` when it differs from
+`0x780e8e`, then selects default page code `0x780e97` or fallback `2` before
+entering the same geometry-refresh block. Evidence anchors in fixture
+`0xf9e8 ESC &l#P converts VMI lines to page length and selects internal page
+code` record `ESC &l66P` at 6 LPI as internal code `2`, extent `3300`, top
+offset `90`, following printable coord `0x9001`, and `ESC &l0P` as fallback
+code `2`, extent `3300`, text bottom `3240`, output byte `0x80`, and control
+word `1`.
 
 `ESC &l#W` at `0x011f6e` is a delayed-payload boundary for vertical
 forms control. It snapshots the six-byte parsed record through `0x121cc`

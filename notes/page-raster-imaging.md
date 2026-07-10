@@ -770,24 +770,33 @@ Current interpretation:
   `(0x051f - floor(height / 2)) / 16` at `0x782dc0`; for `ESC &l1A`
   letter portrait this yields `11`.
 
-`tools/render_fixture_harness.py` now has executable page-geometry
-fixtures for the `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe` masked table
-lookups, `ESC &l#A` page-size mapping, and `ESC &l#O` orientation
-recomputation. The `ESC &l1A` fixture pins internal code `6`, width
-`3030`, height `2025`, portrait margin `3150`, top offset `90`, and
-printable extent `3090`; the PCL `80` fixture pins internal code `0x88`
-masking to table index `8`; and a chained byte-stream fixture drives
-`ESC &l1a1O` through handlers `0xfc74` and `0x10220`. A mixed
-printable/page-size fixture now drives `!` followed by `ESC &l1A`,
-allocates the page-record root on the printable queue step, publishes
-the queued compact text bucket through the handler's `0xf34a`/`0xff1e`
-boundary, then bridges and renders the published record before the new
-geometry takes effect. The matching mixed printable/orientation fixture
-starts from letter portrait, drives `!` followed by `ESC &l1O`,
-allocates the page-record root on the printable queue step, publishes
-the queued bucket at the `0x10220` handler's `0xf34a`/`0xff1e` boundary,
-then verifies the published bridge renders before landscape geometry
-takes effect.
+The parser-facing geometry commands compose these table helpers into the page
+state later consumed by printable and raster paths. `ESC &l#A` at `0xfc74`
+maps the parsed page-size parameter to an internal page code, publishes any
+already queued page through `0xf34a`/`0xff1e`, then stores `0x782da2` and
+rebuilds the derived geometry caches through `0xf9ac`, `0x9d4e`, `0x9d16`,
+`0x9e56`, `0xf87e`, `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`.
+`ESC &l#O` at `0x10220` uses the same publication-before-change rule before
+writing `0x782da3`, recomputing orientation-sensitive fields, reloading
+thresholds through `0x103ea`, deriving VMI `0x783160`, and refreshing current
+font metrics. `ESC &l#P` at `0xf9e8` either selects a page code from VMI-scaled
+line count thresholds or, for parameter `0`, selects `0x780e97` / fallback
+`2`; both accepted paths enter the same geometry refresh block. Evidence
+anchors in `tools/render_fixture_harness.py` record `ESC &l1A` as page code
+`6` with width `3030`, height `2025`, portrait margin `3150`, top offset
+`90`, and printable extent `3090`; PCL page size `80` as internal code
+`0x88` masked to table index `8`; `ESC &l1a1O` through handlers `0xfc74` and
+`0x10220`; and `ESC &l66P` as computed extent `3300`.
+
+The visible-output rule for these commands is also ROM-local: if a printable
+byte has already allocated a compact text bucket, the geometry handler
+publishes that current root before installing new page state. The mixed
+`! ESC &l1A` and `! ESC &l1O` evidence streams allocate the page-record root
+on the printable step, publish the queued bucket at the geometry handler's
+`0xf34a`/`0xff1e` boundary, and only then apply the new page-size or landscape
+fields. The pixels for that published record therefore come from the
+pre-command page root and render bridge; subsequent bytes consume the updated
+geometry caches.
 
 ## Orientation
 
@@ -805,10 +814,10 @@ Orientation-sensitive geometry work includes:
 - `0x103ea`: reloads orientation-specific values into `0x782daa`,
   `0x782dac`, `0x782dae`, and `0x782db0`.
 
-The executable `ESC &l1O` fixture starts from letter portrait, changes
-orientation to landscape, and pins active extents `2025x3030`, landscape
-margin `2175`, printable extent `2125`, top offset `100`, and the
-`0x103ea` landscape threshold sequence `2175, 2550, 2480, 2550`.
+The `ESC &l1O` evidence stream starts from letter portrait, changes
+orientation to landscape, and records active extents `2025x3030`, landscape
+margin `2175`, printable extent `2125`, top offset `100`, and the `0x103ea`
+landscape threshold sequence `2175, 2550, 2480, 2550`.
 
 The coordinate helper group at `0x0104d8..0x010550` converts between
 whole coordinates and a packed fixed-point form with 12 subunits per

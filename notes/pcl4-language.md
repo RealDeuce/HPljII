@@ -167,17 +167,22 @@ owner, and whether visible pixels can result.
   handlers `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
   `0xeef0`; owner [Publication Outcome
   Matrix](publication-commands.md#publication-outcome-matrix).
-  These handlers publish any old current root through `0xff1e` when required,
-  update page environment fields such as `0x782da2`, `0x782da3`,
-  `0x782da4`, and `0x782da6`, and leave later objects to render through
-  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
-- Direct controls and text placement: C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
-  and `0xf2a8`, SO/SI `0xc6b8` / `0xc68a`, plus cursor/margin helpers; owner
+  These handlers either publish the old current root through snapshot boundary
+  `0xff1e` before mutating page environment, or stage page-control fields
+  such as `0x782da2`, `0x782da3`, `0x782da4`, and `0x782da6` for a later
+  publication. Rendered rows come only after the published record crosses
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`; publication itself is not a pixel
+  renderer.
+- Direct controls and text placement:
+  C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`; SO/SI
+  `0xc6b8` / `0xc68a`; and cursor/margin helpers are owned by
   [Direct-Control Outcome
-  Matrix](direct-control-codes.md#direct-control-outcome-matrix). These commands mostly
-  change cursor, selected text slot, line-termination, span, and margin state. Visible
-  output occurs when later printable text or a span flush queues compact objects through
-  `0xd04a`, `0x12f2e`, and `0x1387c`.
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix).
+  These commands change cursor, selected text slot, line-termination, span,
+  HMI/VMI, wrap, or margin state unless they explicitly publish through FF.
+  Visible output occurs when a later consumer, such as printable text,
+  underline span flush, raster origin, rectangle clipping, VFC, or
+  publication, reads those fields and queues or publishes page objects.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
   [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),

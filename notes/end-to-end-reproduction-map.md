@@ -181,6 +181,95 @@ allocator bitmap/free behavior for `0x170c`, `0x1710`, and `0x18b4` is composed
 in `Macro Definition And Data-Chain Replay` in
 [semantic-state-model.md](semantic-state-model.md).
 
+### Command-Family To Render Route Table
+
+Use this table after `pcl-command-map.md` has identified the terminal handler
+or delayed payload owner. It is the checked-in semantic join from parsed
+command families to page/image objects and then to the render helper that can
+write pixels.
+
+- Printable text:
+  normal unmatched printable bytes, transparent/display routed bytes, and
+  replayed printable bytes reach `0xd04a`. Source setup uses `0x1393a`,
+  `0xd140` / `0xd550`, and `0xd3b2` / `0xd824`. The canonical page object is
+  a compact bucket under root `+0x1c` from `0x12f2e -> 0x1387c`; context
+  slots under root `+0x2c..+0x68` select built-in or downloaded resources.
+  Bridge `0x1edc6` copies root `+0x1c` to render `+0x18`, and
+  `0x1efc2 -> 0x1effe` selects `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
+  `0x1f264`. Pixels come from compact object entries and copied context
+  slots.
+- Direct cursor/layout controls:
+  handlers such as `0xf02c`, `0xf08c`, `0xf0f0`, `0xedf8`, `0xca8c`,
+  `0xeb58`, `0xec0c`, `0xf39e`, `0xf560`, `0xf48c`, and `0xf692` write
+  canonical placement and layout fields: `0x782c8a`, `0x782c8e`, margins,
+  HMI/VMI, span watermarks, wrap/perforation state, and possible publication
+  through `0xf124 -> 0xff1e`. These handlers have no direct pixel helper;
+  later text, span, raster, rectangle, or publication consumers read the
+  mutated fields. Span flush `0x12714` can create class-`0x40` segment-list
+  objects rendered by `0x1f812`.
+- Transparent print data:
+  `ESC &p#X` arms `0x11f5a -> 0x121cc`; restore `0x12218` calls payload
+  reader `0x12452`. Counted payload bytes route to `0xd04a` or fixed-space
+  `0xd0f0`; any compact objects are ordinary text objects under root `+0x1c`.
+  The render route is the same compact route as printable text. The remaining
+  pixel-affecting boundary is the secondary segment-57 resource read at
+  `0x0c0000..0x0c0321`, documented in `transparent-print-data.md`.
+- Raster graphics:
+  `ESC *t#R` uses `0x10808`; `ESC *r#A/#B` use `0x1075a` / `0x107fa`;
+  delayed `ESC *b#W` restores to `0x105d0`. The canonical raster block is
+  `0x783170`. Accepted transfers queue encoded-raster bucket objects through
+  `0x13070 -> 0x13250 -> 0x138de` under root `+0x1c`, with class byte
+  `+4 = 0x80` and payload at `+0x0a`. Bridge `0x1edc6` copies root `+0x1c`
+  to render `+0x18`; `0x1efc2 -> 0x1f88e` selects `0x1f8da`, `0x1f8e6`,
+  `0x1f920`, or `0x1f9c6` from object byte `+5 & 3`. Pixels come from queued
+  payload bytes and expansion tables `0x30914` / `0x30b14`.
+- Rectangle/rule graphics:
+  `ESC *c` size/fill handlers write `0x78316a`, `0x783166`, and `0x78316e`;
+  fill `#P` runs `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`. Clipped source
+  `0x782a88` becomes a 14-byte rule object under page-root `+0x24`; bridge
+  `0x1edc6` sets selector bit `+5.4` and continuation word `+0x0c`. It then
+  copies root `+0x24` to render `+0x1c`. `0x1f446` dispatches solid selector
+  `7` to `0x1f596` and other selectors through pattern helper `0x1f4e0`.
+  Pixels come from width, height, selector, and pattern tables.
+- Text spans and underline:
+  direct-control span state is kept in `0x783184..0x78318a`; flush enters
+  `0x12714`. Portrait spans queue class-`0x40` segment-list objects under
+  root `+0x1c` through `0x13520` / `0x135f0`; landscape spans queue fixed-list
+  objects under root `+0x28` through `0x136d2`. The portrait route renders
+  through `0x1efc2 -> 0x1f812 -> 0x1f862`; the landscape route renders through
+  `0x1f756 -> 0x1f7b0`. Pixels come from queued span widths, coordinates, and
+  continuation fields.
+- Downloaded fonts and glyphs:
+  font-control and payload commands route through `0x15a56`, `0x16df6`,
+  delayed selector `0x11f96`, descriptor `0x15d0a`, resource install
+  `0x16c14`, and character install `0x16498`. Canonical state is current
+  downloaded-font id and character `0x782f2e/0x782f30`, records
+  `0x782640..0x782776`, installed glyph tables, bitmap payload bytes, and
+  later compact objects queued by printable `0xd04a -> 0x12f2e`. Selected
+  glyph output uses the compact text route; documented valid helpers are
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`. Invalid or high-row helper
+  boundaries stop at exact targets such as `0x1fe76..0x1fe88` or wrapped
+  `0x1f034 -> 0x1f08e`.
+- Publication and copies:
+  FF/reset/layout publication routes enter `0xf124` / `0xff1e`; copies use
+  `0xeef0` before later publication. Current root `0x78297a` is copied into
+  page/control pool record `0x780ea6`; copy count and header fields are
+  preserved; current root is cleared. The active scheduler selects source
+  `0x780eae`; `0x1ed84 -> 0x1edc6` bridges roots into render
+  `+0x18/+0x1c/+0x20` and context slots before `0x1eba4 -> 0x1ef6a` renders
+  band words.
+
+Evidence: the handler-to-owner mapping is in
+[pcl-command-map.md](pcl-command-map.md#semantic-owners). Detailed state,
+writer, reader, and unresolved-boundary ledgers are in
+[direct-control-codes.md](direct-control-codes.md#owner-summary),
+[transparent-print-data.md](transparent-print-data.md#owner-summary),
+[raster-graphics.md](raster-graphics.md#owner-summary),
+[rectangle-graphics.md](rectangle-graphics.md#owner-summary),
+[downloaded-fonts.md](downloaded-fonts.md#owner-summary),
+[page-record-storage.md](page-record-storage.md#page-assembly-decision-checkpoint),
+and [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
+
 ## Render Helper Boundary Index
 
 The render helper layer is documented as ROM dataflow from bridged page objects

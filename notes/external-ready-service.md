@@ -11,6 +11,73 @@ external-ready display, register shadowing, text/message buffering,
 service-bit dispatch, retained-storage failure status, and loop teardown. It
 does not create page-record objects or pixels directly.
 
+## Owner Summary
+
+This note owns the ROM-visible external-ready and service loop entered through
+`0x2e38 -> 0xba48`. The loop can preempt normal host parsing, update service
+register shadows, display external-ready or service messages, publish status
+bits, and return through the page/font scheduler and aggregate-status helper.
+It is not an imaging producer.
+
+Primary routes:
+
+- Entry and display:
+  `0xba48` enters the external-ready path, displays `01 EXT READY` through
+  `0x8c7a`, writes `$a200 = 0xff00`, and later stores the aggregate `0x36e4`
+  result into `0x780e08`.
+- Live-loop and shadows:
+  `0xbb84` reads `$fffee00b.7`; `0xbbb2`, `0xbc56`, and `0xbc88` maintain
+  shadows `0x7822eb`, `0x7822ec`, `0x7828f9`, timestamps, and ready/service
+  latches.
+- Text/message intake:
+  `0xc340` seeds `0x782312` with `01 EXT READY`; `0xbcfe` appends bytes from
+  `$fffee011` until carriage return, then displays the buffered text.
+- Service/status publication:
+  `0xc0ae` publishes `$fffee005.7` and `$fffee005.6` into `0x780e2e` through
+  `0x9bee`; retained-storage writer `0x571e` can raise `0x780e39.3`, and
+  `0xc1c6` consumes that bit as the non-returning `68 SERVICE` path.
+- Teardown:
+  `0xbb0a` / `0xc06e` clears service shadows, calls `0xc108`, runs the
+  page/font scheduler `0x19dd2`, ignores scheduler `D7`, and stores the
+  final aggregate status byte from `0x36e4`.
+
+Field groups:
+
+- Canonical status/output state:
+  final status byte `0x780e08`, status longword `0x780e36..0x780e39`,
+  external status/control register shadows at `$a200`, `$fffee00d`, and
+  `$a801`, and retained-storage failure bit `0x780e39.3`.
+- Derived/cache state:
+  sampled register shadows `0x7822eb`, `0x7822ec`, `0x7828f9`, timing
+  snapshots `0x78230a` / `0x78230e`, and text buffer state
+  `0x782300..0x782322`.
+- Parser scratch:
+  none from PCL parser records. The text buffer is service-interface scratch,
+  not host PCL parser state.
+- Firmware bookkeeping:
+  ready/service latches `0x782302`, `0x7822fd`, `0x7822fe`, `0x7822ff`,
+  copied byte `0x7822fa`, stable service byte `0x7821aa`, timer baseline
+  `0x7821ac`, and scratch bytes `0x7821e7..0x7821ef`.
+- Hardware/external state:
+  physical identity and timing of `$fffee00b`, `$fffee00d`, `$fffee00f`,
+  `$fffee011`, `$fffee013`, `$fffee005`, `$fffee003`, `$fffee001`, `$a200`,
+  `$a801`, and the retained-storage device.
+- Unknown:
+  board-level meaning of the external register family and some sibling service
+  bits. No ROM-local page-object or render edge is unknown in this loop.
+
+Output effect:
+
+- The loop does not call `0x10084`, queue page objects, publish page records,
+  call render entry, or write bitmap rows.
+- It can affect reproduction by preempting normal parsing, changing
+  service/status latches, displaying operator messages, or changing whether
+  later host bytes are admitted.
+- A byte-stream renderer that starts from admitted canonical state can treat
+  this as no-pixel service state; a board/protocol emulator must preserve the
+  register shadows, status bits, message buffer, `68 SERVICE` path, and
+  teardown handoff.
+
 ## Evidence
 
 - `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`

@@ -216,7 +216,7 @@ checked-in ROM model:
   unresolved-boundary index.
 - [errors-and-status.md](errors-and-status.md#owner-summary) - status, attendance,
   error, and service codes useful during ROM tracing.
-- [external-ready-service.md](external-ready-service.md) - documented
+- [external-ready-service.md](external-ready-service.md#owner-summary) - documented
   external-ready/service loop status bits, messages, register shadows, and
   scheduler/status teardown.
 - [page-font-scheduler.md](page-font-scheduler.md#owner-summary) - documented

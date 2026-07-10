@@ -107,7 +107,7 @@ The low-level ledger remains in `notes/semantic-state-model.md` under
 `Interface Output FIFO And Status Bytes` and
 `Page Environment Status And Pool Cursor Gate`.
 The external-ready/service loop and retained-storage `68 SERVICE` path are
-documented in [external-ready-service.md](external-ready-service.md).
+documented in [external-ready-service.md](external-ready-service.md#owner-summary).
 
 ### Field Groups
 
@@ -548,7 +548,7 @@ Field classes:
 - Hardware/external:
   the physical sources behind helper predicates are not named by this listing.
   `0xbb84` is documented in
-  [external-ready-service.md](external-ready-service.md) as consuming
+  [external-ready-service.md](external-ready-service.md#owner-summary) as consuming
   `$fffee00b.7`.
 - Unknown:
   user-facing names for the folded status categories remain unresolved; the

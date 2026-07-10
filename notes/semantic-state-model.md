@@ -11028,8 +11028,8 @@ NVRAM-failure fallback wording with the ROM paths found here.
 ## External Ready And Service Status Loop
 
 The standalone external-ready/service contract is in
-[external-ready-service.md](external-ready-service.md). This section preserves
-the full low-level ledger and disassembly evidence.
+[external-ready-service.md](external-ready-service.md#owner-summary). This section
+preserves the full low-level ledger and disassembly evidence.
 
 Status: composed for the external-ready/service-loop cluster entered through
 `0x2e38 -> 0xba48`. This checkpoint keeps the low-level ledger in the focused

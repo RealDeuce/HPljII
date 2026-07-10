@@ -6855,10 +6855,10 @@ Address-level cluster map:
   `0x782da3`, extents `0x782db8` / `0x782db6`, and the stored dimensions to
   reject off-page rectangles, clip negative or overrun edges, and write source
   record `0x782a88`: x, y, width, height, and fill selector.
-  The exact queue boundaries are documented in
-  [rectangle-graphics.md](rectangle-graphics.md): `0x10ba0..0x10bcc`
-  rejects or compensates x, `0x10bd4..0x10c0e` rejects or compensates y,
-  `0x10c42..0x10d0a` writes the portrait source record, and
+  The exact queue boundaries are composed in
+  [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix):
+  `0x10ba0..0x10bcc` rejects or compensates x, `0x10bd4..0x10c0e` rejects or
+  compensates y, `0x10c42..0x10d0a` writes the portrait source record, and
   `0x10c74..0x10dcc` writes the landscape-swapped source record.
   `0x13386` derives rule keys through `0x134d6`; `0x133aa` allocates a
   14-byte object through `0x1381c` and inserts it under page-root `+0x24` in

@@ -245,7 +245,7 @@ boundaries:
   [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   [symbol-map-patching.md](symbol-map-patching.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary), and
-  [built-in-resource-scan.md](built-in-resource-scan.md).
+  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary).
 - Downloaded-font descriptors, downloaded glyph payloads, fixed/current
   resource objects, no-install exits, row/span publication, and compact
   downloaded-glyph render boundaries:
@@ -1598,7 +1598,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   Owner notes:
   [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary),
-  [built-in-resource-scan.md](built-in-resource-scan.md), and
+  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Macro definition, replay, and overlay:
   `ESC &f` enters mode `17`. `Y/y` reaches macro-id handler `0xe112`;

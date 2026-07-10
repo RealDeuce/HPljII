@@ -6,6 +6,78 @@ record and bitmap ledger remains in [resource-rom.md](resource-rom.md);
 this file records the state contract used by font selection and visible
 text output.
 
+## Owner Summary
+
+This note owns the ROM path that turns the `IC32,IC15` built-in resource image
+into selectable font candidates. The resource scan does not parse PCL and does
+not draw pixels directly. It builds candidate windows and records the selected
+resource fields that font-selection handlers later consume before printable
+bytes resolve glyph rows.
+
+Primary routes:
+
+- Resource verification:
+  startup scanner `0x41a` verifies the `HEAD` chain and executable-record
+  behavior for the built-in resource image.
+- Candidate scan:
+  `0x1a2e4` seeds built-in scan bounds `0x080000..0x0ffffe`; `0x1a616` walks
+  resource records, classifies signatures through `0x1b9c0`, and passes
+  accepted font records to `0x1a9be`.
+- Candidate partition:
+  `0x1a9be` writes candidate pointers under `0x782324`, increments accepted
+  count `0x78278e`, partitions records into class/range counters
+  `0x782790..0x78279e`, and advances window cursors `0x7827a0..0x7827b4`.
+- Selection consumers:
+  `0x1569c` activates a class window, `0x156de` filters by requested,
+  remembered, or fallback symbol word, `0x1519a` filters by height, `0x153c6`
+  filters by spacing/pitch, and `0x14398` chooses selected slot `0x7828a8`.
+- Font/render handoff:
+  selected candidate state feeds `0x144d2`, `0x14c64`, `0xc428`,
+  `0x1393a`, compact queueing, and compact glyph renderers. Glyph table and
+  bitmap bytes remain canonical resource data owned by the dumped resource
+  image and decoded in the resource reports.
+
+Field groups:
+
+- Canonical resource data:
+  `HEAD` records, named `COURIER` and `LINE_PRINTER` font records, record
+  bytes `+0x0c/+0x0d/+0x20/+0x21/+0x22/+0x24/+0x28/+0x2a/+0x2f..+0x31`,
+  glyph table entries, and bitmap payload rows.
+- Canonical candidate state:
+  candidate pointer list `0x782324`, total count `0x78278e`, class/range
+  counters `0x782790..0x78279e`, window cursors `0x7827a0..0x7827b4`, scan
+  cursor `0x782884`, scan bounds `0x78288c` / `0x782890`, active list pointer
+  `0x78287c`, active count `0x7827b8`, and selected slot `0x7828a8`.
+- Derived/cache state:
+  verified built-in counters and cursors, active class-zero or class-one
+  pointer/count from `0x1569c`, high-bit candidate marks, and selected context
+  longwords consumed by font-context refresh.
+- Parser scratch:
+  font request fields and symbol words are parser-produced inputs to
+  selection; they are not produced by the resource scan.
+- Firmware bookkeeping:
+  startup scanner state, resource signature classifier `0x1b9c0`, candidate
+  insert/delete helpers `0x1bc38` / `0x1bd2e`, continuation policy probes, and
+  optional-window scanner behavior shared with the page/font scheduler.
+- Hardware/external state:
+  cartridge or external resource windows outside the verified built-in image,
+  plus the physical decode source after verified address `0x0bffff`.
+- Unknown:
+  the exact continuation/decode source at `0x0c0000..0x0c0321`, external
+  cartridge contents, and manual-facing names for some resource-record fields.
+  The ROM-local scan, partition, filter, chooser, and glyph-consumer addresses
+  are documented.
+
+Output effect:
+
+- The scan changes future pixels only by changing which candidate context and
+  glyph payload later font selection and printable bytes consume.
+- It does not queue compact objects, publish pages, schedule render work, or
+  write bitmap rows.
+- A byte-stream renderer must preserve the candidate windows, selected context
+  selection, glyph table entry interpretation, and explicit physical resource
+  continuation boundary.
+
 ## Evidence
 
 Primary disassembly:

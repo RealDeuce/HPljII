@@ -178,7 +178,7 @@ Unknown:
 - Manual-facing names for non-signature optional-resource boundary records
   reached after `0x1b9c0` returns `-1`. The ROM-local classifier and
   direct signature-skip behavior are documented in
-  [built-in-resource-scan.md](built-in-resource-scan.md).
+  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary).
 - User-facing name for `0x780e8d` and status mask `0x00000200`.
 
 ## Writers

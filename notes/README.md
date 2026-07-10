@@ -83,7 +83,7 @@ standalone deliverables.
   from an admitted byte stream to page objects, rendered pixels, and exact
   pixel-affecting stop points.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md) and
-  [built-in-resource-scan.md](built-in-resource-scan.md). The verified
+  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
   `0x0bffff`; the transparent secondary segment-57 continuation rule in
   [resource-rom.md](resource-rom.md) is the owner for the remaining
@@ -267,7 +267,7 @@ checked-in ROM model:
 - [symbol-map-patching.md](symbol-map-patching.md#owner-summary) - documented
   `0x14f16` Roman-8 map patching, hard-coded `0E` / `0U` cases, and the
   `0x14fce` patch table consumed before printable glyph mapping.
-- [built-in-resource-scan.md](built-in-resource-scan.md) - documented
+- [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary) - documented
   IC32/IC15 resource scan, candidate windows, built-in record filters, and
   glyph-row evidence.
 - [downloaded-fonts.md](downloaded-fonts.md#owner-summary) - documented soft-font

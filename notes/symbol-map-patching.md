@@ -302,6 +302,6 @@ Supporting checked-in notes:
 
 - [symbol-set-selection.md](symbol-set-selection.md#owner-summary)
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
-- [built-in-resource-scan.md](built-in-resource-scan.md)
+- [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary)
 - [resource-rom.md](resource-rom.md)
 - [page-raster-imaging.md](page-raster-imaging.md)

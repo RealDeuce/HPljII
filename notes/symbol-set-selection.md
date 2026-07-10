@@ -23,7 +23,7 @@ Primary evidence:
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
-- [built-in-resource-scan.md](built-in-resource-scan.md)
+- [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary)
 
 The generated report
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md` remains supporting
@@ -290,7 +290,7 @@ candidate pointer list at `0x782324`. For the verified built-ins, `0x1a9be` acce
 `HEAD`-path records: 12 class-zero records and 12 class-one records in the low built-in
 resource window. The resulting candidate counters and cursors are documented in
 [resource-rom.md](resource-rom.md) and
-[built-in-resource-scan.md](built-in-resource-scan.md):
+[built-in-resource-scan.md](built-in-resource-scan.md#owner-summary):
 
 - total accepted candidate count `0x78278e = 24`;
 - class-one low/range count `0x782792 = 12`, extension count
@@ -516,7 +516,7 @@ Checked-in documentation that composes the downstream path:
 
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [symbol-map-patching.md](symbol-map-patching.md#owner-summary)
-- [built-in-resource-scan.md](built-in-resource-scan.md)
+- [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary)
 - [page-record-storage.md](page-record-storage.md)
 - [page-raster-imaging.md](page-raster-imaging.md#owner-summary)
 

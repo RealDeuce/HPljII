@@ -2833,8 +2833,15 @@ State classification:
 - Unknown:
   no unresolved ROM-local parser-to-publication, publication-to-bridge, or
   bridge-to-render middle edge remains for the documented FF/reset/page-control
-  streams. Remaining uncertainty is limited to variants that change pool-header
-  fields, source-record selection, bridge values, or ROM-derived rows.
+  streams. New ROM-local publication/render work must start from a stream that
+  changes one of the named handoff fields: publication header bytes/words
+  `+0x04`, `+0x07`, `+0x08`, `+0x0a`, `+0x0c`, `+0x18`, or `+0x1a` written
+  by `0xffb0..0x10080`; pool/source selectors `0x780ea6`, `0x780eaa`, or
+  `0x780eae`; bridge roots `+0x1c`, `+0x24`, `+0x28`, or context slots
+  `+0x2c..+0x68` before `0x1edc6`; render roots `+0x18`, `+0x1c`, `+0x20`,
+  or `+0x24..+0x60` after `0x1edc6`; render work `+0x10`; object bytes
+  consumed by `0x1ef6a`; or row-construction inputs below the selected
+  renderer.
 
 Evidence:
 

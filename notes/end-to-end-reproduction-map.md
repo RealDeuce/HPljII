@@ -9236,9 +9236,12 @@ Priority ROM-local documentation targets:
    should start only when they change accepted-byte counts, row advancement, object
    bytes, or render inputs beyond the [raster transfer gate outcome
    matrix](raster-graphics.md#transfer-gate-outcome-matrix) or [encoded raster object
-   outcome matrix](raster-graphics.md#encoded-raster-object-outcome-matrix), and
-   rectangle streams only
-   when they change the boundaries named in [Remaining
+   outcome matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Rule-list
+   streams should start only when they change clipped source fields, ordered insertion,
+   object bytes, bridge continuation fields, selector dispatch, or row construction
+   beyond the [rule-list outcome
+   matrix](page-record-storage.md#rule-list-outcome-matrix). Rectangle streams should
+   start only when they change the boundaries named in [Remaining
    Edges](rectangle-graphics.md#remaining-edges): clipping output, `0x1381c`
    rollover/allocation state, retry publication fields, rule object bytes, bridge state,
    render dispatch, continuation mutation, or row construction. Publication examples for

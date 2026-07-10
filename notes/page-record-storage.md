@@ -606,6 +606,88 @@ higher, and equal-key examples; fixture
 branch; and fixture `0x1edc6 page-record bridge normalizes rule and fixed
 lists` for the root-to-render bridge.
 
+### Rule-List Outcome Matrix
+
+This matrix composes rule-list page objects from accepted rectangle/fill
+sources through page-root `+0x24`, bridge root `+0x1c`, and the first render
+helper. It is the owner checkpoint for streams that keep the same rectangle
+parser route but change rule object bytes, root ordering, bridge continuation
+state, selector dispatch, or rule row construction.
+
+- No rule object:
+  selector rejects, zero dimensions, and clip rejects return before `0x13386`;
+  those outcomes are owned by
+  [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix).
+  The rule-list outcome is no root `+0x24` write and no later `0x1f446`
+  consumer for that command.
+- Empty rule-list insertion:
+  `0x13386 -> 0x134d6 -> 0x133aa` allocates one 14-byte object through
+  `0x1381c`, stores it as page-root `+0x24`, clears object link `+0x00`, and
+  fills fields `+0x04`, `+0x05`, `+0x06`, `+0x08`, and `+0x0a`.
+- Nonempty ordered insertion:
+  `0x133aa` calls `0x13472` for a nonempty root. The search compares existing
+  object byte `+0x04` with key `0x782a7c`, then returns a head insert,
+  predecessor insert, or tail append. Equal-key objects remain before the new
+  node in the fixture-backed insertion order.
+- Allocation failure:
+  a zero return from `0x1381c` exits `0x133aa` before root `+0x24`, existing
+  nodes, or stream bookkeeping are modified. The rectangle retry path
+  `0x10d22..0x10d3e` owns the caller-visible publication/retry behavior.
+- Bridge normalization:
+  `0x1edc6` copies source root `+0x24` to render root `+0x1c`, ORs object byte
+  `+0x05` with `0x10`, and copies original height word `+0x0a` into render
+  continuation word `+0x0c`.
+- Solid render:
+  `0x1f446` consumes render root `+0x1c` on five-band boundaries. Selector
+  low nibble `7` reaches solid helper `0x1f596`, which consumes packed key
+  `+0x06`, width `+0x08`, and continuation `+0x0c`.
+- Pattern render:
+  selector low nibbles `0..6` and `8..13` reach pattern helper `0x1f4e0`.
+  That helper consumes the same key/width/continuation fields, selector table
+  `0x2fefe`, mask helper `0x1f6ee`, and fallback rows from `0x1f626`.
+
+Field grouping for this route:
+
+- Canonical state:
+  page root `0x78297a`, rule-list root `+0x24`, object link `+0x00`, bucket
+  byte `+0x04`, fill selector byte `+0x05`, packed coordinate word `+0x06`,
+  width word `+0x08`, and height word `+0x0a`.
+- Derived/cache state:
+  key fields `0x782a7c`, `0x782a7d`, and `0x782a7e`; `0x13472`
+  predecessor/tail status; render root `+0x1c`; bridge-created selector bit
+  `+0x05.4`; continuation word `+0x0c`; destination split from `0x1f626`; and
+  pattern or mask table selections.
+- Parser scratch:
+  none is owned by `0x133aa`. Parser command records and selector scratch have
+  already been reduced to the clipped source record before this route begins.
+- Firmware bookkeeping:
+  allocator state behind `0x1381c`, the zero/nonzero return in `D7`, and the
+  page-root retry bit set by rectangle caller `0x10d22` when rule allocation
+  reports no room.
+- Unknown:
+  no ROM-local producer-to-render middle edge remains for documented
+  selector-7, gray, HP-pattern, ordered insertion, no-room, bridge, and
+  continuation paths. Remaining rule-list work starts only when a stream
+  changes clipped source fields, `0x134d6` key derivation, `0x13472` ordering,
+  `0x133aa` object bytes, bridge continuation fields, `0x1f446` selector
+  dispatch, or row construction through `0x1f596` / `0x1f4e0`.
+
+Evidence: producer listing
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+`0x13386..0x134d4`; bridge listing
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+`0x1edc6..0x1ee0e`; render listing
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`
+`0x1f446..0x1f620`; fixtures
+`0x133aa address-aware rule-list insertion uses 0x1381c storage`,
+`0x133aa no-room return preserves rule-list head`,
+`0x1edc6 page-record bridge normalizes rule and fixed lists`,
+`0x1f446/0x1f596 renders solid black rectangle rule pixels`,
+`0x1f596 carries solid rule remainder across render bands`,
+`0x1f4e0 renders gray and HP pattern selector matrix`,
+`0x1f4e0 carries patterned rule remainder across render bands`, and
+`0x1f4e0 renders sub-byte shifted HP pattern rule pixels`.
+
 ## Segment-List Outcome Matrix
 
 This matrix composes the portrait text-span route from pending-span flush to

@@ -1,5 +1,37 @@
 # Source Index
 
+## Owner Summary
+
+This note owns the local source-document inventory and the evidence policy for
+manual/PDF material. It is not a command-behavior owner: ROM behavior must
+still be proven by dumped ROM bytes, disassembly, decoded tables,
+cross-references, RAM field writers/readers, and checked-in owner notes.
+
+Use these sources as follows:
+
+- The LaserJet Series II Technical Reference Manual is authoritative for
+  published PCL syntax, units, logical page terminology, documented user
+  behavior, memory-use estimates, and manual command names.
+- The LaserJet II / III service manual is authoritative for documented
+  hardware assemblies, connector names, control-panel procedures, diagnostic
+  messages, service labels, and physical signal descriptions.
+- Data sheets are supporting evidence for product identity, memory options,
+  interfaces, and high-level specifications.
+- LaserJet III material is compatibility context only unless the Series II ROM
+  disassembly or Series II service text ties it to a 33440-visible behavior.
+
+Evidence boundary:
+
+- Manual syntax can name a command family, but it does not prove the ROM
+  parser route, handler address, RAM field write, page-object shape, render
+  helper, or pixel output. Those claims belong to the firmware notes.
+- Service-manual hardware labels can name physical signals or assemblies, but
+  they do not prove which MMIO bit or wait-object transition the ROM is using
+  unless the disassembly-backed owner note reaches that register or field.
+- OCR or extracted-text tables are search aids. Verify ambiguous command
+  bytes, signal names, dimensions, and message text against the PDF image or
+  ROM evidence before promoting them into a semantic owner note.
+
 ## Local PDFs
 
 ### `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`

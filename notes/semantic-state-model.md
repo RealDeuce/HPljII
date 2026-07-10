@@ -3250,14 +3250,14 @@ object shapes or visible rows.
   source object `0x782d7e`, selected slot byte `0x78297e`, live-slot byte
   `0x78297f + slot`, current root pointer `0x78297a`, and root retry flag
   `+0x14.0`. The covered derived state after success is the `0x12f2e`
-  selector/key plus the compact bucket object under page-root `+0x1c`;
-  the fixture proves the old published bucket prefix, fresh-root allocation,
-  retried object pointer/bytes, `0x1effe` dispatch, and row digest match
-  for flagged `0xd824` and unflagged `0xd3b2` short and segmented/tall
-  objects. Remaining risk is selector-mode cross-products only when they
-  change source fields, allocator topology, object bytes, helper dispatch,
-  fallback split, or ROM-derived row construction, not the paired
-  failure-return semantics for these object families.
+  selector/key plus the compact bucket object under page-root `+0x1c`. The
+  retry contract preserves the old published bucket prefix, allocates a fresh
+  root, retries from the same source object, and dispatches the retried compact
+  object through `0x1effe` for flagged `0xd824` and unflagged `0xd3b2` short
+  and segmented/tall objects. Remaining risk is selector-mode cross-products
+  only when they change source fields, allocator topology, object bytes,
+  helper dispatch, fallback split, or ROM-derived row construction, not the
+  paired failure-return semantics for these object families.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers
@@ -3271,14 +3271,14 @@ object shapes or visible rows.
   ROM-derived row-construction inputs, not legal metric value behavior or the
   earlier paired short-text source-handoff allocation failure path.
 - `0x12f2e..0x1306e`: short, wide, segmented, and segmented-wide producer
-  shapes are fixture-backed through both modeled object bytes and addressed
-  `0x1381c` allocator storage. The addressed selector-mode matrix proves
-  all four selector values `0x0003`, `0x1003`, `0x2003`, and `0x3003`
-  share page-record storage, bridge/render dispatch through `0x1effe`, and
-  stable row digests. Remaining risk is dense parser-produced allocator
-  variants and broader legal font descriptor cross-products that change object
-  bytes, bridge state, dispatch, or ROM-derived row construction, not the
-  selector-mode object production contract.
+  shapes are documented through both modeled object bytes and addressed
+  `0x1381c` allocator storage. Selector values `0x0003`, `0x1003`,
+  `0x2003`, and `0x3003` share page-record storage, bridge/render dispatch
+  through `0x1effe`, and the same ROM row-construction contract. Remaining
+  risk is dense parser-produced allocator variants and broader legal font
+  descriptor cross-products that change object bytes, bridge state, dispatch,
+  or ROM-derived row construction, not the selector-mode object production
+  contract.
 
 ## Built-In Resource Scan And Candidate Windows
 

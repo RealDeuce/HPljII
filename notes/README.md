@@ -237,8 +237,9 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [dc-controller-engine.md](dc-controller-engine.md#owner-summary) - engine
   responsibilities, sensors, motors, laser, high voltage, formatter/DC
   signals.
-- [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary) -
-  keys, menu state, resets, service mode, self tests.
+- [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) -
+  keys, menu state, resets, service mode, self tests. Start with
+  `Control Panel Default Outcome Matrix` for ROM-visible default outcomes.
 - [io-interfaces.md](io-interfaces.md#owner-summary) - Centronics, RS-232C, RS-422,
   flow control, buffers.
 - [pcl4-language.md](pcl4-language.md#owner-summary) - PCL Level IV semantics,

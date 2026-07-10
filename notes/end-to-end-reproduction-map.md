@@ -2869,10 +2869,11 @@ Evidence:
 
 - Checked-in explanations:
   [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix),
-  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary),
-  `Worked Path: Reset And Default Environment` and `Default Environment Record
-  Producers` in [firmware-dataflow-model.md](firmware-dataflow-model.md), and `ESC E
-  Reset And Default Environment` in [semantic-state-model.md](semantic-state-model.md).
+  `Control Panel Default Outcome Matrix` in
+  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md), `Worked Path:
+  Reset And Default Environment` and `Default Environment Record Producers` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and `ESC E Reset And Default
+  Environment` in [semantic-state-model.md](semantic-state-model.md).
 - Focused listings:
   `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,

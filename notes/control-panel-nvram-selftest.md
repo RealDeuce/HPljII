@@ -64,6 +64,152 @@ Output effect:
   models power-cycle, cold reset, menu reset, service failure, or user-default
   provenance.
 
+## Control Panel Default Outcome Matrix
+
+This matrix composes the panel/default/NVRAM paths into the byte-stream
+reproduction model. These paths do not produce page objects directly. They
+produce the default fields that reset, paper-source, page-layout, text, and
+raster code later consume.
+
+Debounced panel/service byte:
+
+- ROM path: `0xa3ca -> 0x3dae`.
+- State class: parser/service scratch, hardware/external, and firmware
+  bookkeeping.
+- Writers:
+  `0xa3ca` samples `$8000.w & 0xff` until two reads match. `0x3dae` gates
+  repeated bytes with `0x7821aa` and dispatches changed bytes through the
+  table at `0x3d66`, including `0xef -> 0x3ef8`, `0xfd -> 0x3f6a`, and
+  `0xbf -> 0x4922`.
+- Readers / consumers:
+  menu/default handlers, service loops, and reset/default producers reached
+  from the service table.
+- Output effect:
+  no page object. The selected service/menu route may update defaults, status,
+  or retained records before later host bytes are parsed.
+- Evidence:
+  `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst` and
+  `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`.
+
+Menu commit/default update:
+
+- ROM path: `0x4922 -> 0x4fb0 -> 0x5060/0x50be/0x52ba`.
+- State class: canonical defaults, derived/cache state, and firmware
+  bookkeeping.
+- Writers:
+  `0x4922` stages menu selections in `0x782280..0x782298`, selects candidate
+  `0x78227c` using index `0x782278`, and calls `0x4fb0`. `0x5060`, `0x50be`,
+  and `0x52ba` update backing records under `0x780eda`, mirror `0x78219d`,
+  `0x7821a2`, or `0x78219e`, and mark dirty words.
+- Readers / consumers:
+  default loader `0x5e80`, reset/environment rebuild `0xcda2`, paper-source
+  handler `0xef62`, and later page-layout consumers.
+- Output effect:
+  delayed default-state effect only. The visible pixel effect appears after a
+  later reset or page-layout command consumes the canonical defaults.
+- Evidence: `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`,
+  `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`, and
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix).
+
+Default record load:
+
+- ROM path: `0x5e80`.
+- State class: canonical defaults and derived/cache state.
+- Writers:
+  `0x5e80` uses selector `0x7822d5` to choose a backing record under
+  `0x780eda`, copies record byte `+0` to `0x78219d`, copies record word `+2`
+  to `0x78219e`, derives `0x7821a2` from record byte `+5` bit 2, and updates
+  `0x7821a3`, `0x780e97`, and `0x780e55`.
+- Readers / consumers:
+  reset helper `0xcda2`, paper-source fallback `0xef62`, and the reset/default
+  matrix.
+- Output effect:
+  no direct pixels. It establishes the VMI, paper/default byte, and
+  page-environment defaults used by later output paths.
+- Evidence: `generated/disasm/ic30_ic13_default_env_load_005e80.lst` and
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix).
+
+Active-record validation and startup retained load:
+
+- ROM path: `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284`.
+- State class: canonical retained records, firmware bookkeeping, and
+  hardware/external.
+- Writers:
+  `0x5a16` sets dirty/read-mask words `0x780eba..0x780ed8`, calls retained
+  read helper `0x97e4`, then clears those flags. `0x56c2` scans active record
+  words and writes selector `0x7822d5`, or calls `0x1284(0xe2, 0x21)` for
+  `67 SERVICE`.
+- Readers / consumers:
+  startup/default loading, reset/default loading, and service-status paths.
+- Output effect:
+  no page object. It decides which retained defaults can seed the runtime
+  environment, or whether a service condition interrupts that provenance.
+- Evidence:
+  `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`,
+  `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`, and
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix).
+
+Retained commit/readback:
+
+- ROM path: `0x96c4 -> 0x97e4 -> 0x571e -> 0x9bee`.
+- State class: firmware bookkeeping, hardware/external, and canonical status.
+- Writers:
+  `0x96c4` serializes dirty retained words, calls `0x97e4` for readback, and
+  compares dirty readback words against the write image. `0x571e`
+  rotates/copies record groups and retries. Exhausted retries call
+  `0x9bee(0x780e36, 0x00000008)`, setting status bit `0x780e39.3`.
+- Readers / consumers:
+  external-ready/service status logic, later retained loads, and default
+  producers.
+- Output effect:
+  persistence and status only. Page pixels change only if the committed
+  records are later loaded as canonical defaults, or if service state prevents
+  normal processing.
+- Evidence:
+  `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`,
+  `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`, and
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix).
+
+Fallback/default-record rebuild:
+
+- ROM path: `0x5a62 -> 0x571e`.
+- State class: canonical retained records and firmware bookkeeping.
+- Writers:
+  for service byte `0xde`, `0x5a62` clears all 16 backing records and marks
+  all dirty flags. Otherwise it rebuilds records from ROM fallback tables
+  `0xba3e` and `0xba44`, then calls `0x571e`.
+- Readers / consumers:
+  default record loader `0x5e80`, reset/default consumers, and retained
+  commit/readback.
+- Output effect:
+  initializes later defaults. It does not queue objects or render rows.
+- Evidence: `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst` and
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix).
+
+State grouping for the matrix:
+
+- Canonical:
+  selector `0x7822d5`, backing records under `0x780eda`, runtime defaults
+  `0x78219d`, `0x78219e`, `0x7821a2`, and active/default bytes
+  `0x78219b`, `0x78219c`, `0x7821a0`, `0x7821a3`, and `0x780e97`.
+- Derived/cache:
+  staged menu values `0x782280..0x782298`, selected candidate `0x78227c`,
+  selector index `0x782278`, and maintenance counter `0x780ef0`.
+- Parser/service scratch:
+  last panel byte `0x7821aa`, progress byte `0x782272`, handler-table pointer
+  `0x782274`, and temporary flags `0x7822d4` / `0x7822dc`.
+- Firmware bookkeeping:
+  dirty/read-mask flags `0x780eba..0x780ed8`, auxiliary flags `0x780eb8`,
+  serial shadow `0x7828f6`, status bytes `0x780e36..0x780e39`, and
+  menu/service latches.
+- Hardware/external:
+  panel/service source `$8000.w`, retained-storage output/control `$a400`,
+  retained-storage input/status `$8c01`, and the physical panel/NVRAM devices.
+- Unknown:
+  the physical panel protocol, retained-storage device identity, and
+  manual-facing names for some service/status outcomes. There is no ROM-local
+  parser, page-object, or render middle edge hidden inside this owner note.
+
 ## Hardware
 
 The HP 33440 control panel has:

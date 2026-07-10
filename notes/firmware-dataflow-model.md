@@ -7043,9 +7043,10 @@ Default inputs consumed by reset:
 - `0x5e80`, menu/update handlers `0x5060`, `0x50be`, and `0x52ba`, retained
   record helpers `0x96c4` / `0x97e4`, and maintenance helpers `0x56c2` /
   `0x571e` / `0x5a62` produce or maintain those canonical defaults. Their
-  detailed producer contract lives in
-  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary)
-  and [reset-default-environment.md](reset-default-environment.md).
+  detailed producer contract lives in the `Control Panel Default Outcome
+  Matrix` in
+  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) and
+  [reset-default-environment.md](reset-default-environment.md).
 
 Default record producer chain:
 

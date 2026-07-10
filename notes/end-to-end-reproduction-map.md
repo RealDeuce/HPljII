@@ -5681,6 +5681,33 @@ Address-level cluster map:
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Evidence is
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
   and the font-selection owner notes cited above.
+  Font-selection state classification: canonical request/selection state is
+  requested symbol words `0x782ef4/0x782f04`, selected text slot
+  `0x782f06`, current-font contexts `0x782ee6/0x782ef6`, active symbol
+  words `0x783144/0x783146`, active maps `0x782f32/0x783032`, page-root
+  context slots under root `+0x2c..+0x68`, selected page-root slot
+  `0x78297e`, compact text glyph bytes captured by later printable records,
+  and render-record context slots copied by `0x1edc6`. Canonical resource
+  inputs for verified built-ins are the IC32/IC15 `HEAD` records, font record
+  fields consumed by `0x156de`, `0x1519a`, `0x153c6`, and `0x14398`, glyph
+  table entries, and bitmap payload rows. Derived/cache state is remembered
+  and fallback symbol words `0x782f08..0x782f28`, candidate pointer/count
+  windows `0x782324`, `0x78278e..0x7827b8`, selected candidate slot
+  `0x7828a8`, selected target `0x7828de`, selected-font snapshots
+  `0x783148/0x783152`, map flags `0x783132/0x783133`, transient probe
+  context `0x782992`, HMI `0x78315c`, and compact coordinates produced after
+  printable consumption. Parser scratch is the synthetic slot setup record
+  written by `0x1201e` or `0x12008`, mode-13 attribute records consumed by
+  `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0xc7e0`, final byte
+  and parameter words consumed by `0x1be22`, and the `0xc390` pitch-mode
+  synthetic record before it rejoins `0xc89c -> 0xc580`. Firmware
+  bookkeeping is dirty flags `0x782f2c/0x782f2d`, final-`X` marker
+  `0x78287b`, page-root live-font flags `0x78297f..0x78298e`, transient
+  full-root flag `0x78298f`, `0xc4fc` slot-scan return state, candidate
+  high-bit marks, and local `0x14f16` patch cursors. Hardware/external state
+  is absent for the verified built-in streams; optional cartridge or
+  post-`0x0bffff` resource-window contents are external data inputs to the
+  same selection/render path, not parser-dispatch gaps.
 - Page/font scheduler handoff cluster:
   quiesce and resource callers reach `0x19dd2` from `0x447a`, `0x4760`,
   `0xbb16`, and `0x1a3c2`; teardown and scan paths include

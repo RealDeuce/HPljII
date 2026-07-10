@@ -327,6 +327,12 @@ state-only mutation, or explicit no-output parser behavior.
   raster, rectangle, VFC, or publication paths. Evidence: fixtures
   `mixed printable/control parser trace feeds page-record queue` and
   `LF parser trace feeds page-record queue`.
+- Half-line feed:
+  `ESC =` reaches handler `0xf176`, which advances vertical cursor
+  `0x782c8e` by half of current VMI `0x783160` and then runs the vertical
+  overflow/perforation helper. It queues no object directly; the concrete
+  writer-to-consumer path is composed in
+  [Half-Line Feed Route Checkpoint](#half-line-feed-route-checkpoint).
 - FF:
   FF `0xf0f0` optionally applies CR-style reset when `0x78318f.5` is set,
   flushes spans, calls page-eject path `0xf124 -> 0xff1e`, and writes pending
@@ -1183,10 +1189,49 @@ Named byte-stream outcomes:
   materialize selector-`0x4000` segment-list output through `0x12714` before
   the following printable glyph queues.
 
-`ESC = !` advances vertically by half of current VMI. Fixture `ESC = half-line
-feed reaches shifted page-record output` proves `0xf176` advances y from
-packed `21` to `22.6`, then the following printable queues at compact coord
-`0x1001`.
+### Half-Line Feed Route Checkpoint
+
+This checkpoint composes `ESC =` as a vertical placement command. It starts
+when parser dispatch reaches handler `0xf176`, and it ends when a later
+printable, raster-start, rectangle/rule, VFC, or publication path consumes the
+shifted vertical cursor.
+
+Route summary:
+
+- `ESC =` reaches `0xf176..0xf1ca` from the normal parser table.
+- `0xf176` first ensures a current page root through `0x10084` and flushes
+  pending span state through `0xf34a`.
+- `0xf186..0xf19c` reads VMI `0x783160`, converts the packed value to signed
+  subunits through `0x104fe`, halves that signed count, and converts the half
+  step back to packed cursor form through `0x104d8`.
+- `0xf19e..0xf1ac` adds the half-step to current vertical cursor `0x782c8e`
+  through `0x10518` and stores the result back to `0x782c8e`.
+- `0xf1b2..0xf1c2` runs vertical overflow/perforation helper `0xf36c`; if
+  that helper returns nonzero, `0xf176` also calls `0x1048c`.
+- `0xf1c2` clears pending text/cursor latch `0x782a6d`. The handler creates no
+  compact text object, rule object, raster object, or pixels by itself.
+
+State classification for this route:
+
+- Canonical state: VMI `0x783160`, vertical cursor `0x782c8e`, current page
+  root `0x78297a`, and pending span fields consumed by `0xf34a`.
+- Derived/cache state: signed half-VMI subunit count, packed half-step from
+  `0x104d8`, compact coordinates from the next printable byte, and any
+  render-record copies created after later publication.
+- Parser scratch: the `ESC =` parser dispatch row and transient stack
+  arguments to coordinate helpers `0x104fe`, `0x104d8`, and `0x10518`.
+- Firmware bookkeeping: pending text/cursor latch `0x782a6d`,
+  overflow/perforation helper state from `0xf36c`, optional `0x1048c` recovery,
+  and span-flush bookkeeping if `0xf34a` materializes pending output.
+- Unknown: no ROM-local middle edge remains for the documented half-line feed
+  writer or following-printable consumer. Physical paper motion after later
+  publication remains external.
+
+Named byte-stream outcome:
+
+- `ESC = !` advances y from packed `21` to `22.6`, then the following
+  printable byte consumes the shifted cursor through `0xd04a` and queues at
+  compact coordinate `0x1001`.
 
 `ESC &f0S ESC &a2C ESC &f1S!` proves cursor-stack state reaches visible
 output. Fixture `cursor stack parser trace feeds page-record queue` routes

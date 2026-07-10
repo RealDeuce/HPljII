@@ -11760,6 +11760,10 @@ checkpoint only consumes their canonical outputs.
     `0xcec8..0xcf32`, normalized by `0xcfea`, clamped by
     `0xcf52`, converted through `0x104d8`, and stored as VMI
     `0x783160`.
+  - `0x780e97`: override page-code byte read by `0xcf52` and `0xcfea`.
+    Nonzero values are passed directly to the reset VMI page-table selector.
+  - `0x780e55`: fallback page-code byte read by `0xcf52` and `0xcfea`
+    when `0x780e97 == 0`.
   - `0x7821a2`: default environment byte copied to `0x782da6`
     by `0xcda2` at `0xce10..0xce28` when reset gate
     `0x7810b2` permits it; `0xcc70` also copies it to
@@ -11785,7 +11789,16 @@ checkpoint only consumes their canonical outputs.
     `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` covers
     the direct path, low clamp to 5 lines, high clamp to 128 lines,
     `0x780e97 == 0` fallback to `0x780e55`, and the orientation-selected
-    `0x9dbe`/`0x9d86` page-table branch.
+    `0x9dbe`/`0x9d86` page-table branch. The selector is pinned by
+    `0x1bdba`: it calls `0x1b250`, returns default-font class byte
+    `0x78289f` when the current default resolves, and returns zero when it
+    does not. A zero return selects `0x9dbe(page_code)`; a nonzero return
+    selects `0x9d86(page_code)`.
+  - `0x1bdba` return value: current-default page-table selector cache
+    consumed only by `0xcf52` and `0xcfea` in this reset/default VMI path.
+  - branch-selected page-table value: temporary value from `0x9dbe` or
+    `0x9d86`, reduced by `0x12c`, multiplied by 12, divided by the input
+    line-spacing word, and returned as line count by `0xcf52` or `0xcfea`.
   - `0x782dce`: vertical/top offset recomputed by `0xcc70` as
     `0x96 - 0x782dbe`; `0x782dd0` is cleared.
   - raster block `0x783170`: `0xcc70` clears byte `+0x12`,
@@ -11819,6 +11832,13 @@ checkpoint only consumes their canonical outputs.
   - `0x783164`, `0x782c18`, `0x782c19`, and `0x782a92` are
     cleared by `0xe146`.
   - `0x782a93` is cleared by the top-level `0xcc52` exit.
+  - current-default scratch for selector helpers: `0x1b250`, `0x1ad66`,
+    `0x78289e`, `0x78289f`, `0x7828a0`, and `0x7828a4` are the
+    default-font resolver/scratch state shared by `0x1bd64` and `0x1bdba`.
+    `0x1bd64` refreshes unresolved defaults through `0x1ad66`, forwards the
+    low-24-bit record address and word `0x7828a4` to `0x19c70`, and supplies
+    the host/menu caller outputs that are copied to `0x782288` and
+    `0x78228c`.
   Evidence: reset-flow state-reference scan and the listed disassembly files.
 - Unknown/provenance:
   - producer checkpoint `Default Environment Record Producers` identifies
@@ -11857,6 +11877,11 @@ checkpoint only consumes their canonical outputs.
   parser/page state `0x782a92`, and saved key `0x782a94` before publication.
 - `0xcda2` consumes default inputs `0x78219d`, `0x78219e`, `0x7821a2`,
   reset gate `0x7810b2`, and current-font context `0x782ee6`.
+- `0xcf52` and `0xcfea` consume page-code bytes `0x780e97`/`0x780e55`,
+  call `0x1bdba`, and choose either `0x9dbe` or `0x9d86` before deriving
+  the reset line-count term used for `0x783160`.
+- `0x1bdba` consumes current-default resolver `0x1b250` and class byte
+  `0x78289f`; it does not write reset state or page objects.
 - `0xcbd4` consumes current-font context `0x782ee6` and active symbol words
   `0x783144`/`0x783146`.
 - `0xe146` consumes the parser/data-chain block at `0x782d3e..0x782d68`
@@ -11885,9 +11910,12 @@ become the modeled `0xcda2` environment word, gated paper-source byte, pending
 status bytes, and VMI `0x783160`. Fixture
 `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` separately
 pins the line-spacing arithmetic: `0xcfea` computes a line count from
-`(page_table_value - 0x12c) * 12 / 0x78219e`, `0xcda2` clamps outside
-`5..128` lines by calling `0xcf52`, and `0x104d8` converts the selected
-line-spacing longword into packed 12-subunit VMI.
+`(page_table_value - 0x12c) * 12 / 0x78219e`, where `page_table_value` comes
+from `0x9dbe` if `0x1bdba` cannot resolve a current default and from
+`0x9d86` if it can. `0xcda2` clamps outside `5..128` lines by calling
+`0xcf52`, and `0x104d8` converts the selected line-spacing longword into
+packed 12-subunit VMI. This path changes reset layout state only; it emits no
+page record or pixels by itself.
 
 ### Confidence
 
@@ -11917,6 +11945,8 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 - `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`: page/control
   pool rebuild, default environment copies, HMI/VMI recompute, and reset
   bookkeeping fields.
+- `generated/disasm/ic30_ic13_font_default_metric_helpers_01bd64.lst`: current
+  default metric helper `0x1bd64` and reset VMI selector helper `0x1bdba`.
 - `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`: font-derived
   HMI refresh and symbol snapshots.
 - `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`: data-chain

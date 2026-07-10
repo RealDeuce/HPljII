@@ -647,9 +647,10 @@ output class that a byte-stream reader should follow next.
   Output class: rule-list page object, then rule render.
 - Font selection and downloaded-font bytes:
   font selectors and symbol/designation rows route through `0xc390`,
-  `0xc6ec..0xc930`, and `0x12046..0x120be`; downloaded-font payloads use
-  delayed setup `0x11f96`, descriptor `0x15d0a`, resource install `0x16c14`,
-  or character install `0x16498`. Continue in
+  `0xc6ec..0xc930`, and `0x12046..0x120be`; downloaded-font controls
+  `ESC *c#D/#E/#F` route to `0x15a56`, `0x15a18`, and `0x16df6`; payloads
+  use delayed setup `0x11f96`, descriptor `0x15d0a`, resource install
+  `0x16c14`, or character install `0x16498`. Continue in
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [downloaded-fonts.md](downloaded-fonts.md). Output class:

@@ -15,6 +15,7 @@ renderer-facing macro checkpoint.
 - `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`
 - `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
+- `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`
@@ -25,6 +26,7 @@ renderer-facing macro checkpoint.
 - `notes/pcl-parser-core.md`
 - `notes/pcl-parser-firmware.md`
 - `notes/page-raster-imaging.md`
+- `notes/page-record-storage.md`
 - `notes/semantic-state-model.md`
 
 Primary byte-stream examples:
@@ -526,6 +528,99 @@ refreshes selected-font state consumed by the next printable byte through
 the selected context and metric fields; derived/cache state is the active object
 lookup at `0x7828a8`; firmware bookkeeping is the macro context record and dirty
 byte `0x782f2d`.
+
+## Macro Context To Font Slot Checkpoint
+
+This checkpoint composes the state block where macro call/overlay unwind can
+change later printable glyph output. The macro engine does not have a private
+font renderer. It restores or refreshes selected-font state through `0xe65c`,
+then hands the result to the same page-root context-slot installer and compact
+render path used by live host bytes.
+
+Writers:
+
+- Call-mode frame builder `0xe418` and non-replay overlay builder `0xe4f4`
+  push one 10-byte macro context entry under `0x782c6e`. Entry bytes `+8` and
+  `+9` are the primary and secondary refresh flags consumed by `0xe65c`.
+- `0xe65c(0)` pops one entry at `0xe66a..0xe676`, reads flag byte `+8` at
+  `0xe67c..0xe686`, and when set calls `0x13eb8(0)`, copies active symbol word
+  `0x783144` to remembered word `0x782f08`, and marks dirty byte
+  `0x782f2d` if primary is the selected slot `0x782f06`.
+- The same popped-entry path reads flag byte `+9` at `0xe6dc..0xe6e6`; when
+  set it calls `0x13eb8(1)`, copies `0x783146` to `0x782f0a`, and marks
+  `0x782f2d` when secondary is selected.
+- `0xe65c(1)` uses static context record `0x782c64`. It refreshes primary or
+  secondary when flag bytes request it, or when orientation helper
+  `0xe860(slot)` reports a selected context orientation byte different from
+  current orientation `0x782da3`.
+- `0xe722..0xe84c` calls `0xc428(0x782f06)` to install or reuse the selected
+  page-root context slot. If the first install fails with zero, it restores
+  `0x782c80` / `0x782c84` into the selected current-font RAM record and
+  remembered metric word, runs `0x1b4c0`, `0x144d2`, and `0x14c64`, marks
+  `0x782f2d`, and calls `0xc428` again.
+- Common exit `0xe84c..0xe85e` calls `0x1b04c`, clears dirty byte
+  `0x782f2d`, and returns to the frame-unwind or overlay path.
+
+Readers and consumers:
+
+- `0xc428 -> 0xc4fc` reads current-font RAM record `0x782ee6 + 0x10 * slot`
+  and writes the selected context/resource longword into page-root slots
+  `+0x2c..+0x68` when a current page root exists.
+- The next printable byte consumes the selected slot through
+  `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e`, stores page-root slot
+  `0x78297e` into the compact object/source state, and marks live flag
+  `0x78297f + slot`.
+- Publication and rendering consume the result through the shared route:
+  `0xff1e` preserves page-root slots, `0x1edc6` copies them to render slots
+  `+0x24..+0x60`, `0x1effe` loads one copied slot into `0x783a2c`, and
+  `0x1f354` resolves glyph bitmap bytes from that selected context.
+
+Output effect: macro context restore can change later glyph pixels only by
+changing selected context records, remembered symbol words, map rebuild state,
+page-root context slots, or printable object slot selectors. It does not draw
+at `0xe65c`, and it does not create a macro-specific page-object or render
+helper.
+
+Field classification:
+
+- Canonical macro context state: stack entries `0x782c1e..0x782c6d`, stack
+  pointer `0x782c6e`, static context record `0x782c64`, and entry refresh
+  flags `+8/+9`.
+- Canonical font/context state: selected slot `0x782f06`, remembered symbol
+  words `0x782f08` / `0x782f0a`, current-font RAM records
+  `0x782ee6` / `0x782ef6`, selected object pointer `0x7828a8`, page-root slot
+  byte `0x78297e`, page-root context slots `+0x2c..+0x68`, and render context
+  slots `+0x24..+0x60`.
+- Derived/cache state: dirty byte `0x782f2d`, active symbol words
+  `0x783144` / `0x783146`, map rebuild output from `0x14c64`, orientation
+  comparison result from `0xe860`, and compact render context cache
+  `0x783a2c`.
+- Parser scratch: none. Replay bytes and parser records have already selected
+  execute/call or overlay frame unwinding before this context refresh runs.
+- Firmware bookkeeping: context push/pop pointer arithmetic, frame kind bytes
+  `+9`, snapshot/free bookkeeping, and common exit cleanup through `0x1b04c`.
+- Unknown: no ROM-local middle edge remains for the documented context-refresh
+  handoff into page-root context slots. The over-deep stack boundary remains
+  the exact unchecked pointer range named in this note; physical symptoms of
+  adjacent RAM corruption are outside the ROM-local pixel model.
+
+Evidence and unresolved boundaries:
+
+- Macro writer evidence:
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
+  `0xe65c..0xe85e` and `0xe860..0xe8a0`.
+- Font/page-slot evidence: `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
+  `0xc428..0xc57e` and [Context Slot Preservation
+  Checkpoint](page-record-storage.md#context-slot-preservation-checkpoint).
+- End-to-end evidence:
+  examples `0xe65c refresh composes with font context bridge`,
+  `macro execute data-chain parser trace feeds page-record stream`,
+  `macro call data-chain parser trace feeds page-record stream`, and the
+  overlay payload examples listed above.
+- Remaining work must change a concrete field in this handoff: context entry
+  flags, selected slot `0x782f06`, restored context longword `0x782c80`,
+  metric word `0x782c84`, `0xc428` slot-install result, page-root slot
+  `0x78297e`, compact object selector, or `0x1f354` context input.
 
 ## Readers And Consumers
 

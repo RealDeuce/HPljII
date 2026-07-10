@@ -106,7 +106,11 @@ Use these entry points according to the artifact in hand:
   field, command state field, page-object byte, publication/bridge field,
   render helper input, or exact unresolved boundary named there.
   [unresolved-boundaries.md](unresolved-boundaries.md) is the compact index of
-  those exact remaining stop points, grouped by boundary classification.
+  those exact remaining stop points, grouped by boundary classification; its
+  [Renderer Stop Contract](unresolved-boundaries.md#renderer-stop-contract)
+  gives the reproducer rule for downloaded-glyph invalid helper/source cases
+  after the upstream parser, page-object, publication, and render-helper entry
+  state is already modeled.
 
 The same semantic claim should appear at the highest useful level only once:
 the language map names the route, this file composes the route into the

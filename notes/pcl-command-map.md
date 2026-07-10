@@ -2911,33 +2911,48 @@ rows`, fixture `0x17708 font-ID non-selected exits preserve prior selection`,
 fixture `font-ID non-selected exits keep prior visible rows`, and fixture
 `font-ID secondary non-selected exits keep prior SO visible rows`.
 
-The harness now pins the concrete common-refresh branch classes from `0xc580`.
-With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current
-selector `0x782f06 = 0`, a present page root, and no live page-root font
-slots at `0x78297f..0x78298e`, the routine finds slot `0` available,
-runs `0xc4fc(0x782992)`, calls candidate refresh `0x13eb8(0)`, and
-then calls `0xc428(0)`. The same first-clear-slot path is pinned for
-secondary slot `D5 = 1`, where `0xc428` selects context record
-`0x782ef6` instead of `0x782ee6`. When all 16 live flags are set and
-`0xc4fc` can match the existing context, `0xc580` briefly sets
-`0x78298f = 1`,
-calls `0x13eb8(0)`, clears `0x78298f`, reuses the existing page-root
-context slot, calls `0x13eb8(0)` again, and then calls `0xc428(0)`.
-When all 16 live flags are set and `0xc4fc` finds no matching context,
-the helper returns `0x11`; `0xc580` skips the second `0x13eb8` and
-`0xc428` install. A dirty-1 selector mismatch (`0x782f06 != D5`) takes
-the short `0x13eb8(D5)` branch and also skips `0xc4fc` / `0xc428`.
-For dirty flag `2`, `0xc580` does not call `0x13eb8`: selector match
-calls only `0xc428(D5)` for both primary and secondary slots, while
-selector mismatch only reaches the final active-to-remembered word copy.
-The modeled `0xc4fc` scan accepts an existing low-24-bit context match
-before looking for the first inactive slot, then writes or reuses the
-current font-context record pointer in page-root slot `+0x2c + 4*n`.
-`0xc428` selects that page-root context slot by writing `0x78297e`. It
-does not mark `0x78297f+n` live; the printable producer path marks that
-live flag when text is queued. Each non-returning branch ends by copying
-active word `0x783144 + 2*D5` into remembered word `0x782f08 + 2*D5`
-and clearing `0x782f2c`.
+Common refresh `0xc580` is the shared bridge from parsed font/symbol
+terminals to later printable output. It rewinds the six-byte terminal record at
+`0x78299e - 6`, reads setup slot `D5` from record word `+2`, and exits at
+`0xc5c2` when dirty byte `0x782f2c` is zero. Dirty value `1` is the normal
+font/symbol refresh. If current text selector `0x782f06` differs from `D5`,
+`0xc610` calls `0x13eb8(D5)` only, so candidate and map state can refresh
+without selecting a page-root context slot. If the selector matches, `0xc5e4`
+scans live page-root font flags `0x78297f..0x78298e`. A first inactive slot
+goes to `0xc646`, where `0xc4fc(0x782992)` installs or reuses a context slot;
+on any result other than `0x11`, `0xc580` calls `0x13eb8(D5)` and then
+`0xc428(D5)`.
+
+The dirty-1 full-root path is explicit. When all 16 live flags are set and
+page root `0x78297a` exists, `0xc62a` sets transient byte `0x78298f = 1`,
+calls `0x13eb8(D5)`, clears `0x78298f`, then probes the selected context via
+`0xc4fc(0x782992)`. A low-24-bit context match reuses an existing root slot
+and continues through the second `0x13eb8(D5)` plus `0xc428(D5)`. A full
+no-match result returns `0x11`, so `0xc580` skips both the second refresh and
+the context install.
+
+Dirty value `2` is the final-`X`/default-symbol shortcut. It bypasses
+`0x13eb8`: selector match at `0xc5fc..0xc60e` calls only `0xc428(D5)` for the
+current selected context, while selector mismatch reaches the common exit with
+no `0x13eb8`, `0xc4fc`, or `0xc428` call. Every nonzero-dirty branch reaches
+`0xc666..0xc680`, copying active word `0x783144 + 2*D5` into remembered word
+`0x782f08 + 2*D5` and clearing dirty byte `0x782f2c`.
+
+Helper `0xc4fc` scans page-root slots `+0x2c + 4*n` by low-24-bit context
+match before looking for the first inactive flag at `0x78297f+n`, writes or
+reuses the selected current-font context longword, and returns slot `n` or
+full status `0x11`. Helper `0xc428` maps slot `0` to current-font record
+`0x782ee6` and slot `1` to `0x782ef6`, calls `0xc4fc` when a root exists,
+writes selected page-root slot byte `0x78297e`, and refreshes HMI/cache fields
+from the selected context. It does not mark `0x78297f+n` live; printable
+producers `0xd3b2` / `0xd824` mark that live flag when they queue compact
+text. Evidence anchors: disassembly
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`, and fixtures
+`0xc580 dirty primary branch installs page-root font context`,
+`0xc580 full live-slot branch reuses matching page-root font context`,
+`0xc580 full live-slot branch skips install when c4fc reports full`, and
+`0xc580 dirty-2 selector-match branch installs current context only`.
 
 The harness now includes a concrete `ESC (2U` / `ESC )0E` stream fixture
 that records the six-byte terminal records, refreshes active

@@ -5078,19 +5078,31 @@ selector mismatch only copies the remembered word and installs no context.
 - `0x144d2` writes selected context state at `0x782ee6`.
 - `0x144d2` writes secondary selected context state at `0x782ef6`.
 - `0x14c64` rebuilds maps `0x782f32` and `0x783032`.
-- `0xc428` / `0xc4fc` install selected longwords `0xc008004c` and
-  `0xc00ae122` into page-root/render context slots; the live primary handoff
-  fixture pins `0xc428(0)` selecting page-root slot `0`, and the live
-  secondary handoff fixture pins `0xc428(1)` selecting page-root slot `1`.
-- `0xc580` writes active words from requested words, remembered words from
-  active words, dirty flag `0x782f2c = 0`, and dirty-map flag `0x782f2d = 0`.
-  Depending on dirty flag, selector match, and page-root slot capacity, it
-  calls `0x13eb8`, `0xc4fc`, and/or `0xc428`, or skips all three and only
-  performs the remembered-word copy.
-- `0xc4fc` writes page-root context slots on successful first-inactive or
-  existing-context selection and returns `0x11` on the full/no-match branch.
-  `0xc428` writes selected page-root context slot `0x78297e` after a
-  successful install/reuse.
+- `0xc580` is the shared refresh writer after parsed font/symbol terminal
+  handlers. It consumes dirty byte `0x782f2c`, setup slot `D5` from the
+  restored terminal record, current text selector `0x782f06`, page root
+  `0x78297a`, live flags `0x78297f..0x78298e`, transient selected context
+  `0x782992`, and selected contexts `0x782ee6` / `0x782ef6`. Dirty value `1`
+  may call `0x13eb8`, `0xc4fc`, and `0xc428`; dirty value `2` bypasses
+  `0x13eb8` and calls only `0xc428(D5)` on selector match. All nonzero-dirty
+  branches copy active word `0x783144 + 2*D5` to remembered word
+  `0x782f08 + 2*D5` and clear `0x782f2c`.
+- `0xc580` uses transient byte `0x78298f` only for the full-live dirty-1
+  branch: it sets the byte before the first `0x13eb8(D5)` probe, clears it,
+  then asks `0xc4fc(0x782992)` whether an existing context slot can be reused.
+  If `0xc4fc` returns full status `0x11`, `0xc580` skips the second
+  `0x13eb8` and skips `0xc428`; the previous page-root/font-map selection
+  remains the printable consumer state.
+- `0xc4fc` writes page-root context slots under root `+0x2c + 4*n` on a
+  successful low-24-bit existing-context match or first-inactive selection.
+  It returns slot `n` for `0xc428` / `0xc580` consumers, returns `0` when no
+  current root exists, and returns full status `0x11` when all 16 live flags
+  are set and no context matches.
+- `0xc428` maps slot `0` to current-font record `0x782ee6` and slot `1` to
+  `0x782ef6`, passes the selected context longword to `0xc4fc`, writes
+  selected page-root context slot `0x78297e`, and refreshes HMI/cache fields
+  from the selected context. It does not mark `0x78297f+n` live; `0xd3b2` and
+  `0xd824` mark the live flag when they queue printable text.
 - SI handler `0xc68a` selects primary slot 0 before the primary printable
   bytes are consumed. It sets dirty-map byte `0x782f2d`, skips `0xc428` when
   `0x782f06` is already zero, and otherwise changes `0x782f06` to `0` only

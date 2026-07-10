@@ -91,6 +91,8 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
 - Startup and initial firmware state:
   `Worked Path: Startup Initial State`.
 - Host byte source and replay priority:
+  [Host Byte Source Outcome
+  Matrix](host-byte-fetch.md#host-byte-source-outcome-matrix) and
   `Worked Path: Host Byte Source Priority`.
 - Parser records, dispatch tables, delayed payloads, ignored rows, and
   parser artifacts:

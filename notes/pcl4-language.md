@@ -14,8 +14,11 @@ evidence.
 
 Primary route from syntax to ROM behavior:
 
-- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, tokenizer
-  helpers `0xdaf0` / `0xdb74`, and main dispatch loop `0x11774`.
+- Host bytes enter through the
+  [Host Byte Source Outcome
+  Matrix](host-byte-fetch.md#host-byte-source-outcome-matrix), parser wrapper
+  `0xda9a`, tokenizer helpers `0xdaf0` / `0xdb74`, and main dispatch loop
+  `0x11774`.
 - Command combining is represented by parser modes, lowercase finals, and
   six-byte records rooted at the parser record cursor `0x78299e`; counted
   payloads use delayed snapshot/restore `0x121cc -> 0x12218`.
@@ -868,7 +871,8 @@ Field groups for this index:
   downloaded-font payload readers also call `0xa904` directly when their
   command family owns subsequent raw bytes.
   Evidence:
-  [host-byte-fetch.md](host-byte-fetch.md),
+  [Host Byte Source Outcome
+  Matrix](host-byte-fetch.md#host-byte-source-outcome-matrix),
   [macro-data-chain.md](macro-data-chain.md), and
   [pcl-command-map.md](pcl-command-map.md).
 - Parser records and delayed payload admission:

@@ -64,6 +64,121 @@ Output effect:
   `0xf02c`, `0x12452`, `0x105d0`, or downloaded-font readers use the returned
   bytes to update page state or payload objects.
 
+## Host Byte Source Outcome Matrix
+
+This matrix is the byte-stream entry contract for reproduction. It says what
+`0xa904` can return to parser wrappers and direct payload readers, which state
+it mutates while choosing that byte, and where any remaining non-ROM evidence
+begins.
+
+- Service-needed retry:
+  `0xa904..0xa90a`, `0xaa88..0xaaa2`, and `0xab70..0xab8a` check service byte
+  `0x7821cd`, set service latch `0x7821cc`, call `0x10cc(0x780202)`, clear
+  the latch, and restart source selection. Return effect: no `D7` value is
+  exposed to the caller from the service path itself. Downstream parser state
+  is unchanged until a later source branch returns a byte or `-1`.
+
+- Immediate no-byte gate:
+  `0xa90e..0xa922` tests buffered-source byte `0x780e66` and gate byte
+  `0x780e3b`. When both are nonzero, it returns `D7 = -1` before consuming
+  first LIFO, data-chain, second LIFO, ring, or direct hardware state.
+  Consumers: parser wrapper `0xda9a`, transparent reader `0x12452`, raster
+  reader `0x105d0`, downloaded-font readers, and generic drains each decide
+  locally what `-1` means. Output effect: no page object is created by
+  `0xa904`; any visible effect belongs to the caller's early-return branch.
+
+- First pushback stack:
+  `0xa924..0xa94a` clears bit 3 in `0x780e66`, tests count `0x783e8c`,
+  predecrements pointer `0x783e8e`, returns `byte[0x783e8e - 1]` in `D7`,
+  stores the decremented pointer, and decrements the count. Writers of this
+  source include pushback/logging helper `0x9ec0`. Output effect: the returned
+  byte is indistinguishable from a live host byte to later parser and payload
+  consumers.
+
+- Active data-chain replay:
+  `0xa94c..0xa97c` clears bit 2 in `0x780e66`, reads active frame pointer
+  `0x782d76`, and checks frame byte count at `+4`. A positive count calls
+  `0x9f6a` and returns that replay byte in `D7`; count `-1` is an end marker
+  that clears frame `+4`, calls frame unwinder `0xe22c`, and restarts source
+  selection. Writers are macro execute/call/overlay frame producers in
+  [macro-data-chain.md](macro-data-chain.md). Output effect: stored macro or
+  overlay bytes re-enter the same parser and command-family owners as live
+  input.
+
+- Second pushback stack:
+  `0xa980..0xa9a0` tests count `0x783e76`, predecrements pointer
+  `0x783e78`, returns the byte in `D7`, stores the decremented pointer, and
+  decrements the count. If the stack is empty, `0xa99e..0xa9a0` clears bit 0
+  in `0x780e66` before falling through. Output effect: as with the first
+  stack, this is source-order bookkeeping only; parsing starts after the byte
+  reaches the caller.
+
+- Ring-buffer live input:
+  `0xa9a8..0xa9e0` is selected when direct selector `0x780e40` is zero. If
+  count `0x783e54` is nonzero, it reads from pointer `0x783e56`, advances and
+  wraps the pointer from after `0x783e53` back to `0x783a4c`, decrements
+  count `0x783e54`, and returns the byte. Producers are ring-fill helpers
+  such as `0xa6cc` and `0xa846`. Output effect: this is the ordinary live
+  host source for parser command streams.
+
+- Direct mode 1 hardware input:
+  `0xa9e2..0xaa86` is selected when `0x780e40 == 1`. It polls short MMIO
+  status/data registers `0x8e01`, `0x8801`, and `0x8c01`, reads a byte into
+  `D7`, reports literal `0x1a` through `0x9ec0` while preserving returned
+  `0x1a`, and performs the `$a601` / `$aa01` control-shadow handshake.
+  Output effect: parser-visible bytes still enter through `D7`; physical
+  connector timing and exact board identity are external to the ROM model.
+
+- Direct mode 2 hardware input:
+  `0xaaa6..0xab8a` handles other nonzero `0x780e40` selectors. It polls long
+  MMIO registers `0xfffee005`, `0xfffee001`, and `0xfffee009`, accumulates
+  status into `0x780e2e`, reads the data byte into `D7`, reports literal
+  `0x1a` through `0x9ec0`, sets `0x7828ec = 1`, clears `0x7821c4`, and
+  returns. Output effect: as in mode 1, ROM-visible byte semantics are known;
+  physical hardware timing and naming remain external.
+
+State grouping:
+
+- Canonical byte-source state: first stack `0x783e8c` / `0x783e8e`, active
+  frame pointer `0x782d76`, second stack `0x783e76` / `0x783e78`, ring count
+  and pointers `0x783e54` / `0x783e56` / `0x783a4c..0x783e53`, direct selector
+  `0x780e40`, and service/no-byte gates `0x7821cd`, `0x7821cc`,
+  `0x780e66`, and `0x780e3b`.
+- Derived/cache state: ring free capacity from `0xa6f4`, low-water threshold
+  `0x783e5e`, status-escape cursor `0x783e62`, and direct-mode shadows
+  `0x7828ec`, `0x7828fa`, `0x7828fb`, and `0x780e2e`.
+- Parser scratch: none at this layer. Parser scratch begins in `0xda9a`,
+  `0xdb74`, `0xdaf0`, `0x11774`, or a direct payload reader after `D7`
+  returns.
+- Firmware bookkeeping: pushback/logging helper `0x9ec0`, frame unwinder
+  `0xe22c`, service wait object `0x780202`, and direct-mode handshake
+  shadows.
+- Hardware/external state: physical register identity and timing for short
+  MMIO bank `0x8e01` / `0x8801` / `0x8c01`, long MMIO bank
+  `0xfffee005` / `0xfffee001` / `0xfffee009`, and bridge/output registers.
+- Unknown: manual labels for the quiesce/reset branches
+  `0x4218..0x44d2` and `0x61e4..0x6362`, plus unobserved data-chain frame
+  kind byte values outside documented `0`, `2`, `3`, and `4`.
+
+Evidence:
+
+- Source-priority and branch behavior:
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`, covering
+  `0xa904..0xab8a`.
+- Pushback and ring producers:
+  helpers `0x9ec0`, `0xa6cc`, and `0xa846`, with source details below.
+- Replay producers and consumers:
+  [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix)
+  and the data-chain frame reader `0x9f6a`.
+- Parser and payload consumers:
+  [pcl-parser-core.md](pcl-parser-core.md), transparent reader `0x12452`,
+  raster transfer reader `0x105d0`, VFC reader `0x12cfe`, downloaded-font
+  readers, and generic drains `0x1228a` / `0x12328`.
+- Unresolved boundary:
+  only the direct hardware identities and timing are external. The
+  parser-visible source order, state mutations, and `D7` return contract are
+  ROM-local documented.
+
 ## High-Level Behavior
 
 `0xa904` chooses the next byte in this order:

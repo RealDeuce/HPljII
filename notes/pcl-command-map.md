@@ -29,8 +29,10 @@ remaining boundaries.
 
 Primary route:
 
-- Host bytes enter through `0xa904` and parser wrapper/tokenizer
-  `0xda9a -> 0xdaf0 -> 0xdb74`.
+- Host bytes enter through
+  [Host Byte Source Outcome
+  Matrix](host-byte-fetch.md#host-byte-source-outcome-matrix), then parser
+  wrapper/tokenizer `0xda9a -> 0xdaf0 -> 0xdb74`.
 - Parser loop `0x11774` selects normal table `0x112a4` or alternate/data table
   `0x116f6`.
 - Each table row is a six-byte tuple:

@@ -512,11 +512,12 @@ It keeps the controlling artifact byte/dataflow oriented while preserving the
 command-family and page-image structure:
 
 1. Normalize the byte source:
-   start at [host-byte-fetch.md](host-byte-fetch.md) and classify which
-   `0xa904` source produces each parser byte: live/ring/direct host input,
-   pushback stack, data-chain replay, or macro replay. If the stream includes
-   delayed payload bytes, keep the payload reader's direct `0xa904` calls
-   separate from parser-wrapper bytes.
+   start at [Host Byte Source Outcome
+   Matrix](host-byte-fetch.md#host-byte-source-outcome-matrix) and classify
+   which `0xa904` source produces each parser byte: live/ring/direct host
+   input, pushback stack, data-chain replay, or macro replay. If the stream
+   includes delayed payload bytes, keep the payload reader's direct `0xa904`
+   calls separate from parser-wrapper bytes.
 2. Classify each admitted byte:
    first use `Admitted Byte Outcome Bridge` in this file, then
    [pcl-parser-core.md](pcl-parser-core.md#owner-summary) and

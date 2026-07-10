@@ -414,7 +414,7 @@ Evidence:
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`.
 - Scheduler/band evidence:
   `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
-  [active-render-scheduler.md](active-render-scheduler.md#active-render-loop-outcome-matrix),
+  [active-render-scheduler.md](active-render-scheduler.md#active-loop-branches),
   and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
 - Fixture evidence:
   `addressed text/rule/raster field groups reach publication and render

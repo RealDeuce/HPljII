@@ -296,7 +296,7 @@ Explicit no-output parser rows:
   state and delayed-payload boundaries exactly.
 - Evidence:
   `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
-  [pcl-command-map.md](pcl-command-map.md#no-output-parser-rows), and the
+  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes), and the
   `No-Output And Reported-Byte Checkpoint` below.
 
 Parser-external service return:

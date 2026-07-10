@@ -1401,7 +1401,7 @@ High printable byte with no high-character map:
 - Evidence:
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
   `0xd072..0xd0e2`; SI/SO bridge behavior in
-  [direct-control-codes.md](direct-control-codes.md#si-so-outcome-matrix).
+  [direct-control-codes.md](direct-control-codes.md#selected-context-switch-checkpoint).
 
 Unsupported host byte above `0xff`:
 

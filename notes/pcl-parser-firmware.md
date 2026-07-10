@@ -238,7 +238,7 @@ Alternate/data append or no-output parser rows:
   `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
   `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
   [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), and
-  [pcl-command-map.md](pcl-command-map.md#no-output-parser-rows).
+  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
 
 State grouping for this matrix:
 

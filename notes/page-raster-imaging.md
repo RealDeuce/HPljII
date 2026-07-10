@@ -248,7 +248,7 @@ Evidence:
 - Page-root lifetime evidence is
   [page-record-storage.md](page-record-storage.md#page-object-lifetime-and-band-boundary).
 - Scheduler evidence is
-  [active-render-scheduler.md](active-render-scheduler.md#supported-stream-rendering-rule).
+  [active-render-scheduler.md](active-render-scheduler.md#reproduction-contract).
 - Render dispatch evidence is the `Render Entry Owner Summary` and
   `Pixel Generation Owner Summary` below, plus disassembly
   `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,

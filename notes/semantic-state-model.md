@@ -10736,21 +10736,19 @@ helper `0x1f4e0`, uses pattern base `0x02ff3e`, writes four rows from pattern
 words starting with `0x8080`, and mutates the continuation height field to
 `0xffb4`.
 
-Encoded raster output is pinned at the same destination layer. Mode `0`
-copies literal payload words through `0x1f8da`; mode `1` expands each payload
-byte through `0x30914` and writes the same word to the current row plus one
-adjacent current or fallback row; mode `2` runs shared loop `0x1f9a0` once for
-even-indexed payload bytes and again for odd-indexed payload bytes, expanding
-each selected byte through `0x30b14` and writing the longword to three
-current/fallback row destinations; and mode `3` expands through two levels of
-`0x30914` to produce one longword written across four current/fallback row
-destinations. The fixtures named `0x1f88e mode-0 raster object renders queued
-literal row` through `0x1f88e mode-3 raster object expands queued bytes into
-four rows`, plus
-`generated/analysis/ic30_ic13_render_expansion_fixtures.md`, tie those table
-semantics to rendered rows and compact expansion vectors. The detailed
-instruction boundary is documented in
-[page-raster-imaging.md](page-raster-imaging.md#encoded-raster-span-mode-behavior)
+Encoded raster output is pinned at the same destination layer. Mode `0` copies literal
+payload words through `0x1f8da`; mode `1` expands each payload byte through `0x30914`
+and writes the same word to the current row plus one adjacent current or fallback row;
+mode `2` runs shared loop `0x1f9a0` once for even-indexed payload bytes and again for
+odd-indexed payload bytes, expanding each selected byte through `0x30b14` and writing
+the longword to three current/fallback row destinations; and mode `3` expands through
+two levels of `0x30914` to produce one longword written across four current/fallback row
+destinations. The fixtures named `0x1f88e mode-0 raster object renders queued literal
+row` through `0x1f88e mode-3 raster object expands queued bytes into four rows`, plus
+`generated/analysis/ic30_ic13_render_expansion_fixtures.md`, tie those table semantics
+to rendered rows and compact expansion vectors. The detailed instruction boundary is
+documented in
+[page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint)
 from disassembly `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
 
 ### Confidence

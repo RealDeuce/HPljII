@@ -8,11 +8,14 @@ import re
 import subprocess
 import sys
 import textwrap
+from collections import defaultdict
 from pathlib import Path
 
 
 LIST_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.])\s+)(.*)$")
 INDENT_RE = re.compile(r"^([ \t]+)(.*)$")
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+LOCAL_MD_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+\.md)#([^)]+)\)")
 TAB_WIDTH = 8
 
 
@@ -257,6 +260,61 @@ def unhandled_diff_check_failures(
     return failures
 
 
+def heading_anchor(text: str) -> str:
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    text = text.lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"\s+", "-", text.strip())
+    return text
+
+
+def markdown_anchors(path: Path) -> set[str]:
+    counts: defaultdict[str, int] = defaultdict(int)
+    anchors = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        match = HEADING_RE.match(line)
+        if not match:
+            continue
+        base = heading_anchor(match.group(2))
+        index = counts[base]
+        counts[base] += 1
+        anchors.add(base if index == 0 else f"{base}-{index}")
+    return anchors
+
+
+def local_anchor_failures(root: Path, paths: list[Path]) -> list[str]:
+    note_anchors: dict[Path, set[str]] = {}
+    failures: list[str] = []
+
+    for path in paths:
+        rel_parent = path.parent
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in LOCAL_MD_LINK_RE.finditer(line):
+                target_name, anchor = match.groups()
+                if "://" in target_name:
+                    continue
+                target = (rel_parent / target_name).resolve()
+                try:
+                    target.relative_to(root)
+                except ValueError:
+                    continue
+                if not target.exists():
+                    failures.append(
+                        f"{path.relative_to(root)}:{lineno}: missing linked file "
+                        f"{target.relative_to(root)}"
+                    )
+                    continue
+                if target not in note_anchors:
+                    note_anchors[target] = markdown_anchors(target)
+                if anchor not in note_anchors[target]:
+                    failures.append(
+                        f"{path.relative_to(root)}:{lineno}: missing anchor "
+                        f"{target.relative_to(root)}#{anchor}"
+                    )
+
+    return failures
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -355,6 +413,9 @@ def main() -> int:
             for path in whitespace_changed
             if path not in changed
         )
+
+    if args.check:
+        failures.extend(local_anchor_failures(root, paths))
 
     failures.extend(unhandled_diff_check_failures(root, whitespace_changed))
 

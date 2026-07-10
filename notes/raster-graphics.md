@@ -1103,10 +1103,10 @@ The disassembly contract for `0x1f88e..0x1fa5a` is:
   rooted at `0x7810b4 + A3`.
 
 The detailed row-pointer cases and field grouping for these helpers are in
-[page-raster-imaging.md](page-raster-imaging.md#encoded-raster-span-mode-behavior).
+[page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint).
 The controlling evidence is
-`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, not an
-external rendered-row comparison.
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`, not an external
+rendered-row comparison.
 
 For the primary mode-0 object above, the rendered row is:
 

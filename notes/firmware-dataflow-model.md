@@ -1809,6 +1809,8 @@ wrappers at `0xda9a`, `0xdaf0`, and `0xdb74`. The checked-in contract is
 [host-byte-fetch.md](host-byte-fetch.md). That note owns the caller
 classification, the
 [D7 Caller Return Contract](host-byte-fetch.md#d7-caller-return-contract),
+the state-model
+[D7 Caller Return Checkpoint](semantic-state-model.md#d7-caller-return-checkpoint),
 and the macro/data-chain frame layout:
 
 - `0x782d76`: active data-chain frame pointer.

@@ -33,7 +33,8 @@ standalone deliverables.
   [D7 Caller Return Contract](host-byte-fetch.md#d7-caller-return-contract)
   is the handoff from byte admission to parser wrappers, direct payload
   readers, display/transparent readers, raster data, downloaded-font payloads,
-  and macro/data-chain replay.
+  and macro/data-chain replay; the central state checkpoint is
+  [D7 Caller Return Checkpoint](semantic-state-model.md#d7-caller-return-checkpoint).
 - Parser state is owned by
   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): parser mode
   `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
@@ -145,7 +146,8 @@ checked-in ROM model:
    [D7 Caller Return Contract](host-byte-fetch.md#d7-caller-return-contract)
    to decide whether the returned byte is parser syntax, counted payload data,
    a direct display/transparent byte, raster data, downloaded-glyph bitmap
-   data, or replayed input.
+   data, or replayed input. The state-model counterpart is
+   [D7 Caller Return Checkpoint](semantic-state-model.md#d7-caller-return-checkpoint).
 3. Classify the parser outcome in `Admitted Byte Outcome Bridge` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#admitted-byte-outcome-bridge),
    then [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` /

@@ -868,7 +868,8 @@ Evidence:
   `Worked Path: Host Byte Source Priority` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and
   `Host Byte Fetch And Data-Chain Input` in
-  [semantic-state-model.md](semantic-state-model.md).
+  [semantic-state-model.md](semantic-state-model.md), especially its
+  [D7 Caller Return Checkpoint](semantic-state-model.md#d7-caller-return-checkpoint).
 - Focused listings and extracts:
   `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
   `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`,

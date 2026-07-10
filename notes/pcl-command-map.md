@@ -3053,17 +3053,24 @@ and object flag bit 30 chooses `0x16498` downloaded-character allocation
 when set or `0x16606` font-resource allocation when clear, while nonzero
 selector bytes require continuation state `0x7827c6 == 1`, use saved
 payload `0x7827da`, and choose resume helper `0x15b9a` or `0x15c4c` by
-the same bit-30 test. The bit-30-clear `0x15c4c` path is fixture-backed for
-both even fixed-record `02 03 04 00 00 00 02 00` and split-plane fixed-record
-`03 02 04 00 00 00 02 00` continuation records, including saved A4/A3
-destinations and D4/D3 counters; a status-0 resumed copy calls `0x17d7c` and
-rewrites the released fixed-record entry to the fallback form
-`01 02 00 fa 00 00 00 00` in the active-primary fixture. The bit-30 release
-delegate is fixture-backed separately: `0x17d7c` calls `0x17a24`, which clears
-the selected offset-table entry and refreshes the active secondary context.
-The fixed-record `0xa0..0xff` release branch is fixture-backed for type byte
-`+0x0e = 1`, with char `0xa1` rewriting the extended table entry and
-refreshing the active secondary context.
+the same bit-30 test. The bit-30-clear resume helper `0x15c4c` reconstructs
+the fixed-record table entry from saved character `0x7827c8`: normal
+characters use table base `record + 0x40 + 8 * (char - 0x20)`, while extended
+characters use the type-byte `+0x0e` table. It reloads width/row bytes into
+`0x7827c2` / `0x7827c4`, resumes the shared copy helper `0x16874`, and treats
+copy status `2` as still-incomplete, nonzero non-`2` as complete, and status
+`0` as failed. Complete copies clear continuation fields
+`0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,
+`0x7827d6`, and `0x7827d8`; status `0` first calls
+`0x17d7c(payload,char)` to release the half-copied fixed-record object.
+Even fixed-record `02 03 04 00 00 00 02 00` and split-plane record
+`03 02 04 00 00 00 02 00` both resume to visible fixed-record rows when the
+second payload supplies the remaining bytes. A failed resumed copy rewrites
+the active-primary fixed-record entry to fallback form
+`01 02 00 fa 00 00 00 00`. Release helper `0x17d7c` delegates bit-30-set
+offset-table records to `0x17a24`, and the fixed-record `0xa0..0xff` release
+branch rewrites the extended table entry for type byte `+0x0e = 1` before
+refreshing the active secondary context when the released payload is selected.
 `ESC *c#F` dispatches values `0..6` through the
 table at `0x16db6`: values `0`, `1`, and `2` call all/current record
 release helpers, value `3` uses the current character/code word

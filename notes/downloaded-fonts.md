@@ -3059,12 +3059,14 @@ state is therefore unchanged, parser scratch is the cleared continuation
 record, firmware bookkeeping is the failed branch reason, and output effect is
 no new glyph becoming visible.
 
-The companion fixture
-`host-fetched 0x15d0a continuation resource object resumes fixed-record render`
-starts with the same host-fetched descriptor but gives `0x16606` only budget
-`0x10`. That copies bitmap bytes `aa 55`, writes the same fixed-record entry
-`02 03 04 00 00 00 02 00` at payload `+0x48`, and saves continuation fields
-equivalent to:
+The bit-30-clear continuation path starts when handler `0x16606` cannot copy
+the fixed-record bitmap in the first descriptor payload. The partial-copy
+state is canonical continuation state, not parser scratch: it records the
+payload object, character code, fixed-record table entry, remaining copy
+offsets, and byte count that the next descriptor packet must satisfy. In the
+representative host-fetched path, the first `ESC )s0W` descriptor gives
+`0x16606` only budget `0x10`, so it copies bitmap bytes `aa 55`, writes
+fixed-record entry `02 03 04 00 00 00 02 00` at payload `+0x48`, and saves:
 
 - `0x7827c6 = 1`;
 - `0x7827da = 0x000100`;
@@ -3073,23 +3075,48 @@ equivalent to:
 - `0x7827d2 = 4`.
 
 The next host-fetched descriptor stream `ESC )s0W 04 01 cc` takes the
-`0x15d0a` status-`2` route through `0x15e5c..0x15e68`, dispatches handler
-`0x15c4c`, reloads the fixed-record table entry from payload `+0x48`, copies
-the remaining bytes `f0 0f c3 3c` through the linear `0x16874`/`0x168dc` path
-at destination `0x000302`, clears `0x7827c6`, `0x7827da`, `0x7827c8`,
-`0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`, and `0x7827d8`, then renders
-the same source object, page-record object prefix, bridge context slots, and
-three mode-0 rows as the one-piece `0x16606` fixture. Its return boundary is
+continuation branch in `0x15d0a`: selector byte nonzero requires
+`0x7827c6 == 1`, resolves saved payload `0x7827da` through `0x1b4c0`, tests
+bit 30 of the selected object, and dispatches bit-30-clear records to
+`0x15c4c`. Helper `0x15c4c` reconstructs fixed-record dimensions from saved
+character `0x7827c8`: characters `0x20..0x7f` use table base `record + 0x40`
+with offset `(char - 0x20) * 8`, while characters above `0x7f` use the
+extended table selected by type byte `+0x0e`. It loads width/row bytes into
+`0x7827c2`/`0x7827c4`, calls shared byte-copy helper `0x16874`, and handles
+three statuses:
+
+- status `2`: copy remains incomplete, so `0x15c4c` returns immediately with
+  continuation state still live;
+- nonzero status other than `2`: copy completed, and `0x15c4c` clears
+  `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,
+  `0x7827d6`, and `0x7827d8`;
+- status `0`: copy failed, so `0x15c4c` calls `0x17d7c(payload,char)` before
+  clearing those same continuation fields.
+
+The status-0 release path is the no-visible-glyph cleanup edge. `0x17d7c`
+delegates bit-30-set offset-table records to `0x17a24`; for bit-30-clear
+fixed-record tables it rewrites the affected fixed-record entry to fallback
+form, refreshes selected primary or secondary context through `0x1b4c0` /
+`0x14c64` when the released payload is active, and clears matching
+continuation fields if they still name the same payload and character.
+
+The resumed fixed-record path is page-visible when the second descriptor takes
+the status-`2` route `0x15d0a -> 0x15e5c..0x15e68 -> 0x15c4c`. It reloads the
+fixed-record table entry from payload `+0x48`, copies remaining bytes
+`f0 0f c3 3c` through the linear `0x16874`/`0x168dc` path at destination
+`0x000302`, clears `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`,
+`0x7827ce`, `0x7827d2`, `0x7827d6`, and `0x7827d8`, then renders the same
+source object, page-record object prefix, bridge context slots, and three
+mode-0 rows as the one-piece `0x16606` fixture. Its return boundary is
 `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328`, copy status `1`, copy stream
 position `4`, remaining `0x783140 = 0`, zero drained bytes, and next parser
 handler `0xd04a`. This closes the bit-30-clear continuation middle edge for
 one even-span fixed-record resource object and one linear continuation
 full-success return sibling.
 
-The split-plane companion fixture
-`host-fetched 0x15d0a split-plane continuation resource object resumes
-fixed-record render` uses fixed-record prefix `03 02 04 00` and host bitmap
-stream `a0 a1 b0 c0 c1 d0`. The first `0x16606` pass receives budget `0x12`,
+The split-plane continuation path uses fixed-record prefix `03 02 04 00` and
+host bitmap stream `a0 a1 b0 c0 c1 d0`. The first `0x16606` pass receives
+budget `0x12`,
 leaving copy budget `4`; it writes prefix bytes `a0 a1 c0` at payload delta
 `0x0200`, writes trailing byte `b0` at delta `0x0204`, stores record
 `03 02 04 00 00 00 02 00` at payload `+0x48`, and saves continuation fields:
@@ -3119,23 +3146,23 @@ next parser handler `0xd04a`. This closes the split-plane
 continuation-counter middle edge for one bit-30-clear fixed-record resource
 object and one split-plane continuation full-success return sibling.
 
-Fixture `0x15c4c partial resource resumes update continuation state` covers the
-status-`2` sibling for the same continuation handler. The linear partial starts
-from saved destination `0x000302` and remaining count `4`, copies one byte
-`f0`, advances destination to `0x000303`, and resaves remaining count `3`.
-The split-plane partial starts from saved prefix destination `0x000303`,
-trailing destination `0x000305`, and D4/D3 counters `0/0`, copies only prefix
-byte `c1`, advances prefix destination to `0x000304`, keeps trailing
-destination `0x000305`, and resaves D4/D3 counters `1/0`. Both cases return
-status `2` from `0x16874`, leave `0x7827c6 = 1`, and preserve the payload and
-glyph/table index for a later descriptor-selected resume.
+The status-`2` sibling for the same continuation handler updates continuation
+state without making the glyph complete. The linear partial starts from saved
+destination `0x000302` and remaining count `4`, copies one byte `f0`, advances
+destination to `0x000303`, and resaves remaining count `3`. The split-plane
+partial starts from saved prefix destination `0x000303`, trailing destination
+`0x000305`, and D4/D3 counters `0/0`, copies only prefix byte `c1`, advances
+prefix destination to `0x000304`, keeps trailing destination `0x000305`, and
+resaves D4/D3 counters `1/0`. Both cases return status `2` from `0x16874`,
+leave `0x7827c6 = 1`, and preserve the payload and glyph/table index for a
+later descriptor-selected resume. Evidence anchor:
+`0x15c4c partial resource resumes update continuation state`.
 
-The failure companion fixture
-`0x15c4c failed resource resume releases fixed-record object` starts from the
-same partial even-span install but supplies only two of the four remaining
-bitmap bytes. The linear reader `0x168dc` returns status `0` with partial bytes
-`f0 0f`, so `0x15c4c` takes the `0x15cb8..0x15ccc` failure exit through
-`0x17d7c` before clearing the continuation fields at `0x15cd6..0x15d08`.
+The failed resume path starts from the same partial even-span install but
+supplies only two of the four remaining bitmap bytes. The linear reader
+`0x168dc` returns status `0` with partial bytes `f0 0f`, so `0x15c4c` takes
+the `0x15cb8..0x15ccc` failure exit through `0x17d7c` before clearing the
+continuation fields at `0x15cd6..0x15d08`.
 `0x17d7c` verifies the bit-30-clear fixed-record range, rewrites glyph `0x21`
 at payload `+0x48` from `02 03 04 00 00 00 02 00` to
 `01 02 00 fa 00 00 00 00`, writes side-table bytes `fa 00` at payload
@@ -3144,7 +3171,8 @@ matching continuation state. The replacement byte `0xfa` is the low byte of
 `0x7530 / payload_word_0x1a`, with the fixture setting word `+0x1a = 0x0078`;
 the final longword comes from the base fixed-record entry at payload `+0x40`.
 This covers the `0x15c4c` status-0 release exit for one active-primary
-bit-30-clear fixed-record payload.
+bit-30-clear fixed-record payload. Evidence anchor:
+`0x15c4c failed resource resume releases fixed-record object`.
 
 Boundary map for the bit-30-clear fixed-record route:
 

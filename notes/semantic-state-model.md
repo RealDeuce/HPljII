@@ -8619,14 +8619,22 @@ installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: insta
   `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16` from cleared source `+0x18 = 0`,
   then `0x1eba4` advances through band words `0..9` until the published bucket-9 row is
   visible. The earlier first-band seed edge is now closed for this published record.
-- `0x15c4c`: the even-span and split-plane fixed-record resume routes are
-  page-visible, and the status-0 fixed-record release exit is fixture-backed.
-  The bit-30 offset-table release delegate is fixture-backed through
-  `0x17a24`. Fixed-record secondary-context refresh and fixed-record
-  extended-table release are fixture-backed together. Current-record
-  allocation-failure release through `0x1887a` is fixture-backed for the
-  bit-30-clear extended fixed-record case; the remaining release risk is
-  broader variant coverage, not this control-flow edge.
+- `0x15c4c`: bit-30-clear fixed-record continuation is now modeled as a
+  parser-driven state block. Canonical continuation fields are
+  `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,
+  `0x7827d6`, and `0x7827d8`; `0x15d0a` consumes those fields on selector
+  nonzero after it resolves saved payload `0x7827da` through `0x1b4c0`.
+  Helper `0x15c4c` reconstructs the fixed-record table entry from saved char
+  `0x7827c8`, reloads copy geometry into `0x7827c2` / `0x7827c4`, and calls
+  `0x16874`. Status `2` leaves continuation live; nonzero non-`2` clears the
+  continuation fields and makes the fixed-record glyph visible to later
+  printable text; status `0` calls `0x17d7c` before clearing the fields.
+  Release helper `0x17d7c` either delegates bit-30-set records to `0x17a24` or
+  rewrites the bit-30-clear fixed-record/extended-table entry, refreshes the
+  active selected context through `0x1b4c0` / `0x14c64` when needed, and clears
+  matching continuation state. Even-span and split-plane resume variants feed
+  the same `0x1393a -> 0x12f2e -> 0x1edc6 -> 0x1ef6a` visible-output route
+  after completion; failed resume leaves no new visible glyph.
 - The span-metric bridge in `notes/font-context-metrics.md` now documents the
   route from host-fetched type-0, type-1, and type-2 downloaded payloads through
   descriptor validation, selected-font context, the `0xd4ac` and `0xd8fc` span

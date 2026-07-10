@@ -1521,9 +1521,27 @@ block `0x783170` unchanged; and alternate/data `ESC *b#W/w` preserves the
 counted payload boundary through `0x11f82 -> 0x121cc -> 0x12218 -> 0x12358`
 without calling `0x105d0`, `0x13070`, `0x13250`, or `0x138de`. Those paths are
 therefore no-output parser/storage outcomes until the stored bytes replay
-through normal parser mode. Evidence is
+through normal parser mode.
+For direct-control command families, alternate/data C0 rows for BS, HT, LF,
+FF, CR, SO, and SI append stored bytes instead of calling `0xf2a8`, `0xf1cc`,
+`0xf08c`, `0xf0f0`, `0xf02c`, `0xc6b8`, or `0xc68a`; uppercase rows in table
+`0x116f6` are blank, and lowercase finals route only to `0x11f4c`. That leaves
+placement `0x782c8a/0x782c8e`, margins `0x782dd6/0x782dda`, HMI/VMI
+`0x78315c/0x783160`, line/wrap/perforation bytes
+`0x78318f/0x783190/0x783191`, cursor stack `0x782c96..0x782d36`, span fields
+`0x783184..0x78318a`, and selected-context fields unchanged. For
+page-environment and publication-adjacent commands, alternate/data `ESC &l`
+rows for `A/C/D/E/F/H/L/O/P/T/V/X` are blank or `0x11f4c` outcomes, so they
+do not call `0xfc74`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`, `0xef62`,
+`0xee64`, `0xf9e8`, `0x10220`, `0x1280a`, or `0xeef0`; page-control fields
+such as `0x782da4`, `0x782da6`, `0x782da3`, `0x782997/0x782998`,
+`0x780e99`, and geometry/default-environment state remain unchanged. The
+active exceptions are `ESC E` reset through `0xcc52` and VFC payload
+`ESC &l#W/w` through `0x11f6e`. Evidence is
 [raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint),
 [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix),
+[direct-control-codes.md](direct-control-codes.md#owner-summary),
+[publication-commands.md](publication-commands.md#owner-summary),
 `generated/analysis/ic30_ic13_pcl_command_map.md`,
 `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`, and
 `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.

@@ -13,6 +13,7 @@ renderer-facing documentation checkpoint.
 ## Evidence
 
 - `generated/analysis/ic30_ic13_direct_control_code_flow.md`
+- `generated/analysis/ic30_ic13_pcl_command_map.md`
 - `generated/analysis/ic30_ic13_renderer_fixture_harness.md`
 - `generated/analysis/ic30_ic13_printable_text_path.md`
 - `generated/analysis/ic30_ic13_text_cursor_span_flow.md`
@@ -124,6 +125,14 @@ Primary route:
   or mode state. Their visible effects occur through a later printable byte,
   span flush `0x12714`, FF/VFC/page-eject publication `0xf124 -> 0xff1e`, or
   raster/rectangle consumers that read the same cursor state.
+- Alternate/data mode suppresses those ordinary direct-control effects at the
+  parser table. Mode-zero C0 rows for BS, HT, LF, FF, CR, SO, and SI append
+  stored bytes instead of calling `0xf2a8`, `0xf1cc`, `0xf08c`, `0xf0f0`,
+  `0xf02c`, `0xc6b8`, or `0xc68a`. Uppercase cursor/text-motion/layout rows
+  in table `0x116f6` are blank, and lowercase chaining finals route only to
+  `0x11f4c`; placement, line-termination, HMI/VMI, wrap, margin, cursor-stack,
+  span, and selected-context fields remain unchanged until stored bytes replay
+  through normal parser mode.
 - Span flush route: direct controls call `0xf34a`, which can materialize a
   pending span through `0x12714 -> 0x126e2`.
 - Pixel route after object creation belongs to
@@ -152,6 +161,9 @@ Field groups:
   after publication.
 - Parser scratch: parsed command cursor `0x78299e` and admitted host bytes
   before terminal handlers rewrite local command records.
+  Alternate/data direct-control records that terminate at blank rows or
+  `0x11f4c` remain parser scratch only and do not become canonical placement,
+  stack, selected-context, layout, or span state.
 - Firmware bookkeeping: `0x782a57`, `0x782a58`, `0x782a5a`, `0x782a5c`,
   `0x782a6d`, and `0x78318e`.
 - Unknown: manual HP names for several latches are unknown, but their ROM
@@ -182,6 +194,10 @@ Output effect:
   `0x12714`.
 - No direct-control handler writes final pixels before page-record
   publication and render dispatch.
+- Alternate/data direct-control rows create no immediate page object, span
+  object, publication, or render input. Their only output is stored input for
+  later replay, except for active command families owned elsewhere such as
+  macro control.
 
 Evidence and boundaries:
 

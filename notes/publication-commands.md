@@ -19,6 +19,8 @@ rebuilds are in [reset-default-environment.md](reset-default-environment.md).
 ## Evidence
 
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`
+- `generated/analysis/ic30_ic13_pcl_command_map.md`
+- `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
 - `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
@@ -88,6 +90,14 @@ The publication route is:
 - Reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
   orientation `0x10220`, paper-source `0xef62`, VFC/page-eject helper
   `0xf124`, and no-room retry paths can call `0xf34a` and then `0xff1e`.
+- Alternate/data page-environment rows suppress ordinary publication effects:
+  uppercase `ESC &l#A/#C/#D/#E/#F/#H/#L/#O/#P/#T/#V/#X` rows in table
+  `0x116f6` have no handler, while lowercase finals route only to `0x11f4c`.
+  They do not call `0xfc74`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`,
+  `0xef62`, `0xee64`, `0xf9e8`, `0x10220`, `0x1280a`, or `0xeef0`.
+  `ESC E` remains active through reset handler `0xcc52`; VFC payload
+  `ESC &l#W/w` remains a delayed payload exception owned by
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
 - `0xff1e` validates current root byte `+0x04`, optionally runs the macro
   overlay replay branch `0xff40..0xffb0`, composes header flags, marks the
   root published, writes pool head `0x780ea6`, sets publication flag
@@ -132,6 +142,9 @@ Output effect:
   effect.
 - Missing-root reset is a no-publication outcome: `0xff1e` takes the no-root
   exit and clears current-root state without producing a published page.
+- Alternate/data page-environment rows have no immediate publication or render
+  effect. They preserve parser/storage syntax for later replay, except for
+  active exceptions such as `ESC E` reset and delayed VFC payload storage.
 
 Field classification:
 
@@ -147,6 +160,8 @@ Field classification:
   render-record roots, and band caches `0x783a20/0x783a22/0x783a28`.
 - Parser scratch: six-byte command records and host-byte traces consumed by
   the command handlers before `0xff1e` runs.
+  Alternate/data page-environment records that end at blank rows or `0x11f4c`
+  remain parser scratch only and do not become canonical page-control state.
 - Firmware bookkeeping: allocator cursors `0x782a70/0x782a72/0x782a76`, root
   retry and overlay state, pending byte `0x782a6d`, status/service wait
   helper `0x9ac2`, and macro overlay frame helpers `0xe0a4` / `0xe4f4`.

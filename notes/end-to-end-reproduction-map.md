@@ -6743,6 +6743,17 @@ Address-level cluster map:
   `0x12358` without calling `0x105d0`, `0x13070`, `0x13250`, or `0x138de`.
   These bytes can affect imaging only after stored input replays through the
   normal parser route.
+  Direct-control and publication-adjacent families have the same explicit
+  no-output boundary in alternate/data mode. BS, HT, LF, FF, CR, SO, and SI
+  append through `0xe002` instead of calling their normal handlers, so cursor,
+  stack, span, line-termination, and selected-context fields stay unchanged.
+  `ESC &l A/C/D/E/F/H/L/O/P/T/V/X` rows in table `0x116f6` are blank or
+  `0x11f4c` outcomes, so page-size, page-length, orientation, paper-source,
+  copies, VMI/HMI, and VFC-target fields are not written and no page
+  publication runs from those rows. The active exceptions remain `ESC E`
+  reset and `ESC &l#W/w` VFC payload storage. Evidence is
+  [direct-control-codes.md](direct-control-codes.md#owner-summary) and
+  [publication-commands.md](publication-commands.md#owner-summary).
   Related parser artifacts are bounded separately: `ESC ?` is consumed in
   wrapper `0xda9a`, `ESC Z` terminates the direct display-functions reader,
   and `ESC &lT/t` has no standalone page-output effect.

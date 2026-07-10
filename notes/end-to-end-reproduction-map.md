@@ -1876,7 +1876,7 @@ State classification:
 Evidence:
 
 - Checked-in explanations:
-  [page-font-scheduler.md](page-font-scheduler.md),
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix),
   `Worked Path: Page Font Scheduler Resource Handoff` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and
   `Page/Font Scheduler Handoff` in
@@ -6057,9 +6057,10 @@ Address-level cluster map:
   `0xbb16`, and `0x1a3c2`; teardown and scan paths include
   `0xc108 -> 0x19dd2 -> 0x36e4` and
   `0x1a2e4 -> 0x1a3c2 -> 0x19dd2 -> 0x1b50e`. Owner note is
-  [page-font-scheduler.md](page-font-scheduler.md), with the minimal path in
-  `Minimal Page/Font Scheduler Handoff Walkthrough`. This cluster produces no
-  direct pixels; residuals are physical optional-window contents
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix),
+  with the minimal path in `Minimal Page/Font Scheduler Handoff Walkthrough`.
+  This cluster produces no direct pixels; residuals are physical
+  optional-window contents
   `0x200000..0x3ffffe` / `0x400000..0x5ffffe` and board-level names for
   `$8000.14/.15`. Concrete scheduler exits are now part of the route index.
   Unchanged optional-window predicates run `0x19fb8(0)`, refresh through
@@ -6091,7 +6092,9 @@ Address-level cluster map:
   at `0x200000..0x3ffffe` and `0x400000..0x5ffffe`, plus the board-level
   meaning of `$8000.14` and `$8000.15`; the scheduler itself does not queue
   page objects, publish page records, call render entry, or write bitmap rows.
-  Evidence is [page-font-scheduler.md](page-font-scheduler.md) and fixtures
+  Evidence is
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix)
+  and fixtures
   `0x19dd2 optional-window change composes refresh helpers`,
   `0x19dd2 modeled unchanged and status branch exits`,
   `0x447a/0x4760 consume scheduler return differently`,
@@ -6569,7 +6572,8 @@ Address-level cluster map:
   is the separate `0x5a16 -> 0x97e4 -> 0x56c2 -> 0x1284` path that reports
   `67 SERVICE` when no active marker is found. The teardown handoff through
   `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded in
-  [page-font-scheduler.md](page-font-scheduler.md) and
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix)
+  and
   `Page/Font Scheduler Handoff`: `0x19dd2` publishes scratch pointer
   `0x782894`, `0x19eb6` scans optional windows `0x200000..0x3ffffe` and
   `0x400000..0x5ffffe` when `$8000.14/15` permit it, `0x1a042` and
@@ -8805,7 +8809,7 @@ Address-level cluster map:
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md),
   [downloaded-fonts.md](downloaded-fonts.md), and
-  [page-font-scheduler.md](page-font-scheduler.md).
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix).
 - Canonical page model: current page root `0x78297a`, page-root class byte
   `+4`, bucket array `+0x1c`, rule list `+0x24`, fixed-width list `+0x28`,
   context slots `+0x2c`, and stream allocator fields `0x782a70`,

@@ -3765,7 +3765,8 @@ Output effect:
 
 Evidence and unresolved boundary:
 
-- Detail note: [page-font-scheduler.md](page-font-scheduler.md).
+- Detail note:
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix).
 - Related resource and font notes:
   [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [downloaded-fonts.md](downloaded-fonts.md),

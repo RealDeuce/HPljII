@@ -91,6 +91,149 @@ Output effect:
   values above; physical optional-resource contents are data inputs to this
   state machine, not a separate undocumented render path.
 
+## Page Font Scheduler Outcome Matrix
+
+This matrix composes `0x19dd2..0x1a2e2` into caller-visible outcomes. The
+scheduler is not a parser, page-object producer, or renderer; its output is
+resource/font state plus `D7`, which callers either consume or ignore.
+
+No optional-window change:
+
+- ROM path:
+  `0x19dd2 -> 0x19eb6 -> 0x1a042/0x19f08 -> 0x19fb8(0) -> 0x1b04c`.
+- State category:
+  derived/cache state and firmware bookkeeping.
+- Writers:
+  publishes scratch pointer `0x782894`, clears the two scratch slots, records
+  predicate bytes, runs shared refresh helper `0x1b04c`, and returns
+  `D7 = 1`.
+- Readers / consumers:
+  callers `0x447a`, `0x4760`, `0xbb16`, and `0x1a3c2` consume or ignore
+  `D7` according to their caller contracts.
+- Output effect:
+  no page object or pixels; later output proceeds with existing canonical
+  optional-resource state.
+- Evidence:
+  `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst` and fixture
+  `0x19dd2 modeled unchanged and status branch exits`.
+
+Status-return branch:
+
+- ROM path:
+  `0x19dd2 -> 0x1a042/0x19f08 -> 0x19e22..0x19e46`.
+- State category:
+  canonical status state and firmware bookkeeping.
+- Writers:
+  writes predicate byte to `0x780e8d`, raises status mask `0x00000200` through
+  `0x9bee(0x780e2e, mask)`, calls `0x19fb8(1)`, and returns `D7 = 0`.
+- Readers / consumers:
+  host/menu caller `0x4760` stops immediately on `D7 = 0`; host quiesce
+  `0x447a`, external-ready teardown `0xbb16`, and font scan `0x1a3c2` ignore
+  the return and continue with their own post-scheduler paths.
+- Output effect:
+  no direct pixels; it can suppress caller-side work that would otherwise run
+  after the scheduler.
+- Evidence:
+  `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`, fixture
+  `0x19dd2 modeled unchanged and status branch exits`, and fixture
+  `0x447a/0x4760 consume scheduler return differently`.
+
+Changed optional-resource window:
+
+- ROM path:
+  `0x19dd2 -> 0x1ba92 -> 0x178fa -> 0x19d9c -> 0x1a4fa -> 0x1a900`.
+- State category:
+  canonical resource-window state, derived/cache state, and firmware
+  bookkeeping.
+- Writers:
+  prunes affected candidate entries, releases matching downloaded-font current
+  records, marks remaining candidates dirty, hands the fresh optional-resource
+  range to `0x1a616`, refreshes active font contexts, commits ten longwords
+  from scratch pointer `0x782894` to canonical slots `0x7828b6..0x7828dd`, and
+  returns `D7 = 1`.
+- Readers / consumers:
+  font selection, downloaded-font records, candidate-window users, and
+  optional-resource scan callers consume the updated canonical resource state.
+- Output effect:
+  no immediate page object; later text pixels can change because resource
+  candidates, active contexts, or downloaded-font ownership changed before
+  later printable bytes are queued and rendered.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`,
+  `generated/disasm/ic30_ic13_font_resource_refresh_helpers_0178fa.lst`,
+  `generated/disasm/ic30_ic13_font_scheduler_commit_01a4fa.lst`, and fixture
+  `0x19dd2 optional-window change composes refresh helpers`.
+
+Optional-window scan:
+
+- ROM path:
+  `0x19eb6 -> 0x1a0f2..0x1a2e2`.
+- State category:
+  derived/cache state, hardware/external state, and unknown when physical
+  optional-resource contents are absent.
+- Writers:
+  checks `$8000.14` and `$8000.15`, sets active base/limit
+  `0x78288c/0x782890`, walks cursor `0x782884`, classifies cursors through
+  `0x1b9c0`, writes fresh scratch slots, and records terminal byte
+  `0x782898`.
+- Readers / consumers:
+  comparison predicates `0x1a042` and `0x19f08` consume the scratch slots and
+  choose unchanged, status-return, or long-refresh outcomes.
+- Output effect:
+  optional-window bytes are data inputs to the state machine. They do not draw
+  or publish until later command/page/render paths consume the resulting
+  resource/font state.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`,
+  [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+  and [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix).
+
+Caller contracts:
+
+- ROM path:
+  callers `0x447a`, `0x4760`, `0xbb16`, and `0x1a3c2`.
+- State category:
+  firmware bookkeeping and caller-local state.
+- Writers:
+  each caller updates its own quiesce, menu/default, external-ready, or
+  font-scan state around the scheduler call.
+- Readers / consumers:
+  only `0x4760` uses `D7 = 0` as an immediate return. The other documented
+  callers preserve scheduler side effects but continue through their own
+  caller-specific consumers.
+- Output effect:
+  caller handling determines whether the scheduler's status branch only sets
+  status bits or also stops later caller work.
+- Evidence:
+  `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`,
+  `generated/disasm/ic30_ic13_host_scheduler_caller_004700.lst`,
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`, and
+  fixtures `0x447a/0x4760 consume scheduler return differently`,
+  `0xbb0a external-ready teardown ignores scheduler return`, and
+  `0x1a2e4 font scan ignores scheduler return`.
+
+State grouping for this matrix:
+
+- Canonical state:
+  optional resource-window slots `0x7828b6..0x7828dd`, status root
+  `0x780e2e`, status byte `0x780e8d`, candidate-list windows/counts, and
+  downloaded-font current records.
+- Derived/cache state:
+  scratch pointer `0x782894`, active scan cursor/base/limit
+  `0x782884/0x78288c/0x782890`, terminal byte `0x782898`, predicate bytes,
+  stack scratch slots, and caller local result word `A6-0x02`.
+- Parser scratch:
+  none; PCL parser records are not inputs to this scheduler.
+- Firmware bookkeeping:
+  candidate dirty bytes, current-record release state, scheduler return `D7`,
+  stack argument reuse, and caller quiesce/menu/resource fields.
+- Hardware/external state:
+  optional resource-window contents and gate bits `$8000.14` / `$8000.15`.
+- Unknown:
+  optional physical resource bytes and manual-facing status names. No
+  ROM-local page-object, publication, render, or bitmap-write edge starts in
+  this scheduler.
+
 ## Evidence
 
 - `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`

@@ -3347,16 +3347,55 @@ the half-copied fixed record installed: `0x15c4c` calls `0x17d7c`, replaces the
 table entry with `01 02 00 fa 00 00 00 00`, updates side-table bytes `fa 00`,
 refreshes the active primary context, and clears the same continuation fields.
 
-Inline/downloaded map construction is covered across the compact render
-families. The selected inline fixture maps host `0x21` to glyph `0x01`, fixed
-record `02 03 04 00 00 00 00 80`, source flag `0`, and context slot `3`.
-Fixtures `constructed inline/downloaded wide glyph maps through 0x1f0d2`,
-`constructed inline/downloaded segmented glyph maps through 0x1f1f0`, and
-`constructed inline/downloaded segmented-wide glyph maps through 0x1f264`
-extend that selected-map source to host bytes `0x23`, `0x24`, and `0x25`.
-Those bytes drive `0x1393a`, `0xd3b2`, and `0x12f2e` into compact-wide,
-segmented, and segmented-wide output without changing the selected
-inline/downloaded context contract.
+### Inline/Downloaded Compact Render Path
+
+Inline/downloaded map construction uses the same page-object and renderer
+contract as built-in text once the selected map has been refreshed. Handler
+`0x14c64` consumes the installed candidate longword and dispatches
+bit-30-clear fixed-record resources through `0x14e24` / `0x14eb6`; the active
+map then maps host glyph bytes to downloaded glyph indexes. Handler `0x1393a`
+captures the selected primary or secondary current-font context from
+`0x782ee6` / `0x782ef6`, stores the context longword in the printable source
+object, and stores the adjacent context-flag byte at source object `+0x10`.
+For the selected inline/downloaded fixed-record case, host byte `0x21` maps to
+glyph `0x01`, fixed record `02 03 04 00 00 00 00 80`, source flag `0`, and
+context slot `3`; those are canonical selected-map and source-object fields,
+not renderer scratch.
+
+The downstream object class is chosen by `0x12f2e` from the printable source
+record and the glyph dimensions. It reads source coordinates at `+0x12` and
+`+0x14`, derives bucket-key scratch `0x782a7c`, reads the selected glyph width
+from the source-record payload pointer at `+0x04`, and sets object selector
+bits in `D5`. Source widths `0x00..0x10` keep the compact selector
+`0x0003`; wider source bytes set selector bit `0x1000`; row counts above
+`0x80` set selector bit `0x2000` and queue segment records. The queued compact
+object then enters `0x1387c` as either a short object with entry shape
+`glyph, coordinate-word` or a segmented object with entry shape
+`glyph, segment-byte, coordinate-word`.
+
+The render side is the shared compact-glyph dispatch. `0x1edc6` copies the
+page-root context slots into render-record slots, `0x1ef6a` chooses the
+compact bucket, and `0x1f008` copies the object-selected context slot into
+`0x783a2c`. Resolver `0x1f354` interprets bit 30 of that longword: set means
+offset-table glyph entries, clear means fixed-record entries at
+`record + 0x40 + 8 * glyph`. Object selector bits select compact target
+`0x1f034`, compact-wide target `0x1f0d2`, segmented target `0x1f1f0`, or
+segmented-wide target `0x1f264`. Host bytes `0x23`, `0x24`, and `0x25` use
+the same `0x1393a -> 0x12f2e -> 0x1ef6a` path to exercise the wide,
+segmented, and segmented-wide renderer targets without changing the
+selected-map or context-slot contract.
+
+State classification for this inline/downloaded render path: canonical state
+is the selected candidate longword, active map bytes, current-font context
+records `0x782ee6` / `0x782ef6`, source-record context slot/flag fields,
+page-root bucket objects, and render-record context slots. Derived/cache state
+is bucket-key scratch `0x782a7c`, selected render context `0x783a2c`, wide
+chunk scratch `0x783a40..0x783a48`, and clipped-band destination state.
+Parser scratch is only the host byte and command state that selected or
+printed the glyph before `0x1393a`. Firmware bookkeeping is the context-slot
+live flags and page-root publication flag. No hardware or external-resource
+state participates in this inline/downloaded fixed-record path once the
+payload-backed candidate exists.
 
 The extended fixed-record fixture proves the direct release form for type-byte
 `1` extended characters: char `0xa1` rewrites the extended table entry to

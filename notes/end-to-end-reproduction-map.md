@@ -8992,14 +8992,16 @@ shape, publication boundary, or render helper inputs.
    `0x123a..0x1282`. Evidence: `Published Record To Active Render Scheduler` in
    `notes/semantic-state-model.md` and `Active Render Scheduler` in
    `notes/page-raster-imaging.md`.
-5. Downloaded font support is now documented as one command-to-output
-   cluster instead of isolated handler notes. The low-level ledger remains in
+5. Downloaded font support is now documented as one command-to-output cluster instead of
+   isolated handler notes. The low-level ledger remains in
    [downloaded-fonts.md](downloaded-fonts.md), with composed checkpoints in
-   [semantic-state-model.md](semantic-state-model.md) under `Downloaded Font
-   Descriptor And Payload Chain`, `Nonzero Resource Payload Checkpoint`, and
-   `Fixed-Record Resource Object Checkpoint`, plus `Fixed-Record Render
-   Decision Checkpoint` in
-   [downloaded-fonts.md](downloaded-fonts.md#fixed-record-render-decision-checkpoint).
+   [semantic-state-model.md](semantic-state-model.md) under `Downloaded Font Descriptor
+   And Payload Chain`, `Nonzero Resource Payload Checkpoint`, and `Fixed-Record Resource
+   Object Checkpoint`, plus [Fixed-Record Render Decision
+   Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint) and
+   [Inline/Downloaded Compact Render
+   Path](downloaded-fonts.md#inline-downloaded-compact-render-path) in
+   [downloaded-fonts.md](downloaded-fonts.md).
 
    Command and resource route:
 
@@ -9025,6 +9027,12 @@ shape, publication boundary, or render helper inputs.
      `0xd8fc` consume descriptor metrics, `0x12f2e` queues compact page
      objects, `0xff1e` publishes the page record, and `0x1ed84` /
      `0x1edc6` / `0x1ef6a` dispatch rendering.
+   - The inline/downloaded fixed-record route is not a separate renderer:
+     `0x14c64` / `0x14e24` rebuild selected maps, `0x1393a` captures the
+     current-font context longword from `0x782ee6` / `0x782ef6`,
+     `0x12f2e` chooses compact, compact-wide, segmented, or segmented-wide
+     object shapes from source dimensions, and `0x1f354` resolves the fixed
+     record through the render-record context slot copied by `0x1edc6`.
    - Covered ROM-derived object shapes include type-0, type-1, and type-2
      resource headers; normal, wide/control, even-span wide, short row-count,
      segmented row-count, split-plane segmented, segmented-wide, and

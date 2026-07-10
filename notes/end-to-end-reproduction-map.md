@@ -474,10 +474,13 @@ controlling artifact.
   `Unresolved Boundaries` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Current bounded
   residual classes are secondary segment-57 resource decode
-  `0x0c0000..0x0c0321`, ROM-local downloaded-glyph helper invalid
-  target/source boundaries, host physical interface naming/timing, optional
-  resource-window contents, retained-storage/service persistence, formatter/DC
-  physical timing, and new ROM-local command variants only when they change
+  `0x0c0000..0x0c0321` with suffix and continuation evidence in
+  [Secondary Segment-57 Resource
+  Source](unresolved-boundaries.md#secondary-segment-57-resource-source),
+  ROM-local downloaded-glyph helper invalid target/source boundaries, host
+  physical interface naming/timing, optional resource-window contents,
+  retained-storage/service persistence, formatter/DC physical timing, and new
+  ROM-local command variants only when they change
   named state or row-construction inputs.
 
 ## Stream Trace Procedure
@@ -5432,7 +5435,13 @@ or from a byte stream that changes a named field in the family sections.
   objects, bridge `0x1ed84` / `0x1edc6`, and compact renderer
   `0x1f354 -> 0x1f1f0`. The remaining input is resource-window data for
   firmware range `0x0c0000..0x0c0321` after verified bytes
-  `0x0bfe22..0x0bffff`.
+  `0x0bfe22..0x0bffff`. The exact checked-in stop is
+  [Secondary Segment-57 Resource
+  Source](unresolved-boundaries.md#secondary-segment-57-resource-source):
+  `tools/probe_resource_window.py --quiet` verifies the `478`-byte suffix,
+  `802`-byte continuation requirement, and mirror/code-pair/zero-fill
+  candidate-scan consequences, so the remaining evidence needed is the
+  physical decode source for that continuation range.
 - ROM-local downloaded-glyph renderer/payload boundaries:
   `Boundary: Short Compact Downloaded-Glyph High Rows` documents the unchecked
   `0x1fe76` fallback row-copy table read for short compact rows

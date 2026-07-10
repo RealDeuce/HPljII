@@ -441,6 +441,99 @@ Evidence:
   `downloaded segmented-wide high-row span-31 fallback hits source boundary`,
   and `ESC )s#W validation failures preserve following printable output`.
 
+### Compact Selector Outcome Matrix
+
+This matrix owns the downloaded-glyph compact selector classes created by
+`0x12f2e` and consumed by compact dispatch `0x1effe`. It is the checkpoint for
+streams that do not change downloaded-font parser dispatch, but do change the
+compact page-object selector, bucket list, helper target, fallback split, or
+row-copy boundary.
+
+- Short compact selector:
+  when neither the wide threshold nor the row-segment threshold is set,
+  `0x12f2e` queues selector `0x0000 | context_slot`. Downloaded glyph
+  streams currently documented use context slot `3`, producing selector
+  `0x0003`. The compact renderer masks object byte `+0x04` with `0x30`,
+  indexes table `0x1f024`, and reaches `0x1f034`.
+- Wide compact selector:
+  `0x12f2e` sets selector bit `0x1000` when the source width byte is greater
+  than `0x10` in the byte-width source form, or when the source width word is
+  greater than `0x80` in the word-width source form. Selector `0x1003`
+  dispatches through `0x1effe` to wide helper `0x1f0d2`.
+- Segmented compact selector:
+  `0x12f2e` sets selector bit `0x2000` when the row/count source exceeds
+  `0x80`. Selector `0x2003` creates segmented compact entries and dispatches
+  through `0x1effe` to `0x1f1f0`.
+- Segmented-wide compact selector:
+  when both selector bits are set, `0x12f2e` queues selector `0x3003`.
+  `0x1effe` dispatches it to `0x1f264`, where the segment byte selects the
+  source region and wide helper state.
+- Nonsegmented object payload:
+  selector classes `0x0003` and `0x1003` allocate the `0x26` bucket object
+  shape through `0x1387c`. `0x12f2e` increments object count word `+0x06` and
+  appends compact entries containing glyph byte `source +0x0b` plus the packed
+  coordinate bytes from its local key word.
+- Segmented object payload:
+  selector classes `0x2003` and `0x3003` allocate the `0x28` bucket object
+  shape through `0x1387c`. `0x12f2e` writes four-byte entries containing glyph
+  byte `source +0x0b`, segment byte, and packed coordinate word, then
+  decrements the segment counter and subtracts `8` from bucket key
+  `0x782a7c` for the next segment.
+- Allocation or negative-segment exit:
+  a zero return from `0x1387c` exits `0x12f2e` with `D7 = 0` before the
+  current entry is appended. When the segmented loop has decremented past the
+  last segment, `0x12f2e` exits success at `0x13018` with `D7 = 1`.
+- Render dispatch:
+  `0x1efc2` selects the render bucket from render root `+0x18` and dispatches
+  class byte `+0x04 & 0xc0 == 0` to `0x1effe`. `0x1effe` copies the selected
+  render context slot to `0x783a2c`, masks selector bits `+0x04 & 0x30`, and
+  jumps through table `0x1f024` to `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
+  `0x1f264`.
+
+Field grouping for this route:
+
+- Canonical state:
+  installed glyph record mode byte `+5`, row word `+6`, width word `+8`,
+  bitmap bytes, selected context slot, page-root bucket `+0x1c`, bucket object
+  selector bytes `+0x04/+0x05`, count word `+0x06`, coordinate word `+0x08`,
+  and compact payload entries.
+- Derived/cache state:
+  `0x12f2e` bucket key `0x782a7c`, local packed key word, context-slot low
+  nibble in selector word `D5`, segment counter, render root `+0x18`, copied
+  context cache `0x783a2c`, current-band split from `0x1f414`, wide helper
+  caches `0x783a40..0x783a48`, and row-copy table targets.
+- Parser scratch:
+  delayed `ESC )s#W` / `ESC (s#W` record state and payload budget
+  `0x783140` are already consumed before a later printable byte reaches
+  `0x12f2e`.
+- Firmware bookkeeping:
+  bucket allocator and object capacity state inside `0x1387c`, the success or
+  zero return in `D7`, publication state from `0xff1e`, and active render
+  work state from `0x1ed84` / `0x1ef6a`.
+- Unknown:
+  selector production and dispatch are not unknown for the documented
+  classes. Remaining compact selector work starts only when a stream changes
+  source bytes read by `0x12f2e`, selector bits, segment entry payloads,
+  helper target, `0x1f414` fallback split, row-copy table index, or the exact
+  invalid-helper/source boundaries already listed in
+  [unresolved-boundaries.md](unresolved-boundaries.md).
+
+Evidence: producer listing
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst` `0x12f2e..0x1306e`;
+bucket/compact dispatch listing
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`
+`0x1efc2..0x1f034`; compact renderer listing
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`;
+row-copy table listing
+`generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`; fixtures
+`host-fetched printable byte uses installed downloaded glyph page object`,
+`downloaded glyph row-count matrix publishes and renders additional
+short/segmented counts`, `downloaded glyph width-span matrix publishes and
+renders all main helpers`, `downloaded glyph segmented-wide matrix publishes
+and renders compact chunks`, `downloaded glyph high-row truncation matrix
+preserves installed rows`, and
+`downloaded segmented-wide high-row span-31 fallback hits source boundary`.
+
 ## Field Groups
 
 Canonical command selection:

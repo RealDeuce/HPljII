@@ -9220,7 +9220,11 @@ Priority ROM-local documentation targets:
    named in [Render Helper Boundary
    Index](page-raster-imaging.md#render-helper-boundary-index): compact selector class,
    segment/fixed-list object bytes, raster encoded object fields, rule/fixed roots,
-   continuation mutation, fallback split, or row-copy helper inputs. Segment-list
+   continuation mutation, fallback split, or row-copy helper inputs. Compact-selector
+   streams should start only when they change source bytes consumed by `0x12f2e`,
+   selector bits, segment payload entries, helper target, fallback split, row-copy
+   index, or an exact boundary beyond the [compact selector outcome
+   matrix](downloaded-fonts.md#compact-selector-outcome-matrix). Segment-list
    portrait-span streams should start only when they change key derivation, split
    buckets, entry bytes, bucket bridge state, partial split allocation failure, or row
    construction beyond the [segment-list outcome

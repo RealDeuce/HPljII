@@ -99,7 +99,7 @@ Use this short route when reading a supported PCL byte stream through the
 checked-in ROM model:
 
 0. Establish the ROM-visible baseline. For power-on/default-state streams, start from
-   [firmware-startup.md](firmware-startup.md): host byte-source buffers
+   [firmware-startup.md](firmware-startup.md#owner-summary): host byte-source buffers
    `0x783e54..0x783e8e`, output FIFO `0x783ed2` / `0x783ed4` / `0x783ed8`, heap fields
    `0x780e86` and `0x783972..0x783988`, render-work selector seeds `0x7820bc` /
    `0x7820c0`, and wait-object records `0x780182..0x780262`. For streams that include
@@ -224,7 +224,7 @@ checked-in ROM model:
   and caller contracts.
 - [rom-dump-manifest.md](rom-dump-manifest.md) - verified ROM dump
   hashes, package markings, interleave order, and rejected order probes.
-- [firmware-startup.md](firmware-startup.md) - first annotated 68000
+- [firmware-startup.md](firmware-startup.md#owner-summary) - first annotated 68000
   reset/startup findings from the executable ROM pair.
 - [host-byte-fetch.md](host-byte-fetch.md#owner-summary) - documented
   `0xa904` host byte-source multiplexer, direct I/O handshakes, caller

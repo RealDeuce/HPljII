@@ -60,13 +60,13 @@ but they do not by themselves define renderer-facing state fields.
 
 ## Startup Memory Sizing And Scheduler Bootstrap
 
-Status: anchored as a ROM startup checkpoint. This cluster covers reset
-RAM tests, startup-derived memory/resource bounds, scratch/video RAM
-probes, heap allocator inputs, timer divider seed state, and the
-initial wait-object scheduler ring. The ROM-visible early-MMIO write/read
-ledger is now cross-referenced in [firmware-startup.md](firmware-startup.md);
-this checkpoint still does not name the physical meaning of `$8000`, `$8c01`,
-`$a200`, `$a801`, or the computed address-control writes.
+Status: anchored as a ROM startup checkpoint. This cluster covers reset RAM tests,
+startup-derived memory/resource bounds, scratch/video RAM probes, heap allocator inputs,
+timer divider seed state, and the initial wait-object scheduler ring. The ROM-visible
+early-MMIO write/read ledger is now cross-referenced in
+[firmware-startup.md](firmware-startup.md#owner-summary); this checkpoint still does not
+name the physical meaning of `$8000`, `$8c01`, `$a200`, `$a801`, or the computed
+address-control writes.
 
 Concept: reset first proves the small SRAM/scratch region at
 `0x00ffe000`, clears it, and installs RAM trampolines. Startup then uses
@@ -86,7 +86,7 @@ reproduction; they are not PCL parser scratch.
     `2..63` point into the RAM trampoline region `0x00780000..0x0078016e`
     in six-byte increments. Evidence:
     `generated/analysis/ic30_ic13_vectors.txt` and
-    [firmware-startup.md](firmware-startup.md).
+    [firmware-startup.md](firmware-startup.md#owner-summary).
   - `0x780e5a`: formatter memory-size/code word. Reset helper
     `0x02b2` seeds it to `0x20` and may add `0x80`, `0x40`, or `0x100`
     from `$8c01 >> 3` or the optional `0x05ba` decoded config result.
@@ -100,7 +100,7 @@ reproduction; they are not PCL parser scratch.
   - `0x780efa`: heap start input, fixed to `0x783f4a` by `0x0b18`.
   - `0x780efe`: available heap byte count, computed by `0x0b18` as
     `0x7810b4 - 0x783f4a`.
-  Evidence: [firmware-startup.md](firmware-startup.md),
+  Evidence: [firmware-startup.md](firmware-startup.md#owner-summary),
   `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`,
   `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`, and
   `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`.
@@ -115,9 +115,8 @@ reproduction; they are not PCL parser scratch.
     long `+0x1a` as the initial saved stack pointer.
   - decoded restart PCs are `0x1958`, `0x1eb2a`, `0x2828`,
     `0xae2c`, `0x2de4`, `0x645a`, `0x1174e`, and `0x15b2`.
-  Evidence:
-  `generated/disasm/ic30_ic13_startup_scheduler_bootstrap_000c24.lst`
-  and the decoded `0x15d0` table in [firmware-startup.md](firmware-startup.md).
+Evidence: `generated/disasm/ic30_ic13_startup_scheduler_bootstrap_000c24.lst` and the
+decoded `0x15d0` table in [firmware-startup.md](firmware-startup.md#owner-summary).
 - Derived/cache startup fields:
   - `0x7828fa = 0xf1`, `0x7828f9 = 0x7e`, and `0x7828f6 = 0xf348`
     are seeded by `0x0266..0x027e` as MMIO shadow defaults before the
@@ -324,9 +323,9 @@ but the physical signal names are not.
   checkpoint. Its software edge is not open here; the remaining boundary
   is the external `$8000.w` service-byte source and retained-storage
   device naming.
-- Physical names for the startup MMIO/config inputs remain unresolved, but the
-  ROM-side ownership and shadow consumers are documented in this checkpoint and
-  in the early-MMIO cross-reference in [firmware-startup.md](firmware-startup.md).
+- Physical names for the startup MMIO/config inputs remain unresolved, but the ROM-side
+  ownership and shadow consumers are documented in this checkpoint and in the early-MMIO
+  cross-reference in [firmware-startup.md](firmware-startup.md#owner-summary).
 
 ## Host Byte Fetch And Data-Chain Input
 
@@ -2292,31 +2291,29 @@ or fixed-space helper `0xd0f0`.
   (`57` buckets) with aggregate digest
   `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
   before reaching the current bitmap-source boundary at bucket `456`.
-- Derived render state for segment `0x39`: fixture
-  `transparent secondary segment-57 continuation policies diverge after verified
-  bytes` proves the verified resource bytes determine the current-band digest
-  `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`, but
-  fallback rows need `802` bytes past firmware address `0x0c0000`. The same
-  fixture hashes the verified `0x0bfe22..0x0bffff` suffix as
+- Derived render state for segment `0x39`: fixture `transparent secondary segment-57
+  continuation policies diverge after verified bytes` proves the verified resource bytes
+  determine the current-band digest
+  `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`, but fallback rows
+  need `802` bytes past firmware address `0x0c0000`. The same fixture hashes the
+  verified `0x0bfe22..0x0bffff` suffix as
   `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f` and the
   mirror/code-pair/zero-fill continuation candidates as
   `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
   `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
-  `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`.
-  Startup checksum evidence narrows the verified part but does not choose a
-  continuation policy: [firmware-startup.md](firmware-startup.md) records the
-  resource-pair byte-sum range as `0x080000..0x0bffff`, so the self-test covers
-  the verified suffix and stops before the first byte that makes the fallback
-  row candidates diverge.
-  Fixture `0x41a HEAD scanner would duplicate records under simple resource
-  mirror` constrains the mirror hypothesis: a full `IC32,IC15` mirror at
-  `0x0c0000` would expose a second `HEAD` chain to scanner `0x41a` and
-  duplicate typed records before the scan terminates at `0x80000`.
-  Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
-  constrains the other two local continuation hypotheses: `IC32,IC15 +
-  IC30,IC13` leaves the second probe marker as `0x00800000`, while zero-fill
-  leaves marker `0x00000000`; both keep one `HEAD` chain, walk the same 24
-  typed records, and skip from probe `0x40000` to final probe `0x80000`.
+  `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`. Startup checksum
+  evidence narrows the verified part but does not choose a continuation policy:
+  [firmware-startup.md](firmware-startup.md#owner-summary) records the resource-pair
+  byte-sum range as `0x080000..0x0bffff`, so the self-test covers the verified suffix
+  and stops before the first byte that makes the fallback row candidates diverge.
+  Fixture `0x41a HEAD scanner would duplicate records under simple resource mirror`
+  constrains the mirror hypothesis: a full `IC32,IC15` mirror at `0x0c0000` would expose
+  a second `HEAD` chain to scanner `0x41a` and duplicate typed records before the scan
+  terminates at `0x80000`. Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000
+  continuations` constrains the other two local continuation hypotheses: `IC32,IC15 +
+  IC30,IC13` leaves the second probe marker as `0x00800000`, while zero-fill leaves
+  marker `0x00000000`; both keep one `HEAD` chain, walk the same 24 typed records, and
+  skip from probe `0x40000` to final probe `0x80000`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected-context C0 filter byte, fallback
     high-control filter byte, and high-character flags remain unknown. Their
@@ -12425,7 +12422,7 @@ record.
     `0x110c..0x11f8`. These copied stubs are firmware bookkeeping that
     connects the hardware vector table to the wait-object and
     render-scheduler state below; they are not page-object fields.
-    Evidence: [firmware-startup.md](firmware-startup.md),
+    Evidence: [firmware-startup.md](firmware-startup.md#owner-summary),
     `generated/analysis/ic30_ic13_startup_tables.txt`,
     `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`,
     `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`, and

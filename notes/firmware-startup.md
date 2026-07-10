@@ -9,6 +9,84 @@ Address values in this note are 68000 logical addresses decoded from the
 `IC30,IC13` interleave. The first byte in each 16-bit word comes from
 IC30 and the second from IC13.
 
+## Owner Summary
+
+This note owns the power-on startup baseline that must exist before a supplied
+host byte stream can be interpreted. Startup does not parse PCL and does not
+queue page objects. It initializes RAM, heap/resource windows, byte-source
+buffers, host-output FIFO, wait-object scheduler state, render-work seeds, and
+default-environment fields that later parser/page/render owners consume.
+
+Primary routes:
+
+- Reset and RAM setup:
+  reset entry `0x0110..0x0240` masks interrupts, performs early MMIO writes,
+  runs RAM tests through `0x08a2` and `0x08dc`, clears RAM, and copies
+  exception/trap stubs into `0x00780000`.
+- Startup config and defaults:
+  `0x02b2..0x031e`, `0x071c`, and `0x05ba` derive startup memory/config
+  fields; `0x2c84` reads retained/default records and seeds default
+  environment fields.
+- Verification and allocator setup:
+  `0x073a..0x0c22` verifies ROM/RAM/resource windows, computes heap/resource
+  bounds through `0x099e` / `0x0b18`, and feeds heap initializer `0x164a`.
+- I/O and render seeds:
+  `0x2feb6` initializes render-work selectors, `0x3178` initializes host
+  input ring/LIFO byte-source buffers, and `0x31d6` initializes the 64-byte
+  host-output FIFO.
+- Scheduler bootstrap:
+  `0x0c24` builds wait-object records from table `0x15d0`, allocates private
+  stacks, stores restart PCs, links the scheduler ring, and enters priority
+  switch `0x1266`.
+
+Field groups:
+
+- Canonical startup memory/config:
+  `0x780e59`, `0x780e5a`, `0x780e60`, `0x780e4c`, heap inputs
+  `0x780efa` / `0x780efe`, and resource/fallback window fields
+  `0x7810b4` / `0x7810b8`.
+- Canonical heap/allocation state:
+  free-unit count `0x780e86`, allocator bitmap/payload cursors
+  `0x783972..0x783988`, and payload base consumed by page, macro, raster, and
+  downloaded-font allocation.
+- Canonical byte I/O state:
+  host input ring/LIFO fields `0x783e54..0x783e8e`, mirror `0x7821c4`, and
+  host-output FIFO fields `0x783ed2`, `0x783ed4`, and `0x783ed8`.
+- Canonical scheduler/render state:
+  wait-object records `0x780182..0x780262`, restart PCs from table `0x15d0`,
+  render-work selector seeds `0x7820bc`, `0x7820c0`, `0x7820c8`, and
+  `0x78212c`.
+- Derived/cache state:
+  MMIO shadows `0x7828fa`, `0x7828f9`, `0x7828f6`, timer divider bytes
+  `0x78017f..0x780181`, debounce/status bytes, and startup-test gate
+  `0x783eee`.
+- Parser scratch:
+  none at reset entry. Parser records and payload scratch are initialized by
+  parser/reset paths after startup has created the scheduler and byte-source
+  baseline.
+- Firmware bookkeeping:
+  RAM trampoline stubs, retained/default-environment startup bytes, startup
+  diagnostic failure codes, and private scheduler stack frames.
+- Hardware/external state:
+  early MMIO reads/writes at `$8000`, `$8c01`, `$a200`, `$a400`, `$a601`,
+  `$a801`, `$aa01`, `$ff8000`, `$fffe0001`, `$ffff3800`, optional `PROG`
+  extension contents, and resource continuation decode after `0x0bffff`.
+- Unknown:
+  no software field ownership gap remains for the startup baseline fields
+  documented here. Remaining uncertainty is physical MMIO naming, optional
+  extension contents, and external memory-map/resource continuation behavior.
+
+Output effect:
+
+- Startup creates the baseline for later byte-stream reproduction: empty host
+  input/output buffers, initialized heap allocator, render-work selectors,
+  wait-object restart PCs, and default-environment state.
+- It does not itself admit host bytes, parse commands, build page roots, or
+  render pixels.
+- A reproducer may assume this baseline only when it also preserves the
+  documented startup fields or explicitly documents a different startup memory
+  configuration.
+
 ## Reset Vectors
 
 - Initial SSP: `0x00800000`.

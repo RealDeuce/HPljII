@@ -206,6 +206,20 @@ checked-in ROM model:
    [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
    continuation rule in [resource-rom.md](resource-rom.md#owner-summary).
 
+## Evidence Contract
+
+Checked-in explanatory notes are the controlling artifact. Disassembly
+addresses, ROM bytes/tables, and RAM field writer/reader chains are the
+primary evidence for semantic claims. Generated reports, harness fixtures, and
+row digests are supporting checks: they can show that a documented branch,
+state shape, or transcription is exercised, but they are not an external pixel
+oracle and should not be used to invent behavior past a missing ROM edge.
+
+When adding a new command-family or dataflow edge, cite the concrete handler,
+field, object byte, render helper, or unresolved boundary in the checked-in
+note that owns it. If fixture output is cited, state what it checks, such as a
+parser route, field value, object layout, bridge copy, or helper input.
+
 ## Files
 
 - [source-index.md](source-index.md) - what each PDF contains and how to

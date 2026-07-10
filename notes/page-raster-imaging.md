@@ -438,10 +438,10 @@ Vertical forms control is now tracked as a composed state block in
 `0x011f6e` schedules delayed payload handler `0x12cfe`, which consumes
 payload bytes through `0xdace`, loads the table at `0x782dde`, and
 updates text-bottom cache `0x782dd2`. The fixture
-`ESC &l4W 00 00 00 02 !` proves the four payload bytes are not parsed as
+`ESC &l4W 00 00 00 02 !` checks that the four payload bytes are not parsed as
 controls or printable bytes, and that the following `!` still reaches
 the page-record queue at compact coord `0x9001`.
-Fixture `ESC &l4w4W 00 00 00 02 !` proves the same boundary for the
+Fixture `ESC &l4w4W 00 00 00 02 !` checks the same boundary for the
 lowercase-final form: lowercase `w` snapshots record
 `80 77 00 04 00 00`, the uppercase `W` does not replace that pending
 record, `0x12218` restores the lowercase record, and the payload is
@@ -731,7 +731,7 @@ ensures the modeled page root through `0x10084`, stores the capped count
 in `+4` and the overflow count in `+6`, then queues only the capped
 bytes. At `0x1065c..0x10698` and `0x106b6..0x106f6`, nonpositive counts
 return without payload reads, and a `0xdace` `-1` return exits early. The
-parser-restored `ESC *b4W` stream now also proves the off-page
+parser-restored `ESC *b4W` stream now also checks the off-page
 row-counter distinction: `row_y == page_extent` queues and advances to
 `page_extent + 1`, beyond-extent rows do not advance `row_y`, and a
 negative row advances `row_y` from `-1` to `0` only after a non-`-1`
@@ -937,7 +937,7 @@ Output effect:
 - The allocator does not draw pixels by itself. It determines object order,
   bucket selection, and list roots consumed by visible rendering.
 - Fixture `addressed text/rule/raster field groups reach publication and
-  render entry` proves text object `0x00d0c004`, rule object `0x00d0c02a`,
+  render entry` checks text object `0x00d0c004`, rule object `0x00d0c02a`,
   and raster object `0x00d0c038` share the addressed page-record state, then
   publish and render into the expected mixed rows.
 - Fixture `addressed text/rule/multi-row raster publication preserves
@@ -945,7 +945,7 @@ Output effect:
   objects at `0x00d0d038` and `0x00d0d044`, preserving bucket-chain order
   through publication and render.
 - Fixture `addressed page-record writers share 0x1381c across chunk
-  rollover` proves one page-root stream crosses a chunk boundary:
+  rollover` checks one page-root stream crossing a chunk boundary:
   `root + 0x20 -> 0x00d05000 -> 0x00d05100`, final bookkeeping
   `0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
   `0x782a76 = 0x00d05146`, followed by publication and compact rendering.
@@ -1512,8 +1512,8 @@ Board-timing boundary: the scheduler and renderer are covered as
 ROM-visible state machines, not as physical signal timing. The timing-sensitive
 paths `0x0f84..0x10f2`, `0x1036`, and `0x1cf8..0x1ea8` can change when
 external status is observed, when wait objects are signaled, or when a
-ready/busy predicate returns. The scheduler fixtures above prove the
-semantic effects after those events occur: pending bytes
+ready/busy predicate returns. The scheduler fixtures above check the
+ROM-visible effects after those events occur: pending bytes
 `0x78399e/0x78399f`, shadow byte `0x7828f9`, wait-object state, active source
 `0x780eae`, work pointer `0x783a18`, and band words are the fields that
 determine whether `0x1ef6a` renders, yields, throttles, or cleans up. Board
@@ -2691,43 +2691,43 @@ Readers and consumers:
 Output effect:
 
 - Fixture `parsed primary built-in font selection feeds visible page-record
-  rows` proves a host-fetched primary font-selection stream installs context
+  rows` checks that a host-fetched primary font-selection stream installs context
   `0xc008004c`, queues compact object
   `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and renders Courier rows
   through helper `0x1fe76`.
 - Fixture `parsed secondary built-in font selection feeds visible SO
-  page-record rows` proves secondary context `0xc00ae122` reaches compact
+  page-record rows` checks that secondary context `0xc00ae122` reaches compact
   helper `0x207ac`.
-- Fixture `non-Roman symbol streams select visible built-ins` proves the
+- Fixture `non-Roman symbol streams select visible built-ins` checks that the
   primary `0N` / `10U` / `11U` symbol streams render from selected contexts
   `0xc0080cb8`, `0xc4080418`, and `0xc4080868`, while the secondary
   `0N` / `10U` / `11U` streams cross SO and render from contexts
   `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`.
 - Fixture `real final-@ default-table streams select visible built-ins`
-  proves the ROM-backed `@0` / `@1` / `@2` / `@3` symbol defaults feed later
+  checks that the ROM-backed `@0` / `@1` / `@2` / `@3` symbol defaults feed later
   font-selection tails into visible compact rows: the primary tail renders
   from context `0xc0080cb8`, and the secondary tail renders from context
   `0xc00ad4aa` after SO.
 - Fixtures `font-ID built-in selection feeds visible page-record rows`,
   `font-ID primary inline/downloaded selection feeds visible page-record rows`,
   and `font-ID inline/downloaded selection feeds visible page-record rows`
-  prove final-`X` font-ID selection reaches compact output for the bit-30
+  check that final-`X` font-ID selection reaches compact output for the bit-30
   built-in path and both primary/secondary bit-30-clear inline/downloaded
   paths.
 - Fixtures `font-ID non-selected exits keep prior visible rows` and
-  `font-ID secondary non-selected exits keep prior SO visible rows` prove the
+  `font-ID secondary non-selected exits keep prior SO visible rows` check that the
   corresponding final-`X` helper exits preserve prior primary/secondary
   selected contexts before the following printable/SO tail reaches compact
   rendering. The secondary preserved path renders object prefix
   `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01` from context `0xc40ad87a`.
-- Fixture `0x13eb8 no-dispatch exits keep prior visible rows` proves the
+- Fixture `0x13eb8 no-dispatch exits keep prior visible rows` checks that the
   selected-font-refresh exits preserve the prior selected context before the
   following printable/SO tail reaches compact rendering.
 - Fixture `host-fetched linear downloaded character stream renders through
-  0x168dc` proves parser-produced `ESC )s6W` installs glyph `0x26`, queues
+  0x168dc` checks that parser-produced `ESC )s6W` installs glyph `0x26`, queues
   selector `0x0003`, and renders three rows through mode-0 helper `0x1fe76`.
 - Fixture `host-fetched even-span wide downloaded character renders through
-  0x1f0d2` proves parser-produced `ESC )s18W` installs glyph `0x29`, queues
+  0x1f0d2` checks that parser-produced `ESC )s18W` installs glyph `0x29`, queues
   selector `0x1003`, renders one full 16-byte chunk through `0x2f27c`, then
   renders a two-byte remainder through `0x1f1ac`.
 - Fixture `host-fetched split-plane segmented downloaded character renders
@@ -3155,7 +3155,7 @@ and ties the parser/restore path to capped queueing, inclusive
 page-extent queue-and-advance, beyond-extent drain/no-row-advance, and
 negative-row drain-with-advance transfer-gate outcomes; the
 payload-control stream now starts from the modeled `0xa904` ring source
-and proves raw payload `f0 1a 58 aa 55` queues as `f0 00 aa 55`; the
+and checks that raw payload `f0 1a 58 aa 55` queues as `f0 00 aa 55`; the
 consecutive-row `ESC *b2W` stream now starts from the modeled `0xa904`
 ring source and ties two restored `80 57 00 02 00 00` records to payload
 offsets `17` and `24`, queued coords `0x0000` and `0x1000`, and final
@@ -3171,7 +3171,7 @@ ties `ESC *rB` handler `0x107fa` to active-clear state before
 `ESC *t300r150R` stream now starts from the modeled `0xa904` ring
 source, keeps the ROM parser in the `*t` family after lowercase `r`, and
 exits at uppercase `R`; and the chained `ESC *b2w2W` stream now starts
-from the modeled `0xa904` ring source and proves uppercase `W` restores
+from the modeled `0xa904` ring source and checks that uppercase `W` restores
 the lowercase `80 77 00 02 00 00` delayed record before consuming the
 payload. Symbol-set coverage now traces `ESC (2U` / `ESC )0E` through
 ROM parser setup handlers `0x1201e` / `0x12008` and terminal handler
@@ -3687,10 +3687,11 @@ Other checked leads:
   0x1ef6a` closes the page-stream side for the even-span rule/raster case and now
   consumes `font_command_final_header` from the same host-fetched font-command
   helper as the page memory image. The byte-source, post-install return, and
-  modeled memory handoff are no longer the open parts: the same fixture proves
+  modeled memory handoff are no longer the open parts: the same fixture checks
   one 54-byte `0xa904` ring fetch, asserts the final-header table pointer
-  `00 00 07 80`, installed record, and bitmap bytes, and disassembly plus fixture
-  evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. The
+  `00 00 07 80`, installed record, and bitmap bytes, and disassembly plus
+  fixture evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`
+  drain. The
   byte-`24` boundary is no longer a ROM-semantic gap for the covered
   rule/raster stream. Broader physical/full-page validation remains separate.
 - Treat the `ESC E` reset publication boundary as covered for

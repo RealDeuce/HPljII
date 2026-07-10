@@ -2908,11 +2908,11 @@ Macro replay effect:
   enter a special parser; `0xa904` returns them before ring or direct
   hardware input, so the same `0xda9a`, `0x11774`, command handlers, page
   object producers, and renderers consume them.
-- Fixture `macro execute frame payload feeds 0xa904 data-chain bytes` proves
+- Fixture `macro execute frame payload feeds 0xa904 data-chain bytes` checks
   the source handoff. Fixtures `macro execute data-chain parser trace feeds
   page-record stream` and `macro mixed-control data-chain parser trace feeds
-  page-record stream` prove the replayed bytes reach the same parser and page
-  record consumers as live ring bytes.
+  page-record stream` check that replayed bytes reach the same parser and
+  page-record consumers as live ring bytes.
 
 State classification:
 
@@ -4715,11 +4715,11 @@ State classification:
 
 Output effects:
 
-- Fixture `unflagged printable d4ac low-watermark flush renders span` proves
+- Fixture `unflagged printable d4ac low-watermark flush renders span` checks
   cursor y `21`, fields `+0x2b/+0x2c/+0x2d = 7/0/10`, and alternate-y state
   produce high-y `28`, flush through `0x12714`, and render segment-list rows
   `12..14`.
-- Fixture `flagged printable d8fc low-watermark flush renders span` proves
+- Fixture `flagged printable d8fc low-watermark flush renders span` checks
   cursor y `21`, fields `+0x16/+0x18/+0x1a = 0/10/18`, and alternate-y state
   produce high-y `3`, flush through `0x12714`, and render segment-list rows
   `3..5`.
@@ -7264,7 +7264,7 @@ Published page-record shape:
 Command-specific state effects:
 
 - `! ESC E` publishes the page if a current root exists, then resets page and
-  parser state. The missing-root fixture proves `ESC E` can also clear reset
+  parser state. The missing-root fixture checks that `ESC E` can clear reset
   state without creating a published record.
 - `! ESC &l1A` publishes first, then leaves page code `6`, portrait
   orientation, active size `3030 x 2025`, top offset `90`, and page-change
@@ -7503,7 +7503,7 @@ Output effect:
   perforation-skip commands do not create glyph pixels by themselves in the
   covered streams.
 - Page length changes later printable placement and page geometry. The
-  nonzero fixture proves the `ESC &l66P !` stream queues the following
+  nonzero fixture checks that the `ESC &l66P !` stream queues the following
   printable at compact coordinate `0x9001` after the handler recomputes
   vertical extent and cursor-derived state.
 - VMI/LPI, top-margin, and text-length commands change later vertical cursor,
@@ -9088,7 +9088,7 @@ Output effect:
 - `host-fetched rectangle selector matrix feeds full page records` extends
   that page-visible path to every non-solid selector id and the landscape
   pattern remaps.
-- The no-room retry fixture proves allocation failure publishes the existing
+- The no-room retry fixture checks that allocation failure publishes the existing
   compact text bucket, creates a fresh root, retries the preserved selector-7
   source record, bridges it, and renders the retried rule.
 

@@ -5432,6 +5432,28 @@ Address-level cluster map:
   `0x780e26 = 1`. Evidence is `Minimal Page Geometry Walkthrough` above,
   [page-raster-imaging.md](page-raster-imaging.md), and
   [publication-commands.md](publication-commands.md).
+  Page-geometry state classification: canonical geometry state is page code
+  `0x782da2`, orientation byte `0x782da3`, page extent `0x782dba`, active
+  extents `0x782db6/0x782db8`, margins `0x782dd6/0x782dda`, top offset
+  `0x782dce`, VMI/HMI `0x783160/0x78315c`, cursor `0x782c8a/0x782c8e`, and
+  text/perforation limits `0x782dd2/0x782dc2`. Canonical page/publication
+  state is current root `0x78297a`, pending geometry header flag `0x782997`,
+  publication flag `0x782996`, paper-source output bytes `0x780e8f` /
+  `0x780e26` on the `ESC &l0P` default branch, and any pre-geometry page
+  object published through `0xff1e`. Derived/cache state is table geometry
+  words `0x782db2/0x782db4`, phase word `0x782dc0`, line caches
+  `0x782ede..0x782ee0`, default VFC table state, compact coordinates created
+  by later printable bytes, raster row limits, rectangle clipping extents, and
+  render-band fields after publication. Parser scratch is the six-byte
+  command record rewound and consumed by `0xfc74`, `0xf9e8`, or `0x10220`;
+  same-family chaining such as `ESC &l1a1O` only preserves parser context until
+  the next final consumes it. Firmware bookkeeping is modified-layout byte
+  `0x782ee1`, pending cursor/text latch `0x782a6d`, overlay/parser mode byte
+  `0x782a92` cleared by page-length refresh unless it is selector `2`, and
+  allocator/scheduler progress after a publication. Hardware/external state is
+  limited to the paper-source output/control mirror in the default-page branch
+  and later formatter timing; page-size, orientation, and nonzero page-length
+  fields are ROM-local inputs to later page-object construction.
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
   and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,

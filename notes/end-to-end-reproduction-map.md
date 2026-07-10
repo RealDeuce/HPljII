@@ -9223,13 +9223,19 @@ Priority ROM-local documentation targets:
    root topology, object shape, no-room/retry state, or bridge fields. The owner update
    must name the handler, fields written, later consumers, page-object bytes or
    no-output outcome, and the first render boundary reached.
-2. Parser-to-family routes that currently have only table ownership but lack a
-   worked byte-stream path. Start at `0xa904`, keep the parser outcome class
-   from `Admitted Byte Outcome Bridge`, jump through
-   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix),
-   and finish in the family owner. The useful deliverable is a route that
-   explains parsed inputs, RAM writes, downstream readers, and visible or
-   state-only effects. A generated dispatch row by itself is not enough.
+2. Parser-to-family route work should start only from an exact missing row/stream, not
+   from the parser tables in the abstract. The current checked-in parser audit assigns
+   the supported rows in [Supported Stream Dispatch
+   Matrix](pcl-command-map.md#supported-stream-dispatch-matrix) and the `ROM Semantic
+   Index For Quick Reference` in
+   [pcl4-language.md](pcl4-language.md#rom-semantic-index-for-quick-reference) to owner
+   notes; no known supported command family is intentionally left at table ownership
+   only. New parser work is useful when a specific byte stream changes a parser outcome
+   class, delayed-payload restore, alternate/data append, owner handler, RAM field
+   write, downstream reader, page-object field, or state-only consumer that is not
+   already named by those indexes. Generated dispatch rows remain supporting evidence;
+   the deliverable is still the checked-in owner route from admitted bytes to state,
+   page output, or an explicit no-output/status outcome.
 3. Page-image composition cases that add a new object class interaction.
    Extend the mixed text/rule/raster and downloaded-glyph composition paths
    only when the stream changes root ordering, bucket/list selection, bridge

@@ -500,7 +500,12 @@ controlling artifact.
   covered by [pcl-command-map.md](pcl-command-map.md), generated table extracts
   cited there, the ROM Semantic Index in
   [pcl4-language.md](pcl4-language.md), and `Worked Path: Command Record And
-  Payload Dispatch`.
+  Payload Dispatch`. The checked-in parser-routing contract is
+  [pcl-command-map.md](pcl-command-map.md#reproduction-contract): it defines
+  which semantic owner receives each admitted byte, terminal command record,
+  delayed payload restore, zero-handler row, no-match fallback, alternate/data
+  append, macro replay byte, or host/status query before any page/image state
+  can be followed.
   Normal table `0x112a4`, alternate/data table `0x116f6`, parser loop
   `0x11774`, matched-handler range `0x11912..0x119a4`, zero-handler range
   `0x119a6..0x119f4`, alternate append range `0x11930..0x11ab8`, delayed
@@ -530,8 +535,13 @@ controlling artifact.
   [page-raster-imaging.md](page-raster-imaging.md), `Worked Path: Shared Page-Record
   Storage And Allocator`, `Page Object Shape Route Index`, `Page Image Assembly`, and
   `Page Versus Band Model` in [firmware-dataflow-model.md](firmware-dataflow-model.md),
-  and the `Minimal Page Assembly Walkthrough`. The canonical model is current root
-  `0x78297a`, stream
+  and the `Minimal Page Assembly Walkthrough`. The checked-in page-versus-band
+  owner is [Page Object Lifetime And Band
+  Boundary](page-record-storage.md#page-object-lifetime-and-band-boundary):
+  supported streams build a page-root object graph first, then publish it and
+  render scheduler-selected band words; they do not build independent
+  parser-time strips or a parser-time full-page bitmap. The canonical model is
+  current root `0x78297a`, stream
   allocator state `0x782a70/0x782a72/0x782a76`, compact and raster buckets under root
   `+0x1c`, rules under `+0x24`, fixed objects under `+0x28`, selected context/resource
   longword slots `+0x2c..+0x68`, publication `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and
@@ -554,7 +564,12 @@ controlling artifact.
   and raster helper `0x1f88e`. `Band Scheduling Route Index` is the compact proof map
   for `0xff1e` publication, source selection `0x780eaa -> 0x780eae`, work-record
   alternation, active pointer `0x783a18`, band-loop no-pixel exits, and the
-  capacity-approved handoff into `0x1ef6a`.
+  capacity-approved handoff into `0x1ef6a`. Formatter/DC timing after those ROM
+  fields is covered by the
+  [DC reproduction contract](dc-controller-engine.md#reproduction-contract):
+  physical signal names and clock timing are hardware/external state unless
+  they change admitted byte order, wait-object wake order, selected
+  page/control record, render band word, or `0x1ef6a` call order.
 - Field/state classification:
   owned by [semantic-state-model.md](semantic-state-model.md#owner-summary),
   defined by the `State Classification Guide`, summarized in `Canonical State

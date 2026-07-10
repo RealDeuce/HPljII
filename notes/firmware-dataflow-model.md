@@ -687,6 +687,12 @@ Text motion and line-control writers:
 
 Cursor, margin, and span-boundary writers:
 
+- SI/SO handlers `0xc68a` and `0xc6b8` are selected-context writers. They update
+  dirty-map byte `0x782f2d`, selected slot `0x782f06`, page-root selected slot
+  `0x78297e`, and context slots under root `+0x2c..+0x68` only after
+  `0xc428(slot)` succeeds. The visible consumer is later printable source
+  capture: `0xd04a -> 0x1393a` reads the selected slot, map, and context before
+  compact object queueing.
 - `ESC &a#L/#M` handlers `0xeb58` and `0xec0c` write margins
   `0x782dd6` / `0x782dda`, may move cursor `0x782c8a`, and can flush pending
   span state through `0xf34a -> 0x12714 -> 0x126e2`.
@@ -694,6 +700,14 @@ Cursor, margin, and span-boundary writers:
   commit through helpers `0xf4ca` and `0xf6e2` to write `0x782c8a` or
   `0x782c8e`. Dot-position handlers `0xf48c` and `0xf692` share the same
   commit helpers after shifting whole-dot parameters into packed coordinates.
+- `ESC &f#S` handler `0xf75e` is a cursor-stack writer/reader. Selector `0`
+  pushes cursor and vertical offset into stack `0x782c96..0x782d36`; selector
+  `1` pops and clamps restored cursor state to current extents. Later printable,
+  raster-start, rectangle-fill, and span-flush paths consume the restored cursor.
+- `ESC &d` handler `0x12622` writes underline/text-attribute selector
+  `0x783185` and arms pending span state through `0x126e2`. Later printable span
+  consumers `0xd4ac` / `0xd8fc`, terminal `&d@`, CR, margin changes, and
+  vertical-cursor changes can materialize the state through `0xf34a -> 0x12714`.
 - Their primary output effect is the coordinate of the following compact text
   object. Their secondary output effect is a possible selector-`0x4000`
   segment-list object when a cursor-changing command flushes pending span
@@ -730,14 +744,17 @@ Graphics setup writers:
 State classification:
 
 - Canonical command/page state:
-  cursor `0x782c8a` / `0x782c8e`, margins `0x782dd6` / `0x782dda`, page
-  extents and text limits `0x782dba`, `0x782dc2`, `0x782dce`, HMI/VMI
-  `0x78315c` / `0x783160`, line/wrap/perforation modes
-  `0x78318f..0x783191`, raster block `0x783170..0x783182`, and rectangle
-  setup fields documented in [rectangle-graphics.md](rectangle-graphics.md).
+  cursor `0x782c8a` / `0x782c8e`, cursor stack `0x782c96..0x782d36`, selected
+  slot `0x782f06`, page-root selected slot `0x78297e`, margins `0x782dd6` /
+  `0x782dda`, page extents and text limits `0x782dba`, `0x782dc2`,
+  `0x782dce`, HMI/VMI `0x78315c` / `0x783160`, line/wrap/perforation modes
+  `0x78318f..0x783191`, underline/span selector `0x783185`, raster block
+  `0x783170..0x783182`, and rectangle setup fields documented in
+  [rectangle-graphics.md](rectangle-graphics.md).
 - Derived/cache state:
-  compact coordinates, pending span bounds, right-limit and previous-width
-  latches, raster row byte limits, and render-band fields after publication.
+  compact coordinates, selected-map rebuild products, pending span bounds,
+  right-limit and previous-width latches, raster row byte limits, and
+  render-band fields after publication.
 - Parser scratch:
   six-byte command records at `0x78299e`, lowercase chaining mode
   `0x782999`, parsed relative bit `0`, and numeric/fraction buffers used only
@@ -755,10 +772,18 @@ Evidence and remaining boundaries:
   `Rectangle Rule`, and `Rectangle Rule Selectors And Clipping`.
 - Detail owners are [Direct-Control Outcome
   Matrix](direct-control-codes.md#direct-control-outcome-matrix),
+  [Selected Context Switch
+  Checkpoint](direct-control-codes.md#selected-context-switch-checkpoint),
+  [Cursor Stack State
+  Checkpoint](direct-control-codes.md#cursor-stack-state-checkpoint),
   [raster-graphics.md](raster-graphics.md), and
   [rectangle-graphics.md](rectangle-graphics.md). Key listings include
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`,
   `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`,
   `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`, and
   `generated/disasm/ic30_ic13_rectangle_handlers_010898.lst`.
 - Confidence is high for the listed writer and consumer addresses because the

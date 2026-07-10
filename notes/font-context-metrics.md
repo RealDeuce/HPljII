@@ -534,6 +534,84 @@ Fixture-pinned secondary result:
 - map range: `0x21..0xff`;
 - patch kind: selected symbol is not Roman-8.
 
+### Candidate Attribute Filters
+
+`0x1519a..0x1562c` is the attribute-pruning cluster between symbol-set
+filtering and final candidate choice. It consumes the active candidate window
+created by `0x1569c` and narrowed by `0x156de`; it has no direct pixel output,
+but it changes which font record `0x14398` can select and therefore changes
+the context copied by `0x144d2`, the character map rebuilt by `0x14c64`, and
+the glyph rows reached by later printable bytes.
+
+Height filtering is driven by `0x1519a`:
+
+- `0x151a0..0x151b6` selects requested height from canonical primary field
+  `0x782ef2` or secondary field `0x782f02`, using selected slot flag
+  `0x7828de`.
+- `0x151ba..0x151cc` builds a derived inclusive tolerance window of
+  requested height +/- `0x19`, clamped to `0x0000..0xffff`.
+- `0x151f0` tests whether any active candidate has a decoded height inside
+  that window. Bit-30 candidate records decode height through `0x13bca` from
+  record word `+0x28` and byte `+0x2a`; bit-30-clear records read word
+  `+0x20`.
+- If the test succeeds, `0x15246` is the range pruner. It keeps candidates
+  inside the window, clears active bit 7 in rejected list entries, writes the
+  retained count to `0x7827b8`, and moves `0x78287c` to the first survivor.
+- If no candidate is inside the window, `0x1533e` scans the same decoded
+  heights and returns nearest lower and/or upper exact bounds in `D1/D2`.
+  `0x152c2` then keeps only candidates whose height equals either returned
+  bound and performs the same active-bit, pointer, and count updates.
+
+Spacing and pitch filtering are driven by `0x153c6`:
+
+- `0x153ca..0x153e2` selects requested spacing from canonical primary field
+  `0x782eef` or secondary field `0x782eff`.
+- `0x15456` tests for a candidate with that spacing. Bit-30 records read byte
+  `+0x21`; bit-30-clear records read byte `+0x19`.
+- `0x15488` is the spacing pruner. It keeps candidates with matching spacing,
+  clears active bit 7 in rejected entries, then writes `0x7827b8` and
+  `0x78287c`.
+- The wrapper treats requested spacing `1` specially: when no matching
+  spacing exists it skips pitch filtering, while a matching spacing is pruned
+  and exits. For other spacing requests, no match exits with no
+  spacing/pitch pruning; a match prunes spacing and then continues into pitch.
+- `0x15406..0x1542e` selects requested pitch from `0x782ef0` or `0x782f00`
+  and builds a derived inclusive tolerance window of pitch +/- `5`, clamped
+  to `0x0000..0xffff`.
+- `0x154e4` tests whether any active candidate has comparable pitch inside
+  that window. Bit-30 records decode pitch through `0x13b76` from record word
+  `+0x24` and byte `+0x26`; bit-30-clear records read word `+0x1a`.
+- If the pitch test succeeds, `0x1553a` prunes to candidates inside the pitch
+  window and updates `0x7827b8` / `0x78287c`.
+- If no pitch is inside the window, `0x1562c` chooses the nearest exact pitch
+  value used by `0x155b6`. The selector tracks the largest pitch at or below
+  the request and the smallest pitch above it; the observed return path
+  prefers the upper value when present, otherwise the lower value.
+
+State classification for this cluster:
+
+- Canonical request state: `0x782ef2` / `0x782f02` height,
+  `0x782eef` / `0x782eff` spacing, and `0x782ef0` / `0x782f00` pitch.
+- Canonical candidate state: active window pointer/count `0x78287c` /
+  `0x7827b8`, active bit 7 in each list entry, and record fields
+  `+0x28/+0x2a` or `+0x20` height, `+0x21` or `+0x19` spacing, and
+  `+0x24/+0x26` or `+0x1a` pitch.
+- Derived/cache state: the height and pitch tolerance windows and nearest
+  fallback bounds returned by `0x1533e` and `0x1562c`.
+- Firmware bookkeeping: rejected-entry active-bit clears plus rewritten
+  active pointer/count after each pruning pass.
+- Unknown: manual-facing names for the two candidate record layouts remain
+  unresolved; the ROM-local use of each field above is pinned by
+  `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`.
+
+The primary and secondary fixtures above exercise both range and fallback
+outcomes. Primary height and pitch requests keep candidates in range before
+stroke/typeface selection. Secondary selection reaches the nearest-pitch path
+and keeps slot `0x782350`. The unresolved boundary after this cluster is not
+inside `0x1519a..0x1562c`; it is the next consumer boundary at
+`0x14398..0x14406`, where filtered survivors are ranked and written to
+selected candidate pointer `0x7828a8`.
+
 ### Active Candidate Chooser
 
 `0x14398` is the selection boundary between filtered candidate windows and the

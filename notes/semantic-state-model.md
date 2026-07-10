@@ -3228,9 +3228,18 @@ startup-visible typed-record chain that bounds this built-in window.
   performed by callers such as `0x1ba92` and `0x1887a`, not by `0x1bd2e`.
 - `0x1569c` writes `0x78287c` / `0x7827b8` from the selected class
   window and sets active bit `0x80000000` in the chosen entries.
-- `0x156de`, `0x1519a`, `0x153c6`, `0x14758`, and related filters
-  mutate the active list by clearing the active bit on rejects, moving
-  `0x78287c` to the first survivor, and shrinking `0x7827b8`.
+- `0x156de`, `0x14758`, and related filters mutate the active list by
+  clearing the active bit on rejects, moving `0x78287c` to the first
+  survivor, and shrinking `0x7827b8`.
+- `0x1519a` is the height-filter wrapper. It reads requested height from
+  `0x782ef2` or `0x782f02`, asks `0x151f0` whether any active candidate is
+  within +/- `0x19`, and then dispatches to range pruner `0x15246` or to
+  nearest-bound selector `0x1533e` plus exact pruner `0x152c2`.
+- `0x153c6` is the spacing/pitch-filter wrapper. It reads requested spacing
+  from `0x782eef` or `0x782eff`, probes/prunes with `0x15456` /
+  `0x15488`, then reads pitch from `0x782ef0` or `0x782f00` and dispatches
+  to range probe/pruner `0x154e4` / `0x1553a` or nearest-pitch selector
+  `0x1562c` plus exact pruner `0x155b6`.
 - `0x14398` and comparator `0x13c06` choose `0x7828a8`, the selected
   candidate slot consumed by later context writers.
 
@@ -3239,11 +3248,14 @@ startup-visible typed-record chain that bounds this built-in window.
 - `0x156de` reads active candidate symbol words through `0x15890` /
   `0x158be`, compares requested words from `0x782ef4` or `0x782f04`,
   and may fall back through `0x782f0c..0x782f18`.
-- `0x1519a` reads requested heights from `0x782ef2` / `0x782f02` and
-  decoded built-in heights through `0x13bca`.
-- `0x153c6` reads requested spacing/pitch from `0x782eef` /
-  `0x782eff` and `0x782ef0` / `0x782f00`, then reads resource byte
-  `+0x21` and decoded pitch through `0x13b76`.
+- `0x151f0`, `0x15246`, `0x152c2`, and `0x1533e` read candidate heights.
+  Bit-30 records decode height through `0x13bca` from record word `+0x28`
+  and byte `+0x2a`; bit-30-clear records read word `+0x20`.
+- `0x15456` and `0x15488` read candidate spacing. Bit-30 records read byte
+  `+0x21`; bit-30-clear records read byte `+0x19`.
+- `0x154e4`, `0x1553a`, `0x155b6`, and `0x1562c` read candidate pitch.
+  Bit-30 records decode pitch through `0x13b76` from record word `+0x24`
+  and byte `+0x26`; bit-30-clear records read word `+0x1a`.
 - `0x14398` consumes active survivors and uses `0x13c06` / `0x1428c`
   to rank resource window, decoded height, byte `+0x2f`, signed byte
   `+0x30`, and byte `+0x31`.

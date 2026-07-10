@@ -223,16 +223,19 @@ Concrete software contracts already exist for these renderer components:
   buckets `0x1387c`, rule/fixed lists `0x133aa` / `0x136d2`, the
   producer-to-renderer map, publication `0xff1e`, and render bridge
   `0x1ed84` / `0x1edc6` are composed first by
-  `Worked Path: Text Source Objects And Compact Buckets` and
-  `Worked Path: Shared Page-Record Storage And Allocator` in
+  `Worked Path: Text Source Objects And Compact Buckets`,
+  `Worked Path: Shared Page-Record Storage And Allocator`, and
+  `Page Object Shape Route Index` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), then in
   [page-record-storage.md](page-record-storage.md),
   [page-raster-imaging.md](page-raster-imaging.md), and
   [semantic-state-model.md](semantic-state-model.md).
 - Renderers:
+  published-record selection, render-work alternation, band scheduling,
   compact text, built-in and downloaded glyphs, raster modes `0..3`,
-  rectangle/rule fills, shared `0x1ef6a` dispatch order, band walking, and
-  mixed text/rule/raster page streams are documented first by
+  rectangle/rule fills, shared `0x1ef6a` dispatch order, and mixed
+  text/rule/raster page streams are documented first by
+  `Band Scheduling Route Index`,
   `Worked Path: Compact Glyph Row-Copy Helpers`,
   `Worked Path: Rectangle Rule Selectors And Clipping`,
   `Worked Path: Raster Transfer Gates And Modes`,
@@ -333,6 +336,19 @@ Current milestone status:
   byte-stream variant that changes ROM state. Fixtures may drive those variants
   or check internal consistency, but they are not a rendered-row oracle and do
   not replace the explanatory trace.
+- The current shared page-image shape is summarized by `Page Object Shape
+  Route Index` in [firmware-dataflow-model.md](firmware-dataflow-model.md);
+  it groups compact text/downloaded glyphs, portrait segment-list spans,
+  encoded raster objects, rectangle rule-list objects, and landscape
+  fixed-list spans by producer, root field, canonical object bytes, bridge
+  field, first renderer, field class, and exact residual boundary.
+- The current publication-to-renderer handoff is summarized by `Band
+  Scheduling Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md); it groups
+  `0xff1e`, source selection through `0x780eaa` / `0x780eae`, render work
+  records `0x7820c4` / `0x782128`, active pointer `0x783a18`, active band
+  word `+0x10`, no-pixel scheduler exits, and the capacity-approved
+  `0x1ef6a` renderer call.
 
 ## Documentation Status
 
@@ -361,6 +377,14 @@ Expected remaining PDF lookups:
 
 Expected remaining validation and boundary work:
 
+- Exact ROM-local pixel helper boundaries:
+  downloaded-glyph compact-helper over-indexing, wrapped low-width helper
+  targets, segmented-wide fallback source offset, and the segmented-wide
+  payload-count cap are now bounded in
+  [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
+  Those are not parser, page-object, publication, or scheduler gaps; they are
+  the exact helper/source or payload-count stops reached after those upstream
+  routes are already documented.
 - External resource-window evidence: exact board address decode after the
   verified resource pair at
   firmware `0x0c0000..0x0c0321`, which affects the secondary transparent

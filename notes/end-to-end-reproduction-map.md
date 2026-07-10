@@ -5814,6 +5814,23 @@ Address-level cluster map:
   `00 00 00 00 40 00 00 01 32 00 03 00 00 10`. Evidence is
   [macro-data-chain.md](macro-data-chain.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+  Macro/data-chain state classification: canonical state is current macro id
+  `0x783164`, macro record pool `0x782a98`, selected record pointer
+  `0x782d7a`, active data-chain frame pointer `0x782d76`, frame fields
+  `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay state byte `0x782a92`, saved
+  overlay id `0x782a94`, and page-root retry gate `+0x14.0`. Derived/cache
+  state is normalized stored payload length, replay compact coordinates,
+  replay-produced page objects, and the font/context refreshes restored from
+  frame snapshots. Parser scratch is definition-mode byte `0x782c18`, append
+  error byte `0x782c19`, parser records consumed by `0xdd08`, and alternate
+  parser bytes that append through `0xe002` instead of executing immediately.
+  Firmware bookkeeping is heap chunk allocation/free state, eight macro
+  context-stack records, host gate bit 1, frame-end unwinding through
+  `0xe22c`, and overlay detour state while `0xff1e` temporarily re-enters
+  `0x11774`. The output effect is not a macro-specific renderer: replayed
+  bytes re-enter the ordinary command owners, and overlay replay changes
+  pixels only through the page objects those ordinary handlers create before
+  `0xff1e` copies the root.
 - VFC cluster:
   `ESC &l#W` uses delayed route
   `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` consumes the table

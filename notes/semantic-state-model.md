@@ -2720,33 +2720,32 @@ comes from the verified `IC32,IC15` pair. `notes/firmware-startup.md` verifies
 scanner `0x41a` walking records through `0x0ae122` and terminating at
 `0x0b2f80`, but the hardware mapping at `0x0c0000..0x0c0321` remains unknown.
 
-Fixture `transparent secondary segment-57 continuation policies diverge after
-verified bytes` makes that memory-map dependency executable. The segment-57
-compact payload `00 01 5f 39 1c 01` has glyph `0x5f`, segment `0x39`, coord
-`0x1c01`, row skip `7296`, row count `128`, span `10`, width `74`, and source
-offset `72960`. The `0x40000`-byte verified resource image supplies the first
-`478` bytes of the `1280`-byte segment read, so the current-band rows are
-identical under tested continuation policies with digest
-`f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
-fallback rows diverge: mirroring the resource pair gives digest
-`75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
-appending the code pair gives
-`dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
-zero-fill gives
-`6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
-Fixture `0x41a HEAD scanner would duplicate records under simple resource
-mirror` proves that the full-mirror continuation is scanner-visible: scanning
-`IC32,IC15 + IC32,IC15` would see `HEAD` at offsets `0` and `0x40000`, walk
-`48` typed records, and terminate at final probe `0x80000`.
-Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` proves
-that the code-pair and zero-fill continuations are not `HEAD`-visible to that
-same startup scanner: the second probe markers are `0x00800000` and
-`0x00000000`, so both variants keep one `HEAD` chain and 24 walked records.
-Fixture `0x1a616 candidate scan continuation policy changes built-in counts`
-adds the candidate-window consequence of those same policies: a visible mirror
-would double `0x78278e`, `0x782792`, `0x78279a`, and the related
-`0x7827a4..0x7827b4` cursor advances, while code-pair and zero-fill
+The segment-57 compact payload `00 01 5f 39 1c 01` has glyph `0x5f`, segment
+`0x39`, coord `0x1c01`, row skip `7296`, row count `128`, span `10`, width
+`74`, and source offset `72960`. The verified `0x40000`-byte resource image
+supplies only the first `478` bytes of the required `1280`-byte segment read.
+Current-band rows use those verified bytes and therefore remain invariant
+across tested continuation policies; fallback rows read beyond `0x0bffff` and
+diverge under mirror, code-pair, and zero-fill hypotheses.
+
+The continuation policy also changes startup scanner visibility. A simple
+resource mirror makes `0x41a` see a second `HEAD` at offset `0x40000`, walk
+`48` typed records, and terminate at final probe `0x80000`. Code-pair and
+zero-fill continuations present second probe markers `0x00800000` and
+`0x00000000`, so the same scanner sees one `HEAD` chain and the verified
+`24` walked records. Candidate scan `0x1a616` inherits that distinction: a
+visible mirror would double `0x78278e`, `0x782792`, `0x78279a`, and related
+cursor advances `0x7827a4..0x7827b4`, while code-pair and zero-fill
 continuations keep the verified candidate windows.
+
+Supporting continuation-policy anchors:
+
+- `transparent secondary segment-57 continuation policies diverge after
+  verified bytes`
+- `0x41a HEAD scanner would duplicate records under simple resource mirror`
+- `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
+- `0x1a616 candidate scan continuation policy changes built-in counts`
+
 Disassembly `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` pins the
 scan windows behind that fixture evidence: `0x1a2e4` seeds built-in start
 `0x080000`, end `0x0ffffe`, and step `0x40000` before calling `0x1a616`, while

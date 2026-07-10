@@ -931,7 +931,7 @@ Publication and render handoff:
   source root `+0x24` becomes render root `+0x1c`; renderer `0x1f446`
   dispatches selector `7` to solid helper `0x1f596` and non-solid selectors
   to pattern helper `0x1f4e0`.
-- Mixed streams prove these object classes compose through one page root. The
+- Mixed streams check these object classes composing through one page root. The
   path
   `0xd04a`, `0x10898`, delayed `0x105d0`, `0xff1e`, `0x1ed84`,
   `0x1edc6`, and `0x1ef6a` renders compact text, selector-7 rules, and
@@ -2236,10 +2236,10 @@ Producer-to-renderer map:
 
 The shared stream allocator means these objects can be interleaved in the same
 page root. Fixture `addressed page-record writers share 0x1381c across chunk
-rollover` proves compact, rule, and fixed-list writers share the same root
+rollover` checks compact, rule, and fixed-list writers sharing the same root
 stream. Fixture `addressed text/rule/raster field groups reach publication and
-render entry` proves compact text, selector-7 rule, and mode-0 raster objects
-publish from one page record and render through the bridge. The dense raster
+render entry` checks compact text, selector-7 rule, and mode-0 raster objects
+publishing from one page record and rendering through the bridge. The dense raster
 split path `0x132b6` may create multiple encoded-span bucket objects from one
 accepted transfer, but those objects still use the same `+0x1c -> +0x18 ->
 0x1f88e` consumer path.
@@ -2363,7 +2363,7 @@ Page-object class handoff matrix:
   `+0x04..+0x0d`. Render dispatch is `0x1f756`, gated on five-band
   boundaries, then row writing through `0x1f7b0` / `0x1f626`.
 
-The chunk-rollover fixture proves these producers are one shared allocator,
+The chunk-rollover fixture checks these producers as one shared allocator,
 not separate command-local stores. In
 `addressed page-record writers share 0x1381c across chunk rollover`,
 `0x10084` seeds `0x782a72 = root + 0x20`; seven compact writers through
@@ -2426,12 +2426,12 @@ Output effect:
   object ordering, and page/context roots later consumed by the render
   dispatcher.
 - Fixture `addressed text/rule/raster field groups reach publication and
-  render entry` proves compact text, a selector-7 rule, and a mode-0 raster
+  render entry` checks compact text, a selector-7 rule, and a mode-0 raster
   row share one addressed page record, publish through `0xff1e`, bridge
   through `0x1ed84` / `0x1edc6`, and enter render dispatch through
   `0x1ef6a`.
 - Fixtures `0x133aa no-room return preserves rule-list head` and
-  `0x136d2 no-room return preserves fixed-list head after search` prove
+  `0x136d2 no-room return preserves fixed-list head after search` check
   failed allocation leaves the prior visible rule/fixed lists intact for
   later publication.
 
@@ -7648,12 +7648,12 @@ Active band loop:
 
 Output effect:
 
-- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
+- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` checks
   published source `0x00d0eaa0` reaches active source `0x780eae`, render work
   `0x782128`, active render pointer `0x783a18`, and the same ROM-local
   render-entry path as a direct `0x1ed84` / `0x1ef6a` setup.
 - Fixture `0x1ecd6 same-geometry render work reuse reaches render entry`
-  proves the same-geometry branch computes destination word `+8`, derives
+  checks the same-geometry branch computing destination word `+8`, deriving
   `0x783a20 = 0x0020`, `0x783a22 = 3`, and
   `0x783a28 = 0x00103800`, and still reaches the documented render-entry
   path.
@@ -7661,7 +7661,7 @@ Output effect:
   the render, capacity-wait, cleanup, and throttle outcomes from active and
   paired work-record fields.
 - Fixture `0x1eba4 scheduler band words render published downloaded glyph`
-  proves ten scheduler-produced band words `0..9` feed a published
+  checks ten scheduler-produced band words `0..9` feeding a published
   downloaded-glyph page record into `0x1ef6a`; only buckets `1` and `9`
   dispatch compact objects, and bucket `9` reaches the ROM-derived row-write
   path for page row `86`.

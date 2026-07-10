@@ -213,6 +213,54 @@ Field grouping for this matrix:
   the manual `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`, `CBSY`,
   `STATS`, `PCLK`, `SBSY`, `RDY`, `PPRDY`, or `CPRDY` names in this note.
 
+## Reproduction Contract
+
+For byte-stream-to-pixel reproduction, this boundary is not another source of
+page objects or pixel data. A reproducer must preserve the ROM-visible
+scheduler, wait, and render fields that decide which already published record
+is rendered and when a band is advanced.
+
+Required ROM-visible behavior:
+
+- Preserve timer/status side effects from `0x0d52..0x0f7a` only as they affect
+  wait-object state, low-MMIO shadows, output-table rotation, and scheduler
+  dispatch through `0x123a`.
+- Preserve scan/status side effects from `0x0f84..0x10f2`: counters
+  `0x78398c`, pending/status bytes `0x78399e` / `0x78399f`, shadow byte
+  `0x7828f9`, and wait-object signal `0x1036 -> 0x780182`.
+- Preserve wait-object scheduling through `0x1036`, `0x1064`, `0x108e`, and
+  `0x123a`: pending bit `0x78017e.1`, pending pointer `0x78017a`, active
+  object `0x780176`, active priority `0x780174`, and object words
+  `+0x0a`, `+0x0c`, `+0x12`, `+0x16`, and `+0x1a`.
+- Preserve active-pool wrapper effects from `0x1cf8..0x1ea8` only where they
+  change `0x780e6d`, `0x780e67`, `0x780ea5`, copied-row state, or the
+  scheduler-visible wait/status path.
+- Preserve active render-loop decisions from `0x1eba4..0x1ecd2`: source record
+  `0x780eae`, render selectors `0x7820bc` / `0x7820c0`, active work pointer
+  `0x783a18`, work-record words `+6`, `+0x0c`, `+0x0e`, `+0x10`, and
+  `+0x16`, and the ordered calls to `0x1ef6a`.
+
+Pixel derivation stops at the ROM row-buffer and render-helper contract owned by
+[page-raster-imaging.md](page-raster-imaging.md#reproduction-contract). Service
+manual signal names such as `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, `CMND`,
+`CCLK`, `CBSY`, `STATS`, `PCLK`, `SBSY`, `RDY`, `PPRDY`, and `CPRDY` are
+hardware/external state unless new evidence maps them to one of the ROM-visible
+fields above. Physical timing is pixel-relevant only when it changes byte
+admission, wait-object wake order, selected page/control record, render band
+word, or the sequence of `0x1ef6a` calls.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`
+- `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`
+- `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`
+- `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`
+- [active-render-scheduler.md](active-render-scheduler.md#reproduction-contract)
+- [page-raster-imaging.md](page-raster-imaging.md#reproduction-contract)
+- [unresolved-boundaries.md](unresolved-boundaries.md#active-render-device-handoff)
+
 ## Role
 
 The DC Controller PCA is the machine control system. It coordinates:

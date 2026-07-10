@@ -104,9 +104,10 @@ Primary fixtures:
 Concept: this note owns ordinary printable text and direct cursor/control
 command state from parser terminal handlers to page-record effects. It covers
 normal printable fallback `0xd04a`, CR, LF, FF, HT, BS, line termination,
-HMI/VMI, cursor stack, margins, absolute/relative cursor and dot positions,
-wrap and perforation state, underline/span flush, and the handoff from cursor
-state to compact text or span objects.
+SO/SI selected text context, HMI/VMI, cursor stack, margins,
+absolute/relative cursor and dot positions, wrap and perforation state,
+underline/span flush, and the handoff from cursor or context state to compact
+text or span objects.
 
 Primary route:
 
@@ -119,10 +120,10 @@ Primary route:
 - Printable route:
   `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0xd3b2/0xd824 -> 0x12f2e
   -> 0x1387c -> page-record storage -> publication/render`.
-- Direct controls mutate cursor, layout, margin, span, or mode state. Their
-  visible effects occur through a later printable byte, span flush `0x12714`,
-  FF/VFC/page-eject publication `0xf124 -> 0xff1e`, or raster/rectangle
-  consumers that read the same cursor state.
+- Direct controls mutate cursor, layout, margin, selected text context, span,
+  or mode state. Their visible effects occur through a later printable byte,
+  span flush `0x12714`, FF/VFC/page-eject publication `0xf124 -> 0xff1e`, or
+  raster/rectangle consumers that read the same cursor state.
 - Span flush route: direct controls call `0xf34a`, which can materialize a
   pending span through `0x12714 -> 0x126e2`.
 - Pixel route after object creation belongs to
@@ -135,6 +136,9 @@ Field groups:
 
 - Canonical placement: `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`,
   `0x78315c`, and `0x783160`.
+- Canonical selected context: selected text slot `0x782f06`, current-font
+  records `0x782ee6` / `0x782ef6`, page-root selected context slot
+  `0x78297e`, and page-root context live flags `0x78297f+n`.
 - Canonical control/layout modes: `0x78318f`, `0x783190`, `0x783191`,
   `0x782dba`, `0x782dc2`, `0x782dce`, `0x782db8`, `0x782dc6`, and
   `0x782dca`.
@@ -156,9 +160,9 @@ Field groups:
 Writers and readers:
 
 - Writers are terminal handlers for line termination, CR/LF/FF/HT/BS, HMI/VMI,
-  margins, cursor positioning, dot positioning, cursor stack, underline,
-  perforation skip, wrap mode, and vertical layout. Their exact address ranges
-  are listed in the sections below.
+  SO/SI selected text context, margins, cursor positioning, dot positioning,
+  cursor stack, underline, perforation skip, wrap mode, and vertical layout.
+  Their exact address ranges are listed in the sections below.
 - Readers are printable text path `0xd04a`, printable prechecks `0xd28a` and
   `0xd6bc`, compact text/object queue `0x12f2e -> 0x1387c`, span materializer
   `0x12714 -> 0x126e2`, overflow helper `0xf36c`, page-record bridge
@@ -171,9 +175,9 @@ Output effect:
   page-root publication and active-band scheduling.
 - CR, LF, FF, HT, and BS primarily adjust cursor/span state. FF also publishes
   the current page root through the page-eject path.
-- Cursor, margin, wrap, perforation, and layout commands are state-only until
-  a later printable, span, raster, rectangle, or publication consumer reads the
-  mutated fields.
+- SO/SI, cursor, margin, wrap, perforation, and layout commands are state-only
+  until a later printable, span, raster, rectangle, or publication consumer
+  reads the mutated fields.
 - Underline/span commands can materialize segment-list objects through
   `0x12714`.
 - No direct-control handler writes final pixels before page-record

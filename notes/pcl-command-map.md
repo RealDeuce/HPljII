@@ -303,11 +303,10 @@ boundaries:
 - `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append, and
   guarded `ESC z` status signaling: [Display Functions Decision
   Checkpoint](display-functions.md#display-functions-decision-checkpoint).
-- Reset, FF publication, page size, page-length zero/default, orientation,
-  paper source, and copies:
-  [publication-commands.md](publication-commands.md#owner-summary) plus reset
-  provenance in
-  [reset-default-environment.md](reset-default-environment.md#owner-summary).
+- Reset, FF publication, page size, page-length zero/default, orientation, paper source,
+  and copies: [publication-commands.md](publication-commands.md#owner-summary) plus
+  reset provenance in
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix).
 - Transparent print data `ESC &p#X`:
   [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix).
@@ -549,8 +548,10 @@ output class that a byte-stream reader should follow next.
   copies `0xeef0` update page/control state or publish through `0xff1e`.
   Continue in [Publication Outcome
   Matrix](publication-commands.md#publication-outcome-matrix) and
-  [reset-default-environment.md](reset-default-environment.md). Output class:
-  environment state, current-root publication, or no-publication reset clear.
+  [Reset Default Outcome
+  Matrix](reset-default-environment.md#reset-default-outcome-matrix). Output
+  class: environment state, current-root publication, or no-publication reset
+  clear.
 - Transparent and display reader bytes:
   `ESC &p#X` arms `0x11f5a -> 0x121cc` and restores to payload reader
   `0x12452`; `ESC Y ... ESC Z` uses readers `0x12536` or `0x12120`.

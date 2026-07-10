@@ -2867,13 +2867,11 @@ State classification:
 Evidence:
 
 - Checked-in explanations:
-  [reset-default-environment.md](reset-default-environment.md),
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix),
   [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary),
-  `Worked Path: Reset And Default Environment` and
-  `Default Environment Record Producers` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), and
-  `ESC E Reset And Default Environment` in
-  [semantic-state-model.md](semantic-state-model.md).
+  `Worked Path: Reset And Default Environment` and `Default Environment Record
+  Producers` in [firmware-dataflow-model.md](firmware-dataflow-model.md), and `ESC E
+  Reset And Default Environment` in [semantic-state-model.md](semantic-state-model.md).
 - Focused listings:
   `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,
@@ -9340,12 +9338,12 @@ named upstream field:
    secondary buckets through `448`, or compact renderer arithmetic unless new
    decode evidence contradicts that boundary.
 2. Reset/default provenance is no longer a ROM-local parser/page/render gap.
-   [reset-default-environment.md](reset-default-environment.md) and
-   `Default Environment Record Producers` cover the reset consumer, default
-   backing-record producers, retained-record helpers, page-root publication,
-   HMI/VMI conversion, and addressed compact-bucket publication. Remaining
-   work is external naming or physical correlation for retained storage,
-   service conditions, folded status categories, and self-test placement.
+   [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix)
+   and `Default Environment Record Producers` cover the reset consumer, default
+   backing-record producers, retained-record helpers, page-root publication, HMI/VMI
+   conversion, and addressed compact-bucket publication. Remaining work is external
+   naming or physical correlation for retained storage, service conditions, folded
+   status categories, and self-test placement.
 3. Font metrics, font selection, downloaded-glyph row/span publication, and
    macro overlay replay are composed checkpoints. Additional cases are useful
    only when they change copied metric fields, a consumer branch, selected

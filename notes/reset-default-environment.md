@@ -141,6 +141,166 @@ Evidence and boundaries:
   retained-storage identity, panel/service protocol, and manual names for
   reset latches.
 
+## Reset Default Outcome Matrix
+
+This matrix composes reset/default behavior into the byte-stream-to-output
+model. It separates the `ESC E` page-boundary effect from the default
+producers and rebuilt state that later commands consume.
+
+`ESC E` with a valid current page root:
+
+- ROM path:
+  parser dispatch reaches `0xcc52`; reset helper `0xcc70` calls `0xf34a` and
+  `0xff1e` before environment rebuild.
+- State category:
+  canonical page/control pool state, firmware bookkeeping, and derived render
+  state after publication.
+- Writers:
+  `0xff1e` publishes the valid root from `0x78297a` into protected pool state
+  `0x780ea6`, sets publication flag `0x782996`, and clears current-root state
+  before `0xcda2` rebuilds defaults.
+- Readers / consumers:
+  publication bridge `0x1ed84 -> 0x1edc6`, active render entry `0x1ef6a`,
+  and later scheduler/render owners consume the published pre-reset page
+  record.
+- Output effect:
+  pre-reset page objects can produce ROM-derived pixels. The reset command is
+  the boundary that finalizes those objects before clearing/rebuilding parser
+  and environment state.
+- Evidence:
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, fixtures
+  `ESC E stream publishes valid page root and resets environment/parser state`,
+  `mixed printable/reset page-record finalization publishes bridged record`,
+  and `addressed printable reset publishes rendered page record`.
+
+`ESC E` with no current page root:
+
+- ROM path:
+  `0xcc52 -> 0xcc70 -> 0xf34a -> 0xff1e`.
+- State category:
+  firmware bookkeeping and canonical reset state.
+- Writers:
+  `0xff1e` takes its no-root/current-root clear exit; `0xcda2`, `0xcbd4`, and
+  `0xe146` still rebuild reset state afterward.
+- Readers / consumers:
+  later parser, font, geometry, and raster handlers consume the rebuilt state;
+  no publication or render consumer receives a new page record from this
+  branch.
+- Output effect:
+  no pixels are produced by the reset itself when there is no valid root to
+  publish.
+- Evidence:
+  fixtures `ESC E stream clears missing page root without publication` and
+  `host-fetched ESC E clears missing page root without publication`;
+  publication behavior in
+  [publication-commands.md](publication-commands.md#publication-outcome-matrix).
+
+Environment rebuild:
+
+- ROM path:
+  `0xcc70 -> 0xcda2 -> 0xcbd4`.
+- State category:
+  canonical reset inputs, derived/cache reset state, and firmware
+  bookkeeping.
+- Writers:
+  `0xcda2` rebuilds four page/control records at `0x780f02`, bucket-array
+  pointers `+0x1c`, scratch/cursor-stack pointers, reset environment word
+  `0x782da4`, gated byte `0x782da6`, reset pending bytes
+  `0x782997/0x782998`, HMI `0x78315c`, VMI `0x783160`, top offset
+  `0x782dce`, and raster state block `0x783170`. `0xcbd4` refreshes HMI and
+  active-symbol snapshots.
+- Readers / consumers:
+  later printable placement, font selection, VFC/layout, raster transfer,
+  rectangle/rule setup, and publication paths consume the rebuilt fields.
+- Output effect:
+  no immediate pixels unless a pre-reset root was already published; the
+  rebuilt defaults change how following host bytes are parsed, positioned,
+  queued, and rendered.
+- Evidence:
+  `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,
+  `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`, and fixture
+  `0x5e80 -> 0xcda2 reset consumes default record outputs`.
+
+Parser/data-chain reset:
+
+- ROM path:
+  `0xcc52 -> 0xe146`.
+- State category:
+  canonical parser/data-chain reset state and firmware bookkeeping.
+- Writers:
+  `0xe146` resets data-chain pointer `0x782d76`, clears macro/current record
+  pointer `0x782d7a`, macro id `0x783164`, alternate/data bytes
+  `0x782c18/0x782c19`, overlay/parser byte `0x782a92`, text accumulation bytes
+  `0x783196..0x783199`, parser/control records `0x782c1e..0x782c6d`, and
+  parser/control cursor `0x782c6e`.
+- Readers / consumers:
+  host-byte parser loop, macro/data-chain replay, transparent/raster/font
+  delayed payload setup, and command-family handlers consume the cleared
+  parser state after reset returns.
+- Output effect:
+  no direct pixels; the visible effect is that following bytes start from the
+  reset parser and replay state instead of inherited parser/data-chain state.
+- Evidence:
+  `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
+  parser ownership in
+  [pcl-parser-core.md](pcl-parser-core.md#reproduction-contract), and macro
+  replay ownership in
+  [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix).
+
+Default record production:
+
+- ROM path:
+  `0x5e80`, menu/update handlers `0x5060`, `0x50be`, `0x52ba`, retained-record
+  maintenance `0x56c2`, `0x571e`, and `0x5a62`.
+- State category:
+  canonical default producers, retained/default bookkeeping, and
+  hardware/external state for retained storage.
+- Writers:
+  selected backing records under `0x780eda`, staged bytes `0x782283` /
+  `0x782290`, and reset-consumed defaults `0x78219d`, `0x78219e`, and
+  `0x7821a2`.
+- Readers / consumers:
+  `0xcda2` consumes the defaults during reset; retained-record commit/read
+  paths consume dirty flags and buffers when preserving those defaults.
+- Output effect:
+  no direct pixels. Defaults become visible only through a later reset that
+  copies them into layout, paper/environment, VMI, status, and parser state
+  consumed by following page-building commands.
+- Evidence:
+  `generated/disasm/ic30_ic13_default_env_load_005e80.lst`,
+  `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`,
+  `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`,
+  `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`, and
+  fixture `0x5e80 -> 0xcda2 reset consumes default record outputs`.
+
+State grouping for this matrix:
+
+- Canonical state:
+  defaults `0x78219d/0x78219e/0x7821a2`, reset gate `0x7810b2`,
+  page/control records `0x780f02`, current root `0x78297a`, published root
+  `0x780ea6`, parser/data-chain records, and default backing records under
+  `0x780eda`.
+- Derived/cache state:
+  HMI `0x78315c`, VMI `0x783160`, top offset `0x782dce`, layout scratch,
+  raster block `0x783170`, and published render-record state after `0x1ed84`.
+- Parser scratch:
+  parser/control records `0x782c1e..0x782c6d`, parser/control cursor
+  `0x782c6e`, alternate/data bytes, delayed payload state, and macro/data-chain
+  frame pointers cleared by `0xe146`.
+- Firmware bookkeeping:
+  publication flag `0x782996`, reset pending bytes `0x782997/0x782998`,
+  reset latches, retained-record dirty flags, maintenance counters, and reset
+  completion byte `0x782a93`.
+- Hardware/external state:
+  physical retained-storage identity behind `$a400` / `$8c01` and the external
+  panel/service source behind `$8000.w`.
+- Unknown:
+  only manual-facing names for several reset latches and external device
+  identities remain unknown. No ROM-local reset/default producer, consumer,
+  publication, parser-reset, or later-output middle edge remains open for the
+  documented paths.
+
 ## Field Groups
 
 Canonical reset inputs:

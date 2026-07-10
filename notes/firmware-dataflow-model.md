@@ -7135,6 +7135,9 @@ State classification:
 Evidence:
 
 - Detail note: [reset-default-environment.md](reset-default-environment.md).
+- Outcome matrix:
+  [Reset Default Outcome
+  Matrix](reset-default-environment.md#reset-default-outcome-matrix).
 - Publication note: [publication-commands.md](publication-commands.md).
 - Semantic checkpoint: `Reset And Default Environment` and
   `Publication Commands To ROM-Derived Page Rows` in

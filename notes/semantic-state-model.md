@@ -2620,97 +2620,76 @@ or fixed-space helper `0xd0f0`.
 
 ### Output Effect
 
-Fixture `transparent data parser trace feeds page-record queue` proves
-`ESC &p2X!!` restores handler `0x12452`, consumes payload bytes `21 21`,
-routes both through `0xd04a`, queues compact coords `0x0001` and `0x0202`,
-allocates one page root, preserves context slot `0x440946b4` through
-`0x1edc6`, and renders the same rows as plain `!!`.
+`ESC &p#X` is a delayed counted text-data route. Parser dispatch reaches
+arming stub `0x11f5a`, which schedules restored handler `0x12452` through
+`0x121cc`. `0x12218` restores the saved six-byte command record before
+payload consumption, so `0x12452` rereads the absolute count from record word
+`+2` and then fetches payload bytes from the current `0xa904` source.
 
-Fixture `transparent non-0x58 probe byte reaches page-record output` proves
-`ESC &p2X\x1aA!` consumes raw payload slice `1a 41 21` as routed values
-`41 21`. The byte `0x41` maps to glyph `0x40`, queues compact coord
-`0x0a00`, and renders visible `A` before the following `!`.
+The transparent reader owns byte routing, not the outer parser. A normal
+printable payload byte routes to `0xd04a`; default-filtered C0 and high-control
+values route to `0xd0f0`; nonzero selected-context/filter state can route those
+same control values through `0xd04a`. The local `0x1a` probe consumes a second
+host byte: exact `0x1a 0x58` routes as `0x7f`, while `0x1a xx` with
+`xx != 0x58` routes as `xx`. The transparent count is a count of routed values,
+so `ESC &p2X 1a 41 21` consumes three host bytes but routes only `0x41` and
+`0x21`.
 
-Fixture `transparent data control payloads advance through fixed-space path`
-proves default filtering for `ESC &p4X!\x05\x85!`: payload values route
-`d04a d0f0 d0f0 d04a`, the C0 byte `0x05` and high-control byte `0x85`
-advance spacing from packed x `28` to `46` and `46` to `64` without compact
-entries, and the final object contains only two visible `!` entries at
-coords `0x0001` and `0x0604`.
+In the straight printable path, `ESC &p2X!!` restores `0x12452`, consumes
+payload bytes `21 21`, routes both through `0xd04a`, queues compact coords
+`0x0001` and `0x0202`, allocates one page root, and carries context slot
+`0x440946b4` through `0x1edc6`. The result is the same compact text page-object
+shape as plain `!!` after the delayed payload boundary has been crossed.
 
-Fixture `transparent default-filtered control enters unflagged fixed-record
-path` proves the unflagged side of the same `0xd0f0` entry for
-`ESC &p3X!\x05!`: payload values route `d04a d0f0 d04a`; the C0 byte `0x05`
-substitutes host `0x20`, maps to unflagged glyph `0`, uses inline record
-`01 02 00 00 00 00 00 70`, positions x/y `40/20`, queues compact coord
-`0x4802` in bucket `1`, and renders in the same selected bucket as surrounding
-unflagged `!` glyphs at coords `0x7601` and `0x7a03`. The bridge context slots
-begin `(0x00000100, 0, 0, 0)`, and selected bucket `1` renders row count `10`,
-row width `74`, digest
-`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
+Default filtering sends control payload values through fixed-spacing logic.
+For `ESC &p4X!\x05\x85!`, routed values are `d04a d0f0 d0f0 d04a`: the C0
+byte `0x05` and high-control byte `0x85` advance spacing from packed x `28`
+to `46` and from `46` to `64` without compact entries, leaving only the two
+visible `!` entries at coords `0x0001` and `0x0604`. The unflagged side of
+the same `0xd0f0` entry can instead substitute host space `0x20`, map it to
+glyph `0`, use inline record `01 02 00 00 00 00 00 70`, and queue compact
+coord `0x4802` in bucket `1` between surrounding unflagged `!` glyphs at
+coords `0x7601` and `0x7a03`.
 
-Fixture `transparent nonzero filters route controls through printable path`
-proves the opposite filtering polarity for `ESC &p4X!\x05\x80!`: selected
-context byte `1` and local filtering word `1` route all four values through
-`0xd04a`; C0 byte `0x05` maps to glyph `0x04`, high-control byte `0x80` maps
-to glyph `0x7f`, and all four entries render.
+With nonzero selected-context/filter state, the control path flips to printable
+routing. For `ESC &p4X!\x05\x80!`, all four values route through `0xd04a`;
+`0x05` maps to glyph `0x04`, `0x80` maps to glyph `0x7f`, and all four entries
+render. The primary high-control range keeps that printable route for interior
+samples `0x81`, `0x88`, `0x90`, and `0x97` plus boundary samples `0x98` and
+`0x9f`; those bytes map to glyphs `0x80`, `0x87`, `0x8f`, `0x96`, `0x97`, and
+`0x9e`, queue the high-control glyph in bucket `-1`, and leave surrounding
+`!` entries in bucket `0`.
 
-Fixture `transparent nonzero high-control byte queues tall glyph bucket`
-extends that nonzero high-control branch with `ESC &p3X!\x98!`. Payload byte
-`0x98` routes through `0xd04a`, maps to glyph `0x97`, glyph entry `0x01781e`,
-rows `29`, width `17`, and compact coord `0xfd01` in bucket `-1`; the
-surrounding `!` bytes remain in bucket `0` at coords `0x0001` and `0x0403`.
-The bucket `-1` render has row count `44`, width `46`, and digest
-`bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`;
-bucket `0` renders row digest
-`4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
+Secondary context exposes the same route with a different glyph resource
+boundary. `SO` handler `0xc6b8` changes selector `0x782f06` from `0` to `1`.
+For `SO ESC &p3X!\x80!`, restored handler `0x12452` consumes payload
+`21 80 21` and routes all three values through `0xd04a`. The `!` bytes use
+context slot `1` source `0xc00ae122`, map to glyph `0`, and queue selector-1
+coords `0xc5ff` and `0xc901`. The high-control byte `0x80` maps through the
+same context to glyph `0x5f`, entry `0x02e122`, rows `20062`, width `74`,
+compact coord `0x1c01`, and segmented page-record selector `0x2001` with first
+segment/bucket `156`/`1248`.
 
-Fixture `transparent nonzero high-control upper bound remains printable`
-proves the top-of-range sibling `ESC &p3X!\x9f!`. Payload byte `0x9f` routes
-through `0xd04a`, maps to glyph `0x9e`, glyph entry `0x016d1e`, rows `30`,
-width `15`, and compact coord `0xee01` in bucket `-1`. The surrounding `!`
-bytes again remain in bucket `0`; the bucket `-1` render has row count `44`,
-width `45`, and digest
-`ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`, while
-bucket `0` keeps digest
-`4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
+The secondary segmented render path is no longer a parser uncertainty. The
+first unsupported source read occurs after the transparent reader and page
+record have already selected glyph `0x5f`, segment `0x39`, row skip `7296`,
+span `10`, and source offset `0x03fe22`; the needed `1280` bytes exceed the
+verified resource bytes available from the current `IC32,IC15` pair by
+`802` bytes. That is a resource-window/MMIO-map boundary, not an
+`ESC &p#X` parser or transparent-routing boundary.
 
-Fixture `transparent nonzero high-control interior samples remain printable`
-fills the primary interior range between the `0x80`, `0x98`, and `0x9f`
-boundary checks. Payload bytes `0x81`, `0x88`, `0x90`, and `0x97` all route
-`d04a d04a d04a`, map to glyphs `0x80`, `0x87`, `0x8f`, and `0x96`, queue
-the high-control glyph in bucket `-1`, leave surrounding `!` entries in
-bucket `0`, and render selected-bucket digests
-`841384c82ec301334f603178a4ad28152c7818bab08c8b829bb769a356b27c04`,
-`64ab78cb858eb0560f08304101c4a6870daee5a94144ce028e5807952d479850`,
-`e99bffbc8e6c0c9179536c5c90927a72ba3047cf7f43e43355552f0e5aa4fae4`, and
-`a97b85527284735826a97ef1998d72e5841bd4331c2f2aeea24d444a35179acd`.
+Supporting fixture anchors:
 
-Fixture `transparent secondary high-control byte enters segmented page-record
-path` composes SO with the transparent branch for `SO ESC &p3X!\x80!`. SO
-handler `0xc6b8` changes selector `0x782f06` from `0` to `1`; delayed handler
-`0x12452` restores record `80 58 00 03 00 00`, consumes payload `21 80 21`,
-and routes all three values through `0xd04a`. Both `!` bytes read source
-context `0xc00ae122` slot `1`, map to glyph `0`, and queue short selector-1
-coords `0xc5ff` and `0xc901`. The high-control byte `0x80` reads the same
-source context, maps to glyph `0x5f`, reports glyph entry `0x02e122`, rows
-`20062`, width `74`, compact coord `0x1c01`, and enters segmented page-record
-storage with selector `0x2001`, first segment/bucket `156`/`1248`, and last
-segment/bucket `0`/`0`. The bridge carries context slots
-`(0x440946b4, 0xc00ae122)`, and selected bucket `0` renders row count `80`,
-row width `256`, digest
-`57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
-
-Fixture `transparent secondary segmented render prefix exposes source
-boundary` renders the produced secondary segmented buckets until the current
-source model fails. Buckets `0..448` render as `57` buckets with aggregate
-digest `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`;
-bucket `448` is segment `56`, row count `32`, row width `102`, digest
-`823854dc77b9234cf90f71bebcc3da7280c72dfed2bf05315e757b2d1c58c4e3`. The
-first failure is bucket `456`, selector `0x2001`, glyph `0x5f`, segment
-`0x39`, row skip `7296`, source `0x03fe22`, needing `1280` bytes with only
-`478` bytes available. The resolved glyph source is entry/bitmap `0x02e122`,
-delta `0`, mode `0`, rows `20062`, width `74`, and render span `10`.
+- `transparent data parser trace feeds page-record queue`
+- `transparent non-0x58 probe byte reaches page-record output`
+- `transparent data control payloads advance through fixed-space path`
+- `transparent default-filtered control enters unflagged fixed-record path`
+- `transparent nonzero filters route controls through printable path`
+- `transparent nonzero high-control byte queues tall glyph bucket`
+- `transparent nonzero high-control upper bound remains printable`
+- `transparent nonzero high-control interior samples remain printable`
+- `transparent secondary high-control byte enters segmented page-record path`
+- `transparent secondary segmented render prefix exposes source boundary`
 
 Disassembly
 `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` moves

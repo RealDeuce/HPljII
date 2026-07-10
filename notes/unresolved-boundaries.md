@@ -80,14 +80,12 @@ Use the classification column before continuing work:
   parser payload restore, downloaded-character validation, glyph install,
   compact object selection, publication, bridge, and dispatch into the short
   helper.
-- Evidence:
-  [downloaded-fonts.md](downloaded-fonts.md),
-  [page-raster-imaging.md](page-raster-imaging.md),
-  `Downloaded Font Descriptor And Payload Chain` and
-  `Bitmap Render Dispatch Contract` in
-  [semantic-state-model.md](semantic-state-model.md), and
-  `Render Helper Boundary Index` in
-  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+- Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+  [page-raster-imaging.md](page-raster-imaging.md), `Downloaded Font Descriptor And
+  Payload Chain` and `Bitmap Render Dispatch Contract` in
+  [semantic-state-model.md](semantic-state-model.md), and `Render Helper Boundary Index`
+  in [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 - Needed to close:
   a ROM-local explanation for why those invalid jump-table indices should be
   unreachable or redirected, or an explicitly documented invalid-target
@@ -114,11 +112,10 @@ Use the classification column before continuing work:
 - What is not unresolved:
   installed span preservation, compact object fields, helper selection for
   legal high-width cases, and the page-record bridge.
-- Evidence:
-  [downloaded-fonts.md](downloaded-fonts.md),
-  [page-raster-imaging.md](page-raster-imaging.md), and
-  `Downloaded Glyph Boundary Decision Rules` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+  [page-raster-imaging.md](page-raster-imaging.md), and `Downloaded Glyph Boundary
+  Decision Rules` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Needed to close:
   a ROM-local guard that prevents those low-width objects from reaching the
   invalid target, or a defensible invalid-target behavior for the computed
@@ -142,11 +139,10 @@ Use the classification column before continuing work:
 - What is not unresolved:
   selected-segment rendering, compact selector derivation, page-record bridge,
   and the arithmetic payload-count cap.
-- Evidence:
-  [downloaded-fonts.md](downloaded-fonts.md),
-  [page-raster-imaging.md](page-raster-imaging.md), and
-  `Bitmap Render Dispatch Contract` in
-  [semantic-state-model.md](semantic-state-model.md).
+- Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+  [page-raster-imaging.md](page-raster-imaging.md), and `Bitmap Render Dispatch
+  Contract` in [semantic-state-model.md](semantic-state-model.md).
 - Needed to close:
   a ROM-local source-region rule for the fallback offset, or a documented
   invalid-source behavior for these span-31 fallback cases.
@@ -163,9 +159,9 @@ Use the classification column before continuing work:
   the parser and payload reader restore the command record and byte budget, but
   the oversized stream does not reach downloaded-glyph install, page-object
   creation, publication, or render dispatch.
-- Evidence:
-  [downloaded-fonts.md](downloaded-fonts.md) and
-  `Downloaded Font Descriptor And Payload Chain` in
+- Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint)
+  and `Downloaded Font Descriptor And Payload Chain` in
   [semantic-state-model.md](semantic-state-model.md).
 - Needed to close:
   none for pixel reproduction. This is the documented stop point for that

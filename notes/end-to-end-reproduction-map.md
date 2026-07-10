@@ -5152,15 +5152,15 @@ State classification:
 
 Evidence:
 
-- Checked-in explanations:
-  `Boundary: Short Compact Downloaded-Glyph High Rows`,
-  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`,
-  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source`, and
-  `Boundary: Downloaded-Glyph Payload Count Cap` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+- Checked-in explanations: `Boundary: Short Compact Downloaded-Glyph High Rows`,
+  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`, `Boundary: Segmented-Wide
+  Downloaded-Glyph Fallback Source`, and `Boundary: Downloaded-Glyph Payload Count Cap`
+  in [firmware-dataflow-model.md](firmware-dataflow-model.md), `Downloaded-Glyph Render
+  Decision Checkpoint` in
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
   `Downloaded Glyph Row-Count Publication Checkpoint` in
-  [semantic-state-model.md](semantic-state-model.md), and compact row-copy
-  sections in [page-raster-imaging.md](page-raster-imaging.md).
+  [semantic-state-model.md](semantic-state-model.md), and compact row-copy sections in
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Focused listings:
   `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
   `generated/disasm/ic30_ic13_font_payload_readers_016880.lst`,
@@ -8504,6 +8504,8 @@ shape, publication boundary, or render helper inputs.
    - Checked-in notes:
      [downloaded-fonts.md](downloaded-fonts.md),
      [semantic-state-model.md](semantic-state-model.md),
+     `Downloaded-Glyph Render Decision Checkpoint` in
+     [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
      `Descriptor Metric Semantic Checkpoint` in
      [font-context-metrics.md](font-context-metrics.md), and worked paths
      `Downloaded Glyph`, `Downloaded Glyph Rule/Raster Composition`,

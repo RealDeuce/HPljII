@@ -2070,6 +2070,77 @@ dispatch fields. The even-span return boundary is exact: call edge
 position `18`, remaining `0x783140 = 0`, zero-byte `0x12328` drain, next
 stream prefix `ESC *c12a`, and next parser handler `0x10e68`.
 
+Downloaded-font payload return/drain outcomes are therefore part of the
+host-byte stream contract, not fixture-only bookkeeping:
+
+- Even-span install-to-page handoff:
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` reaches the drain with
+  `0x783140 = 0`, drains no bytes, and leaves handler `0x10e68` for the
+  following `ESC *c12a` page bytes. Output consequence: installed glyph
+  `0x29` is available before the rectangle/rule/raster page stream runs.
+- Ordinary downloaded-glyph publication siblings:
+  the same `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` edge reaches
+  `0x783140 = 0`, drains no bytes, and leaves handler `0xd04a`. The next
+  printable byte resolves through the installed glyph record and queues
+  compact page objects.
+- Fixed-record current success:
+  `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` reaches `0x783140 = 0`,
+  drains no bytes, and leaves handler `0xd04a`. The fixed-record payload is
+  visible through the normal printable compact path.
+- Fixed-record continuation success:
+  `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` reaches `0x783140 = 0`,
+  drains no bytes, and leaves handler `0xd04a`. Continuation state is consumed
+  before the following printable byte reaches compact output.
+- Payload-control wide sibling:
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` reaches `0x783140 = 1`, drains
+  payload byte `0x26`, and leaves handler `0xf0f0` for FF. The candidate
+  printable `&` is still payload; FF publishes the installed odd-span glyph
+  instead.
+- Validation/no-install rejection:
+  `0x16c14..0x16c68 -> 0x12328`, or early descriptor
+  `0x15dcc -> 0x12328`, drains the remaining rejected budget and leaves
+  handler `0xd04a`. No resource candidate is installed; the following
+  printable byte uses the existing/default context.
+- Status-`2` partial install:
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` reaches `0x783140 = 0`,
+  drains no bytes, and leaves handler `0xd04a`. Partial copy state is
+  discarded or left nonvisible; following printable output resumes from the
+  surviving context.
+
+Writers and readers for the table are fixed by disassembly. `0x11f96` chooses
+delayed handler `0x15d0a` for count `0` and `0x16c14` for nonzero counts;
+both rewind `0x78299e`, copy the restored record word `+2` into payload
+budget `0x783140`, and branch to their common drain exits. Descriptor handler
+`0x15d0a` joins every successful install, fixed-record current route,
+fixed-record continuation route, and early rejection at `0x15dcc -> 0x12328`.
+Resource handler `0x16c14` joins validation failure, parser-mode-2 skip,
+candidate-full skip, and successful resource insertion at
+`0x16c68 -> 0x12328`. The drain helper consumes exactly the remaining budget
+before the parser sees the next host byte.
+
+State grouping:
+
+- Canonical:
+  installed resource records, fixed-record continuation state, selected font
+  context, and any page objects queued by the next printable or publication
+  command.
+- Derived/cache:
+  copy status, copy-stream position, selected glyph table entry, row/span
+  selector word, and next-handler classification after the drain.
+- Parser scratch:
+  restored six-byte `ESC )s#W` command record, delayed-handler snapshot,
+  payload offset, payload budget `0x783140`, and bytes consumed by
+  `0x12328`.
+- Firmware bookkeeping:
+  allocation/release status, candidate counters, replacement cleanup,
+  validation status, and shared return joins at `0x15dcc` and `0x16c68`.
+- Hardware/external:
+  none for local host-fetched downloaded-font payloads.
+- Unknown:
+  none in the return/drain edge for the documented cases. Future work must
+  change the return edge, remaining budget, drained byte set, next handler,
+  installed record, or page-object/row output to add a new semantic case.
+
 Row-threshold route: `ESC )s256W` restores record `80 57 01 00 00 00`, starts
 payload at offset `7`, and copies `256` linear bytes through `0x168dc`.
 `0x16498` installs glyph `0x2a` at table entry `0x00f2`, record delta

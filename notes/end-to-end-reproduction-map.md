@@ -384,7 +384,7 @@ command-family and page-image structure:
    delayed payload bytes, keep the payload reader's direct `0xa904` calls
    separate from parser-wrapper bytes.
 2. Classify each admitted byte:
-   first use
+   first use `Admitted Byte Outcome Bridge` in this file, then
    [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract) to
    place the byte on a concrete `0x11774` branch: printable handler,
    alternate/data append, matched command handler, zero-handler reset, no-match

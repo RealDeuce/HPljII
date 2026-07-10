@@ -90,6 +90,181 @@ Output effect:
 - A reproducer must preserve this byte-to-handler contract before applying the
   command-family state models.
 
+## Parser Firmware Outcome Matrix
+
+This matrix composes the parser firmware ledger into the checked-in
+byte-stream model. It starts after a normalized byte source exists and ends at
+terminal handler entry, delayed payload drain, append, or explicit no-output
+parser state.
+
+Parser byte wrapper:
+
+- ROM path:
+  `0xa904 -> 0xda9a`.
+- State class:
+  parser scratch and firmware bookkeeping.
+- Writers:
+  `0xda9a` writes no persistent parser record, but it decides which byte the
+  parser sees: non-`ESC` bytes return unchanged, non-question ESC lookahead is
+  pushed/logged through `0x9ec0`, and `ESC ? 0x11` is swallowed before the
+  wrapper restarts.
+- Readers / consumers:
+  tokenizer helpers `0xdaf0` / `0xdb74`, parser loop `0x11774`, and command
+  setup handlers.
+- Output effect:
+  no page state. It defines the parser-visible byte and preserves lookahead
+  order for later dispatch.
+- Evidence:
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  [host-byte-fetch.md](host-byte-fetch.md#host-byte-source-outcome-matrix),
+  and [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix).
+
+Six-byte command record:
+
+- ROM path:
+  `0xdaf0 -> 0xdb74`.
+- State class:
+  canonical parser state and parser scratch.
+- Writers:
+  tokenizer helpers advance command-record cursor `0x78299e`, write final byte
+  `+1`, integer word `+2`, fractional word `+4`, and use scratch
+  `0x782a42..0x782a3e` while parsing signs, decimal digits, fractional digits,
+  and continuation markers.
+- Readers / consumers:
+  parser setup rows, terminal command handlers, delayed-payload snapshot
+  `0x121cc`, and owner notes that interpret parsed parameters.
+- Output effect:
+  no pixels directly. The record is the canonical parsed input consumed by the
+  command family reached from table dispatch.
+- Evidence:
+  `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`,
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix).
+
+Main parser table dispatch:
+
+- ROM path:
+  `0x11774 -> normal table 0x112a4` or
+  `0x11774 -> alternate/data table 0x116f6`.
+- State class:
+  canonical parser state, parser scratch, and command-family state.
+- Writers:
+  parser loop reads parser mode `0x782999`, alternate/data selector
+  `0x782c18`, callback pointer `0x78299a`, and the live command record, then
+  writes the next mode from table byte `+1`, calls setup handlers for nonzero
+  modes, or enters terminal handlers when the table row is complete.
+- Readers / consumers:
+  [pcl-command-map.md](pcl-command-map.md), direct-control owners, reset,
+  raster, transparent-data, font/resource, macro, rectangle, publication, and
+  display-function owners.
+- Output effect:
+  terminal routing only. The parser proves which owner receives the byte and
+  record; the owner note defines RAM side effects and page/output behavior.
+- Evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix), and
+  [pcl-command-map.md](pcl-command-map.md#parser-handler-owner-matrix).
+
+Delayed payload snapshot and restore:
+
+- ROM path:
+  `0x121cc -> 0x12218 -> saved handler` or alternate/data drains
+  `0x1228a` / `0x12358`.
+- State class:
+  parser scratch, derived/cache state, and firmware bookkeeping.
+- Writers:
+  `0x121cc` stores delayed-handler flag `0x782a1a`, saved handler pointer
+  `0x782a1c`, and saved six-byte record `0x782a20..0x782a25`. `0x12218`
+  restores that record into the live parser cursor and routes either to the
+  saved handler or to alternate/data drains.
+- Readers / consumers:
+  raster transfer `0x105d0`, transparent print `0x12452`, downloaded font
+  descriptor/resource handlers `0x15d0a` / `0x16c14`, generic drains, and
+  macro/data modes.
+- Output effect:
+  preserves parser state across counted payloads. Page or pixel effects occur
+  only when the restored handler or payload owner consumes the bytes.
+- Evidence: `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  [transparent-print-data.md](transparent-print-data.md#transparent-payload-outcome-matrix),
+  [raster-graphics.md](raster-graphics.md#transfer-gate-outcome-matrix), and
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-font-outcome-matrix).
+
+Printable and direct-control terminals:
+
+- ROM path:
+  printable `0x11774 -> 0xd04a`; direct controls through normal mode-0 table
+  entries such as `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`.
+- State class:
+  downstream page/text state after parser handoff.
+- Writers:
+  parser loop calls the terminal handlers with current byte or parsed record;
+  downstream owners write cursor, span, page-root, publication, or object
+  state.
+- Readers / consumers:
+  [direct-control-codes.md](direct-control-codes.md#direct-control-outcome-matrix),
+  [direct-control-codes.md](direct-control-codes.md#printable-source-outcome-matrix),
+  page-record storage, publication, scheduler, and render owners.
+- Output effect:
+  parser-visible text/control bytes can become compact objects, span flushes,
+  page publications, or no-output cursor/state updates depending on the
+  terminal owner.
+- Evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`, and
+  [direct-control-codes.md](direct-control-codes.md).
+
+Alternate/data append or no-output parser rows:
+
+- ROM path:
+  alternate/data table `0x116f6`, append helper `0xe002`, drains
+  `0x1228a` / `0x12358`, and reset/no-output paths around
+  `0x119a6..0x119f4`.
+- State class:
+  parser scratch, firmware bookkeeping, and macro/data-chain state.
+- Writers:
+  alternate mode preserves parser transitions while storing or draining bytes;
+  no-output rows reset command-record cursor `0x78299e`, scratch cursors
+  `0x782a26` / `0x782a3e`, matched-byte scratch, and delayed state without
+  entering a page-state handler.
+- Readers / consumers:
+  macro definition/replay, transparent/data payload paths, parser reset, and
+  command-family owners after normal mode resumes.
+- Output effect:
+  no direct page object. Effects are append, drain, parser synchronization, or
+  later replay through the normal byte-source/parser route.
+- Evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+  [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), and
+  [pcl-command-map.md](pcl-command-map.md#no-output-parser-rows).
+
+State grouping for this matrix:
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data selector `0x782c18`, tokenizer callback
+  `0x78299a`, command-record cursor `0x78299e`, six-byte record root
+  `0x7829a2`, and parser table roots `0x112a4` / `0x116f6`.
+- Derived/cache:
+  delayed-handler flag `0x782a1a`, saved handler pointer `0x782a1c`,
+  payload budget `0x783140`, alternate/data echo latch `0x782a56`, and table
+  extracts generated from the firmware image.
+- Parser scratch:
+  byte scratch `0x782a2a`, numeric scratch `0x782a42`, local matched-byte
+  accumulation `0x783196..0x783199`, and saved record `0x782a20..0x782a25`.
+- Firmware bookkeeping:
+  setup handler state, mode next-byte values, macro/data-chain replay fields,
+  and local `0x1a 0x58` normalization in payload readers.
+- Hardware/external:
+  none after `0xa904` returns a normalized byte. Host-source MMIO, service
+  preemption, and source priority are owned by the host-byte/status owners.
+- Unknown:
+  no parser-local record-layout, table-dispatch, delayed-restore, append, or
+  no-output middle edge remains for the documented command families. Remaining
+  uncertainty belongs to downstream command/page/render owners, external
+  hardware, or missing resource data.
+
 ## Reproduction Contract
 
 For a supported byte stream, the parser firmware layer is reproduced when the

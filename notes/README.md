@@ -325,8 +325,8 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [font-sample-page.md](font-sample-page.md#owner-summary) - documented
   firmware-generated font sample printout from resource candidates through page-record
   segments and rendered surfaces.
-- [pcl-parser-firmware.md](pcl-parser-firmware.md#owner-summary) - current host-byte
-  fetch and PCL escape tokenizer/dispatch anchors.
+- [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix) -
+  current host-byte fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) -
   firmware parser-table dispatch classes, handler-owner matrix, supported
   stream dispatch matrix, and flattened command-to-handler map.

@@ -16,7 +16,7 @@ The LaserJet II supports:
 Configuration is stored in NVRAM. HP 33440 factory default I/O is
 serial. HP 33449 factory default is parallel.
 
-## ROM Interface Boundary
+## Owner Summary
 
 The ROM-facing host interface boundary is split into normalized input
 (`0xa904`) and host/status output (`0xae2c` plus FIFO helpers). For

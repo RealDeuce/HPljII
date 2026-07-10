@@ -200,7 +200,7 @@ checked-in ROM model:
   signals.
 - [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) -
   keys, menu state, resets, service mode, self tests.
-- [io-interfaces.md](io-interfaces.md) - Centronics, RS-232C, RS-422,
+- [io-interfaces.md](io-interfaces.md#owner-summary) - Centronics, RS-232C, RS-422,
   flow control, buffers.
 - [pcl4-language.md](pcl4-language.md#owner-summary) - PCL Level IV semantics,
   environment, command syntax, command quick reference.

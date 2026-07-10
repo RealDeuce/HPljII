@@ -5877,6 +5877,24 @@ Address-level cluster map:
   absolute coord `0x4e02` and queues the fresh printable at `0x3001`.
   Evidence is [vertical-forms-control.md](vertical-forms-control.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+  VFC state classification: canonical state is the 128-word VFC table
+  `0x782dde..0x782edd`, VMI `0x783160`, top offset `0x782dce`, cursor
+  `0x782c8a/0x782c8e`, margins `0x782dd6/0x782dda`, VFC/text-bottom caches
+  `0x782dc2/0x782dd2`, line-bound caches
+  `0x782ede/0x782edf/0x782ee0`, current page root `0x78297a`, and
+  publication helpers `0xf124` / `0xff1e`. Derived/cache state is the
+  computed start line, target line, selector mask `1 << (n - 1)`,
+  default-table channel pattern from `0x12b96`, and following printable
+  coordinates produced after `0x1280a` commits cursor state. Parser scratch
+  is the delayed `ESC &l#W` record saved by `0x121cc`, restored by
+  `0x12218`, cursor `0x78299e`, and payload bytes consumed by `0xdace`.
+  Firmware bookkeeping is modified-layout flag `0x782ee1`, pending-width
+  latch `0x782a58`, pending cursor/text latch `0x782a6d`, span-enable byte
+  `0x783184`, and perforation-skip byte `0x783191` for the adjacent
+  `ESC &l#L` overflow consumer. The output effect is cursor-only unless
+  `0x1280a` or shared overflow helper `0xf36c` calls `0xf124 -> 0xff1e`; in
+  those cases the old page root is published before later bytes create fresh
+  page objects.
   Residuals are only variants that change VFC table bytes, channel target
   choice, publication split, perforation limit/cursor/skip state, or following
   object coordinates.

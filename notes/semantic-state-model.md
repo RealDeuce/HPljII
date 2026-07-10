@@ -8319,6 +8319,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - no guard is visible in `0xe418`, `0xe4f4`, or `0xe65c(0)`: after
     eight pushes the next entry address is the pointer-storage field
     `0x782c6e`, and an empty `0xe65c(0)` pop would read from `0x782c14`.
+  - this is a ROM-local unchecked-pointer boundary, not an external evidence
+    requirement: the storage range, ninth-push address, and empty-pop address
+    are fixed by disassembly. Only the physical/user-visible symptom after
+    adjacent RAM corruption remains outside this model.
   - this is separate from the PCL cursor-position stack at
     `0x782c96..0x782d36`, which has explicit push/pop bounds in
     `0xf75e`.
@@ -8637,7 +8641,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe146` is the only observed initializer for the macro context stack:
   it clears `0x782c1e..0x782c6d` and stores base pointer `0x782c1e` in
   `0x782c6e`. `0xe418` and `0xe4f4` advance without a bounds test, and
-  `0xe65c(0)` rewinds without a base test.
+  `0xe65c(0)` rewinds without a base test. Thus a ninth push starts at
+  `0x782c6e`, and an empty pop reads from `0x782c14`.
 - `0xe65c(1)` consumes and clears static record `0x782c64`, using direct
   flag bytes or `0xe860` class mismatches to force primary/secondary
   refresh.
@@ -8969,6 +8974,9 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
   fields, bridge roots, continuation fields, or ROM-derived row construction.
   It is not the `0xdd08` selector-4 to `0xff1e` visible-output path or its skip
   gates.
+- Over-deep macro context nesting is bounded as an unchecked pointer path, not
+  left as an unnamed middle edge: the eighth push ends at `0x782c6e`, a ninth
+  push starts at `0x782c6e`, and an empty pop reads from `0x782c14`.
 
 ## Raster Transfer Gate And Encoded Rows
 

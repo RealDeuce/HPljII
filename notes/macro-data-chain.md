@@ -136,8 +136,10 @@ Field groups:
   `0xe8f0 -> 0x9b5e(0x780e2e, 4)`, frame-end cleanup `0xe22c`, and snapshot
   helpers `0xe996`, `0xe972`, and `0xe65c`.
 - Unknown: manual-facing names for context-stack fields and overlay state are
-  inferred from ROM effects; over-deep macro call behavior is not bounded by
-  the observed ROM checks.
+  inferred from ROM effects. The over-deep macro context boundary is
+  ROM-bounded but intentionally unsafe: reset clears eight 10-byte entries,
+  the eighth push ends at pointer `0x782c6e`, the ninth push writes at the
+  pointer word itself, and an empty `0xe65c(0)` pop reads from `0x782c14`.
 
 Writers and readers:
 
@@ -242,7 +244,10 @@ Canonical macro context and font refresh:
 - `0x782c1e..0x782c6d`: eight 10-byte macro call-context records cleared by
   reset helper `0xe146`.
 - `0x782c6e`: macro context-stack pointer. `0xe418` call mode and `0xe4f4`
-  push one 10-byte entry; `0xe65c(0)` pops one entry.
+  push one 10-byte entry; `0xe65c(0)` pops one entry. No guard is present:
+  after the eighth reset-cleared slot, `0x782c6e == 0x782c6e`, so a ninth
+  push starts by overwriting the pointer storage; an empty pop subtracts to
+  `0x782c14` before reading flag bytes.
 - `0x782c64`: static macro context record consumed by `0xe65c(1)`.
 - Entry bytes `+8/+9`: primary/secondary refresh flags consumed by `0xe65c`
   before the selected context is installed through the normal font bridge.
@@ -302,9 +307,14 @@ Unknown:
 
 - Manual-facing names for macro context-stack bytes and overlay state
   `0x782a92` are inferred from ROM effects.
-- The macro context push/pop paths have no observed bounds checks. The eighth
-  reset-cleared record is documented, but physical failure behavior after an
-  over-deep call stack has not been externally validated.
+- The macro context push/pop paths have no bounds checks in ROM. The exact
+  software boundary is known from disassembly and fixture evidence:
+  `0xe146` clears eight slots at `0x782c1e..0x782c6d`, call-mode `0xe418`
+  and overlay `0xe4f4` push by storing at `0x782c6e` and adding `0x0a`, and
+  `0xe65c(0)` pops by subtracting `0x0a` before reading. The ninth push
+  starts at `0x782c6e`; an empty pop reads `0x782c14`. What remains external
+  is only the physical/user-visible failure symptom after adjacent RAM is
+  corrupted.
 
 ## Selector Dispatch
 
@@ -775,9 +785,11 @@ page-record bridge, and reaches the ROM helpers that derive rows from the
 published objects. There is no external row oracle in this evidence standard.
 
 Medium for external/manual names for macro context and overlay state fields.
-Medium for behavior beyond the eight reset-cleared macro context records
-because the ROM push/pop paths do not show bounds checks and no external
-failure case is validated.
+High for the ROM-local over-deep macro context boundary: the reset, push, and
+pop instructions identify the eight-slot storage range, ninth-push address,
+and empty-pop address. Low for physical/user-visible failure symptoms after
+adjacent RAM is corrupted, because that is outside the ROM-local replay
+contract.
 
 ## Remaining Edges
 
@@ -792,3 +804,8 @@ failure case is validated.
   above: replay-frame fields, skip-gate state, parser/delayed-payload
   dispatch, page-object fields, bridge roots, continuation fields, or
   ROM-derived row construction. External/manual naming remains separate.
+- Over-deep call/overlay nesting is not an anonymous macro middle edge: it is
+  bounded at the unchecked context pointer addresses above. Future work should
+  revisit it only if a byte stream demonstrates a specific adjacent-field
+  mutation that changes replay bytes, selected font context, page objects, or
+  rendered rows.

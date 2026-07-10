@@ -7888,8 +7888,11 @@ Address-level cluster map:
   skip-gate middle edge remains for the documented streams. Remaining work
   must change replay-frame fields, skip-gate state, parser/delayed-payload
   dispatch, page-object fields, bridge roots, continuation fields, or
-  ROM-derived row construction; over-deep context-stack failure behavior
-  remains a separate external/manual boundary.
+  ROM-derived row construction. Over-deep context nesting is already bounded
+  as an unchecked ROM pointer path: eighth push ends at `0x782c6e`, ninth
+  push starts at `0x782c6e`, and empty pop reads `0x782c14`; only the
+  physical/user-visible symptom after adjacent RAM corruption remains
+  external.
 - The initial mixed page-image suite is covered for one complete
   host-fetched byte stream:
   `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.

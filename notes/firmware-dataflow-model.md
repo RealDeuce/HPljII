@@ -1272,8 +1272,11 @@ Evidence and unresolved boundaries:
   `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
   and `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
 - Exact unresolved boundaries are limited to manual-facing names and physical
-  failure behavior for macro context-stack bytes and over-deep call nesting;
-  no ROM-local middle edge remains for the documented append/replay paths.
+  failure symptoms after an over-deep macro context stack corrupts adjacent
+  RAM. The ROM-local unchecked boundary is known: eighth push ends at
+  `0x782c6e`, ninth push starts at `0x782c6e`, and empty pop reads
+  `0x782c14`. No ROM-local middle edge remains for the documented
+  append/replay paths.
 
 ## Font Context And Glyph Source Boundary
 

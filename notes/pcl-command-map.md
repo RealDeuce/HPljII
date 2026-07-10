@@ -2342,7 +2342,9 @@ counts, default VFC table, modified-layout byte, and static
 font-context record `0x782c64`. `0xe146` clears exactly eight macro
 context records at `0x782c1e..0x782c6d`; unlike the separate
 `ESC &f#S` cursor stack at `0x782c96..0x782d36`, the macro call-context
-push/pop paths have no observed bounds checks. Chained
+push/pop paths have no bounds checks. The ROM-local unchecked boundary is
+the eighth push ending at `0x782c6e`, the ninth push starting at
+`0x782c6e`, and an empty pop reading `0x782c14`. Chained
 `ESC &f-123y0x1X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,

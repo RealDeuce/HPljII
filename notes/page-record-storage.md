@@ -773,10 +773,16 @@ and a mode-0 raster row share one addressed page-record state, publish through
 Fixture `addressed page-record writers share 0x1381c across chunk rollover`
 checks the shared stream state across producer families. `0x10084` seeds
 `0x782a72 = root + 0x20`; seven compact writers through
-`0x12f2e` / `0x1387c` allocate objects in the stream; `0x133aa` and
-`0x136d2` then allocate rule/fixed objects from the same stream. The root links
-two chunks and publication preserves the bucket root before render entry
-dispatches all compact objects.
+`0x12f2e` / `0x1387c` allocate objects at `0x00d05004`,
+`0x00d0502a`, `0x00d05050`, `0x00d05076`, `0x00d0509c`,
+`0x00d050c2`, and `0x00d05104`; `0x133aa` and `0x136d2` then allocate
+rule/fixed objects at `0x00d0512a` and `0x00d05138` from the same stream.
+The root links two chunks as
+`root + 0x20 -> 0x00d05000 -> 0x00d05100`. Final stream bookkeeping is
+`0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
+`0x782a76 = 0x00d05146`, so the second chunk is the current tail after all
+compact, rule, and fixed producers have written. Publication preserves the
+bucket root before render entry dispatches all compact objects.
 
 The compact-bucket fixtures divide the shared `0x1387c` behavior into object
 shapes and reuse rules. Fixture `0x1387c page-record bucket allocator reuses

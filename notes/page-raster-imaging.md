@@ -3359,7 +3359,9 @@ Confidence:
   `0N` / `10U` / `11U`, real final-`@` default-table streams, final-`X`
   success paths, final-`X` non-selected exits, and `0x13eb8` no-dispatch exits
   all carry host-fetched parser state through selected contexts, compact
-  object prefixes, bridge context slots, and rendered-row digests.
+  object prefixes, bridge context slots, and ROM-helper row-construction
+  inputs. Row digests in the fixtures are consistency checks for those
+  ROM-derived rows, not independent rendered-output evidence.
 - Medium for exhaustive descriptor/font-width coverage because downloaded
   spans `1..32`, high-span compact-wide row checks through span `255`,
   segmented-wide row checks through span `64`, the legal metric matrix, and

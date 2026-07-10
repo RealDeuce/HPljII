@@ -1460,11 +1460,12 @@ ROM work needed:
   consumes `font_command_final_header` from the same host-fetched font-command
   helper as the page memory image at stream byte `24`. The fixture asserts that
   this final header matches the install event header, reports table pointer,
-  record, bitmap bytes, next handler `0x10e68`, and the rendered-row digest.
+  record, bitmap bytes, next handler `0x10e68`, and the ROM-derived row hash as
+  a consistency artifact.
   The next ROM-semantic work is byte-stream/state variants that change the
   byte-24 header, installed record, `0x783140` remainder, `0x12328` drain
   status, following parser handler, page-object bytes, bucket assignment, or
-  rendered-row digest.
+  compact-helper row-construction inputs.
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
@@ -1576,8 +1577,8 @@ ROM work needed:
   fixture `downloaded glyph byte-24 state handoff feeds following page handler`.
   The next ROM-semantic work is any byte-stream/state variant that changes the
   byte-24 header, installed resource record, following parser handler
-  `0x10e68`, page-object bytes, bucket assignment, dispatch, or rendered-row
-  digest.
+  `0x10e68`, page-object bytes, bucket assignment, dispatch, or compact-helper
+  row-construction inputs.
 - Treat executable row-copy behavior with real page objects from the
   parser/imaging path as covered for the documented mixed text/rule/raster,
   downloaded-glyph, and publication streams. The row-count publication family

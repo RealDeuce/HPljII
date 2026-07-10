@@ -1022,11 +1022,13 @@ Evidence and confidence:
   ROM render helpers and deriving rows from the queued object bytes. There is
   no external rendered-row image to compare against. Parser-fed fixtures are
   only branch/path drivers and state-shape checks; they do not establish pixel
-  truth beyond the ROM helper behavior they exercise. Broader dense-row
-  documentation remains open only where static tracing has not yet tied a byte
-  stream to a changed accepted count or drain result, allocator pre-state,
-  split capacity, copy-stop behavior, packed-key advance, bridge bucket root,
-  or `0x1f88e` row-construction input.
+  truth beyond the ROM helper behavior they exercise. The covered dense-row
+  contract therefore stops at named ROM inputs, not at an unspecified
+  documentation gap: additional tracing belongs here only when a byte stream
+  changes the accepted count or drain result at `0x105d0`, allocator pre-state
+  `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, copy-stop byte
+  `0x782996`, packed-key advance through `0x332ee`, bridge bucket roots, or
+  mode-specific `0x1f88e` row-construction inputs.
 
 ### Encoded Raster Object Outcome Matrix
 

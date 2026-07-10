@@ -2748,6 +2748,29 @@ the first ROM field where each byte-stream family becomes page-image state.
   page-image state is page-root context slots `+0x2c..+0x68`, followed by later
   compact objects under root `+0x1c`. The compact renderer resolves glyph
   resources through render context slots `+0x24..+0x60`.
+- Direct control bytes and text-motion commands:
+  normal-mode CR, LF, HT, BS, SO, and SI reach `0xf02c`, `0xf08c`,
+  `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`; `ESC &k#G/#H`, `ESC &s#C`,
+  `ESC &a#L/#M/#C/#H/#R/#V`, `ESC *p#X/#Y`, `ESC &f#S`, and `ESC &d`
+  reach the handler set documented in
+  [direct-control-codes.md](direct-control-codes.md). These handlers write
+  cursor, margin, HMI/VMI, selected-context, wrap, stack, pending-width, and
+  span state such as `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`,
+  `0x78315c`, `0x783160`, `0x783190`, `0x782a58..0x782a5c`,
+  `0x782c96..0x782d36`, and `0x783184..0x783185`. They do not make a
+  page-image object until a later printable byte reaches `0xd04a`, a pending
+  span flush reaches `0x12714`, FF reaches `0xf0f0 -> 0xf124 -> 0xff1e`, or a
+  graphics handler consumes the updated cursor state.
+- Page-layout and VFC state writers:
+  `ESC &l#P/#C/#D/#E/#F/#L`, VFC table `ESC &l#W`, and VFC channel
+  `ESC &l#V` reach `0xf9e8`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`,
+  `0xee64`, delayed payload `0x11f6e -> 0x12cfe`, and channel consumer
+  `0x1280a`. The first page-image effect is delayed until printable
+  placement, vertical overflow helper `0xf36c`, page publication, raster
+  origin, rectangle clipping, or VFC channel movement consumes fields such as
+  page extent `0x782dba`, top offset `0x782dce`, text limit `0x782dc2`,
+  VMI `0x783160`, perforation byte `0x783191`, and VFC table
+  `0x782dde..0x782edd`.
 - Downloaded character and descriptor payloads used by later printable bytes:
   `0x11f96 -> 0x121cc -> 0x12218` dispatches either downloaded characters
   through `0x16498` or descriptor/resource payloads through
@@ -2769,6 +2792,13 @@ the first ROM field where each byte-stream family becomes page-image state.
   with class byte `+0x04` in `0x80..0xff`, mode byte `+0x05`, count `+0x06`,
   key `+0x08`, and payload `+0x0a`. The first render consumer is
   `0x1efc2 -> 0x1f88e`, with expansion mode from object byte `+0x05 & 3`.
+- Raster setup before transfer:
+  `ESC *t#R`, `ESC *r#A`, and `ESC *r#B` reach `0x10808`, `0x1075a`, and
+  `0x107fa` before any payload row exists. They write raster state block
+  `0x783170..0x783182`, including baseline/origin, encoded mode `+0x08`,
+  scale `+0x0e`, row limit `+0x10`, and active byte `+0x12`. The first
+  page-image state still starts at delayed transfer consumer `0x105d0`; setup
+  state only changes where and how later encoded raster objects are queued.
 - Rectangle/rule fill:
   chained `ESC *c` parser records reach size/fill handlers `0x10e68`,
   `0x10e22`, `0x10a40`, `0x10ae0`, and `0x10dce`; fill reaches
@@ -2777,6 +2807,12 @@ the first ROM field where each byte-stream family becomes page-image state.
   width `+0x08`, height `+0x0a`, and continuation `+0x0c`. The first render
   consumer is `0x1f446`, then solid helper `0x1f596` for selector `7` or pattern
   helper `0x1f4e0` for documented non-solid selectors.
+- Rectangle setup before fill:
+  size and fill-id handlers `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`, and
+  `0x10dce` are canonical graphics-state writers. Their output effect remains
+  latent until final fill `0x10898` clips through `0x10b80`, queues a
+  rule-list node through `0x13386 -> 0x133aa`, and later render dispatch
+  reaches `0x1f446`.
 - Page publication commands such as FF, reset, page-size, orientation,
   paper-source, and copies:
   command-family handlers flush pending state, call publication helper `0xff1e`,
@@ -2789,11 +2825,13 @@ the first ROM field where each byte-stream family becomes page-image state.
 State classification:
 
 - Canonical state:
-  parser-visible command handlers, selected font/context slots, current page root
-  `0x78297a`, root `+0x1c/+0x24/+0x28`, and published page/control records.
+  parser-visible command handlers, cursor/layout/raster/rectangle state,
+  selected font/context slots, current page root `0x78297a`, root
+  `+0x1c/+0x24/+0x28`, and published page/control records.
 - Derived/cache state:
   selected-map rebuild products, `0x12f2e` source fields, bucket/key fields
-  `0x782a7a..0x782a7e`, bridge render roots, and render context slots.
+  `0x782a7a..0x782a7e`, pending span bounds, raster row limits, bridge render
+  roots, and render context slots.
 - Parser scratch:
   six-byte command records, delayed payload snapshots, transparent/macro replay
   bytes, and payload budgets before the producing handler writes page-image

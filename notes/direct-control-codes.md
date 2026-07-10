@@ -199,10 +199,12 @@ Evidence and boundaries:
 - No unresolved ROM-local middle edge remains between normal printable entry
   `0xd04a` and compact bucket object creation at `0x12f2e..0x1306e` for the
   documented short and segmented source shapes.
-- Remaining direct-control boundaries are exact variant boundaries: source
-  variants not yet shown to change fields at `0xd04a`, allocation branches,
-  compact object bytes, or row-construction inputs should be documented only
-  when their disassembly changes one of those named outputs.
+- Remaining direct-control boundaries are exact variant boundaries named by
+  the [Printable Source Outcome Matrix](#printable-source-outcome-matrix).
+  New source variants belong here only when they change a field consumed by
+  `0xd04a`, an allocation branch, compact object bytes, span-consumer state,
+  or row-construction inputs; otherwise they are another instance of the
+  documented source-to-object path.
 
 ## Direct-Control Output Decision Checkpoint
 

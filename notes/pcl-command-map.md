@@ -255,7 +255,7 @@ boundaries:
   [macro-data-chain.md](macro-data-chain.md#owner-summary).
 - External-ready service and page/font scheduler handoff:
   [external-ready-service.md](external-ready-service.md),
-  [page-font-scheduler.md](page-font-scheduler.md), and
+  [page-font-scheduler.md](page-font-scheduler.md#owner-summary), and
   `Minimal Page/Font Scheduler Handoff Walkthrough` in
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), plus
   `Worked Path: Page Font Scheduler Resource Handoff` in

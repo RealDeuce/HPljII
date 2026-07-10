@@ -219,7 +219,7 @@ checked-in ROM model:
 - [external-ready-service.md](external-ready-service.md) - documented
   external-ready/service loop status bits, messages, register shadows, and
   scheduler/status teardown.
-- [page-font-scheduler.md](page-font-scheduler.md) - documented
+- [page-font-scheduler.md](page-font-scheduler.md#owner-summary) - documented
   optional-resource page/font scheduler handoff, refresh helpers, return paths,
   and caller contracts.
 - [rom-dump-manifest.md](rom-dump-manifest.md) - verified ROM dump

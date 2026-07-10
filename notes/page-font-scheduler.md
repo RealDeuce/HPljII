@@ -12,6 +12,82 @@ chain, and caller contracts. It has no direct bitmap output, but it can affect
 later pixels by pruning candidates, releasing downloaded-font payloads,
 refreshing active font slots, or stopping a caller on a status branch.
 
+## Owner Summary
+
+This note owns scheduler routine `0x19dd2..0x1a2e2`, the ROM-visible handoff
+that can run after host/external quiesce and before normal parsing or rendering
+continues. It scans optional resource windows, compares fresh resource-window
+scratch data with canonical resource-window state, refreshes font/resource
+bookkeeping when the windows changed, and returns a caller-visible status in
+`D7`.
+
+Primary routes:
+
+- Entry and scratch setup:
+  `0x19dd2` publishes stack scratch pointer `0x782894`, clears two 20-byte
+  scratch slots, checks optional-window gates `$8000.14` and `$8000.15`, and
+  calls `0x1a0f2(1)` or `0x1a0f2(2)` for enabled windows.
+- Optional-window scan:
+  `0x1a0f2..0x1a2e2` sets active window base/limit `0x78288c` /
+  `0x782890`, walks cursor `0x782884`, classifies records through `0x1b9c0`,
+  and writes fresh scratch entries plus terminal byte `0x782898`.
+- Predicate and return route:
+  `0x1a042` compares canonical slots `0x7828b6..0x7828dd` against scratch;
+  `0x19f08` compares scratch against canonical slots. The wrapper uses those
+  predicates for unchanged, status-return, and long-refresh branches.
+- Status branch:
+  when the status-return predicate is taken, `0x19e32..0x19e46` writes
+  `0x780e8d`, raises mask `0x00000200` through `0x9bee(0x780e2e, mask)`, and
+  returns `D7 = 0`.
+- Long-refresh route:
+  changed-window branches call candidate prune `0x1ba92`, current-record
+  release `0x178fa`, dirty-marker `0x19d9c`, fresh range handoff `0x1a4fa`,
+  and canonical commit / active-context refresh `0x1a900`, then return
+  `D7 = 1`.
+- Caller contracts:
+  callers `0x447a`, `0x4760`, `0xbb16`, and `0x1a3c2` consume or ignore
+  scheduler `D7` differently. Those caller contracts determine whether normal
+  host/menu/resource work continues after the scheduler returns.
+
+Field groups:
+
+- Canonical state:
+  optional resource-window table slots `0x7828b6..0x7828dd`, status root
+  `0x780e2e`, status predicate byte `0x780e8d`, and candidate-list
+  count/window fields that may be pruned.
+- Derived/cache state:
+  scratch pointer `0x782894`, active optional-window cursor `0x782884`, base
+  `0x78288c`, limit `0x782890`, terminal byte `0x782898`, and active
+  candidate-window pointers/counts `0x7827a8..0x7827b4` /
+  `0x782790..0x78279c`.
+- Parser scratch:
+  stack predicate bytes `A6-0x29` and `A6-0x2a`, scratch slots
+  `A6-0x28..A6-0x15` and `A6-0x14..A6-0x01`, and caller local output word
+  `A6-0x02`.
+- Firmware bookkeeping:
+  downloaded-font current records `0x782640..0x782776`, candidate pointer-list
+  entries `0x782324..`, dirty bytes `0x782f2c` / `0x782f2d`, scheduler return
+  `D7`, and caller-specific quiesce/menu/resource fields.
+- Hardware/external state:
+  optional resource-window contents at `0x200000..0x3ffffe` and
+  `0x400000..0x5ffffe`, plus board-level meaning of `$8000.14` and `$8000.15`.
+- Unknown:
+  no documented direct pixel or page-object edge starts in this scheduler.
+  Remaining uncertainty is external optional-resource data or hardware-gate
+  meaning that changes the scratch slots and therefore the documented ROM
+  refresh branches.
+
+Output effect:
+
+- The scheduler does not queue page objects, publish page records, call render
+  entry, or write bitmap rows.
+- It can affect later pixels indirectly by changing candidate lists,
+  downloaded-font payload ownership, active font dirty state, canonical
+  resource-window records, or caller continuation.
+- A byte-stream renderer should preserve the ROM-visible fields and return
+  values above; physical optional-resource contents are data inputs to this
+  state machine, not a separate undocumented render path.
+
 ## Evidence
 
 - `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`

@@ -121,8 +121,9 @@ standalone deliverables.
   pixel-affecting resource boundary at `0x0c0000..0x0c0321`.
 - Exact remaining stop points are indexed in
   [unresolved-boundaries.md](unresolved-boundaries.md), grouped as ROM-local
-  invalid-target/source, missing external resource data, hardware/MMIO,
-  optional external data, or manual/physical correlation.
+  invalid-target/source, ROM-local unresolved caller, missing external
+  resource data, hardware/MMIO, optional external data, or manual/physical
+  correlation.
 
 ## Stream Trace Workflow
 
@@ -234,9 +235,10 @@ checked-in ROM model:
 8. If the route stops, record the exact boundary in the
    `Unresolved Boundary Outcome Matrix` in
    [unresolved-boundaries.md](unresolved-boundaries.md). Classify it as
-   ROM-local unknown, hardware/MMIO, missing external resource data, optional
-   external data, or manual/physical correlation. Do not replace a missing ROM
-   edge with fixture output or a hardware assumption. For the transparent
+   ROM-local invalid target/source, ROM-local unresolved caller,
+   hardware/MMIO, missing external resource data, optional external data, or
+   manual/physical correlation. Do not replace a missing ROM edge with fixture
+   output or a hardware assumption. For the transparent
    secondary segment-57 path, use
    `Boundary: Secondary Segment-57 Source` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
@@ -378,8 +380,8 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [resource-rom.md](resource-rom.md#owner-summary) - current findings for the
   IC32/IC15 resource/font ROM pair.
 - [unresolved-boundaries.md](unresolved-boundaries.md) - exact remaining
-  ROM-local, resource-data, hardware/MMIO, optional-data, and physical/manual
-  correlation boundaries.
+  ROM-local invalid-target/source, ROM-local unresolved-caller, resource-data,
+  hardware/MMIO, optional-data, and physical/manual correlation boundaries.
 - [reverse-engineering-ledger.md](reverse-engineering-ledger.md) -
   supporting low-level tracking ledger. Use it as evidence breadcrumbs; the
   current reader-facing route and remaining exact boundaries are the checked-in

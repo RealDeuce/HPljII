@@ -46,9 +46,13 @@ The current ROM-local stops are exact boundaries, not open-ended blockers:
 downloaded-glyph invalid helper/source cases and payload-count caps stop at the
 addresses named in
 [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
-The secondary segment-57 transparent-data path stops at missing resource-window
-bytes after firmware address `0x0bffff`; the parser, page-record, bridge, and
-compact-render path before that source boundary is already documented.
+The optional active-pool pattern helper `0x247c..0x270c` is decoded but stops
+at a ROM-local unresolved-caller boundary; ordinary active rendering still
+routes through `0xff1e`, `0x1ed84` / `0x1edc6`, `0x1ef6a`, and `0x22f4`.
+The secondary segment-57 transparent-data path stops at missing
+resource-window bytes after firmware address `0x0bffff`; the parser,
+page-record, bridge, and compact-render path before that source boundary is
+already documented.
 
 New tracing should therefore be accepted into the main docs only if it supplies
 one of these deliverables:
@@ -385,6 +389,14 @@ Expected remaining validation and boundary work:
   Those are not parser, page-object, publication, or scheduler gaps; they are
   the exact helper/source or payload-count stops reached after those upstream
   routes are already documented.
+- ROM-local unresolved helper caller:
+  optional active-pool pattern helper `0x247c..0x270c` has decoded
+  accumulator, pattern-pointer, and destination writes, but no static caller,
+  computed jump target, trap/vector entry, or scheduler entry has been located.
+  This is not an ordinary active-render row route until that entry provenance
+  is found; see
+  [Optional Active-Pool Pattern Helper
+  Caller](unresolved-boundaries.md#optional-active-pool-pattern-helper-caller).
 - External resource-window evidence: exact board address decode after the
   verified resource pair at
   firmware `0x0c0000..0x0c0321`, which affects the secondary transparent

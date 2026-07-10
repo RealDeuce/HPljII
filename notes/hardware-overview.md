@@ -25,7 +25,7 @@ Primary route into the ROM model:
   serial, parallel, optional I/O, pushback, ring, and macro/data-chain replay
   sources to the normalized `0xa904` byte-source contract.
 - Engine facts that affect rendered output timing are owned by
-  [dc-controller-engine.md](dc-controller-engine.md#owner-summary),
+  [dc-controller-engine.md](dc-controller-engine.md),
   [active-render-scheduler.md](active-render-scheduler.md#owner-summary), and
   [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
   Those notes stop at ROM-visible scheduler fields, wait objects, render work
@@ -79,6 +79,153 @@ Evidence and boundaries:
   ring/status bridge registers, optional resource windows, retained storage,
   folded status category names, and active render device handoff in
   [unresolved-boundaries.md](unresolved-boundaries.md#host-and-hardware-boundaries).
+
+## Hardware Context Outcome Matrix
+
+This matrix records how product and engine facts enter the ROM dataflow model.
+It is a routing layer: hardware context becomes pixel-relevant only after a
+traced ROM field, byte source, resource source, scheduler state, or render
+input changes.
+
+Target identity and language level:
+
+- Hardware/manual fact:
+  HP 33440A / LaserJet Series II, PCL Level IV, 300 x 300 dpi.
+- State class:
+  canonical product context.
+- Writers:
+  none in firmware. These facts bound the supported command vocabulary and
+  coordinate system used by the documentation.
+- Readers / consumers:
+  [pcl4-language.md](pcl4-language.md#level-iv-command-family-outcome-matrix),
+  parser/command maps, page-geometry notes, and render owners.
+- Output effect:
+  identifies the supported PCL family and dot grid. It does not choose a ROM
+  handler or draw pixels without the parser and page/render paths.
+- Evidence:
+  this note's `Identity` section, [source-index.md](source-index.md), and
+  [pcl4-language.md](pcl4-language.md#pcl-level).
+
+Formatter/interface board provenance:
+
+- Hardware/manual fact:
+  Interface PCA carries CPU, ROM, RAM, NVRAM, resource, I/O, and video
+  responsibilities.
+- State class:
+  canonical ROM provenance, canonical resource data, firmware bookkeeping, and
+  hardware/external state.
+- Writers:
+  the board supplies executable ROM bytes, resource ROM bytes, RAM/NVRAM
+  devices, and MMIO surfaces; startup firmware then initializes the concrete
+  RAM fields.
+- Readers / consumers:
+  formatter boundary, firmware startup, ROM manifest, resource, control-panel,
+  and DC boundary owners.
+- Output effect:
+  establishes legal firmware/resource evidence and startup state. Pixels are
+  affected only when later parser, resource, page, or render owners consume
+  those concrete fields or bytes.
+- Evidence:
+  [formatter-interface-pca.md](formatter-interface-pca.md) section
+  `Formatter Boundary Outcome Matrix`, [rom-dump-manifest.md](rom-dump-manifest.md),
+  and [firmware-startup.md](firmware-startup.md#owner-summary).
+
+Host interface and admitted bytes:
+
+- Hardware/manual fact:
+  serial, parallel, optional I/O, and panel/service paths exist before the ROM
+  normalizes input.
+- State class:
+  hardware/external state before admission, then parser scratch and canonical
+  byte-source state after admission.
+- Writers:
+  physical host interfaces and service/panel hardware eventually feed ROM
+  byte-source buffers and status latches.
+- Readers / consumers:
+  [host-byte-fetch.md](host-byte-fetch.md#host-byte-source-outcome-matrix),
+  parser core, direct-control code handlers, macro replay, and transparent
+  payload owners.
+- Output effect:
+  affects pixels only by changing admitted byte order, source priority,
+  payload routing, or macro/data-chain replay before command dispatch.
+- Evidence:
+  [io-interfaces.md](io-interfaces.md#interface-outcome-matrix),
+  [host-byte-fetch.md](host-byte-fetch.md#host-byte-source-outcome-matrix), and
+  [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix).
+
+Memory and resource capacity:
+
+- Hardware/manual fact:
+  the product has 512 KB installed RAM, optional expansion memory, internal
+  resources, and optional cartridge/resource windows.
+- State class:
+  canonical startup memory/config, canonical heap/allocation state, canonical
+  resource data, and hardware/external optional-resource state.
+- Writers:
+  startup memory probes and heap/window setup write allocator and resource
+  window fields; resource scan writes candidate windows from verified or
+  optional resource data.
+- Readers / consumers:
+  allocator users, page roots, raster/downloaded-font storage, macro storage,
+  built-in resource scan, and downloaded/resource font owners.
+- Output effect:
+  affects pixels when it changes allocation success, object storage, font
+  candidate availability, or resource bytes read by render helpers.
+- Evidence:
+  [firmware-startup.md](firmware-startup.md#owner-summary),
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
+  [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+  and [downloaded-fonts.md](downloaded-fonts.md#downloaded-font-outcome-matrix).
+
+Physical engine and formatter/DC timing:
+
+- Hardware/manual fact:
+  Canon SX-family engine, paper path, beam detect, video, motors, fuser, and
+  sensors are controlled through the DC Controller boundary.
+- State class:
+  hardware/external state until reduced to wait objects, status bytes,
+  scheduler fields, render work records, and row buffers.
+- Writers:
+  physical engine timing and DC Controller status can change ROM-visible
+  ready/busy predicates, wait-object wake order, active source selection,
+  render band word, and output status.
+- Readers / consumers:
+  DC boundary, active render scheduler, page-raster imaging, errors/status,
+  and unresolved-boundary notes.
+- Output effect:
+  can pace or abort rendering, but does not redefine page objects or pixel
+  composition after the same render record and band word reach `0x1ef6a`.
+- Evidence:
+  [dc-controller-engine.md](dc-controller-engine.md) section
+  `DC Boundary Outcome Matrix`,
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix),
+  and [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix).
+
+State grouping for this matrix:
+
+- Canonical:
+  product/model identity, PCL level, 300 dpi dot grid, installed RAM class,
+  built-in font/resource inventory, ROM package provenance, and engine family.
+- Derived/cache:
+  manual speed, warmup, paper-path, media, and timing facts after they have
+  been reduced to ROM-visible state by traced firmware.
+- Parser scratch:
+  none owned here. Parser scratch begins after host-byte normalization and
+  parser dispatch.
+- Firmware bookkeeping:
+  none owned here directly; startup, parser, status, resource, and scheduler
+  owners classify the concrete fields.
+- Hardware/external:
+  physical host ports, cartridge slots, memory expansion board, panel, NVRAM,
+  DC Controller, laser/scanner, paper sensors, fuser, motors, and power
+  supplies.
+- Unknown:
+  exact MMIO-to-signal decode, optional resource contents, scan-buffer
+  implementation, physical retained-storage identity, CPU clock for
+  cycle-level timing, and service-manual names for some ROM status categories.
+  These remain external unless a traced ROM path reduces them to a concrete
+  field, byte source, resource byte, scheduler branch, or render input.
 
 ## Identity
 

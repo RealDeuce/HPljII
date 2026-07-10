@@ -231,7 +231,9 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [source-index.md](source-index.md) - what each PDF contains and how to
   use it.
 - [hardware-overview.md](hardware-overview.md) - model identity, specs,
-  major assemblies, paper path, print process.
+  major assemblies, paper path, print process. Start with
+  `Hardware Context Outcome Matrix` for product facts that affect ROM-visible
+  dataflow.
 - [formatter-interface-pca.md](formatter-interface-pca.md) - HP 33440
   formatter architecture, memory, NVRAM, video path. Start with
   `Formatter Boundary Outcome Matrix` for ROM/image provenance and

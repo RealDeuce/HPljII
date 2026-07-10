@@ -473,7 +473,7 @@ State classification for these pixel-affecting stops:
   order, selected page/control record, scheduler band words, or render inputs.
 - Evidence:
   [active-render-scheduler.md](active-render-scheduler.md),
-  [dc-controller-engine.md](dc-controller-engine.md#owner-summary), and
+  [dc-controller-engine.md](dc-controller-engine.md), and
   `Published Record To Active Render Scheduler` in
   [semantic-state-model.md](semantic-state-model.md).
 

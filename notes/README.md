@@ -195,7 +195,7 @@ checked-in ROM model:
   major assemblies, paper path, print process.
 - [formatter-interface-pca.md](formatter-interface-pca.md) - HP 33440
   formatter architecture, memory, NVRAM, video path.
-- [dc-controller-engine.md](dc-controller-engine.md) - engine
+- [dc-controller-engine.md](dc-controller-engine.md#owner-summary) - engine
   responsibilities, sensors, motors, laser, high voltage, formatter/DC
   signals.
 - [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary) -

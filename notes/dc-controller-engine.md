@@ -3,6 +3,61 @@
 Sources: `hplaserjetclassicsiiiii.pdf` ch. 5 sections 5-2 through 5-6, ch. 7
 table 7-53 and timing chart.
 
+## Owner Summary
+
+This note owns the physical formatter/DC engine boundary after the ROM has
+selected published page/control records and rendered band buffers. It ties the
+service-manual connector signals to the ROM-visible scheduler, wait-object,
+and MMIO timing edges without treating physical engine behavior as a hidden
+parser or bitmap-renderer step.
+
+Primary boundary:
+
+- ROM-local page rendering is documented up to published-record selection,
+  render-work setup, active band dispatch, and row-buffer writes in
+  [active-render-scheduler.md](active-render-scheduler.md#owner-summary) and
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
+- The formatter/DC edge begins when ROM paths wait on or update timing/status
+  fields around `0x0d52..0x0f7a`, `0x0f84..0x10f2`, `0x10bc..0x1282`,
+  `0x1cf8..0x1ea8`, `0xa680`, and `0x1eba4..0x1ecd2`.
+- Service-manual connector `J205` names likely physical signals:
+  `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`,
+  `PCLK`, `SBSY`, `RDY`, `PPRDY`, and `CPRDY`.
+- Current ROM evidence has not mapped those signal names one-to-one to MMIO
+  bits such as `$8000`, `$8a01`, `$a200`, `$a400`, `$a601`, `$a801`,
+  `$aa01`, `0xfffe0001`, or `0xfffe0003`.
+
+Field groups:
+
+- Canonical ROM-visible scheduler state:
+  published pool head `0x780ea6`, scheduler cursor `0x780eaa`, active source
+  `0x780eae`, render work selector `0x7820bc`, active render pointer
+  `0x783a18`, render work band word `+0x10`, and wait-object records.
+- Derived/cache state:
+  scan/status latches `0x78398c`, `0x78399e`, `0x78399f`, shadow byte
+  `0x7828f9`, output tables `0x782900` / `0x782914`, and render-band caches
+  `0x783a20`, `0x783a22`, `0x783a28`, and `0x783a1c`.
+- Firmware bookkeeping:
+  timer/status divider bytes, wait-object queue state, active-pool wrapper
+  flags, timeout/attention flags, and MMIO output shadows.
+- Hardware/external state:
+  physical DC Controller timing, beam-detect/video synchronization,
+  ready/busy handshakes, motor/laser/paper/fuser hardware, and connector
+  signal identities.
+- Unknown:
+  exact register-to-pin mapping and physical timing conditions. These are
+  hardware/MMIO boundaries, not unknown parser dispatch, page-object storage,
+  render-helper selection, or pixel composition behavior.
+
+Output effect:
+
+- Hardware timing can wake, stall, pace, or abort scheduler work when it
+  changes ROM-visible fields such as wait-object state, ready/busy predicates,
+  selected source record, render band word, or render-entry call count.
+- Once the same normalized bytes, page records, scheduler state, and band
+  calls reach the ROM render helpers, pixel rows are defined by the ROM-local
+  page/render documentation rather than by service-manual signal names.
+
 ## Role
 
 The DC Controller PCA is the machine control system. It coordinates:

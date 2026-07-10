@@ -6463,7 +6463,8 @@ Address-level cluster map:
   [firmware-dataflow-model.md](firmware-dataflow-model.md) and
   [pcl-parser-core.md](pcl-parser-core.md).
 - Transparent/display payload readers: `ESC &p#X...`, `ESC Y ... ESC Z`, and local
-  Control-Z forms; start with [transparent-print-data.md](transparent-print-data.md),
+  Control-Z forms; start with [Transparent Payload Outcome
+  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix),
   [Display Functions Decision
   Checkpoint](display-functions.md#display-functions-decision-checkpoint), and their
   worked paths in [firmware-dataflow-model.md](firmware-dataflow-model.md).

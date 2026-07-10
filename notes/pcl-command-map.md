@@ -305,7 +305,8 @@ boundaries:
   provenance in
   [reset-default-environment.md](reset-default-environment.md#owner-summary).
 - Transparent print data `ESC &p#X`:
-  [transparent-print-data.md](transparent-print-data.md).
+  [Transparent Payload Outcome
+  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix).
 - Raster resolution/start/end and delayed `ESC *b#W` raster rows:
   [raster-graphics.md](raster-graphics.md#owner-summary), with encoded-raster render
   helpers and bitmap row composition in
@@ -547,7 +548,8 @@ output class that a byte-stream reader should follow next.
 - Transparent and display reader bytes:
   `ESC &p#X` arms `0x11f5a -> 0x121cc` and restores to payload reader
   `0x12452`; `ESC Y ... ESC Z` uses readers `0x12536` or `0x12120`.
-  Continue in [transparent-print-data.md](transparent-print-data.md) and
+  Continue in [Transparent Payload Outcome
+  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
   [display-functions.md](display-functions.md). Output class:
   routed printable text, alternate/data append, display/status side effect, or
   explicit reader termination.

@@ -2146,8 +2146,9 @@ terminators such as `ESC Z`; they are not anonymous imaging commands.
   [publication-commands.md](publication-commands.md) documents environment
   reset, page finalization, and published records.
 - `ESC &p#X` transparent data:
-  [transparent-print-data.md](transparent-print-data.md) documents counted
-  byte splicing back into text output.
+  [Transparent Payload Outcome
+  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix)
+  documents counted byte splicing back into text output.
 - `ESC Y ... ESC Z` display functions:
   [display-functions.md](display-functions.md) documents the direct reader
   loop to text output or append storage.

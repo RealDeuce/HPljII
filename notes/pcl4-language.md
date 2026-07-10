@@ -185,8 +185,8 @@ owner, and whether visible pixels can result.
 - Transparent and display readers:
   delayed transparent handler `0x11f5a -> 0x12452` and display readers
   `0x12536` / `0x12120`; owners
-  [Transparent Payload Decision
-  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
+  [Transparent Payload Outcome
+  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
   [display-functions.md](display-functions.md). These are direct byte readers:
   transparent payload and normal `ESC Y` bytes route to `0xd04a` or `0xd0f0`,
   while alternate/display append stores bytes through `0xe002` with no

@@ -3181,12 +3181,15 @@ the validation table is executable but not every predicate has a manual-facing s
 name, and not every legal metric combination has a parser-produced page-record/render
 composition.
 
-Medium for bit-30-clear fixed-record dispatch from a `0x1719c` payload: the
-isolation fixture proves `0x14e24`/`0x14eb6` map construction and rendering,
-and the `0x16606` descriptor fixture proves a current-record bit-30-clear
-resource object reaches the same fixed-record render path. The normal
-integrated `0x16c14` resource install shown here still sets bit `30` and
-therefore selects the offset-table path.
+High for the bit-30-clear boundary around a `0x1719c` payload. Disassembly
+`0x17026..0x1719c` proves allocation and sparse-header copy only; the normal
+integrated `0x16c14` install then publishes candidate longword `0x40000000`,
+so selected-font dispatch takes the bit-30 offset-table path. The
+bit-30-clear use of the same payload is deliberately a selected-candidate
+control case: forcing that candidate state selects `0x14e24`/`0x14eb6`, and
+the fixed-record fixtures prove map construction, page-object queueing, and
+rendering through the same fixed-record renderer used by `0x16606` descriptor
+resource objects.
 
 ## Reproduction Contract
 
@@ -3443,9 +3446,14 @@ edge is now closed for this published record.
   extended-table release are fixture-backed together. Current-record
   allocation-failure teardown through `0x1887a` is fixture-backed for the
   bit-30-clear extended fixed-record case.
-- `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
-  isolation control. The integrated `ESC )s80W` install path currently proves
-  the bit-30 offset-table form.
+- `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is a
+  selected-candidate control case, not a normal `ESC )s#W` install path.
+  `0x17026..0x1719c` only allocates and copies the sparse payload header; the
+  integrated `0x16c14` path installs candidate longword `0x40000000` through
+  `0x1bc38`, so `0x14c64` takes the bit-30 offset-table branch. Forcing the
+  same payload through a bit-30-clear selected candidate proves the fixed-record
+  `0x14e24`/`0x14eb6` map/render form, and the `0x16606` descriptor path proves
+  normal bit-30-clear resource objects reach that renderer.
 - The span-metric fields documented in `notes/font-context-metrics.md` are now tied to
   installed payload headers for the `0xd4ac` and `0xd8fc` type-0, type-1, and type-2
   fixtures, and the shared consumer branch family is fixture-backed. The

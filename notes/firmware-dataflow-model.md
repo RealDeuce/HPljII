@@ -4601,6 +4601,11 @@ Producer and selection flow:
   descriptor table at `0x16eae`. It stages fields under `0x782862`;
   `0x1719c..0x1725c` copies the accepted fields into the allocated payload
   consumed later by printable source capture.
+- The normal `0x16c14` resource install publishes that `0x1719c` payload as a
+  bit-30-set candidate (`0x40000000`) through `0x1bc38`, so selected-font
+  dispatch uses the offset-table resource path. Bit-30-clear fixed-record
+  dispatch for the same payload is selected-candidate control evidence, not
+  the normal host descriptor install route.
 
 Metric fields:
 

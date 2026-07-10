@@ -7426,9 +7426,15 @@ consumers. The remaining boundaries are variant breadth: downloaded-pointer
 glyph row/span/continuation shapes beyond the covered short, wide, and
 segmented glyphs, and publication variants outside these legal type-1/type-2
 span+glyph records.
-The bit-30-clear fixed-record render remains
-deliberately classified as an isolation control for the `0x1719c` payload
-layout, not as the real `0x16c14` installed resource form.
+The bit-30-clear fixed-record render is deliberately classified as a
+selected-candidate control case for the `0x1719c` payload layout, not as the
+normal `0x16c14` installed resource form. Disassembly `0x17026..0x1719c`
+copies the sparse payload header only; the integrated `0x16c14` path installs
+candidate longword `0x40000000`, so selected-font dispatch uses the bit-30
+offset-table branch. The forced bit-30-clear candidate proves the
+`0x14e24`/`0x14eb6` fixed-record map/render form, while the `0x16606`
+descriptor resource path proves normal bit-30-clear resource objects reach the
+same renderer.
 
 ### Fixed-Record Resource Object Checkpoint
 

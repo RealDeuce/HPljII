@@ -2313,6 +2313,89 @@ Since segmented-wide rendering requires span at least `17`, `0x0787` is the
 last row word in this high-row family that can reach the renderer through this
 host-fetched `ESC )s#W` shape.
 
+### Segmented-Wide Payload Count Cap Checkpoint
+
+This checkpoint composes the oversized segmented-wide stop into the
+byte-stream model. The stop is parser/payload state, not a page-object or
+renderer boundary: the command record cannot represent enough payload bytes to
+install the requested row/span product through this host-fetched `ESC )s#W`
+shape.
+
+Writers and readers:
+
+- `0xdb74` writes the six-byte command record at `0x78299e`. Its numeric
+  parser clamps the integer accumulator to `0x7fff` before storing record word
+  `+2`, so the delayed `ESC )s#W` record cannot carry a larger positive byte
+  count.
+- `0x121cc` snapshots that six-byte record in delayed-payload fields
+  `0x782a20..0x782a25`; `0x12218` restores it and dispatches the saved font
+  payload handler.
+- `0x15d0a` and `0x16c14` rewind `0x78299e`, read record word `+2`, take its
+  absolute value, and write the payload budget to `0x783140`.
+- Payload byte helpers `0x1599c`, `0x168dc`, and `0x16942` consume bytes
+  through the font payload path and decrement the remaining budget.
+- The common return/drain edge `0x15dcc -> 0x12328` or
+  `0x16c68 -> 0x12328` consumes whatever `0x783140` remains before returning
+  to the parser.
+
+State classification:
+
+- Canonical state:
+  none newly installed for the oversized stopped stream. Neighboring below-cap
+  streams install downloaded-glyph row/width words, bitmap bytes, and later
+  selector-`0x3003` page objects.
+- Derived/cache state:
+  row/span product, minimum segmented-wide span `17`, cap-derived maximum row
+  `floor(0x7fff / 17) = 0x0787`, parser stop offset, and full intended
+  payload end offset.
+- Parser scratch:
+  six-byte `ESC )s#W` command record, delayed-payload snapshot
+  `0x782a20..0x782a25`, restored command cursor `0x78299e`, payload budget
+  `0x783140`, and the host byte position where the capped payload budget is
+  exhausted.
+- Firmware bookkeeping:
+  partial downloaded-font payload state and common drain/return state. No
+  completed downloaded-character record, page-root bucket, publication flag, or
+  render-work object is produced for the oversized stopped cases.
+- Hardware/external state:
+  none for this ROM-local parser cap.
+- Unknown:
+  none for pixel reproduction of this stream family. The remaining host bytes
+  after the cap are outside the stopped command's payload budget; they belong
+  to whatever the parser sees next, not to an undiscovered renderer edge.
+
+Output effect:
+
+- Below-cap neighboring cases reach the normal path: `0x16498` installs a
+  downloaded glyph, a later printable byte queues selector `0x3003`, `0xff1e`
+  publishes buckets `0` and `8`, and `0x1f264` renders selected segment `1`.
+- Oversized cases do not produce page pixels from the requested glyph. They
+  exhaust the restored `0x7fff` payload budget before a completed glyph object
+  can feed page-object creation, publication, or render dispatch.
+- Since segmented-wide rendering starts at span `17`, row `0x0787` at span
+  `17` is the last row word that can fit the capped byte count. The adjacent
+  `0x0788 * 17 = 0x7ff8` stream is the first minimum-span sibling that stops
+  at this parser/payload boundary.
+
+Evidence:
+
+- Parser cap evidence is [pcl-parser-core.md](pcl-parser-core.md#tokenizer-at-0xdb74)
+  and `generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst` /
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` for the delayed
+  scheduler fields.
+- Font payload evidence is
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`, and
+  `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`.
+- Fixture anchors are
+  `downloaded segmented-wide high-row 0x04xx oversized payload counts stop
+  before renderer`,
+  `downloaded segmented-wide high-row 0x05xx oversized payload counts stop
+  before renderer`, and
+  `downloaded segmented-wide high-row parser-limit oversized counts stop
+  before renderer`.
+
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
 It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,

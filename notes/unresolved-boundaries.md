@@ -220,19 +220,21 @@ State classification for these pixel-affecting stops:
 
 - Classification: exact ROM stop, not a render-helper unknown.
 - Exact boundary:
-  restored `ESC )s#W` payload budget is capped at `0x7fff` before `0x16c14`
-  can install oversized segmented-wide glyphs. With span `17`,
-  `floor(0x7fff / 17) = 0x0787`; `0x0788 * 17` stops before `0x16498` can
-  create a glyph object.
+  tokenizer `0xdb74` clamps the `ESC )s#W` numeric record word to `0x7fff`;
+  delayed restore through `0x121cc` / `0x12218` preserves that record, and
+  `0x15d0a` / `0x16c14` load the capped absolute count into `0x783140`. With
+  span `17`, `floor(0x7fff / 17) = 0x0787`; `0x0788 * 17` stops before a
+  completed downloaded-glyph object can feed page-object creation.
 - Covered path:
   the parser and payload reader restore the command record and byte budget, but
   the oversized stream does not reach downloaded-glyph install, page-object
   creation, publication, or render dispatch.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint)
-  and `Downloaded Font Descriptor And Payload Chain` plus `Downloaded Glyph
-  Renderer Boundary State` in
-  [semantic-state-model.md](semantic-state-model.md).
+  and `Segmented-Wide Payload Count Cap Checkpoint` in
+  [downloaded-fonts.md](downloaded-fonts.md#segmented-wide-payload-count-cap-checkpoint),
+  plus `Downloaded Font Descriptor And Payload Chain` and `Downloaded Glyph Renderer
+  Boundary State` in [semantic-state-model.md](semantic-state-model.md).
 - Needed to close:
   none for pixel reproduction. This is the documented stop point for that
   oversized byte-stream family.

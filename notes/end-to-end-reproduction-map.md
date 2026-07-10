@@ -1819,13 +1819,14 @@ State classification:
   scratch pointer `0x782894`, scan pointer `0x782884`, active optional-window
   base `0x78288c`, active optional-window limit `0x782890`, terminal byte
   `0x782898`, and candidate-list pointers/counts `0x7827a8`, `0x7827ac`,
-  `0x7827b0`, `0x7827b4`, `0x782790`, `0x782794`, `0x782798`, and
-  `0x78279c`.
+  `0x7827b0`, `0x7827b4`, `0x782790`, `0x782794`, `0x782798`,
+  `0x78279c`, predicate bytes `A6-0x29` and `A6-0x2a`, scratch slot
+  `A6-0x28..A6-0x15` for window `0x200000..0x3ffffe`, scratch slot
+  `A6-0x14..A6-0x01` for window `0x400000..0x5ffffe`, and caller local
+  `A6-0x02` consumed after `0x1a3c2`.
 - Parser scratch:
-  predicate bytes `A6-0x29` and `A6-0x2a`, scratch slot `A6-0x28..A6-0x15`
-  for window `0x200000..0x3ffffe`, scratch slot `A6-0x14..A6-0x01` for
-  window `0x400000..0x5ffffe`, and caller local `A6-0x02` consumed after
-  `0x1a3c2`.
+  none. This scheduler-local state is not a PCL command record or tokenizer
+  buffer.
 - Firmware bookkeeping:
   candidate-count snapshot `0x782780`, current downloaded-font records
   `0x782640..0x782776`, candidate pointer-list entries rooted at `0x782324`,
@@ -6035,9 +6036,10 @@ Address-level cluster map:
   `0x782884/0x78288c/0x782890`, terminal byte `0x782898`, active
   candidate-window pointers/counts `0x7827a8..0x7827b4` /
   `0x782790..0x78279c`, and caller local result word `A6-0x02` for the
-  `0x1a2e4 -> 0x1b50e` font-scan path. Parser scratch is the two predicate
-  bytes `A6-0x29` / `A6-0x2a` plus fresh scratch slots
-  `A6-0x28..A6-0x15` and `A6-0x14..A6-0x01` filled by `0x1a0f2`.
+  `0x1a2e4 -> 0x1b50e` font-scan path, predicate bytes
+  `A6-0x29` / `A6-0x2a`, and fresh scan slots `A6-0x28..A6-0x15` and
+  `A6-0x14..A6-0x01` filled by `0x1a0f2`. Parser scratch is none for this
+  scheduler-local route.
   Firmware bookkeeping is current downloaded-font records
   `0x782640..0x782776`, candidate pointer-list entries `0x782324..`, dirty
   bytes `0x782f2c/0x782f2d`, return value `D7`, caller-specific quiesce/menu
@@ -6098,11 +6100,12 @@ Address-level cluster map:
   objects from `0x1393a`, compact coordinates and segment bytes from
   `0x12f2e`, active render work words from `0x1ed84`, row chunks selected by
   compact helpers, and row/span products that feed the documented helper
-  boundaries. Parser scratch is delayed-payload state `0x782a1a`, saved
-  handler `0x782a1c`, saved records `0x782a20..0x782a25`, payload byte budget
-  `0x783140`, staged descriptor/header storage `0x7827de..0x7827e9`,
-  staging pointer `0x782862`, optional symbol bytes `0x782842..0x782856`,
-  and bitmap parse fields `0x7827be/0x7827c2/0x7827c4`. Firmware bookkeeping
+  boundaries. Canonical parser state includes delayed-payload state
+  `0x782a1a`, saved handler `0x782a1c`, and saved records
+  `0x782a20..0x782a25`. Parser scratch is staged descriptor/header storage
+  `0x7827de..0x7827e9`, staging pointer `0x782862`, optional symbol bytes
+  `0x782842..0x782856`, and bitmap parse fields
+  `0x7827be/0x7827c2/0x7827c4`. Firmware bookkeeping
   is candidate insertion `0x1bc38`, release helpers `0x1887a`, `0x18b92`,
   `0x18bf2`, `0x17a24`, and `0x17d7c`, dirty context refresh, default
   refresh `0x1b04c`, allocator state, and continuation cleanup on no-install
@@ -8707,16 +8710,19 @@ Address-level cluster map:
   [errors-and-status.md](errors-and-status.md), [io-interfaces.md](io-interfaces.md),
   and `Host/Status Side-Channel Decision Checkpoint` in
   [errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
-- Parser scratch: six-byte command records at `0x78299e..0x7829a7`,
-  delayed handler snapshots, payload counters, and alternate/data mode state.
+- Parser state and scratch:
+  canonical parser state is mode `0x782999`, command-record cursor and
+  records at `0x78299e..0x7829a7`, alternate/data mode `0x782c18`, delayed
+  pending flag `0x782a1a`, delayed handler pointer `0x782a1c`, and saved
+  delayed record `0x782a20..0x782a25`. Parser scratch is tokenizer and
+  matched-byte state while a command family is still being combined.
   Evidence: `Parser Record And Delayed Payload State` in
   [semantic-state-model.md](semantic-state-model.md), tokenizer fixtures, and
-  `generated/analysis/ic30_ic13_parser_xrefs.md`. The parser-record checkpoint
-  classifies canonical state (`0x782999`, `0x78299e`, `0x782c18`), tokenizer
-  scratch (`0x782a26`, `0x782a2a..`, `0x782a3e`, `0x782a42..`,
-  `0x783196..0x783199`), firmware bookkeeping (`0x78299a`, `0x782a1a`,
-  `0x782a1c`, `0x782a20..0x782a25`, `0x782a56`), and derived font-designation
-  records from `0x11efe` / `0x11f26`.
+  `generated/analysis/ic30_ic13_parser_xrefs.md`. Tokenizer scratch is
+  `0x782a26`, `0x782a2a..`, `0x782a3e`, `0x782a42..`, and
+  `0x783196..0x783199`; firmware bookkeeping is callback pointer `0x78299a`,
+  helper latch `0x782a56`, and derived font-designation records from
+  `0x11efe` / `0x11f26`.
 - Canonical macro/replay state: current macro id `0x783164`, macro record
   pool `0x782a98`, selected record pointer `0x782d7a`, record head/count/id
   and permanence fields, active data-chain frame pointer `0x782d76`, frame

@@ -3676,11 +3676,12 @@ State classification:
   active optional-window base `0x78288c`, active optional-window limit
   `0x782890`, terminal byte `0x782898`, and candidate-list pointers/counts
   `0x7827a8`, `0x7827ac`, `0x7827b0`, `0x7827b4`, `0x782790`,
-  `0x782794`, `0x782798`, and `0x78279c`.
-- Parser scratch: stack predicate bytes `A6-0x29` and `A6-0x2a`, scratch slot
-  `A6-0x28..A6-0x15` for window `0x200000..0x3ffffe`, scratch slot
-  `A6-0x14..A6-0x01` for window `0x400000..0x5ffffe`, and caller local
-  `A6-0x02` used after `0x1a3c2`.
+  `0x782794`, `0x782798`, `0x78279c`, stack predicate bytes `A6-0x29` and
+  `A6-0x2a`, scratch slot `A6-0x28..A6-0x15` for window
+  `0x200000..0x3ffffe`, scratch slot `A6-0x14..A6-0x01` for window
+  `0x400000..0x5ffffe`, and caller local `A6-0x02` used after `0x1a3c2`.
+- Parser scratch: none. This scheduler-local state is not a PCL command
+  record or tokenizer buffer.
 - Firmware bookkeeping: candidate-count snapshot `0x782780`, current
   downloaded-font records `0x782640..0x782776`, candidate pointer-list
   entries at `0x782324..`, active-font dirty bytes `0x782f2c` and
@@ -9489,8 +9490,9 @@ confuse canonical state with scratch or cached render values.
 - Derived/cache state: bucket indices, render destination bases, band-derived
   words, normalized bridge fields, and temporary metrics computed from
   canonical state.
-- Parser scratch: six-byte command record cursors, delayed-payload snapshots,
-  loop-local ESC flags, and temporary parser append pointers.
+- Parser scratch: tokenizer buffers, loop-local ESC flags, and temporary
+  parser append pointers. Six-byte command record cursors and delayed-payload
+  snapshots are canonical parser state.
 - Firmware bookkeeping: allocation cursors, flags, wait objects, status
   latches, and scheduler progress counters that control firmware execution but
   are not PCL state by themselves.

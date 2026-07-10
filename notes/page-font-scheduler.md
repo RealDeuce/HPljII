@@ -59,11 +59,14 @@ Field groups:
   scratch pointer `0x782894`, active optional-window cursor `0x782884`, base
   `0x78288c`, limit `0x782890`, terminal byte `0x782898`, and active
   candidate-window pointers/counts `0x7827a8..0x7827b4` /
-  `0x782790..0x78279c`.
+  `0x782790..0x78279c`. The stack predicate bytes
+  `A6-0x29` / `A6-0x2a`, fresh scan slots `A6-0x28..A6-0x15` and
+  `A6-0x14..A6-0x01`, and caller local result word `A6-0x02` are
+  scheduler-local derived state, not PCL parser scratch.
 - Parser scratch:
-  stack predicate bytes `A6-0x29` and `A6-0x2a`, scratch slots
-  `A6-0x28..A6-0x15` and `A6-0x14..A6-0x01`, and caller local output word
-  `A6-0x02`.
+  none from PCL parser records. This scheduler runs after host/external
+  quiesce; parser records are only relevant when callers later resume normal
+  parser or font-resource work.
 - Firmware bookkeeping:
   downloaded-font current records `0x782640..0x782776`, candidate pointer-list
   entries `0x782324..`, dirty bytes `0x782f2c` / `0x782f2d`, scheduler return
@@ -140,9 +143,6 @@ Derived/cache state:
 - Candidate-list window pointers and counts: `0x7827a8`, `0x7827ac`,
   `0x7827b0`, `0x7827b4`, `0x782790`, `0x782794`, `0x782798`, and
   `0x78279c`.
-
-Parser scratch:
-
 - `A6-0x29`: canonical-side mismatch byte returned by `0x1a042`.
 - `A6-0x2a`: fresh-scan-side mismatch byte returned by `0x19f08`.
 - `A6-0x28..A6-0x15`: fresh slot `0` for optional window `1`
@@ -151,6 +151,11 @@ Parser scratch:
   (`0x400000..0x5ffffe`).
 - `A6-0x02`: local output word passed by font-resource scan caller
   `0x1a3c8..0x1a3e0` to resolver `0x1b50e` after scheduler return.
+
+Parser scratch:
+
+- None. The stack slots above are scheduler-local scan and predicate state,
+  not command records produced by `0xda9a` / `0xdb74` / `0x11774`.
 
 Firmware bookkeeping:
 

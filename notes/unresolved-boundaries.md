@@ -121,9 +121,10 @@ State classification for these pixel-affecting stops:
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
   [page-raster-imaging.md](page-raster-imaging.md), `Downloaded Font Descriptor And
-  Payload Chain` and `Bitmap Render Dispatch Contract` in
-  [semantic-state-model.md](semantic-state-model.md), and `Render Helper Boundary Index`
-  in [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+  Payload Chain`, `Downloaded Glyph Renderer Boundary State`, and `Bitmap Render
+  Dispatch Contract` in [semantic-state-model.md](semantic-state-model.md), and `Render
+  Helper Boundary Index` in
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 - Needed to close:
   a ROM-local explanation for why those invalid jump-table indices should be
   unreachable or redirected, or an explicitly documented invalid-target
@@ -152,8 +153,9 @@ State classification for these pixel-affecting stops:
   legal high-width cases, and the page-record bridge.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
-  [page-raster-imaging.md](page-raster-imaging.md), and `Downloaded Glyph Boundary
-  Decision Rules` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  [page-raster-imaging.md](page-raster-imaging.md), `Downloaded Glyph Renderer Boundary
+  State` in [semantic-state-model.md](semantic-state-model.md), and `Downloaded Glyph
+  Boundary Decision Rules` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Needed to close:
   a ROM-local guard that prevents those low-width objects from reaching the
   invalid target, or a defensible invalid-target behavior for the computed
@@ -179,8 +181,9 @@ State classification for these pixel-affecting stops:
   and the arithmetic payload-count cap.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
-  [page-raster-imaging.md](page-raster-imaging.md), and `Bitmap Render Dispatch
-  Contract` in [semantic-state-model.md](semantic-state-model.md).
+  [page-raster-imaging.md](page-raster-imaging.md), `Downloaded Glyph Renderer Boundary
+  State`, and `Bitmap Render Dispatch Contract` in
+  [semantic-state-model.md](semantic-state-model.md).
 - Needed to close:
   a ROM-local source-region rule for the fallback offset, or a documented
   invalid-source behavior for these span-31 fallback cases.
@@ -199,7 +202,8 @@ State classification for these pixel-affecting stops:
   creation, publication, or render dispatch.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint)
-  and `Downloaded Font Descriptor And Payload Chain` in
+  and `Downloaded Font Descriptor And Payload Chain` plus `Downloaded Glyph
+  Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md).
 - Needed to close:
   none for pixel reproduction. This is the documented stop point for that

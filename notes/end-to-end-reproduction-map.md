@@ -5402,7 +5402,7 @@ Evidence:
   in [firmware-dataflow-model.md](firmware-dataflow-model.md), `Downloaded-Glyph Render
   Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
-  `Downloaded Glyph Row-Count Publication Checkpoint` in
+  `Downloaded Glyph Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md), and compact row-copy sections in
   [page-raster-imaging.md](page-raster-imaging.md).
 - Focused listings:

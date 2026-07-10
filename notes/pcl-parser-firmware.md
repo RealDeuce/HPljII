@@ -24,6 +24,72 @@ These are current anchors for the path from host bytes into PCL command
 records. Names are provisional until caller/callee cross-references are
 broader.
 
+## Owner Summary
+
+This note owns the low-level parser firmware ledger from normalized host bytes
+to terminal handler entry. It preserves disassembly anchors for byte fetch,
+ESC normalization, six-byte command records, normal versus alternate/data
+dispatch tables, and delayed-payload snapshot/restore. It does not own command
+semantics, page-object construction, or pixel rendering.
+
+Primary routes:
+
+- Host byte entry:
+  `0xa904` supplies the next normalized byte or `D7 = -1`; source priority and
+  MMIO boundaries are owned by the host-byte owner.
+- Parser byte wrapper:
+  `0xda9a` reads through `0xa904`, handles `ESC ? 0x11`, and returns the
+  parser-visible byte.
+- Tokenizer:
+  `0xdaf0` / `0xdb74` build six-byte records rooted at `0x7829a2`, with final
+  byte at `+1`, integer word at `+2`, and fractional word at `+4`.
+- Main loop:
+  `0x11774` reads parser mode `0x782999`, alternate/data selector
+  `0x782c18`, and dispatches through normal table `0x112a4` or alternate
+  table `0x116f6`.
+- Delayed payload:
+  `0x121cc` snapshots a parsed record and handler pointer; `0x12218` restores
+  the record and either calls the saved handler or routes alternate/data drains
+  through `0x1228a` / `0x12358`.
+- Handoff:
+  terminal handlers such as `0xd04a`, `0xcc52`, `0x105d0`, `0x12452`,
+  `0x15d0a`, `0x16c14`, `0xdd08`, and the command-map table entries own
+  command-family state after parser dispatch.
+
+Field groups:
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data selector `0x782c18`, tokenizer
+  callback `0x78299a`, command-record cursor `0x78299e`, and six-byte record
+  root `0x7829a2`.
+- Parser scratch:
+  byte scratch `0x782a2a`, numeric scratch `0x782a42`, local accumulation
+  `0x783196..0x783199`, and delayed payload record
+  `0x782a20..0x782a25`.
+- Derived/cache state:
+  delayed-handler flag `0x782a1a`, saved handler pointer `0x782a1c`, payload
+  budget `0x783140`, and alternate/data echo latch `0x782a56`.
+- Firmware bookkeeping:
+  setup handler family state, mode-table next-mode bytes, macro/data-chain
+  replay fields referenced by alternate/data mode, and local consumer-specific
+  `0x1a 0x58` normalization.
+- Hardware/external state:
+  none after `0xa904` has returned a normalized byte. Host-source MMIO and
+  service/preemption behavior belong to the host-byte and status owners.
+- Unknown:
+  no parser-record layout, mode-table, or delayed-restore middle edge remains
+  unknown for the covered command families. Remaining unknowns are downstream
+  command/page/render behavior or external hardware/resource boundaries.
+
+Output effect:
+
+- Parser firmware creates normalized records and enters handlers; it does not
+  itself define pixels.
+- Printable, control, raster, transparent, font, macro, and reset effects only
+  become visible after their owner notes consume the terminal handler state.
+- A reproducer must preserve this byte-to-handler contract before applying the
+  command-family state models.
+
 ## Reproduction Contract
 
 For a supported byte stream, the parser firmware layer is reproduced when the

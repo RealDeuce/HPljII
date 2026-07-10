@@ -276,7 +276,7 @@ checked-in ROM model:
 - [font-sample-page.md](font-sample-page.md#owner-summary) - documented
   firmware-generated font sample printout from resource candidates through page-record
   segments and rendered surfaces.
-- [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
+- [pcl-parser-firmware.md](pcl-parser-firmware.md#owner-summary) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#owner-summary) - flattened PCL
   command-to-handler map summary from the firmware parser tables.

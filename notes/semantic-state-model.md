@@ -1383,7 +1383,7 @@ command-family semantics beyond the restored-record boundary.
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - Macro execute/call replay fixtures documented in
-  [pcl-parser-firmware.md](pcl-parser-firmware.md).
+  [pcl-parser-firmware.md](pcl-parser-firmware.md#owner-summary).
 
 ### Evidence
 

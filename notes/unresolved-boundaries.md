@@ -23,18 +23,43 @@ Use the classification column before continuing work:
 
 ## Pixel-Affecting Boundaries
 
-For ROM-local invalid render targets, the reproduction rule is to stop the
-pixel contract at the exact computed jump or source-read boundary named below.
-The documented upstream state still matters: installed glyph records, page
-objects, publication buckets, render bucket words, row splits, and helper
-inputs remain ROM-derived evidence. What is not documented is a final row image
-after the ROM has selected an unchecked helper target or source address outside
-the valid table/source region. A byte-stream reproducer should therefore model
-the upstream state and report the invalid render boundary instead of inventing
-pixels beyond it. This rule is grounded in the downloaded-glyph checkpoints in
+For ROM-local invalid render targets, the reproduction rule is to stop the pixel
+contract at the exact computed jump or source-read boundary named below. The documented
+upstream state still matters: installed glyph records, page objects, publication
+buckets, render bucket words, row splits, and helper inputs remain ROM-derived evidence.
+What is not documented is a final row image after the ROM has selected an unchecked
+helper target or source address outside the valid table/source region. A byte-stream
+reproducer should therefore model the upstream state and report the invalid render
+boundary instead of inventing pixels beyond it. This rule is grounded in the
+downloaded-glyph checkpoints in
 [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-row-count-publication-checkpoint)
 and the render-helper boundary index in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#render-helper-boundary-index).
+
+State classification for these pixel-affecting stops:
+
+- Canonical upstream state is still ROM-defined: transparent payload command
+  records, selected font contexts/maps, installed downloaded-glyph records,
+  bitmap payload bytes copied before the stop, page-root bucket objects,
+  published bucket arrays, render-record bucket roots, and compact selector
+  words such as `0x0003`, `0x1003`, and `0x3003`.
+- Derived/cache state is the compact helper input that exposes the stop:
+  segment number, source row/span/width products, fallback row count, row-copy
+  table index, source offset, and restored payload budget.
+- Parser scratch is the delayed `ESC &p#X` or `ESC )s#W` record, saved
+  delayed-payload fields `0x782a1a/0x782a1c/0x782a20..0x782a25`, and
+  remaining budget `0x783140` when a payload-count cap stops before install.
+- Firmware bookkeeping is allocation/release state around `0x16c14` /
+  `0x16498`, publication flag `0x782996`, active render progress, and
+  no-install or drain return state where the stream stops before page output.
+- Hardware/external state appears only for the secondary segment-57 source:
+  the required bytes are beyond the verified IC32/IC15 resource suffix and
+  depend on physical decode or external resource data for
+  `0x0c0000..0x0c0321`.
+- Unknown state is deliberately bounded to the named invalid target, invalid
+  source read, missing resource range, or exact parser-count stop. Parser
+  dispatch, page-object publication, bridge roots, and render-helper entry are
+  not generic unknowns for these entries.
 
 ### Secondary Segment-57 Resource Source
 
@@ -319,11 +344,10 @@ and the render-helper boundary index in
   HP/manual-facing names for the folded status categories and sibling service
   bits. The arithmetic, field writes, host-status byte composition, and
   no-page-output boundary are ROM-local and documented.
-- Evidence:
-  [errors-and-status.md](errors-and-status.md),
+- Evidence: [errors-and-status.md](errors-and-status.md),
   `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
-  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`, and
-  `Host/Status Side-Channel Decision Checkpoint` in
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`, and `Host/Status
+  Side-Channel Decision Checkpoint` in
   [errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
 
 ### Active Render Device Handoff

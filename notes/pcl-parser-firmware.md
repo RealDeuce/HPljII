@@ -21,8 +21,10 @@ Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`;
 `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`.
 
 These are current anchors for the path from host bytes into PCL command
-records. Names are provisional until caller/callee cross-references are
-broader.
+records. The parser record layout, handler addresses, delayed-payload fields,
+and table routes are address-level ROM contracts. Human-facing names remain
+provisional only where a later owner note has not correlated an HP term to the
+documented field or route.
 
 ## Owner Summary
 

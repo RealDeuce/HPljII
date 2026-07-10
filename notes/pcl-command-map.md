@@ -2509,33 +2509,33 @@ parser record, takes the absolute value of the parsed word, clears byte
 `0x783191` for selector `0`, sets byte `0x783191` for selector `1`, and
 leaves the byte unchanged for other selectors. The same byte is tested in
 the vertical overflow/recovery path at `0xf36c`, making it part of page
-advance behavior rather than printable glyph placement. Fixture
-`0xf36c perforation skip gates vertical overflow page eject` pins the
-consumer predicate: `0xf36c` calls `0xf124` and returns `D7 = 0` only
-when `0x782c8e > 0x782dc2`, `0x782dc2` is nonzero, and `0x783191` is
-nonzero. The `ESC &l1L!` fixture proves the normal parser reaches
-`0xee64`, records `0x783191` changing from `0` to `1`, then queues the
-following printable `!` through `0xd04a` at the unchanged origin.
+advance behavior rather than printable glyph placement. Consumer `0xf36c`
+calls `0xf124` and returns `D7 = 0` only when `0x782c8e > 0x782dc2`,
+`0x782dc2` is nonzero, and `0x783191` is nonzero. In the normal parser
+route, `ESC &l1L!` reaches `0xee64`, changes `0x783191` from `0` to `1`,
+then queues the following printable `!` through `0xd04a` at the unchanged
+origin. Evidence anchors: `0xf36c perforation skip gates vertical overflow
+page eject` and `ESC &l1L!`.
 
 `ESC &l#X` at `0x00eef0` handles number of copies. It rewinds to the
 parser record, takes the absolute value of the parsed word, ignores zero,
-clamps values above `99`, and stores the result in word `0x782da4`. The
-`!\x1b&l2X\f` fixture proves that copy count `2` survives a later FF
-publication: `0xff1e` copies `0x782da4` into published pool-header word
-`+0x0c`, then `0x1edc6` and `0x1ed84`/`0x1ef6a` render the queued compact
-text rows unchanged.
+clamps values above `99`, and stores the result in word `0x782da4`. That
+word is publication state rather than immediate page-object data: in
+`! ESC &l2X FF`, `0xeef0` stores copy count `2`, later FF publication calls
+`0xff1e`, and `0xff1e` copies `0x782da4` into published pool-header word
+`+0x0c` while the previously queued compact text rows remain unchanged.
+Evidence anchor: `!\x1b&l2X\f`.
 
 `ESC &l#H` at `0x00ef62` handles page eject and paper-source selection.
 It rewinds to the parser record, normalizes the absolute selector, flushes
 pending text through `0xf34a`, publishes the current page root through
 `0xff1e`, and refreshes the cursor through `0xf8fc`. The selector table at
 `0xef3a` maps `0` to the page-eject arm `0xefae`, `1` to `0xefb6`,
-`2` to `0xefe8`, `3` to `0xeff0`, and other values to `0xeff8`. The
-`!\x1b&l2H` fixture proves selector `2` writes manual-feed value `0x80`
-to `0x782da6`, sets pending-status byte `0x782998`, ORs bit 0 into
-`0x780e26` when the output path is available, clears the current page root,
-and publishes the queued compact text bucket before the paper-source state
-change.
+`2` to `0xefe8`, `3` to `0xeff0`, and other values to `0xeff8`. Selector
+`2` writes manual-feed value `0x80` to `0x782da6`, sets pending-status byte
+`0x782998`, ORs bit 0 into `0x780e26` when the output path is available,
+clears the current page root, and publishes the queued compact text bucket
+before the paper-source state change. Evidence anchor: `!\x1b&l2H`.
 
 `ESC &a#L` at `0x00eb58` converts the absolute parsed column count
 through current HMI `0x78315c`, rejects values beyond `0x782dda - HMI`,
@@ -2568,10 +2568,11 @@ subunits per decipoint and clamps to `0x782dc6`.
 `ESC &k#H` at `0x00ca8c` handles horizontal motion index. It rewinds to
 the parser record, takes the absolute integer/fraction pair, rejects
 integer values above `0x348`, scales accepted values by 30 packed
-subunits per HMI unit, and stores the packed result in `0x78315c`.
-The `ESC &k6H!!` fixture proves `6H` stores packed HMI `15`, so two
-following printable `!` bytes queue at compact coords `0x0600` and
-`0x0501` rather than the initialized `LINE_PRINTER` `18`-pixel spacing.
+subunits per HMI unit, and stores the packed result in `0x78315c`. With
+`ESC &k6H!!`, handler `0xca8c` stores packed HMI `15`, so the following two
+printable `!` bytes queue at compact coords `0x0600` and `0x0501` rather
+than the initialized `LINE_PRINTER` `18`-pixel spacing. Evidence anchor:
+`ESC &k6H!!`.
 
 `ESC *p#X` at `0x00f48c` and `ESC *p#Y` at `0x00f692` are the dot-unit
 counterparts to the `ESC &a` cursor-position commands. Both rewind the

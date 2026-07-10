@@ -639,8 +639,9 @@ output class that a byte-stream reader should follow next.
   [page-raster-imaging.md](page-raster-imaging.md). Output class:
   encoded raster bucket object, then `0x1f88e` render.
 - Rectangle/rule bytes:
-  `ESC *c#H/#V/#G/#P` route to `0x10a40`, `0x10ae0`, `0x10dce`, and
-  `0x10898`; fill reaches rule producer `0x13386 -> 0x133aa`. Continue in
+  `ESC *c#A/#B/#H/#V/#G/#P` route to `0x10e68`, `0x10e22`, `0x10a40`,
+  `0x10ae0`, `0x10dce`, and `0x10898`; fill reaches rule producer
+  `0x13386 -> 0x133aa`. Continue in
   [rectangle-graphics.md](rectangle-graphics.md) and
   [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
   Output class: rule-list page object, then rule render.

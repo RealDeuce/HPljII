@@ -537,6 +537,103 @@ Unresolved boundary:
   work in this family must change an exact writer, root-header bit/word,
   scheduler-selected pool record, or `0x1ed84` consumer.
 
+### Representative Parsed-Stream Outcomes
+
+This checkpoint composes the parser-visible publication examples into the
+semantic page-record model. The low-level ledger above remains the
+authoritative field contract; this section is the reader-facing route from
+byte stream to published record and render entry.
+
+Common setup:
+
+- Printable `!` reaches `0xd04a`, then the compact-object path queues one text
+  object through `0x1393a`, `0x12f2e`, `0x1387c`, and `0x1381c` under the
+  current page-root bucket array `+0x1c`.
+- Publication commands that call `0xff1e` publish that current root only if
+  `0x78297a` is nonzero and root byte `+0x04 == 1`. The publication body marks
+  root byte `+0x04 = 2`, writes the pool head to `0x780ea6`, sets
+  `0x782996 = 1`, and clears `0x78297a`.
+- Render entry then treats the published record as the source record:
+  `0x1ed84` selects it, `0x1edc6` copies source roots and context slots into
+  render-work fields, and `0x1ef6a` dispatches bucket contents through the
+  compact helper route `0x1efc2`.
+
+Stream outcomes:
+
+- `! ESC E`: parser routes `!` to `0xd04a` and reset to `0xcc52`. Reset calls
+  `0xff1e` before rebuilding the environment, so the queued compact text object
+  is published with the old root. The generated reset checkpoint records the
+  header after publication as root byte `+0x04 = 2`, default environment byte
+  `+0x07`, status bytes `+0x08/+0x0a`, copy word `+0x0c`, cleared word
+  `+0x18`, copied word `+0x1a`, and published pointer `0x780ea6`.
+- `ESC &k2G ! FF`: line-termination handler `0xedf8` sets mode field
+  `0x78318f`; printable `!` queues compact text; FF handler `0xf0f0` applies
+  the mode-2 CR-style horizontal reset before page eject and then publishes the
+  queued root through `0xff1e`.
+- `! ESC &l1A` and `! ESC &l1O`: page-size `0xfc74` and orientation
+  `0x10220` publish the current root before committing new geometry. The
+  visible object graph for the already-queued `!` therefore travels with the
+  old root through `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`; later bytes
+  consume the refreshed geometry fields documented in `Page Geometry Refresh
+  Checkpoint`.
+- `! ESC &l2H`: paper-source handler `0xef62` rewinds the parser record,
+  parses selector `2`, publishes the existing root at `0xef96`, refreshes
+  cursor state through `0xf8fc`, selects value `0x80` at `0xefe8`, may mirror
+  it to output/control bytes `0x780e8f = 0x80` and `0x780e26 = 1` through
+  `0x9b1e` / `0x9b5e`, then writes canonical `0x782da6 = 0x80` and pending
+  flag `0x782998 = 1`. The publication triggered inside `0xef62` carries the
+  pre-change compact root; the new paper-source byte is canonical state for
+  following publications.
+- `! ESC &l2X FF`: copies handler `0xeef0` rewinds the parser record, stores
+  nonzero count `2` in `0x782da4`, and returns without publication. The later
+  FF through `0xf0f0 -> 0xff1e` copies `0x782da4` into published root word
+  `+0x0c = 2`, so the copy count travels as page/control metadata alongside
+  the compact bucket root.
+
+Field grouping for these examples:
+
+- Canonical state: current root `0x78297a`, bucket root `+0x1c`, published
+  pool head `0x780ea6`, publication flag `0x782996`, line-termination mode
+  `0x78318f`, paper-source byte `0x782da6`, pending paper-source flag
+  `0x782998`, and copy count `0x782da4`.
+- Derived/cache state: render-work root copies and band fields produced after
+  `0x1ed84` / `0x1edc6`; page-geometry caches refreshed by page-size,
+  orientation, and paper-source helpers.
+- Parser scratch: the six-byte command records rewound by `0xef62` and
+  `0xeef0`, plus the consumed command records for reset, FF, page-size, and
+  orientation.
+- Firmware bookkeeping: allocator stream fields `0x782a70`, `0x782a72`,
+  `0x782a76`, transient root bytes cleared by `0xff1e`, and the protected
+  write brackets `0x15a6` / `0x15ac`.
+- Hardware/external state: `0x780e8f` and `0x780e26` are ROM-visible
+  paper-source output/control bytes, but their physical engine meaning remains
+  outside this parser-to-page-record route.
+
+Evidence:
+
+- Handler disassembly:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_reset_handler_00cc52.lst`,
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- Supporting generated checkpoints:
+  `generated/analysis/ic30_ic13_renderer_fixture_harness.md` section
+  beginning "A ROM parser trace now anchors the publication streams" and
+  `generated/analysis/ic30_ic13_page_root_finalization.md`.
+
+Unresolved boundary:
+
+- No ROM-local middle edge remains for these six stream examples between the
+  parsed command handlers, `0xff1e` publication, and `0x1ed84` render-entry
+  bridge. Future publication work must name a new stream whose parsed handler
+  changes a different root header byte/word, root list, context slot, scheduler
+  selection, or render helper input.
+
 ## Command Handler Boundaries
 
 The publication-command handlers call the shared helper before mutating state

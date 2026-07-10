@@ -166,6 +166,92 @@ with disassembly listings `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
 `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
 
+## Publication Decision Checkpoint
+
+This checkpoint composes the publication command family as branch decisions
+over current-root state. It starts after parser dispatch reaches a
+publication-adjacent command and ends either with a published page/control
+record, a state-only update that affects a later publication, or an explicit
+no-publication exit.
+
+Decision rules:
+
+- A command can publish only if current root `0x78297a` exists and root byte
+  `+0x04` is active. `0xff1e` turns that root into a published pool record by
+  writing root byte `+0x04 = 2`, updating pool head `0x780ea6`, setting
+  publication flag `0x782996`, and clearing `0x78297a`.
+- Reset `0xcc52` publishes queued content before rebuilding environment
+  state. If no root exists, `0xff1e` takes the no-root exit and reset remains
+  a state rebuild with no published page record.
+- FF `0xf0f0` is an immediate page-eject publication. It first applies any
+  line-termination CR-style reset from `0x78318f.5`, flushes pending spans
+  through `0xf34a`, ensures a root, calls `0xf124 -> 0xff1e`, and leaves
+  pending page-eject byte `0x782a6d = 0xff`.
+- Page-size `0xfc74`, orientation `0x10220`, and paper-source `0xef62`
+  publish the current root before changing geometry or source state. This
+  preserves already-queued page objects under the old environment.
+- Page-length `0xf9e8` has two distinct outcomes. Nonzero accepted values
+  update page extent and derived geometry before later placement consumes the
+  new state; selector zero can publish pending text, mirror paper-source state
+  to `0x780e8f` / `0x780e26`, and restore default page code.
+- Copies `0xeef0` does not publish by itself. It stores copy count
+  `0x782da4`; a later FF or other publication copies that value into
+  published pool-header word `+0x0c`.
+- Macro overlay is a publication-time replay branch inside `0xff1e`, not a
+  separate renderer. When overlay state `0x782a92` / `0x782a94` and root retry
+  state permit it, `0xff1e` re-enters macro replay before exposing the final
+  published root.
+- After publication, the render route is shared: scheduler promotes
+  `0x780ea6` through `0x780eaa` / `0x780eae`, `0x1ed84` selects the record,
+  `0x1edc6` copies roots and context slots into the render record, and
+  `0x1ef6a` walks bucket, rule, and fixed-list roots.
+
+State classification:
+
+- Canonical page/image state: current root `0x78297a`, root state byte
+  `+0x04`, bucket/list roots `+0x1c/+0x24/+0x28`, context slots
+  `+0x2c..+0x68`, published pool head `0x780ea6`, scheduler cursors
+  `0x780eaa/0x780eae`, and publication flag `0x782996`.
+- Canonical page-control state: copy count `0x782da4`, paper source
+  `0x782da6`, orientation `0x782da3`, pending header bytes
+  `0x782997/0x782998`, status byte `0x780e99`, and paper-source mirror fields
+  `0x780e8f/0x780e26`.
+- Derived/cache state: geometry refreshed by page-size, page-length, and
+  orientation handlers; render-record roots from `0x1edc6`; and band caches
+  populated by render entry.
+- Parser scratch: six-byte command records and host bytes consumed by
+  `0xcc52`, `0xf0f0`, `0xfc74`, `0xf9e8`, `0x10220`, `0xef62`, and `0xeef0`
+  before `0xff1e` or later publication consumes their effects.
+- Firmware bookkeeping: allocator cursors, root retry state, overlay replay
+  state, pending byte `0x782a6d`, wait helper `0x9ac2`, and macro replay
+  helpers `0xe0a4` / `0xe4f4`.
+- Hardware/external state: physical engine timing begins after ROM-visible
+  render buffers are produced; it is not a publication decision input for the
+  documented byte streams.
+- Unknown: new work belongs here only if it changes current-root state,
+  header words, macro overlay predicates, pool/scheduler fields, bridge roots,
+  or render helper inputs.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- Fixture anchors include `mixed printable/reset page-record finalization
+  publishes bridged record`, `addressed printable FF publishes rendered page
+  record`, `addressed page geometry publications render page records`,
+  `addressed paper-source and copies publications render page records`,
+  `host-fetched ESC E clears missing page root without publication`, and
+  `published page records feed 0x1ed84 and 0x1ef6a render entry`.
+
 ## Field Groups
 
 Canonical page-record fields:

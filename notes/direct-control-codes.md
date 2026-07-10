@@ -1112,13 +1112,14 @@ HT/BS instruction boundaries:
 `ESC &s#C` has no immediate page object, but it changes the acceptance boundary
 for later printable text. Disassembly `0xedb0..0xedf6` rewinds the parsed
 record, normalizes the absolute selector, and writes only selectors `0` and
-`1`. Fixture `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1
-only` pins the command byte. Fixture `0xd28a and 0xd6bc prechecks share
-continue reject and wrap decisions` then pins the downstream effect: horizontal
-overflow with `0x783190` clear returns precheck result `1`, while the same
-overflow with `0x783190` set calls `0xf054`, retries from recovered x `0`, and
-returns `0` when the retried placement fits. Vertical extent failure still
-returns `1`.
+`1` into wrap byte `0x783190`. The downstream consumers are printable precheck
+helpers `0xd28a` and `0xd6bc`: horizontal overflow with `0x783190` clear
+returns precheck result `1`, while the same overflow with `0x783190` set calls
+`0xf054`, retries from recovered x `0`, and returns `0` when the retried
+placement fits. Vertical extent failure still returns `1`, so the wrap byte
+changes only the horizontal overflow acceptance path. Supporting fixture
+anchors: `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
+and `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
 
 The plain and HMI parser streams share the baseline consumer path. A printable
 byte reaches `0xd04a`, queues a compact text object through `0x1387c`, and
@@ -1233,16 +1234,17 @@ Named byte-stream outcome:
   printable byte consumes the shifted cursor through `0xd04a` and queues at
   compact coordinate `0x1001`.
 
-`ESC &f0S ESC &a2C ESC &f1S!` proves cursor-stack state reaches visible
-output. Fixture `cursor stack parser trace feeds page-record queue` routes
-`0xf75e`, `0xf39e`, `0xf75e`, and `0xd04a`; the pop restores the original
-cursor before the glyph queues at compact coord `0x0001`.
-
-The direct helper fixtures bound the cursor-stack internals before visible
-output: `0xf75e ESC &f0S pushes cursor with vertical offset`,
+`ESC &f0S ESC &a2C ESC &f1S!` is the visible cursor-stack route. Handler
+`0xf75e` first pushes the current cursor, `0xf39e` changes the cursor, the
+second `0xf75e` pops and restores the original cursor, and the following
+printable byte reaches `0xd04a` and queues at compact coord `0x0001`. The
+direct helper evidence bounds the cursor-stack internals before visible output:
+push stores the entry with vertical offset, pop clears pending flags, and
+overflow/empty/full cases clamp or reject using the stack pointer bounds.
+Supporting fixture anchors: `cursor stack parser trace feeds page-record
+queue`, `0xf75e ESC &f0S pushes cursor with vertical offset`,
 `0xf75e ESC &f1S pops cursor and clears pending flags`, and
-`0xf75e cursor stack bounds and pop clamps to current extents` pin the stored
-entry format, pointer bounds, vertical-offset subtraction, and clamp rules.
+`0xf75e cursor stack bounds and pop clamps to current extents`.
 
 ### Cursor Stack State Checkpoint
 
@@ -1580,17 +1582,17 @@ State classification for this cluster:
 - parser scratch: normal six-byte records for `ESC &k#G`, `ESC &a#L`,
   `ESC &a#R`, and `ESC &d#D`; no delayed-payload state participates;
 - firmware bookkeeping: re-armed span bounds after `0x126e2`, publication
-  counters in the fixture harness, and page-root allocation state from
-  `0x10084`;
+  state observed after `0xff1e`, and page-root allocation state from `0x10084`;
 - unknown: no ROM-local middle edge remains for these producers. Broader work
   should add only cursor/font/span variants that change the object bytes,
   bucket choice, bridge state, or row-construction inputs.
 
-`ESC &d3D! ESC &d@` proves underline/text-attribute state crosses into the
-same span machinery. Fixture `ESC &d underline selector materializes span
-output` writes `0x783185 = 1`, lets the printable update the flagged text
-span through alternate offset fields, and flushes a selector-`0x4000` span
-object beside the compact glyph.
+`ESC &d3D! ESC &d@` is the underline/text-attribute route into the same span
+machinery. Handler `0x12622` writes selector byte `0x783185 = 1`; the
+printable byte updates the flagged text span through alternate offset fields;
+the terminating `ESC &d@` flushes a selector-`0x4000` segment-list object
+beside the compact glyph. Supporting fixture anchor:
+`ESC &d underline selector materializes span output`.
 
 ### Underline And Span Outcome Matrix
 

@@ -2147,24 +2147,25 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `ESC &s#C` has no immediate page object. It changes the later printable
   acceptance boundary: `0xedb0..0xedf6` writes only selector `0`/`1`
   changes to `0x783190`, while prechecks `0xd28a` and `0xd6bc` read that
-  byte at the horizontal-overflow branches. Fixture
-  `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
-  pins the command write, and fixture `0xd28a and 0xd6bc prechecks share
-  continue reject and wrap decisions` pins disabled-wrap rejection,
-  enabled-wrap recovery through `0xf054`, and unchanged vertical-extent
-  rejection.
+  byte at the horizontal-overflow branches. With the flag clear, horizontal
+  overflow rejects before queueing; with the flag set, the same overflow calls
+  `0xf054`, retries from recovered x `0`, and can continue when the retried
+  placement fits. Vertical extent rejection is unchanged. Supporting fixture
+  anchors: `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1
+  only` and `0xd28a and 0xd6bc prechecks share continue reject and wrap
+  decisions`.
 - `ESC &a1L!`, `ESC &a1M!`, and `ESC &a6l9M!` route margin handlers
   `0xeb58` / `0xec0c` into following `0xd04a` output at compact coords
   `0x0801`, `0x0a02`, and `0x0207`.
-- Fixture `left-margin parser span flush materializes 0x12714 page object`
-  covers the pending-span sibling for parsed `ESC &a6L!`: host fetch drains
+- Pending-span left-margin route for parsed `ESC &a6L!`: host fetch drains
   six ring bytes, parser handlers are `0xeb58` then `0xd04a`, `0xeb58` moves
   `0x782c8a` from packed `10` to packed `108`, its `0xf34a` path materializes
   a selector-`0x4000` segment-list object
   `00 00 00 00 40 00 00 01 32 00 03 00 00 10` through `0x12714`, `0x126e2`
   re-arms span bounds to `low/high x = 108`, and the following printable `!`
   queues compact coord `0x0207`; `0x1ed84`/`0x1ef6a` renders the span rows
-  `3..5` beside the compact glyph at x `114`.
+  `3..5` beside the compact glyph at x `114`. Supporting fixture anchor:
+  `left-margin parser span flush materializes 0x12714 page object`.
 - `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, and
   `ESC &a2c+1R!` route cursor-position handlers `0xf39e`, `0xf416`,
   `0xf560`, and `0xf60a` to compact coords `0x0a02`, `0x0402`,
@@ -2176,15 +2177,15 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `chained cursor position parser trace feeds page-record queue` pin the
   parser handlers, page-record prefixes, bridged context slots, and rendered
   rows for those cursor-position streams.
-- Fixture `vertical-cursor parser span flush materializes 0x12714 page object`
-  covers the pending-span sibling for parsed `ESC &a1R!`: host fetch drains
-  six ring bytes, parser handlers are `0xf560` then `0xd04a`, `0xf560`
-  flushes pending state before moving y to packed `95.1`, `0x12714`
-  publishes the same selector-`0x4000` segment-list object in bucket `0`,
-  `0x126e2` re-arms span bounds to x `10`, and the following printable
-  queues compact coord `0xa001` in bucket `4`; rendering bucket `0` produces
-  span rows `3..5`, and rendering bucket `4` produces the compact glyph rows
-  at x `16`.
+- Pending-span vertical-cursor route for parsed `ESC &a1R!`: host fetch drains
+  six ring bytes, parser handlers are `0xf560` then `0xd04a`; `0xf560`
+  flushes pending state before moving y to packed `95.1`; `0x12714` publishes
+  the same selector-`0x4000` segment-list object in bucket `0`; `0x126e2`
+  re-arms span bounds to x `10`; and the following printable queues compact
+  coord `0xa001` in bucket `4`. Rendering bucket `0` produces span rows
+  `3..5`, and rendering bucket `4` produces the compact glyph rows at x `16`.
+  Supporting fixture anchor:
+  `vertical-cursor parser span flush materializes 0x12714 page object`.
 - `ESC *p30x30Y!` routes dot-position handlers `0xf48c` and `0xf692`
   to following `0xd04a` output at compact coord `0x9402`.
 - `ESC 9` has no pixels by itself. Its ROM-visible effect at
@@ -2216,12 +2217,12 @@ VMI state before object queueing, then cross the same `0x1387c`,
   checkpoint. Handler `0x12622..0x126e2` either publishes pending span state
   through `0x12714` or writes `0x783185` and re-arms span bounds; subsequent
   text source consumers turn that selector into alternate y-offset behavior.
-  Fixture `ESC &d underline selector materializes span output` drives
-  host-fetched `ESC &d3D! ESC &d@` through handlers `0x12622`, `0xd04a`, and
-  `0x12622`: `3D` writes `0x783185 = 1` and re-arms span bounds at x `10`,
-  the printable updates `0xd8fc` high-y to `3` through alternate offset
-  word `+0x1a = 18`, and `&d@` flushes a selector-`0x4000` span object
-  `00 00 00 00 40 00 00 01 3a 00 03 00 00 12` beside the compact glyph.
+  In the `ESC &d3D! ESC &d@` route, `3D` writes `0x783185 = 1` and re-arms
+  span bounds at x `10`, the printable updates `0xd8fc` high-y to `3` through
+  alternate offset word `+0x1a = 18`, and `&d@` flushes a selector-`0x4000`
+  span object `00 00 00 00 40 00 00 01 3a 00 03 00 00 12` beside the compact
+  glyph. Supporting fixture anchor:
+  `ESC &d underline selector materializes span output`.
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
   perforation-skip, and page-length state into following printable
   output; the top-margin case queues at `0x9001` in bucket `6`. Fixture
@@ -2231,12 +2232,13 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `mixed page-length stream refreshes cursor before printable page-record
   queue` pins the `ESC &l66P!` parser path through `0xf9e8` and `0xd04a`,
   including the refreshed cursor y and compact text object.
-- `ESC &f0S ESC &a2C ESC &f1S!` routes `0xf75e`, `0xf39e`, `0xf75e`,
-  and `0xd04a`; the pop restores the original cursor and the glyph
-  queues at compact coord `0x0001`.
-- The grouped host-fetch fixture drains the same streams from the
-  modeled `0xa904` ring source, verifies the parser handlers, preserves
-  the `0x1edc6` bridge contract, and feeds `0x1ed84` / `0x1ef6a`.
+- `ESC &f0S ESC &a2C ESC &f1S!` routes `0xf75e`, `0xf39e`, `0xf75e`, and
+  `0xd04a`; the pop restores the original cursor and the glyph queues at
+  compact coord `0x0001`. Supporting fixture anchor:
+  `cursor stack parser trace feeds page-record queue`.
+- The grouped host-fetch route drains the same streams from the modeled
+  `0xa904` ring source, records the parser handlers, preserves the
+  `0x1edc6` bridge contract, and feeds `0x1ed84` / `0x1ef6a`.
 
 ### Confidence
 

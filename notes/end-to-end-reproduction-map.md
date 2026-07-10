@@ -9203,11 +9203,14 @@ reader follow what the ROM does.
 Priority ROM-local documentation targets:
 
 1. Command-family variants that change page-object shape or render input. Useful
-   remaining examples are rectangle rule selector and clipping paths through `0x10898 ->
-   0x10b80 -> 0x133aa`, render-helper choices under `0x1ef6a`, and new raster streams
-   only when they change accepted-byte counts, row advancement, object bytes, or render
+   remaining examples are render-helper choices under `0x1ef6a`, raster streams only
+   when they change accepted-byte counts, row advancement, object bytes, or render
    inputs beyond the [raster transfer gate outcome
-   matrix](raster-graphics.md#transfer-gate-outcome-matrix). Publication examples for
+   matrix](raster-graphics.md#transfer-gate-outcome-matrix), and rectangle streams only
+   when they change the boundaries named in [Remaining
+   Edges](rectangle-graphics.md#remaining-edges): clipping output, `0x1381c`
+   rollover/allocation state, retry publication fields, rule object bytes, bridge state,
+   render dispatch, continuation mutation, or row construction. Publication examples for
    reset, FF, page-size, orientation, paper-source, and copies are now owned by
    [Representative Parsed-Stream
    Outcomes](publication-commands.md#representative-parsed-stream-outcomes); new

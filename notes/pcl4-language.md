@@ -746,9 +746,12 @@ Field groups for this index:
 - Unknown:
   no ROM-local parser-table unknown remains for the quick-reference command
   clusters listed below. Exact residuals are the secondary segment-57 physical
-  decode at `0x0c0000..0x0c0321`, compact downloaded-glyph helper targets
-  above the valid `0x1fe76` table, broader byte-stream variants that change a
-  named field/object/helper, and hardware/MMIO timing or physical naming.
+  decode at `0x0c0000..0x0c0321`, with suffix and continuation evidence in
+  [Secondary Segment-57 Resource
+  Source](unresolved-boundaries.md#secondary-segment-57-resource-source),
+  compact downloaded-glyph helper targets above the valid `0x1fe76` table,
+  broader byte-stream variants that change a named field/object/helper, and
+  hardware/MMIO timing or physical naming.
 
 - Host byte source and parser admission:
   byte-source multiplexer `0xa904..0xab8a` reduces live host input, LIFO
@@ -933,6 +936,16 @@ Field groups for this index:
   it reads the active data-chain frame kind byte at `0x782d76 + 9`, calls
   `0x9c2c` only when that byte is zero, writes status/service fields
   `0x7821cc`, `0x7822db`, and `0x780e2a`, and creates no page object.
+  The current pixel-affecting transparent-data residual is the secondary
+  segment-57 source boundary: the ROM path is traced through `0x12452`,
+  `0xd04a`, compact segmented page objects, bridge, and
+  `0x1f354 -> 0x1f1f0`, but fallback rows need bytes from
+  `0x0c0000..0x0c0321` after verified suffix `0x0bfe22..0x0bffff`.
+  The exact checked-in stop is
+  [Secondary Segment-57 Resource
+  Source](unresolved-boundaries.md#secondary-segment-57-resource-source),
+  including the suffix length, continuation length, and
+  mirror/code-pair/zero-fill probe consequences.
   Evidence:
   [transparent-print-data.md](transparent-print-data.md#owner-summary) and
   [display-functions.md](display-functions.md).

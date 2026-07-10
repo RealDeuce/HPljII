@@ -260,12 +260,12 @@ Evidence:
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
-- Fixture anchors include `mixed printable/reset page-record finalization
-  publishes bridged record`, `addressed printable FF publishes rendered page
-  record`, `addressed page geometry publications render page records`,
-  `addressed paper-source and copies publications render page records`,
-  `host-fetched ESC E clears missing page root without publication`, and
-  `published page records feed 0x1ed84 and 0x1ef6a render entry`.
+- Supporting evidence names include `mixed printable/reset page-record
+  finalization publishes bridged record`, `addressed printable FF publishes
+  rendered page record`, `addressed page geometry publications render page
+  records`, `addressed paper-source and copies publications render page
+  records`, `host-fetched ESC E clears missing page root without publication`,
+  and `published page records feed 0x1ed84 and 0x1ef6a render entry`.
 
 ## Publication Outcome Matrix
 
@@ -408,7 +408,7 @@ Canonical command state:
 - `0x782da4`: copy count. `0xeef0` writes it for `ESC &l#X`; `0xff1e`
   copies it into published pool-header word `+0x0c`.
 - `0x782da6`: paper-source/environment byte. `0xef62` writes selector `2` as
-  `0x80`, and the addressed fixture also mirrors it to `0x780e8f`.
+  `0x80`; the addressed paper-source route also mirrors it to `0x780e8f`.
 - `0x782997`: pending page-size/page-length header flag. `0xfc74` and
   `0xf9e8` set it after committing a new page code or page length, and
   environment reset `0xcda2` can also set it from default state.
@@ -416,10 +416,10 @@ Canonical command state:
   page-size/page-length pending flag clears it first.
 - `0x782998`: pending paper-source/layout header flag. `0xef62` sets it after
   paper-source selection, and environment reset `0xcda2` can also set it from
-  default state. The addressed paper-source fixture pins it to `1` after
-  selector `2`.
+  default state. The addressed paper-source route stores `1` after selector
+  `2`.
 - `0x780e8f` / `0x780e26`: paper-source output/control bytes. The addressed
-  paper-source fixture pins them to `0x80` and `1` after publication.
+  paper-source route stores `0x80` and `1` after publication.
 - `0x782da3`: orientation byte, written by `0x10220`.
 - Page geometry fields updated by `0xfc74` and `0x10220`, including active
   page size, top offset, and page-change flag.
@@ -732,7 +732,7 @@ Evidence:
   `generated/analysis/ic30_ic13_page_root_finalization.md` state-reference
   scan for `0x782997`, `0x780e99`, `0x782998`, `0x782da6`, `0x782da4`,
   `0x780ea6`, and `0x782996`.
-- Fixture anchors:
+- Supporting evidence names:
   `0xff1e-modeled publication copies status and environment header fields`,
   `host-fetched FF geometry and paper-source publications preserve 0xff1e
   pool header defaults`, `host-fetched reset publication preserves 0xff1e
@@ -1119,11 +1119,10 @@ Consumers and output effect:
   until a later printable, raster, rectangle, VFC, or publication path reads
   the refreshed fields.
 - The direct next-printable path is
-  `0xf9e8 -> 0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`. Fixture
-  `0xf9e8 ESC &l#P stream reaches page-length handler` pins stream
-  `ESC &l66P!`: page extent `0x782dba = 3300`, internal page code `2`,
-  refreshed vertical placement, and following `!` queued at compact coordinate
-  `0x9001`.
+  `0xf9e8 -> 0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`. Stream
+  `ESC &l66P!` reaches page-length handler `0xf9e8`, computes page extent
+  `0x782dba = 3300`, sets internal page code `2`, refreshes vertical
+  placement, and queues the following `!` at compact coordinate `0x9001`.
 - Once that compact object exists, pixels follow the ordinary publication and
   render route: `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
   The page-length command has already done its work by changing the fields

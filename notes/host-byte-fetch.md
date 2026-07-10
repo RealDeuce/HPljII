@@ -685,6 +685,131 @@ For reproduction, do not normalize `0x1a 0x58` globally at the byte source.
 The byte source returns bytes; each consumer family applies its own local
 control-pair behavior.
 
+### D7 Caller Return Contract
+
+This matrix starts after `0xa904` has selected a source and returned a value
+in `D7`. It is the boundary between host-byte admission and parser or payload
+semantics. The same `D7` channel is used for live ring bytes, pushback bytes,
+data-chain replay bytes, and direct hardware bytes; the caller decides whether
+the value is syntax, payload data, a local terminator, or an early no-byte
+exit.
+
+Parser byte wrapper `0xda9a` and parser loop `0x11774`:
+
+- `D7` consumption: `0xda9a` returns non-ESC bytes unchanged, performs local
+  ESC lookahead, and hands the resulting byte to parser loop `0x11774`.
+- `D7 = -1` behavior: the wrapper does not own the wait policy. Parser loop
+  `0x117dc..0x117ee` is the observed consumer that clears no-byte gate
+  `0x780e3b` and waits on `0x780202`.
+- Downstream effect: bytes become parser syntax, then either normal
+  byte/control handling or command-record dispatch.
+- Evidence: [pcl-parser-core.md](pcl-parser-core.md)
+  `Parser Byte Wrapper At 0xda9a` and `Parser Core Outcome Matrix`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`, and
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`.
+
+Shared payload/control reader `0xdace`:
+
+- `D7` consumption: ordinary bytes return unchanged. Exact local pair
+  `0x1a 0x58` calls `0xd99a` and returns normalized byte `0x00`.
+- `D7 = -1` behavior: the negative result propagates to the owning drain or
+  payload handler.
+- Downstream effect: counted delayed payload drains, VFC table loads, and some
+  raster skip paths consume bytes without running ESC parser lookahead.
+- Evidence: [pcl-parser-core.md](pcl-parser-core.md)
+  `Parser Byte Wrapper At 0xda9a`, [raster-graphics.md](raster-graphics.md),
+  [vertical-forms-control.md](vertical-forms-control.md), and
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+
+Display append/text-repeat readers `0x12142`, `0x124bc`, and `0x12582`:
+
+- `D7` consumption: direct loops read through `0xa904`, then apply their own
+  `0x1a 0x58 -> 0x7f` rule. Normal-output readers route printable bytes
+  through `0xd04a` and filtered controls through `0xd0f0`; append mode stores
+  bytes through `0xe002`.
+- `D7 = -1` behavior: the local loop stops. `0x12582` also stops on its local
+  `ESC ... Z` terminator.
+- Downstream effect: normal-output display reads produce immediate
+  text/fixed-space effects; append mode appends stored macro/text bytes.
+- Evidence: [display-functions.md](display-functions.md) and
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+
+Transparent print reader `0x12452`:
+
+- `D7` consumption: counted transparent data reads directly through `0xa904`,
+  maps exact local `0x1a 0x58` to routed byte `0x7f`, and does not use
+  `0xdace` or parser ESC lookahead.
+- `D7 = -1` behavior: the counted read ends early before routing another byte.
+- Downstream effect: accepted bytes route to the same visible text/fixed-space
+  consumers as display text, so payload bytes can affect page records.
+- Evidence: [transparent-print-data.md](transparent-print-data.md)
+  `Command Boundary` and
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+
+Raster data reader `0x138de..0x1391a` for handler `0x105d0`:
+
+- `D7` consumption: image payload bytes are read directly through `0xa904`;
+  exact local `0x1a 0x58` calls `0xd99a` and stores normalized zero.
+- `D7 = -1` behavior: the reader returns `D7 = -1` to the raster owner instead
+  of queueing another image byte.
+- Downstream effect: accepted bytes are copied into delayed raster object
+  storage; later raster object/render paths decide pixel rows and composition.
+- Evidence: [raster-graphics.md](raster-graphics.md) `Render Dispatch`,
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`.
+
+Downloaded-font payload readers `0x168dc`, `0x168fe`, `0x16960`,
+`0x1697a`, `0x169ca`, and `0x169e0`:
+
+- `D7` consumption: linear or split-plane glyph bitmap bytes are copied from
+  the `D7` stream, with exact local `0x1a 0x58` normalized to stored zero.
+- `D7 = -1` behavior: the reader takes its failure/status path; continuation
+  fields can preserve the remaining payload span for later bytes.
+- Downstream effect: accepted bytes become installed glyph bitmap data that
+  later text rendering consumes through the downloaded-font descriptor path.
+- Evidence: [downloaded-fonts.md](downloaded-fonts.md)
+  `Command Dispatch And Descriptor Route`,
+  `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`, and
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`.
+
+Macro execute/call and page-finalization replay:
+
+- `D7` consumption: no separate direct call site exists. Frame bytes produced
+  by `0xe418` or `0xe4f4` become the active data-chain source under
+  `0x782d76`, so `0xa904` returns replay bytes to whichever parser or payload
+  caller is active.
+- `D7 = -1` behavior: frame end is handled inside the `0xa904` data-chain
+  branch through `0xe22c`, then source selection retries.
+- Downstream effect: replayed bytes are source-equivalent to host bytes and
+  can build the same page records, macro records, raster objects, or font data
+  as live input.
+- Evidence: [macro-data-chain.md](macro-data-chain.md),
+  [semantic-state-model.md](semantic-state-model.md)
+  `Host Byte Fetch And Data-Chain Input`, and
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`.
+
+Field classification at this caller boundary:
+
+- Canonical state remains owned by the selected `0xa904` source:
+  pushback stacks, data-chain frame, ring buffer, direct-MMIO selector, and
+  no-byte gate fields listed below.
+- Parser scratch begins only after the caller accepts `D7`: parser records for
+  `0xda9a` / `0x11774`, local countdowns for transparent and display readers,
+  raster payload counters for `0x105d0`, and font payload copy cursors for
+  `0x168dc` / `0x16942`.
+- Derived/cache state is not produced by the `D7` return itself. It is produced
+  by downstream consumers such as parser-record assembly, delayed raster
+  object allocation, macro append storage, and downloaded-glyph descriptor
+  updates.
+- Hardware/external state ends at the direct-MMIO branches inside `0xa904`;
+  none of the caller classes require board timing evidence to define how the
+  returned byte is consumed.
+
+Output effect at this boundary is source equivalence plus caller-local
+interpretation. `0xa904` itself emits no page pixels. Pixels can only appear
+after a caller routes the returned byte into text, raster, rectangle, or glyph
+render paths documented by the family notes cited in the matrix.
+
 ## Detailed Owner Evidence
 
 This cluster is covered as the normalized byte-source boundary, not as a

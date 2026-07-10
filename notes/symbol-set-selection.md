@@ -21,6 +21,7 @@ Primary evidence:
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
 - `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
+- `generated/disasm/ic30_ic13_inline_symbol_helpers_015850.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary)
@@ -344,6 +345,107 @@ contexts and derived maps, and later printable bytes consume those maps and
 contexts. Cartridge or other external resource windows remain bounded by the
 same `0x1a9be`, `0x1569c`, `0x156de`, `0x14398`, and `0x14c64` addresses, but
 their record contents are not present in the dumped built-in ROM image.
+
+## Candidate Symbol Normalization Checkpoint
+
+The candidate filter at `0x156de` does not compare only the requested symbol
+word against one field. It first normalizes the active request and each
+candidate record into a ROM symbol word, then keeps or rejects candidate-list
+entries by exact match, Roman-8 compatibility, or a small hard-coded
+compatibility-pair table.
+
+Symbol predicate and compatibility tables:
+
+- `0x15850` is the requested-symbol predicate called by `0x156de` at
+  `0x15702` and `0x1579c`. It compares `D1` against the 20-word table at
+  `0x15868..0x1588f` and returns `D7 = 1` on a match. The table words are
+  `0x0015`, `0x0025`, `0x0006`, `0x0026`, `0x0007`, `0x0027`,
+  `0x0009`, `0x000b`, `0x004b`, `0x0073`, `0x0013`, `0x0033`,
+  `0x0053`, `0x00d3`, `0x0093`, `0x00b3`, `0x0004`, `0x0024`,
+  `0x0005`, and `0x0055`.
+- If that predicate is true, `0x156de` accepts a candidate whose normalized
+  symbol word is Roman-8 `0x0115` even when it is not an exact match. The
+  branch is the `A5 != 0` / `D7 == 0x0115` test at `0x15738..0x15740` and the
+  repeated pruning pass at `0x157ee..0x157f6`.
+- When the predicate is false or the candidate is not Roman-8, `0x156de`
+  compares the longword `(candidate_word << 16) | requested_word` against
+  table `0x15840..0x1584f`. The four accepted pairs are
+  `0x0001->0x000d`, `0x000d->0x0001`, `0x0002->0x000c`, and
+  `0x000c->0x0002`.
+
+Candidate symbol readers:
+
+- `0x15890` is the bit-30 offset-table/resource reader. It first returns
+  resource record word `+0x22` when nonzero. If that word is zero, it reads
+  encoded byte `+0x3c` and maps it through table `0x1592c`, whose four-byte
+  entries are `encoded_byte, 0x00, symbol_word`.
+- `0x158be` is the bit-30-clear inline/downloaded reader. It returns record
+  word `+0x14` when record byte `+0x17` is zero. Otherwise it tries the same
+  `0x1592c` encoded-byte table. If the byte is not in that table, the helper
+  derives a symbol word from the low nibble and high-nibble family for the
+  documented `0xc0`, `0xd0`, and `0xe0` forms: `(low_nibble << 5) + 0x18`,
+  `(low_nibble << 5) + 0x11`, or `(low_nibble << 5) + 0x15`.
+- These readers are also consumed outside `0x156de`: selected-font snapshots
+  in `0x1440c` store the normalized symbol word in snapshot word `+0x02`,
+  and cache comparison `0x13a48` / active-object paths compare the same
+  normalized word before deciding whether a map rebuild can be reused.
+
+State classification:
+
+- Canonical state:
+  requested words `0x782ef4` / `0x782f04`, active words
+  `0x783144` / `0x783146`, selected candidate pointer `0x7828a8`, active
+  window pointer/count `0x78287c` / `0x7827b8`, and high-bit active marks in
+  the candidate pointer list.
+- Derived/cache state:
+  ROM compatibility table `0x15840..0x1584f`, predicate table
+  `0x15868..0x1588f`, encoded-symbol table `0x1592c`, selected-font snapshot
+  word `+0x02`, remembered active words `0x782f08` / `0x782f0a`, and fallback
+  table words `0x782f0c..0x782f18`.
+- Parser scratch:
+  none inside the normalization helpers. Parser records produce the requested
+  words earlier through `0x1be22`; by this boundary `0x156de` is filtering a
+  candidate window.
+- Firmware bookkeeping:
+  active candidate-list marks. Rejected entries are removed by clearing bit
+  `7` in the candidate pointer entry and decrementing the retained active
+  count before writing `0x7827b8`.
+- Hardware/external state:
+  none. Missing cartridge/resource contents can change candidate records, but
+  not the helper semantics or table addresses.
+
+Writers, readers, and output effect:
+
+- Writers:
+  `0x156de` writes active selected words `0x783144` / `0x783146`, prunes the
+  active candidate list, and writes retained pointer/count
+  `0x78287c` / `0x7827b8`.
+- Readers:
+  `0x156de` consumes candidate records through `0x15890` or `0x158be`;
+  `0x1440c` and cache checks consume the same normalized candidate symbol
+  words; later `0x14c64` / `0x14f16` rebuild or patch maps from the selected
+  active word.
+- Output effect:
+  no page object is queued here. The visible effect is that later printable
+  bytes use a map and context selected after these exact-match,
+  compatibility, Roman-8, remembered-word, or fallback-word decisions.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`:
+  `0x156de`, calls to `0x15850`, `0x15890`, and `0x158be`, candidate pruning,
+  active-word writes, remembered-word retry, and fallback-table retry.
+- `generated/disasm/ic30_ic13_inline_symbol_helpers_015850.lst`:
+  `0x15850`, `0x15890`, and `0x158be`.
+- `generated/analysis/ic30_ic13_active_symbol_set_flow.md`:
+  address-level xrefs for the symbol normalizer/readers and the
+  requested/remembered/fallback path.
+
+No ROM-local middle edge remains inside this helper cluster for the covered
+built-in and downloaded/inline forms. New symbol-selection work belongs here
+only if it changes candidate record fields consumed by `0x15890` / `0x158be`,
+the requested-word path that enters `0x15850`, or the map/context consumers
+after `0x156de`.
 
 ## Field Groups
 

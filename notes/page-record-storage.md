@@ -23,6 +23,8 @@ and `notes/semantic-state-model.md` under `Bitmap Render Dispatch Contract`.
 - `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
+- `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
 - `notes/page-raster-imaging.md`
 - `notes/semantic-state-model.md`
 
@@ -55,6 +57,8 @@ Primary fixtures:
 - `0x1edc6 page-record bridge normalizes rule and fixed lists`
 - `0x1edc6 bridge records render-record destination offsets`
 - `0x1ed84 active page-record copy seeds render-record header words`
+- `live primary current-font RAM install feeds SI page-record rows`
+- `live secondary current-font RAM install feeds SO page-record rows`
 
 ## Owner Summary
 
@@ -85,7 +89,8 @@ Field groups:
 
 - Canonical page/image state: current root pointer `0x78297a`, root state byte
   `+4`, bucket root `+0x1c`, stream chunk link root `+0x20`, rule list
-  `+0x24`, fixed list `+0x28`, and 16 context slots `+0x2c..+0x68`.
+  `+0x24`, fixed list `+0x28`, and 16 selected context/resource longword
+  slots `+0x2c..+0x68`.
 - Canonical object state: bucket object links and class byte `+4`, object
   count/capacity `+6`, compact payload at `+8`, segment/raster payload at
   `+0x0a`, rule/fixed object selector bytes, ordered keys, dimensions, and
@@ -126,8 +131,9 @@ Output effect:
   text-span segment lists, and encoded raster bucket chains.
 - Root `+0x24` becomes render `+0x1c` for rectangle/rule lists.
 - Root `+0x28` becomes render `+0x20` for landscape fixed-list spans.
-- Root `+0x2c..+0x68` becomes render `+0x24..+0x60`, supplying font/resource
-  context to compact and segmented glyph helpers.
+- Root `+0x2c..+0x68` becomes render `+0x24..+0x60`, preserving selected
+  context/resource longwords that compact and segmented glyph helpers load
+  before resolving glyph bytes.
 
 Evidence:
 
@@ -143,6 +149,12 @@ Evidence:
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/analysis/ic30_ic13_page_record_bridge.md`.
+- Context-slot producers and render-time glyph consumers are backed by
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  [font-context-metrics.md](font-context-metrics.md#active-candidate-and-map-cache-checkpoint),
+  and
+  [page-raster-imaging.md](page-raster-imaging.md#compact-glyph-row-copy-semantic-checkpoint).
 - The fixtures listed above exercise allocation, rollover, object reuse,
   publication, bridge copying, and render-entry handoff for text, rule, raster,
   fixed-list, and mixed page-record shapes.
@@ -170,8 +182,9 @@ Decision route:
 - Ordered-list producers: rectangle/rule paths use
   `0x10898 -> 0x13386 -> 0x133aa` under root `+0x24`; fixed-width and
   landscape spans use `0x12714 -> 0x136d2` under root `+0x28`.
-- Context preservation: root `+0x2c..+0x68` carries the selected font/resource
-  context used later by compact and segmented glyph render helpers.
+- Context preservation: root `+0x2c..+0x68` carries the selected
+  context/resource longwords used later by compact and segmented glyph render
+  helpers.
 - Publication: `0xff1e` accepts only active root byte `+0x04 == 1`, writes
   published state `2`, links the source through protected pool head
   `0x780ea6`, sets publication flag `0x782996`, and clears `0x78297a`.
@@ -186,7 +199,8 @@ Decision route:
 State classification:
 
 - Canonical page/image state: `0x78297a`, root byte `+0x04`, roots
-  `+0x1c/+0x20/+0x24/+0x28`, and context slots `+0x2c..+0x68`.
+  `+0x1c/+0x20/+0x24/+0x28`, and selected context/resource longword slots
+  `+0x2c..+0x68`.
 - Canonical object state: bucket links/class bytes/capacities, compact
   payloads, segment-list payloads, encoded raster payloads, and ordered
   rule/fixed records.
@@ -225,6 +239,100 @@ Evidence and unresolved boundary:
   outside this page-record checkpoint unless it changes one of the
   ROM-visible fields listed above.
 
+## Context Slot Preservation Checkpoint
+
+This checkpoint composes the shared state block that binds printable compact
+objects to the font or downloaded-glyph resource selected when the object was
+queued. The slots are page/image state because the object byte stores a slot
+selector, while the slot array stores the selected context/resource longword
+that `0x1f354` later uses to locate glyph bitmap bytes.
+
+Writers:
+
+- First-root initialization `0x101b2..0x10212` reads selector byte
+  `0x782f06`, computes `0x782ee6 + 0x10 * selector`, clears all 16 root slots
+  and live flags `0x78297f+n`, then copies the selected context/resource
+  longword from the chosen current-font RAM record into root `+0x2c`.
+- `0xc428` computes the same current-font RAM record address and, when a
+  current root exists, passes the selected context/resource longword `(A5)` to
+  `0xc4fc`.
+- `0xc4fc` scans root slots `+0x2c + 4*n` by low-24-bit context match and
+  live flag `0x78297f+n`, selects an existing or inactive slot, writes the
+  selected context/resource longword into that root slot at
+  `0xc562..0xc574`, and returns the slot number for `0x78297e`.
+- Printable queue paths `0xd3b2` and `0xd824` copy page-root slot
+  `0x78297e` into printable source/object state, mark live flag
+  `0x78297f + slot`, and then queue compact text through `0x12f2e`.
+- Publication `0xff1e` preserves the root slot array inside the published
+  record; bridge `0x1edc6` copies source slots `+0x2c..+0x68` to render
+  slots `+0x24..+0x60` at `0x1ee60..0x1ee94`.
+
+Readers and consumers:
+
+- Helper `0x196c4..0x19730` scans an already-built root by low-24-bit context
+  match plus live flag, and can force a publish/default-refresh sequence
+  through `0x1ba6c` when it finds a live matching slot.
+- Compact render dispatch `0x1effe..0x1f022` uses the compact object selector
+  byte to choose one render-record slot, loads that longword into active cache
+  `0x783a2c`, and dispatches compact mode helpers through table `0x1f024`.
+- Resolver `0x1f354..0x1f3d2` consumes `0x783a2c` and the mapped glyph byte:
+  bit 30 set selects the offset-table resource form, while bit 30 clear
+  selects the fixed-record form at `context + 0x40 + 8 * glyph`.
+
+Output effect: the context slot does not draw pixels by itself. It binds a
+queued compact object's slot selector to the selected context/resource
+longword used by render-time glyph resolution. Two compact objects with the
+same payload bytes can therefore render different glyph bytes if their slot
+selectors resolve to different render-record context longwords.
+
+Field classification:
+
+- Canonical page/render context state: root slots `+0x2c..+0x68`, live flags
+  `0x78297f+n`, selected root slot `0x78297e`, selected context/resource
+  longwords from current-font RAM records, printable object slot selectors,
+  and render slots `+0x24..+0x60`.
+- Derived/cache state: active compact render context `0x783a2c`, because it
+  is loaded from one copied render slot before `0x1f354` consumes it.
+- Parser scratch: none in this checkpoint. Parser and font-selection command
+  state has already updated current-font RAM records before page objects are
+  queued.
+- Firmware bookkeeping: `0xc4fc` scan temporaries, interrupt lock helpers
+  `0x15a6` / `0x15ac`, publication flag `0x782996`, and protected pool head
+  `0x780ea6`.
+- Unknown: no ROM-local unknown remains for the documented slot-copy path
+  from current-font RAM record to page root, publication, render record, and
+  `0x1f354`. The external meaning of a resource pointer's physical backing
+  remains outside this checkpoint until the ROM copies it into a documented
+  field.
+
+Evidence and unresolved boundaries:
+
+- Writer evidence:
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`
+  `0x101b2..0x10212`,
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
+  `0xc428..0xc57e`, and
+  [font-context-metrics.md](font-context-metrics.md#printable-source-capture).
+- Bridge evidence:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+  `0x1ee60..0x1ee94`, fixture
+  `0x1edc6 page-record bridge copies compact bucket and context slots`, and
+  fixture `0x1ed84 active page-record copy seeds render-record header words`.
+- Consumer evidence:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+  `0x1effe..0x1f022` and `0x1f354..0x1f3d2`, plus
+  [page-raster-imaging.md](page-raster-imaging.md#compact-glyph-row-copy-semantic-checkpoint).
+- End-to-end fixture evidence: `live primary current-font RAM install feeds
+  SI page-record rows` carries `0xc008004c` through context slot `0`;
+  `live secondary current-font RAM install feeds SO page-record rows` carries
+  `0xc00ae122` through context slot `1`.
+- Unresolved middle edge: none for the slot preservation path bounded by
+  `0xc428..0xc57e`, `0x1ee60..0x1ee94`, and `0x1effe..0x1f3d2`.
+  Remaining work belongs to the producing font-selection command families when
+  they change selected context/resource longwords before `0xc428`, or to
+  resource-window backing data when `0x1f354` follows a selected pointer
+  outside the resident ROM/RAM model.
+
 ## Field Groups
 
 Canonical page root:
@@ -234,7 +342,8 @@ Canonical page root:
 - Root `+0x20`: head/link slot for 0x100-byte stream chunks.
 - Root `+0x24`: rectangle/rule list head.
 - Root `+0x28`: fixed-rule list head.
-- Root `+0x2c..+0x68`: 16 current-font context slots.
+- Root `+0x2c..+0x68`: 16 selected context/resource longword slots used by
+  compact object slot selectors.
 - Root byte `+4`: page-root state, initialized to `1` and published as state
   `2` by `0xff1e`.
 

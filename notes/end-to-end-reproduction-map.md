@@ -5750,6 +5750,23 @@ Address-level cluster map:
   `0x1ef6a -> 0x1effe` renders the compact object. Evidence is
   [publication-commands.md](publication-commands.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+  Publication-cluster state classification: canonical state is the current
+  page root `0x78297a`, page-root bucket/list pointers `+0x1c/+0x24/+0x28`,
+  context slots `+0x2c..`, published source pointer `0x780ea6`, active source
+  pointer `0x780eae`, copy count `0x782da4`, paper source byte `0x782da6`,
+  page code `0x782da2`, and orientation byte `0x782da3`. Derived/cache state
+  is the geometry rebuilt by `0xfc74` / `0x10220` / `0xf9e8`, bucket keys and
+  compact coordinates already written by producers, render-record roots
+  `+0x18/+0x1c/+0x20`, and render-band fields computed after `0x1ed84`.
+  Parser scratch is the six-byte command record that brought the stream to
+  `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, `0xeef0`, or `0xcc52`, plus any
+  pending span state flushed through `0xf34a` before publication. Firmware
+  bookkeeping is publication flag `0x782996`, pending geometry/source flags
+  `0x782997` / `0x782998`, pool state byte `+4`, pool-header copy word
+  `+0x0c`, and scheduler progress words. Hardware/external state is limited
+  to formatter/DC timing after the selected published record is available; it
+  does not change the ROM-derived bucket/list/context roots copied by
+  `0x1edc6`.
   Hardware timing can change when active-band work is scheduled, but
   not the documented page-object-to-row construction for an already selected
   published record.

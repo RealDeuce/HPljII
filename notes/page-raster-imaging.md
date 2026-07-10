@@ -187,6 +187,75 @@ specific object fields, selected-font state, publication fields, helper
 dispatch, or row-construction inputs, not from broad claims about live printer
 timing.
 
+## Page Image Assembly Checkpoint
+
+This checkpoint composes the page-image lifetime used by the renderer. The ROM
+does not build independent parser-time strips for supported streams. Parser
+and command handlers build one logical page/control object graph, publication
+freezes that graph, and the active scheduler later renders capacity-approved
+bands from the published record.
+
+Writers and readers:
+
+- `0x10084` creates or returns current page root `0x78297a`.
+- Object producers write page content under that root: compact/raster bucket
+  objects at root `+0x1c`, rule objects at root `+0x24`, fixed-list objects at
+  root `+0x28`, and context slots at root `+0x2c..+0x68`.
+- `0xff1e` publishes active roots into the page/control pool, updates
+  publication state, and clears current root `0x78297a`.
+- `0x1ed84 -> 0x1edc6` copies published source roots into render roots
+  `+0x18`, `+0x1c`, and `+0x20`, plus render context slots `+0x24..+0x60`.
+- `0x1eba4` presents render work word `+0x10` as a band selector only after
+  scheduler/capacity predicates allow a call to `0x1ef6a`.
+- `0x1ef86` derives band-local caches `0x783a20`, `0x783a22`, `0x783a28`, and
+  `0x783a1c`; these are render destinations for the current band, not
+  canonical page-object storage.
+
+State classification:
+
+- Canonical page/image state:
+  current root `0x78297a`, root object heads `+0x1c/+0x24/+0x28`, context
+  slots `+0x2c..+0x68`, published page/control records, and render roots
+  copied by `0x1edc6`.
+- Derived/cache state:
+  active render pointer `0x783a18`, render work band word `+0x10`,
+  `0x783a20/0x783a22/0x783a28`, stride `0x783a1c`, phase byte `0xa001`, and
+  helper-specific continuation state.
+- Parser scratch:
+  none at this checkpoint. Parser records and delayed payload state have
+  either become page objects or have been consumed before publication.
+- Firmware bookkeeping:
+  stream allocator cursors, publication flag `0x782996`, scheduler cursors,
+  work-record alternation, throttle/capacity fields, and bridge-normalized
+  rule/fixed continuation fields.
+- Hardware/external state:
+  physical formatter/DC consumption after ROM row-buffer writes. It is outside
+  the ROM-local page-image assembly model unless it changes a named
+  ROM-visible field.
+
+Output effect:
+
+- A supported byte stream first changes parser/command state, then queued page
+  objects. It does not directly create final pixels at command parse time.
+- Page publication and render bridge preserve the queued object graph for
+  later band rendering.
+- Pixel rows come from the sequence of scheduler-approved `0x1ef6a` calls.
+  Within each call, object dispatch and row helpers interpret the copied render
+  roots in ROM order.
+
+Evidence:
+
+- Page-root lifetime evidence is
+  [page-record-storage.md](page-record-storage.md#page-object-lifetime-and-band-boundary).
+- Scheduler evidence is
+  [active-render-scheduler.md](active-render-scheduler.md#supported-stream-rendering-rule).
+- Render dispatch evidence is the `Render Entry Owner Summary` and
+  `Pixel Generation Owner Summary` below, plus disassembly
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+
 ## Render Entry Owner Summary
 
 The render entry path is the checked-in join between page/image object

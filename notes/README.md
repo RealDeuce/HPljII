@@ -61,9 +61,11 @@ standalone deliverables.
   bytes or state fields, render routes, and owner notes.
 - Page/image assembly is owned by
   [page-record-storage.md](page-record-storage.md#owner-summary): current root
-  `0x78297a`, compact/raster buckets at root `+0x1c`, rules at `+0x24`,
-  fixed-list objects at `+0x28`, context slots at `+0x2c..+0x68`, and
-  publication through `0xff1e`.
+  `0x78297a`, compact/raster buckets at root `+0x1c`, rules at `+0x24`, fixed-list
+  objects at `+0x28`, context slots at `+0x2c..+0x68`, and publication through `0xff1e`.
+  The renderer-facing lifetime summary is [Page Image Assembly
+  Checkpoint](page-raster-imaging.md#page-image-assembly-checkpoint): parser-time page
+  objects are canonical state, while `0x1ef86` band caches are derived render state.
 - Rendering is owned by
   [active-render-scheduler.md](active-render-scheduler.md#owner-summary) and
   [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary):

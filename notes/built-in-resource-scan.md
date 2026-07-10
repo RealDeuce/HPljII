@@ -159,6 +159,283 @@ selects the final slot at `0x7828a8`. The selected context longword
 then feeds the established font/render path through `0xc428`,
 `0x1393a`, `0xd824`, `0x12f2e`, and compact glyph renderers.
 
+## Resource Scan Outcome Matrix
+
+This matrix records the ROM outcomes that matter to a byte-stream
+renderer. The resource scanner itself is not a PCL parser, but the
+candidate windows it builds are later consumed by parsed font-selection
+commands and printable bytes.
+
+Built-in scan seed:
+
+- ROM path:
+  `0x1a2e4`.
+- State category:
+  canonical candidate state and firmware bookkeeping.
+- Writers:
+  clears `0x78278e` and `0x782790..0x78279e`; seeds
+  `0x7827a0..0x7827b4` to `0x782324`; writes bounds
+  `0x78288c = 0x080000`, `0x782890 = 0x0ffffe`, and stride
+  `0x782888 = 0x40000`.
+- Readers / consumers:
+  `0x1a616` consumes the bounds and cursor state.
+- Output effect:
+  no pixels yet; the outcome chooses which resource records can become
+  future glyph sources.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` at
+  `0x1a2e4..0x1a39a`; fixture
+  `actual IC32/IC15 built-in records feed 0x1a9be partitions`.
+
+Empty built-in list:
+
+- ROM path:
+  `0x1a3a0..0x1a3b6`.
+- State category:
+  firmware bookkeeping.
+- Writers:
+  if `0x78278e == 0`, calls `0x1284` with arguments `0x39` and
+  `0xe7`.
+- Readers / consumers:
+  startup/default-font setup observes the reported failure path before
+  continuing through `0x1a3b8`.
+- Output effect:
+  indirect pixel effect only; no selectable built-in font candidates
+  exist.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` at
+  `0x1a3a0..0x1a3b8`; startup behavior summarized in
+  [firmware-startup.md](firmware-startup.md#startup-outcome-matrix).
+
+`HEAD` classifier result:
+
+- ROM path:
+  `0x1a616 -> 0x1a6a4` when `0x1b9c0` returns `1`.
+- State category:
+  canonical resource data and firmware bookkeeping.
+- Writers:
+  `0x1a6a4` walks the chain under cursor `0x782884`; validated type
+  `0x14/0x15` records pass through `0x1a3f8` and then to
+  `0x1a9be(1)`.
+- Readers / consumers:
+  `0x1a9be` consumes the accepted record pointer and caller class.
+- Output effect:
+  accepted records become candidate slots that later select glyph
+  payloads.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` at
+  `0x1a632..0x1a646`; fixture
+  `0x41a HEAD scanner walks verified IC32/IC15 resource chain`.
+
+Container classifier result:
+
+- ROM path:
+  `0x1a616 -> 0x1a856` when `0x1b9c0` returns `0`.
+- State category:
+  firmware bookkeeping.
+- Writers:
+  `0x1a856` skips recognized `FONT`, `font`, `DUMY`, `TABL`, and
+  `tabl` containers or hands a boundary to `0x1a766`.
+- Readers / consumers:
+  the next `0x1a616` loop consumes the updated `0x782884` cursor.
+- Output effect:
+  no pixel effect unless a later accepted font record is reached.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` at
+  `0x1a64e..0x1a65e`; classifier behavior listed under
+  `Firmware bookkeeping`.
+
+Unknown classifier result:
+
+- ROM path:
+  `0x1a616` when `0x1b9c0` returns `-1`.
+- State category:
+  unknown and firmware bookkeeping.
+- Writers:
+  bypasses the `HEAD` and container helpers and advances toward the next
+  scan segment.
+- Readers / consumers:
+  the next segment probe consumes `0x782884` and scan bounds.
+- Output effect:
+  pixel effect depends on whether later bytes expose additional font
+  records.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` at
+  `0x1a632..0x1a660`; continuation boundary below.
+
+Accepted built-in candidate:
+
+- ROM path:
+  `0x1a9be(1)`.
+- State category:
+  canonical candidate state and derived/cache state.
+- Writers:
+  `0x1bc38` inserts the pointer; `0x1a9be` copies bits from record
+  bytes `+0x0c/+0x0d`, increments `0x78278e`, updates class/range
+  counters, and advances window cursors.
+- Readers / consumers:
+  `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, and `0x14398` consume
+  the resulting windows.
+- Output effect:
+  determines which built-in record can supply metrics, glyph table
+  entries, and bitmap rows.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst` at
+  `0x1a9be..0x1ab82`; fixtures
+  `0x1a9be scanned font candidate list partitioning` and
+  `actual IC32/IC15 built-in records feed 0x1a9be partitions`.
+
+Verified built-in partition:
+
+- ROM path:
+  `0x1a9be` with verified `IC32,IC15` records.
+- State category:
+  canonical candidate state and derived/cache state.
+- Writers:
+  produces `0x78278e = 24`, class-one low count `0x782792 = 12`,
+  class-zero low count `0x78279a = 12`, and cursor windows ending at
+  `0x782354` and `0x782384`.
+- Readers / consumers:
+  activator `0x1569c` chooses class-one or class-zero active windows.
+- Output effect:
+  pixel effect begins only after a parsed command selects a context and
+  printable bytes request glyphs.
+- Evidence:
+  resource model above; generated reports `ic32_ic15_font_records.md`
+  and `ic32_ic15_builtin_glyph_payloads.md`.
+
+Class activation:
+
+- ROM path:
+  `0x1569c`.
+- State category:
+  derived/cache state.
+- Writers:
+  if `0x782da3 == 0`, writes active pointer/count from `0x7827ac` and
+  `0x782798`; otherwise from `0x7827a0` and `0x782790`; sets high active
+  bits in each selected entry.
+- Readers / consumers:
+  `0x156de`, `0x1519a`, `0x153c6`, and `0x14398` consume
+  `0x78287c` and `0x7827b8`.
+- Output effect:
+  chooses primary or secondary candidate class before symbol/metric
+  filtering.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst` at
+  `0x1569c..0x156dc`; fixture
+  `0x1569c activates concrete built-in candidate windows`.
+
+Symbol filtering:
+
+- ROM path:
+  `0x156de`.
+- State category:
+  parser scratch and derived/cache state.
+- Writers:
+  reads parsed symbol words from `0x782ef4` or `0x782f04`, remembered
+  words from `0x782f08/0x782f0a`, and fallback words under `0x782f0c`;
+  clears inactive candidate marks and rewrites `0x78287c` /
+  `0x7827b8`.
+- Readers / consumers:
+  height, spacing, pitch, and chooser filters consume the reduced
+  window.
+- Output effect:
+  selects which glyph map can resolve printable bytes.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst` at
+  `0x156de..0x1583e`; symbol-set fixtures named in `Parser scratch`.
+
+Height filtering:
+
+- ROM path:
+  `0x1519a`.
+- State category:
+  parser scratch and derived/cache state.
+- Writers:
+  reads requested heights from `0x782ef2` or `0x782f02`; compares
+  built-in fields `+0x28/+0x2a` through `0x13bca`; rewrites
+  `0x78287c` / `0x7827b8`.
+- Readers / consumers:
+  `0x153c6` and `0x14398` consume the surviving candidates.
+- Output effect:
+  narrows the candidate used to compute glyph metrics and source object
+  state.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst` at
+  `0x1519a..0x1533c`; fixture
+  `0x1519a filters concrete active candidates by height`.
+
+Spacing and pitch filtering:
+
+- ROM path:
+  `0x153c6`.
+- State category:
+  parser scratch and derived/cache state.
+- Writers:
+  reads spacing from `0x782eef` or `0x782eff`, pitch from `0x782ef0` or
+  `0x782f00`, and candidate fields `+0x21/+0x24`; clears inactive marks
+  and updates active pointer/count.
+- Readers / consumers:
+  chooser `0x14398` consumes the reduced active list.
+- Output effect:
+  narrows proportional/fixed and pitch-compatible records before final
+  selection.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst` at
+  `0x153c6` onward; fixture
+  `0x153c6 filters concrete active candidates by spacing and pitch`.
+
+Final candidate choice:
+
+- ROM path:
+  `0x14398`.
+- State category:
+  canonical selected state and derived/cache state.
+- Writers:
+  chooses selected slot `0x7828a8` from the active list using comparator
+  fields `+0x2f..+0x31` and active object comparison helpers.
+- Readers / consumers:
+  `0x144d2`, `0x14c64`, `0xc428`, and printable-byte path `0x1393a`
+  consume the chosen context.
+- Output effect:
+  establishes the resource context from which later glyph rows are read.
+- Evidence:
+  `generated/disasm/ic30_ic13_active_object_scan_014398.lst`; fixture
+  `0x14398 chooses concrete active built-in candidate`.
+
+Glyph/render handoff:
+
+- ROM path:
+  `0x144d2 -> 0x14c64 -> 0xc428 -> 0x1393a`.
+- State category:
+  canonical page/text state and derived/cache state.
+- Writers:
+  installs selected context longwords and maps printable bytes into
+  compact source objects.
+- Readers / consumers:
+  `0x12f2e`, compact queueing, and compact glyph renderers consume the
+  object and resource glyph payload.
+- Output effect:
+  visible text rows come from the selected resource bitmap rows rendered
+  into output buffers.
+- Evidence:
+  [resource-rom.md](resource-rom.md#reproduction-contract),
+  [font-sample-page.md](font-sample-page.md#owner-summary), and
+  generated glyph payload reports.
+
+Unresolved middle edges:
+
+- `0x1a616..0x1a9be` is ROM-local and documented for verified
+  `0x080000..0x0bffff` bytes. The exact physical source for
+  `0x0c0000..0x0ffffe` remains outside the dumped resource image.
+- `0x1a616` optional cartridge scans over `0x200000..0x5ffffe` are
+  decoded at the handler level but lack cartridge image data, so their
+  candidate contents remain an external-resource boundary.
+- `0x14398 -> 0x144d2 -> 0x1393a` is the next highest-value middle edge
+  for this path: the selected candidate is known, but the checked-in
+  documentation still needs a tighter field-by-field bridge from selected
+  slot to compact source object fields.
+
 ## Field Groups
 
 Canonical resource records:

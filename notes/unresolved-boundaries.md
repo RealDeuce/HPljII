@@ -30,6 +30,12 @@ Boundary classes:
 - Missing external resource data:
   ROM-visible reads beyond the verified IC32/IC15 resource suffix, currently
   the secondary segment-57 source range `0x0c0000..0x0c0321`.
+- Exact ROM stop:
+  byte-stream families where the ROM reaches a documented terminal limit before
+  the later page-object or render route exists. The current example is the
+  restored `ESC )s#W` payload-count cap: parser/tokenizer state, delayed
+  restore, and payload budget are fully documented, and no downloaded-glyph
+  object or pixel helper is created for the oversized stream.
 - Hardware/MMIO boundary:
   ROM-visible polling, wait-object, status, or output-side behavior where the
   physical device identity or connector timing is not proven.
@@ -74,6 +80,8 @@ Use the classification column before continuing work:
   ordinary parser-to-render route.
 - Missing external resource data: the ROM asks for bytes outside the verified
   local resource image.
+- Exact ROM stop: the ROM consumes the stream into a documented terminal state
+  before a later command-family object or render helper can exist.
 - Hardware/MMIO boundary: the ROM-visible polling, status, or handshake
   behavior is documented, but the physical device, connector, or timing
   identity is not.

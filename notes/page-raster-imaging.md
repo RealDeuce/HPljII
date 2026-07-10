@@ -1430,32 +1430,32 @@ the remainder in `0x783a22`, stores `(word +0x06 - remainder) << 4` in
 `0x783a20`, and stores `long +0x00 + ((remainder << 6) * word +0x04)` in
 both `0x783a28` and render-record long `+0x12`.
 
-The executable `0x1ef6a` coverage first fed one synthetic render record
-through that entry sequence, with compact text and encoded raster bucket
-objects selected from render-record `+0x18`, a selector-7 rule list from
-`+0x1c`, and a fixed-width list from `+0x20`. It verified the firmware
-call order (`0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`) and the per-band
-composition rules.
+The render-entry route consumes render records with bucket objects selected
+from render-record `+0x18`, selector-7 rule lists from `+0x1c`, and
+fixed-width lists from `+0x20`. The firmware call order is `0x1ef86`,
+`0x1efc2`, `0x1f446`, then `0x1f756`; that order is the per-band composition
+rule for overlapping object classes.
 
-That synthetic boundary is no longer the only heterogeneous-page evidence.
-Fixture `addressed text/rule/raster field groups reach publication and
-render entry` now stores compact text, selector-7 rule, and mode-0 raster
-objects through addressed `0x1387c` / `0x1381c` page-record storage,
-publishes the page record, and renders it through `0x1ed84` / `0x1ef6a`.
-Fixture `addressed text/rule/multi-row raster publication preserves
-bucket chain` adds the two-raster-row sibling. A `0x1ef6a` page-band
-walker separately merges compact text, mode-0 raster, and a crossing
-patterned rule across bands `0` and `5`, carrying the mutated rule node
-into the second band. The remaining edge is therefore parser/page-record
-producer variants that change object shapes, bridge fields, or ROM-derived row
-construction. It is not parser-produced heterogeneous page objects, a
-real-device row comparison, or the modeled per-band merge itself.
+Heterogeneous page evidence is now parser/page-record-backed. The addressed
+compact/rule/raster route stores compact text, selector-7 rule, and mode-0
+raster objects through `0x1387c` / `0x1381c` page-record storage, publishes the
+page record, bridges it through `0x1ed84` / `0x1edc6`, and renders it through
+`0x1ef6a`. The two-raster-row sibling preserves the bucket chain before the
+same bridge. The crossing-rule route merges compact text, mode-0 raster, and a
+patterned rule across bands `0` and `5`, carrying the mutated rule node into
+the second band. Supporting fixture anchors:
+`addressed text/rule/raster field groups reach publication and render entry`,
+`addressed text/rule/multi-row raster publication preserves bucket chain`, and
+`0x1ef6a page-band walk merges text raster and crossing rule`. The remaining
+edge is therefore parser/page-record producer variants that change object
+shapes, bridge fields, or ROM-derived row construction. It is not
+parser-produced heterogeneous page objects, real-device row comparison, or the
+modeled per-band merge itself.
 
-Published-record coverage now also takes the reset, FF, page-size, and
-orientation `0xff1e` records from the host-fetched publication fixtures
-through `0x1ed84` and the same `0x1ef6a` call order, proving those byte
-streams reach the compact bucket renderer without hand-built
-render-record layers.
+Published-record routes for reset, FF, page-size, and orientation also pass
+their `0xff1e` records through `0x1ed84` and the same `0x1ef6a` call order, so
+those byte streams reach the compact bucket renderer through real page/control
+records rather than hand-built render-record layers.
 
 ### Active Render Scheduler Semantic Checkpoint
 
@@ -2176,31 +2176,33 @@ Readers and consumers:
 
 Output effect:
 
-- Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists
-  in call order` checks the shared call order and a synthetic layer merge
-  through bucket, rule, and fixed-list roots.
 - The layer merge uses direct destination stores. Compact glyph, encoded
   raster, segment-list, rule, and fixed-list helpers write generated source
   words into the active band or fallback buffer in the call order above; no
   documented helper performs a destination read-modify-write blend with earlier
   pixels.
-- Fixture `0x1ef6a page-band walk merges text raster and crossing rule` checks
-  a compact text object, mode-0 raster object, and crossing patterned rule
-  compose across two bands while the rule continuation field carries state.
-- Fixture `bridged text, rule, and raster layers compose into one page band`
-  checks parser-shaped bucket, rule, and encoded-raster objects merging to one
-  visible band after `0x1edc6`.
-- Fixture `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` checks a host-fetched downloaded glyph, rule, and raster page stream
-  reaches handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`,
-  `0x1075a`, and `0x11f82`, queues bucket/rule objects, and renders the same
-  composed rows through the dispatch layer.
-- Fixture `0x1f812 segment-list object renders counted mask spans` checks the
-  segment-list class writes counted rows with full-word and trailing-mask
-  behavior.
-- Fixture `0x1f756 fixed-width list renders bridged +0x20 object` checks the
-  fixed-list consumer uses the bridged `+0x20` list and decrements the
-  remaining-row field.
+- Shared call-order evidence uses bucket, rule, and fixed-list roots copied by
+  `0x1edc6`, then consumed by `0x1ef6a` in order. Supporting fixture anchor:
+  `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+  order`.
+- Band-crossing evidence uses compact text, mode-0 raster, and a patterned rule
+  across bands `0` and `5`; the rule continuation field carries state between
+  band calls. Supporting fixture anchor:
+  `0x1ef6a page-band walk merges text raster and crossing rule`.
+- Parser-shaped mixed-object evidence uses bridged bucket, rule, and
+  encoded-raster objects after `0x1edc6`. Supporting fixture anchor:
+  `bridged text, rule, and raster layers compose into one page band`.
+- Parser-driven downloaded-glyph composition routes host-fetched bytes through
+  handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`,
+  and `0x11f82`, queues bucket/rule objects, then renders through the dispatch
+  layer. Supporting fixture anchor:
+  `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`.
+- Segment-list output uses `0x1f812` and writes counted rows with full-word and
+  trailing-mask behavior. Supporting fixture anchor:
+  `0x1f812 segment-list object renders counted mask spans`.
+- Fixed-list output uses the bridged `+0x20` list and decrements the
+  remaining-row field. Supporting fixture anchor:
+  `0x1f756 fixed-width list renders bridged +0x20 object`.
 - Fixtures `0x1f446/0x1f596 renders solid black rectangle rule pixels` and
   `0x1f4e0 renders gray and HP pattern selector matrix` cover solid and
   patterned rule selectors.
@@ -3779,25 +3781,24 @@ resolve saved id `0x782a94`, build a non-replay `0xe4f4` frame, re-enter
 selector-7 rectangle rule, publish through `0xff1e`, and render both
 layers through `0x1ed84`/`0x1ef6a`.
 
-The mixed text/rule/raster/FF fixture is now the first complete byte-stream
-page-image contract through host fetch, parser handlers, addressed
-page-record storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and
-ROM-derived row construction. The suite has since been broadened with font
-selection and downloaded-glyph page-image cases: primary/secondary
-font-selection streams render visible compact rows, downloaded-glyph FF
-publication renders through `0xff1e` / `0x1ed84` / `0x1ef6a`, and
-fixture `parser-driven downloaded glyph rule raster stream composes
-through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule, and
+The mixed text/rule/raster/FF route is the first complete byte-stream
+page-image contract through host fetch, parser handlers, addressed page-record
+storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and ROM-derived row
+construction. The route family has since broadened with font-selection and
+downloaded-glyph page-image cases: primary/secondary font-selection streams
+render visible compact rows, downloaded-glyph FF publication renders through
+`0xff1e` / `0x1ed84` / `0x1ef6a`, and the parser-driven downloaded-glyph
+composition route combines an installed downloaded glyph, selector-7 rule, and
 mode-0 raster row in one parser-driven page stream. Remaining work should
 target byte streams or ROM paths that expose different output state; repeating
-the same addressed fixture with a different proof source is not an unresolved
+the same addressed route with a different proof source is not an unresolved
 raster/imaging semantic edge. The separate resource-window decode gap at
 `0x0c0000..0x0c0321` is not a blocker for the ROM-local
-host-fetch-to-page-image path covered here. The reset,
-FF, page-size, orientation, paper-source, and copies publication fixtures
-now start without a current page root and mark the first printable queue
-step as the modeled page-record root allocation point. Those six
-publication paths now also have addressed variants:
+host-fetch-to-page-image path covered here. The reset, FF, page-size,
+orientation, paper-source, and copies publication routes now start without a
+current page root and mark the first printable queue step as the modeled
+page-record root allocation point. Those six publication paths now also have
+addressed variants:
 `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and
 `!\x1b&l2X\f` queue the printable byte through addressed
 `0x1387c`/`0x1381c`, materialize the page record, publish through the same
@@ -3805,35 +3806,29 @@ publication paths now also have addressed variants:
 rows. That closes the software-visible compact-text publication contract while
 leaving only provenance and optional physical-output correlation outside the
 ROM contract.
-The host-fetched text/rule/raster fixture now also
-publishes its full bucket
-array, rule list, and context slots through modeled `0xff1e`, then
-renders the published record through `0x1ed84` and `0x1ef6a` with the
-same composed rows. That same fixture now runs text, `ESC *c`, and the
-delayed `ESC *b#W` raster transfer through one mixed page-record stream
-runner instead of attaching the raster row after the text/rule record.
-Adding FF to that stream now publishes the heterogeneous page record
-through the modeled `0xff1e` boundary and renders the published record
-through `0x1ed84` and `0x1ef6a` with the same rows; the addressed
-text/rule/raster stream now has the same trailing-FF publication check
-with the raster object linked from addressed `0x1381c` storage. The
-semantic checkpoint in `notes/semantic-state-model.md` now classifies
-that same cluster: canonical page-record objects are at `0x00d0c004`,
-`0x00d0c02a`, and `0x00d0c038`; parser scratch restores raster record
-`80 57 00 02 00 00` and payload `c3 3c` at offset `28`; firmware
-bookkeeping leaves `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
-and `0x782a76 = 0x00d0c044`; derived render caches include
-`0x783a20 = 0x0050`, `0x783a22 = 0`, and
-`0x783a28 = 0x00100000`.
-The same mixed stream cluster now has a consecutive-raster-row sibling.
-Fixture `host-fetched text rectangle multi-row raster FF publishes
-rendered page record` drives `! ESC *c12a5b0P ESC *t300R ESC *r0A
-ESC *b2W f0 0f ESC *b2W 0f f0 FF` through the mixed page-record runner,
-publishes bucket `0` as second raster row, first raster row, then compact
-text, and renders both encoded-span dispatches before the compact glyph.
-Fixture `addressed text/rule/multi-row raster publication preserves
-bucket chain` pins the addressed storage form: raster objects are
-allocated at `0x00d0d038` and `0x00d0d044`; the bucket chain is
+
+The host-fetched text/rule/raster route publishes its full bucket array, rule
+list, and context slots through `0xff1e`, then renders the published record
+through `0x1ed84` and `0x1ef6a` with the same composed rows. The same stream
+runs text, `ESC *c`, and delayed `ESC *b#W` raster transfer through one mixed
+page-record runner instead of attaching the raster row after the text/rule
+record. Adding FF publishes the heterogeneous page record through `0xff1e` and
+renders the published record through `0x1ed84` and `0x1ef6a`; the addressed
+text/rule/raster route has the same trailing-FF publication check with the
+raster object linked from addressed `0x1381c` storage. The semantic checkpoint
+in `notes/semantic-state-model.md` classifies that cluster: canonical
+page-record objects are at `0x00d0c004`, `0x00d0c02a`, and `0x00d0c038`;
+parser scratch restores raster record `80 57 00 02 00 00` and payload `c3 3c`
+at offset `28`; firmware bookkeeping leaves `0x782a70 = 0x00bc`,
+`0x782a72 = 0x00d0c000`, and `0x782a76 = 0x00d0c044`; derived render caches
+include `0x783a20 = 0x0050`, `0x783a22 = 0`, and `0x783a28 = 0x00100000`.
+
+The same mixed stream cluster has a consecutive-raster-row sibling. Stream
+`! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0 FF`
+publishes bucket `0` as second raster row, first raster row, then compact text,
+and renders both encoded-span dispatches before the compact glyph. The
+addressed storage form allocates raster objects at `0x00d0d038` and
+`0x00d0d044`; the bucket chain is
 `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`; allocator bookkeeping ends at
 `0x782a70 = 0x00b0`, `0x782a72 = 0x00d0d000`, and
 `0x782a76 = 0x00d0d050`; and the final raster row counter is `2`.

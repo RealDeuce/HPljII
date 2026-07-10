@@ -177,6 +177,125 @@ Evidence and unresolved boundary:
   hardware/MMIO identity, external protocol naming, panel behavior, and
   physical sensor producers.
 
+## Host/Status Outcome Matrix
+
+This matrix is the command-family contract for side-channel paths that a
+byte-stream renderer must preserve when bidirectional host behavior is in
+scope. The outcomes terminate in host-visible bytes, status/panel state, a
+producer wait, or an explicit no-page-output boundary; none of them creates
+page roots, page objects, published records, render work, or bitmap rows.
+
+- Model-ID accepted query:
+  parser commands `ESC *r#K` and `ESC *s#^` reach wrapper `0x12034`, setup
+  helper `0x11efe`, and producer `0x122be..0x12326`. Active record word
+  `+2 = 1` or `-1` plus following query byte `0x11` makes the producer walk
+  literal `0x12280..0x12288` (`33440A\r\n`) and enqueue each byte through
+  blocking helper `0xb090`. Canonical parser/backchannel state is the
+  synthetic setup record, parser cursor `0x78299e`, query byte, active record
+  word, ROM literal, and FIFO state `0x783ed2` / `0x783ed4` / `0x783ed8` /
+  `0x783e92..0x783ed1`. Output effect is host-visible response bytes only.
+  Evidence: `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` and
+  fixture `0x12034/0x122be model-ID response emits FIFO literal`.
+- Model-ID rejected query:
+  the same `0x12034 -> 0x11efe -> 0x122be..0x12326` route consumes a
+  following byte through `0xda9a`, but bytes other than `0x11`, or active
+  record words other than `1` / `-1`, branch to report/pushback helper
+  `0x9ec0` instead of walking the literal. The synthetic record and query
+  byte are parser scratch consumed by this producer. Output effect is no FIFO
+  response and no page object. Evidence:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+- FIFO enqueue accepted:
+  helper `0xb0c0` writes one byte when count `0x783ed2 < 0x40`, stores at
+  write pointer `0x783ed8`, wraps after `0x783ed1` to `0x783e92`, increments
+  count, and returns success. This is canonical host-output state, not page
+  state. Evidence: `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`
+  and fixture `0xb0c0/0xb022 output FIFO wraps and preserves order`.
+- FIFO enqueue full:
+  helper `0xb0c0` returns failure with count, read pointer, write pointer, and
+  FIFO storage unchanged when `0x783ed2 >= 0x40`. Blocking wrapper `0xb090`
+  waits through `0x10c8(0x7801e2)` and retries the same byte, so a full FIFO
+  can stall a parser-side response producer before later input bytes are
+  admitted. Output effect is producer wait, not page output. Evidence:
+  fixture `0xb090 waits on full FIFO then enqueues after drain`.
+- FIFO dequeue accepted:
+  helper `0xb022` copies the byte at read pointer `0x783ed4`, wraps after
+  `0x783ed1` to `0x783e92`, decrements count `0x783ed2`, and returns success.
+  Consumers are output worker `0xae2c` and backend-specific send helpers.
+  Evidence: `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`.
+- FIFO dequeue empty:
+  helper `0xb022` clears the caller destination byte, returns failure, and
+  leaves count and pointers unchanged. Worker `0xae2c` can then sleep only
+  when FIFO count `0x783ed2`, pending status count `0x780e22`, and service
+  byte `0x783e61` are all zero. Output effect is no host byte and no page
+  output. Evidence: `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`.
+- Output worker mode `0`:
+  worker `0xae2c` first calls status/service helper `0xaece`, then drains FIFO
+  bytes through `0xb022` and retry helper `0xaf7c`. `0xaece` emits service
+  byte `0x13` when `0x783e61` is set, otherwise builds a status byte from base
+  `0x30` using `0x780e12`, `0x780e90`, `0x780e2a`, `0x780e0a`, and reason
+  byte `0x783e60` while pending status count `0x780e22` is nonzero. Output
+  effect is backend-visible status or FIFO bytes. Evidence:
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`, and fixture
+  `0xaece emits service byte and combined status byte`.
+- Output worker mode `1`:
+  worker `0xae2c` dequeues FIFO bytes through `0xb022` and loops without
+  calling `0xaece`; the ROM-visible path discards those bytes. Output effect
+  is FIFO drain with no status-byte emission and no page output. Evidence:
+  fixture `0xae2c drains FIFO by configured output mode`.
+- Output worker other nonzero modes:
+  worker `0xae2c` drains FIFO bytes through `0xb022` and sends accepted bytes
+  through retry helper `0xafcc`, which calls backend writer `0xa1d6` and can
+  wait through `0x10d0(0x0b)`. Output effect is backend-visible FIFO bytes,
+  bounded by hardware/MMIO backend identity. Evidence:
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`.
+- Page-environment status update:
+  helper `0x2888` compares selected page/control bytes `+6/+7/+8` with
+  active environment bytes `0x780e8e` / `0x780e8f`, then writes
+  `0x780e90`, `0x780e98`, and bit `0x10` in `0x780e2a` for eligible media or
+  environment status. Readers are `0xaece` for host status bit `0` and
+  `0x7612..0x7834`, which select `0x8a48` instead of `0x8656` when
+  `0x780e90` is set. Output effect is host/status or panel-message state, not
+  a page object. Evidence:
+  `generated/disasm/ic30_ic13_page_environment_status_002888.lst` and fixture
+  `0x2888 sets page-environment status consumed by 0xaece`.
+- Aggregate status update:
+  helper `0x36e4` folds status longwords into `0x780e12`, `0x780e0e`,
+  `0x780e0a`, and `0x780e1a`, mirrors active status into byte `0x780e68`,
+  and feeds `0xaece` status-byte formulas plus service-control consumers.
+  Output effect is derived status state only. Evidence:
+  `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`.
+
+State grouping for all outcomes:
+
+- Canonical:
+  parser/model response state, FIFO storage/count/pointers, backend selector
+  `0x780e40`, selected page/control bytes, active environment bytes, and
+  status longwords.
+- Derived/cache:
+  pending status count `0x780e22`, service byte latch `0x783e61`, reason byte
+  `0x783e60`, accepted status byte `0x780e62`, page-environment flag
+  `0x780e90`, media-feed cache `0x780e98`, and folded status fields.
+- Parser scratch:
+  the query byte and synthetic setup record while `0x122be..0x12326` decides
+  whether to emit or reject the model-ID response.
+- Firmware bookkeeping:
+  FIFO critical sections, wait object `0x7801e2`, worker sleeps/wakes, service
+  latch cleanup, and panel/display shadow state.
+- Hardware/external:
+  selected output backend registers, physical panel behavior, and
+  DC-controller or sensor sources.
+- Unknown:
+  physical protocol name for query byte `0x11`, output-backend electrical
+  identities, physical sensor producers, and panel flag-`1` side effects.
+
+Unresolved boundaries:
+
+- No ROM-local host-byte-to-page-object or page-object-to-pixel edge remains
+  in this family. The exact remaining boundaries are hardware/MMIO identity
+  for output backends, external protocol naming for the accepted query byte,
+  physical sensor producers, and panel behavior after display helpers.
+
 ## Normal Status
 
 | Message | Meaning |

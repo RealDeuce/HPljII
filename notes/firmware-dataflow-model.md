@@ -1220,7 +1220,8 @@ Output effect and confidence:
 
 Evidence and unresolved boundaries:
 
-- Detail owners are [errors-and-status.md](errors-and-status.md),
+- Detail owners are [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix),
   [host-byte-fetch.md](host-byte-fetch.md), and
   [io-interfaces.md](io-interfaces.md).
 - Controlling worked paths are `Host Interface Output FIFO And Model-ID

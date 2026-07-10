@@ -713,7 +713,7 @@ Outcome classes:
   commands such as `ESC *r#K` and `ESC *s#^` parse like normal command
   terminals but write response bytes through model/status output paths instead
   of page objects. Owners:
-  [errors-and-status.md](errors-and-status.md) and
+  [Host/Status Outcome Matrix](errors-and-status.md#hoststatus-outcome-matrix) and
   [io-interfaces.md](io-interfaces.md).
 
 State classification for this bridge:

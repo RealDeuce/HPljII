@@ -233,10 +233,11 @@ owner, and whether visible pixels can result.
   `0x1f264`.
 - Host/status side channels:
   model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, and worker
-  `0xae2c`; owner [errors-and-status.md](errors-and-status.md). These paths
-  produce host-visible protocol bytes or panel/status state, not page pixels.
-  Pixel reproduction changes only if a bidirectional host sends different
-  future bytes or if FIFO fullness stalls a producer.
+  `0xae2c`; owner [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix). These paths produce
+  host-visible protocol bytes or panel/status state, not page pixels. Pixel
+  reproduction changes only if a bidirectional host sends different future
+  bytes or if FIFO fullness stalls a producer.
 
 Common render convergence for pixel-producing rows is:
 page-root storage under `0x78297a`, publication `0xff1e`, active/render
@@ -1254,7 +1255,7 @@ Field groups for this index:
   storage `0x783e92..0x783ed1`; a full FIFO can stall this parser-side
   producer, but no FIFO/status consumer feeds page roots or render helpers.
   Evidence:
-  [errors-and-status.md](errors-and-status.md) and
+  [Host/Status Outcome Matrix](errors-and-status.md#hoststatus-outcome-matrix) and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Shared page/render/output convergence:
   all pixel-producing families above converge after command-family page-object

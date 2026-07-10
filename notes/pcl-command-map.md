@@ -585,7 +585,8 @@ output class that a byte-stream reader should follow next.
   gate with base publication.
 - Host/status side-channel commands:
   model/status queries use `0x12034 -> 0x122be` and FIFO helper `0xb090`.
-  Continue in [errors-and-status.md](errors-and-status.md) and
+  Continue in [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix) and
   [io-interfaces.md](io-interfaces.md). Output class:
   host-visible response bytes with no page-object output.
 
@@ -817,9 +818,10 @@ Normal table `0x112a4`:
   Functions Decision
   Checkpoint](display-functions.md#display-functions-decision-checkpoint),
   [transparent-print-data.md](transparent-print-data.md), and
-  [errors-and-status.md](errors-and-status.md#owner-summary). Normal display/transparent
-  readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and `0x12034` are
-  host/status side channels with no page-object output.
+  [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix). Normal display and
+  transparent readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and
+  `0x12034` are host/status side channels with no page-object output.
 - Raster and rectangle imaging handlers:
   `0x1075a`, `0x107fa`, `0x10808`, `0x10898`, `0x10a40`, `0x10ae0`,
   `0x10dce`, `0x10e22`, and `0x10e68`.

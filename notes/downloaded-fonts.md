@@ -907,23 +907,27 @@ Renderer-facing allocated payload fields:
   in the covered `0x1719c` metric fixtures.
 - Metric writer formulas: `0x17430..0x1749c` writes canonical `+0x14`, rejects
   reversed or out-of-range values, and on success derives `+0x18 = value -
-  word(+0x16) - 1`; the reversed-range no-install fixture proves the rejected
-  branch can leave `+0x14 = 5` while `+0x18` remains `0`. `0x1757a..0x175b8`
-  computes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`; the boundary,
-  low-nibble, and byte-boundary fixtures prove the cap (`0x1500`, `0x1508`,
-  and `0x15ff` all become `0x0060` when `+0x14 = 0x0018`; `0x0102` caps to
-  `0x0100` when `+0x14 = 0x0040`), low-nibble rounding
-  (`0x0001/0x0003/0x0004/0x0005/0x000f` become
-  `0x0000/0x0004/0x0004/0x0004/0x0010`), and the `0x00fd..0x0102`
-  byte-boundary outputs `0x00fc/0x0100/0x0100/0x0104`. `0x1762a..0x1763c` writes the
-  signed byte reader result into payload word `+0x1a`; fixtures prove bytes
-  `0x7f`, `0x80`, `0xfe`, and `0xff` copy as `0x007f`, `0xff80`, `0xfffe`, and
-  `0xffff` and are consumed by `0xd8fc` as words. Fixture `legal descriptor metric
-  mixed values drive d4ac and d8fc consumers` proves the formulas together for
-  middle-range `first/range/rounded/offset = 0x0008/0x0030/0x002a/0x02`, copied
-  `+0x18/+0x1a/+0x2c = 0x0027/0x0002/0x002c`, the rounded-`0x00ff` cap to
-  `+0x2c = 0x00c0`, the offset-byte `0x80` sign extension, and the late first-code
-  `0x002f` case deriving `+0x18 = 0`.
+  word(+0x16) - 1`; the rejected reversed-range route can leave `+0x14 = 5`
+  while `+0x18` remains `0`. `0x1757a..0x175b8` computes
+  `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`: `0x1500`, `0x1508`, and
+  `0x15ff` all become `0x0060` when `+0x14 = 0x0018`; `0x0102` caps to
+  `0x0100` when `+0x14 = 0x0040`; low-nibble values
+  `0x0001/0x0003/0x0004/0x0005/0x000f` become
+  `0x0000/0x0004/0x0004/0x0004/0x0010`; and byte-boundary inputs
+  `0x00fd..0x0102` produce `0x00fc/0x0100/0x0100/0x0104`. `0x1762a..0x1763c`
+  writes the signed byte reader result into payload word `+0x1a`, so bytes
+  `0x7f`, `0x80`, `0xfe`, and `0xff` copy as `0x007f`, `0xff80`, `0xfffe`,
+  and `0xffff` and are consumed by `0xd8fc` as words. The middle-range route
+  uses `first/range/rounded/offset = 0x0008/0x0030/0x002a/0x02` and copies
+  `+0x18/+0x1a/+0x2c = 0x0027/0x0002/0x002c`; the rounded `0x00ff` input caps
+  to `+0x2c = 0x00c0`, offset byte `0x80` sign-extends, and late first-code
+  `0x002f` derives `+0x18 = 0`. Evidence anchors:
+  `ESC )s80W reversed resource range fails validation before allocation`,
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`,
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc
+  consumers`, `legal descriptor metric byte-boundary rounding drives d4ac and
+  d8fc consumers`, and `legal descriptor metric mixed values drive d4ac and
+  d8fc consumers`.
 - payload `+0x38`: optional-symbol block offset when `0x782856 != 0`.
 - glyph pointer table entry: relative offset from payload base to a
   downloaded character object, for example table entry `0x00de` points to
@@ -1031,9 +1035,8 @@ Renderer-facing allocated payload fields:
   so `d4ac` emits the standard span digest
   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`; the
   `0x0101`, uncapped `0x0102`, and capped `0x0102` cases keep that digest.
-  The same fixture proves the large derived/cache heights
-  `+0x18 = 0x003d` or `0x003b` make `d8fc` exit `beyond-page-extent` with
-  compact-only digest
+  The large derived/cache heights `+0x18 = 0x003d` or `0x003b` make `d8fc`
+  exit `beyond-page-extent` with compact-only digest
   `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
 
 Unknown:
@@ -1698,8 +1701,7 @@ Field groups:
     `0x7827b4`;
   - selected candidate longword installed by `0x16c14` / `0x1bc38` on
     success.
-  The validation-failure fixtures assert that these canonical install fields
-  are not changed.
+  Validation-failure exits leave these canonical install fields unchanged.
 - Parser scratch:
   - restored records `80 57 00 50 00 00` for the normal failed `ESC )s80W`
     streams and `80 57 00 08 00 00` for the short-budget stream;

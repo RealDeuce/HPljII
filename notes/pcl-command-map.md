@@ -1747,7 +1747,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
   [host-byte-fetch.md](host-byte-fetch.md),
   `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
-  `generated/disasm/ic30_ic13_interface_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
   `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
   `generated/disasm/ic30_ic13_page_environment_status_002888.lst`, fixtures
   `0x12034/0x122be model-ID response emits FIFO literal`,

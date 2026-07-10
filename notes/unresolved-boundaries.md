@@ -300,6 +300,32 @@ and the render-helper boundary index in
   `Default Environment Record Producers` in
   [semantic-state-model.md](semantic-state-model.md).
 
+### Folded Status Category Names
+
+- Classification: manual/physical correlation.
+- Exact boundary:
+  aggregate helper `0x36e4..0x37f2`, output status helper `0xaece`, and
+  page-environment producer `0x2888`.
+- ROM-visible behavior:
+  `0x36e4` folds status sources `0x780e32`, `0x780e2e`, `0x780e36`,
+  `0x780e2a`, and `0x780e68` into aggregate fields `0x780e12`,
+  `0x780e0e`, `0x780e0a`, and `0x780e1a`. The normal return encodes bit `7`
+  from `0x780e0a == 0`, bit `0` from `0x780e0e != 0`, and bit `1` from
+  `0x780e12 != 0`. Helper `0xaece` uses related fields to emit host-visible
+  status bytes: `0x780e12` or `0x780e90` sets host-status bit `0`,
+  `0x780e2a` sets bit `1`, `0x780e0a` sets bit `2`, and reason byte
+  `0x783e60` is ORed into the base `0x30` byte.
+- What remains:
+  HP/manual-facing names for the folded status categories and sibling service
+  bits. The arithmetic, field writes, host-status byte composition, and
+  no-page-output boundary are ROM-local and documented.
+- Evidence:
+  [errors-and-status.md](errors-and-status.md),
+  `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`, and
+  `Host/Status Side-Channel Decision Checkpoint` in
+  [errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
+
 ### Active Render Device Handoff
 
 - Classification: hardware/MMIO boundary.

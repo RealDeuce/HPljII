@@ -520,8 +520,10 @@ command-family and page-image structure:
    calls separate from parser-wrapper bytes.
 2. Classify each admitted byte:
    first use `Admitted Byte Outcome Bridge` in this file, then
-   [pcl-parser-core.md](pcl-parser-core.md#owner-summary) and
-   [Dispatch Class Checkpoint](pcl-command-map.md#dispatch-class-checkpoint)
+   [Inbound Byte Outcome
+   Contract](pcl-parser-core.md#inbound-byte-outcome-contract) and
+   [Inbound Byte Outcome
+   Classes](pcl-command-map.md#inbound-byte-outcome-classes)
    to place the byte on a concrete `0x11774` branch: printable handler,
    alternate/data append, matched command handler, zero-handler reset,
    no-match fallback, callback continuation, delayed-payload restore, or

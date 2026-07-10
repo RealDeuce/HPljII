@@ -96,6 +96,10 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Host Byte Source Priority`.
 - Parser records, dispatch tables, delayed payloads, ignored rows, and
   parser artifacts:
+  [Inbound Byte Outcome
+  Contract](pcl-parser-core.md#inbound-byte-outcome-contract),
+  [Inbound Byte Outcome
+  Classes](pcl-command-map.md#inbound-byte-outcome-classes),
   `Worked Path: Command Record And Payload Dispatch`,
   `Worked Path: Explicit No-Output Parser Rows`.
 - Host/status side channels with no direct page-object effect:

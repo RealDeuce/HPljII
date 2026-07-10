@@ -289,8 +289,10 @@ boundaries:
 
 - Host fetch, parser selection, parser records, delayed payload restore, blank
   rows, `ESC ?`, `ESC Z`, and `ESC &lT/t`:
-  [host-byte-fetch.md](host-byte-fetch.md),
-  [pcl-parser-core.md](pcl-parser-core.md#owner-summary), and
+  [Host Byte Source Outcome
+  Matrix](host-byte-fetch.md#host-byte-source-outcome-matrix),
+  [Inbound Byte Outcome
+  Contract](pcl-parser-core.md#inbound-byte-outcome-contract), and
   [firmware-dataflow-model.md](firmware-dataflow-model.md) worked paths
   `Host Byte Source Priority`, `Command Record And Payload Dispatch`, and
   `Explicit No-Output Parser Rows`.

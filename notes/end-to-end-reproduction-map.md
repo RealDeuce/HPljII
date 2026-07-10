@@ -13,6 +13,7 @@ current coverage/evidence map for that pipeline; detailed ledgers remain in
 host bytes
   -> 0xa904 normalized byte fetch
   -> 0xda9a / 0xdaf0 / 0xdb74 parser and six-byte command records
+  -> 0x11774 dispatch classes over tables 0x112a4 / 0x116f6
   -> command handlers and delayed payload handlers
   -> page-root/display-list objects
   -> 0xff1e publication
@@ -497,21 +498,22 @@ command-family and page-image structure:
    separate from parser-wrapper bytes.
 2. Classify each admitted byte:
    first use `Admitted Byte Outcome Bridge` in this file, then
-   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract) to
-   place the byte on a concrete `0x11774` branch: printable handler,
-   alternate/data append, matched command handler, zero-handler reset, no-match
-   fallback, callback continuation, or parser-external return. Then use
-   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes) to
-   map handler-backed outcomes to printable text, syntax/prefix state,
-   state-only terminals, delayed-payload arming, page-object producers,
-   publication/render boundaries, or host/status side channels.
+   [pcl-parser-core.md](pcl-parser-core.md#owner-summary) and
+   [Dispatch Class Checkpoint](pcl-command-map.md#dispatch-class-checkpoint)
+   to place the byte on a concrete `0x11774` branch: printable handler,
+   alternate/data append, matched command handler, zero-handler reset,
+   no-match fallback, callback continuation, delayed-payload restore, or
+   parser-external return. The dispatch class determines whether the next
+   semantic owner is a prefix/setup row, terminal handler, delayed-payload
+   owner, explicit no-output row, alternate/data append path, or service
+   outcome.
 3. Follow parser records and dispatch:
    for matched command bytes, continue in
    [pcl-parser-core.md](pcl-parser-core.md) to track parser mode `0x782999`,
    parser record cursor `0x78299e`, the six-byte record fields,
    delayed-payload scratch `0x782a1a/0x782a1c/0x782a20..`, normal table
-   `0x112a4`, and alternate/data table `0x116f6`. Then jump to the owner note
-   named by
+   `0x112a4`, and alternate/data table `0x116f6`. Then jump from the class
+   checkpoint to the owner note named by
    [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 4. Record command state effects:
    in the owner note, capture the canonical fields written by the handler,
@@ -1257,10 +1259,12 @@ Evidence:
 
 ## Minimal Parser Dispatch Walkthrough
 
-This is the smallest top-level parser spine. It explains how normalized bytes
-become printable fallback calls, six-byte command records, table handlers,
-delayed payload calls, stored alternate/data bytes, or explicit no-output
-parser decisions before command-family notes take over.
+This is the smallest top-level parser spine. It explains how normalized bytes become
+printable fallback calls, six-byte command records, table handlers, delayed payload
+calls, stored alternate/data bytes, or explicit no-output parser decisions before
+command-family notes take over. The detailed dispatch-class owner handoff is
+[pcl-command-map.md#dispatch-class-checkpoint](pcl-command-map.md#dispatch-class-checkpoint);
+this walkthrough keeps only the byte-flow spine.
 
 Representative byte classes:
 

@@ -682,9 +682,13 @@ command-family and page-image structure:
    ROM/resource bitmap bytes, not from an external print comparison.
 8. State any unresolved boundary exactly:
    if the trace stops, classify the stop as ROM-local invalid target/source,
-   ROM-local unresolved caller, hardware/MMIO boundary, missing external
-   resource data, optional external data, or manual/physical correlation. Name
-   the exact address range and the state or byte whose value is not proven.
+   ROM-local unresolved caller, missing external resource data, exact ROM stop,
+   hardware/MMIO boundary, optional external data, or manual/physical
+   correlation. Name the exact address range and the state or byte whose value
+   is not proven. For exact ROM stops such as the restored `ESC )s#W`
+   payload-count cap, preserve the parser/payload state and record that no
+   page object, publication record, render bridge, or pixel helper exists for
+   that stream.
 
 ## State Classification Guide
 

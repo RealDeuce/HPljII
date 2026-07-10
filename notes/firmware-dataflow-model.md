@@ -1132,7 +1132,7 @@ State classification:
 Evidence and unresolved edges:
 
 - Detail owners are
-  [Publication Owner Summary](publication-commands.md#publication-owner-summary),
+  [Publication Owner Summary](publication-commands.md#owner-summary),
   [publication-commands.md](publication-commands.md),
   [reset-default-environment.md](reset-default-environment.md),
   [page-record-storage.md](page-record-storage.md), and

@@ -23,6 +23,19 @@ Use the classification column before continuing work:
 
 ## Pixel-Affecting Boundaries
 
+For ROM-local invalid render targets, the reproduction rule is to stop the
+pixel contract at the exact computed jump or source-read boundary named below.
+The documented upstream state still matters: installed glyph records, page
+objects, publication buckets, render bucket words, row splits, and helper
+inputs remain ROM-derived evidence. What is not documented is a final row image
+after the ROM has selected an unchecked helper target or source address outside
+the valid table/source region. A byte-stream reproducer should therefore model
+the upstream state and report the invalid render boundary instead of inventing
+pixels beyond it. This rule is grounded in the downloaded-glyph checkpoints in
+[downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-row-count-publication-checkpoint)
+and the render-helper boundary index in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#render-helper-boundary-index).
+
 ### Secondary Segment-57 Resource Source
 
 - Classification: missing external resource data.

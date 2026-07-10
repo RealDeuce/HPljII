@@ -10385,28 +10385,35 @@ lists through `0x1ef6a`, and only then composes visible pixels.
 
 ### Output Effect
 
-The documented stream produces rows containing the first compact `!`, the
-mode-0 raster row from payload `c3 3c`, and the rectangle rule. The
-published render-entry fixture proves the same rows before and after the
-`0xff1e` publication boundary, with dispatch targets `0x1f88e` and
-`0x1effe`.
-The consecutive-row sibling preserves the same text/rule objects while
-adding two delayed raster transfers. It proves the published bucket chain
-dispatches encoded row `0f f0`, encoded row `f0 0f`, and compact text in
-that order, while raster `row_y` advances to `2`.
-The page-band walker fixture extends this render-entry contract across
-bands `0` and `5`: it dispatches compact text and mode-0 raster objects
-from bucket array `+0x18`, carries a patterned rule's mutated node from
-rule list `+0x1c` after the first band, then renders the remaining rule
-rows in the second band with no leftover rule or fixed-list state.
+The documented stream produces a mixed page image: compact text for the first
+`!`, a mode-0 encoded raster row from payload `c3 3c`, and the selector-7
+rectangle rule. `0xff1e` publishes the page-record roots without changing the
+object semantics; `0x1ed84 -> 0x1edc6` copies those roots to render
+`+0x18/+0x1c/+0x20` and context slots `+0x24..+0x60`; `0x1ef6a` then derives
+band caches through `0x1ef86`, dispatches the bucket chain through `0x1efc2`,
+the rule list through `0x1f446`, and the fixed list through `0x1f756`.
+Within the bucket chain, encoded raster objects dispatch to `0x1f88e` and
+compact text dispatches through `0x1effe`.
+
+The consecutive-row sibling preserves the same text/rule objects while adding
+two delayed raster transfers. The resulting published bucket chain dispatches
+encoded row `0f f0`, encoded row `f0 0f`, and compact text in that order,
+while raster `row_y` advances to `2`. The page-band walker carries the same
+render-entry contract across bands `0` and `5`: bucket array `+0x18` supplies
+compact text and mode-0 raster objects; rule list `+0x1c` carries a patterned
+rule node with reduced remaining rows after the first band; the later band
+renders the remaining rule rows and exits with no leftover rule or fixed-list
+state.
 
 ### Confidence
 
 High for parser handler order, delayed raster scratch, addressed stream
 object addresses, published page-record fields, render-entry call order,
-and visible rows because they are executable fixture assertions. Broader
-page-root/display-list variants remain future work only when they expose new
-allocator transitions, object fields, bridge state, or visible rows.
+and visible rows because the documented route cites the parser, page-record,
+publication, bridge, scheduler, and render-dispatch handlers that own those
+fields. Broader page-root/display-list variants remain future work only when
+they expose new allocator transitions, object fields, bridge state, or visible
+rows.
 
 ### Fixtures
 

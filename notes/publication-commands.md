@@ -409,6 +409,82 @@ Canonical command state:
 - Page geometry fields updated by `0xfc74` and `0x10220`, including active
   page size, top offset, and page-change flag.
 
+### Publication Header Field Matrix
+
+This matrix is the byte/word contract for the page/control header that
+`0xff1e` writes after it accepts active current root `0x78297a` with root byte
+`+0x04 == 1`. It starts at `0xffb0`, after the no-root and overlay-detour
+predicates have resolved, and ends at the branch back to the current-root
+clear path `0xffa2`.
+
+- Root byte `+0x04`:
+  writer `0x10066`; source literal `2`; marks the root as published before
+  exposing it through the pool.
+- Root byte `+0x07`:
+  writer `0x1004a`; source paper-source byte `0x782da6`; records the
+  page/control source value consumed by later status/scheduler paths.
+- Root byte `+0x08`:
+  writer `0x10012`; source status pending byte `0x780e99 == 1`; records a
+  status/header condition when no page-size flag consumed it first.
+- Root word/flags `+0x0a` bit `0`:
+  writer `0xffe6`; source page-size/page-length pending byte
+  `0x782997 == 1`; records pending page geometry change and clears
+  `0x780e99` / `0x782997`.
+- Root word/flags `+0x0a` bit `1`:
+  writer `0x10032`; source paper-source pending byte `0x782998 == 1`;
+  records pending paper-source/layout change and clears `0x782998`.
+- Root word `+0x0c`:
+  writer `0x10052`; source copy count `0x782da4`; carries `ESC &l#X` state
+  into the published pool header.
+- Root word `+0x18`:
+  writer `0xffc8`; source literal zero; clears transient header state before
+  publication.
+- Root word `+0x1a`:
+  writer `0xffcc`; source root word `+0x16`; preserves the source root's
+  companion header word.
+- Pool head `0x780ea6`:
+  writer `0x1006c`; source root link longword `(A5)`; exposes the published
+  record to scheduler selection.
+- Publication flag `0x782996`:
+  writer `0x10078`; source literal `1`; tells later code that a page/control
+  record was published.
+- Current root `0x78297a`:
+  writer `0xffa2` via `0x10080`; source clear; ends parser-time ownership of
+  this page image.
+
+State grouping:
+
+- Canonical page/control state:
+  root `+0x04/+0x07/+0x08/+0x0a/+0x0c/+0x18/+0x1a`, pool head
+  `0x780ea6`, and publication flag `0x782996`.
+- Canonical command inputs:
+  `0x782da4`, `0x782da6`, `0x782997`, `0x782998`, and `0x780e99`.
+- Firmware bookkeeping:
+  critical-section helpers `0x15a6` / `0x15ac`, current-root clear path
+  `0xffa2`, and macro overlay detour state resolved before this matrix.
+- Parser scratch:
+  none. Parser command records have already been consumed by reset, FF,
+  page-size, page-length, paper-source, copies, or other publication callers.
+- Hardware/external state:
+  none at this header-copy boundary.
+- Unknown:
+  manual-facing names for some header bits remain unknown, but the ROM writer,
+  input byte, and later publication/scheduler visibility are documented.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`:
+  `0xffb0..0x10080`.
+- `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`:
+  `0xeef0..0xef38` for copy-count source `0x782da4`.
+- Fixture evidence:
+  `mixed printable/copies/FF stream publishes copy count`,
+  `host-fetched copies publication preserves 0xeef0 pool header word`,
+  `mixed printable/reset publication records 0xff1e pool header defaults`,
+  `host-fetched FF geometry and paper-source publications preserve 0xff1e
+  pool header defaults`, and the synthetic nonzero `0xff1e` header fixture
+  referenced below.
+
 Canonical addressed publication fields:
 
 - Reset stream `! ESC E`: one stream chunk at `0x00d08000`, ending with

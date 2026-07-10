@@ -4280,9 +4280,11 @@ Positioning, precheck, and queue handoff:
 - `0xd3b2` and `0xd824` both write positioned source fields `+0x12`,
   `+0x14`, and `+0x16`, set page-root live-font flag
   `0x78297f + 0x78297e`, and call `0x12f2e`.
-- Fixture `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
-  proves the shared continue, reject, wrap-recovery, and vertical-extent
-  outcomes before either writer queues an object.
+- Precheck helpers `0xd28a` and `0xd6bc` share the continue, reject,
+  wrap-recovery, and vertical-extent outcomes before either writer queues an
+  object; the wrap-recovery branch consumes `0x783190` written by `ESC &s#C`.
+  Supporting fixture anchor:
+  `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
 - Fixture `0xd824-modeled positioned text source fields` pins the flagged
   built-in `LINE_PRINTER` case: host `0x21` maps to glyph `0x20`, glyph
   pointer `0x015330`, flag `1`, source x `16`, source y `0`, and slot `0`.

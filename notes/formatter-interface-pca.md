@@ -3,6 +3,57 @@
 Sources: `hplaserjetclassicsiiiii.pdf` ch. 1, ch. 5 sections 5-5 and 5-6, ch. 7
 table 7-53; `33440-90905...pdf` ch. 13.
 
+## Owner Summary
+
+This note owns board-level provenance for the Interface PCA facts that bound
+the ROM disassembly model: CPU family evidence, ROM package roles, memory
+regions, built-in resource decode, and which hardware facts remain outside the
+current byte-stream-to-pixel contract.
+
+Primary route into the ROM model:
+
+- Board evidence identifies the installed CPU as Motorola 68000-family, and
+  the verified `IC30,IC13` interleave provides the executable firmware image
+  with initial SP `0x00800000` and reset PC `0x00000110`.
+- The verified `IC32,IC15` interleave provides the local built-in resource/font
+  image through firmware address `0x0bffff`.
+- Resource scan code treats `0x080000..0x0ffffe` as a built-in resource
+  window, while optional cartridge/resource windows are separate
+  `0x200000..0x3ffffe` and `0x400000..0x5ffffe` ranges.
+- The only current pixel-affecting board decode gap in this note is the
+  transparent secondary segment-57 continuation beyond the verified resource
+  pair, at firmware addresses `0x0c0000..0x0c0321`.
+
+Field groups:
+
+- Canonical ROM provenance:
+  executable pair `IC30,IC13`, resource pair `IC32,IC15`, reset vector fields
+  in `data/rom_manifest.json`, and checked-in dump metadata in
+  [rom-dump-manifest.md](rom-dump-manifest.md).
+- Canonical resource state:
+  verified built-in resource bytes through `0x0bffff`, firmware scan range
+  `0x080000..0x0ffffe`, optional windows `0x200000..0x5ffffe`, and resource
+  owner notes [resource-rom.md](resource-rom.md#owner-summary) and
+  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary).
+- Hardware/external state:
+  exact gate-array decode, board memory-control registers, physical video
+  interface timing, and formatter/DC connector behavior.
+- Unknown:
+  physical decode for built-in resource addresses `0x0c0000..0x0c0321`,
+  gate-array markings, and exact register-to-connector mapping. These are
+  board evidence gaps, not parser, page-object, or render-helper unknowns.
+
+Output effect:
+
+- ROM package provenance determines which bytes are legal firmware and
+  resource evidence for the checked-in disassembly.
+- Board decode affects pixels only when a documented ROM path reads outside
+  verified local resource bytes or when physical timing changes ROM-visible
+  host/scheduler/render state.
+- Ordinary supported byte streams that stay inside verified firmware and
+  resource bytes use the parser, page, scheduler, and render owners rather
+  than any additional board-level interpretation in this note.
+
 ## Naming
 
 The service manual uses:

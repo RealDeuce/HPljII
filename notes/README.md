@@ -193,7 +193,7 @@ checked-in ROM model:
   use it.
 - [hardware-overview.md](hardware-overview.md) - model identity, specs,
   major assemblies, paper path, print process.
-- [formatter-interface-pca.md](formatter-interface-pca.md) - HP 33440
+- [formatter-interface-pca.md](formatter-interface-pca.md#owner-summary) - HP 33440
   formatter architecture, memory, NVRAM, video path.
 - [dc-controller-engine.md](dc-controller-engine.md#owner-summary) - engine
   responsibilities, sensors, motors, laser, high voltage, formatter/DC

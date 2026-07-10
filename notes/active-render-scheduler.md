@@ -557,6 +557,32 @@ A pixel-accurate ROM-derived renderer must preserve:
 - wait-object and trap state transitions that can wake or stall active work;
 - derived band fields consumed by `0x1ef6a`.
 
+Supported stream rendering rule:
+
+- Treat render work word `+0x10` as the scheduler-produced band selector
+  presented to `0x1ef6a`. The scheduler may reach that word through candidate
+  promotion, same-geometry reuse, or new geometry setup, but object
+  interpretation starts only after `0x783a18` points at the selected work
+  record and `0x1ed84 -> 0x1edc6` has copied the source roots.
+- A capacity-approved branch at `0x1ec8e..0x1ecac` is the only branch in
+  `0x1eba4..0x1ecd2` that renders rows. It releases the scheduler lock, calls
+  `0x1ef6a`, increments active band word `+0x10`, and increments throttle word
+  `+0x0e`.
+- Cleanup, stale-work, throttle-yield, and capacity-wait branches are
+  no-pixel scheduler outcomes for the current iteration. They can signal wait
+  object `0x780182`, clear or reset progress fields, or yield through
+  `0x10c4`, `0x10d0`, or `0x10d8`, but they do not interpret bucket, rule, or
+  fixed-list roots.
+- Pixel derivation for a supported byte stream therefore follows the sequence
+  of rendered band words that actually reach `0x1ef6a`. Within each call,
+  [page-raster-imaging.md](page-raster-imaging.md) owns row construction from
+  render roots `+0x18`, `+0x1c`, `+0x20`, copied context slots, current-band
+  caches, and fallback-buffer state.
+- Physical wait timing is outside this ROM-local rule unless it changes one of
+  the ROM-visible fields named above. It can decide when the next scheduler
+  iteration happens, but not what a documented `0x1ef6a` call does with a given
+  render work record.
+
 ## Confidence
 
 High for pool-head versus scheduler-cursor distinction, candidate-slot

@@ -394,8 +394,8 @@ controlling artifact.
   a new source changes the normalized byte sequence.
 - Normal bytes, control codes, ESC entry, parameterized commands, binary payloads,
   macro/replay, and ignored/error cases: the branch-level parser outcomes are documented
-  in [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), summarized
-  in `Admitted Byte Outcome Bridge`, and indexed by
+  in [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix), summarized in
+  `Admitted Byte Outcome Bridge`, and indexed by
   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes). These outcomes
   include printable dispatch `0xd04a`, direct C0 handlers, explicit zero-handler rows,
   parser-external service/return `0x117d2..0x11818`, no-match fallback/append/callback
@@ -520,8 +520,8 @@ command-family and page-image structure:
    calls separate from parser-wrapper bytes.
 2. Classify each admitted byte:
    first use `Admitted Byte Outcome Bridge` in this file, then
-   [Inbound Byte Outcome
-   Contract](pcl-parser-core.md#inbound-byte-outcome-contract) and
+   [Parser Core Outcome
+   Matrix](pcl-parser-core.md#parser-core-outcome-matrix) and
    [Inbound Byte Outcome
    Classes](pcl-command-map.md#inbound-byte-outcome-classes)
    to place the byte on a concrete `0x11774` branch: printable handler,
@@ -533,8 +533,9 @@ command-family and page-image structure:
    outcome.
 3. Follow parser records and dispatch:
    for matched command bytes, continue in
-   [pcl-parser-core.md](pcl-parser-core.md) to track parser mode `0x782999`,
-   parser record cursor `0x78299e`, the six-byte record fields,
+   [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) to
+   track parser mode `0x782999`, parser record cursor `0x78299e`, the six-byte
+   record fields,
    delayed-payload state `0x782a1a/0x782a1c/0x782a20..`, normal table
    `0x112a4`, and alternate/data table `0x116f6`. Then jump from the class
    checkpoint through
@@ -667,27 +668,27 @@ Outcome classes:
   normal-table zero handlers such as `NUL`, `BEL`, and `VT` reset parser mode
   and produce no page object or state mutation beyond parser bookkeeping.
   Alternate/data blank C0 rows append through `0xe002` instead. Owners:
-  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract) and
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) and
   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
 - Parser-external service or return:
   `0x117d2..0x11818` clears no-byte latch `0x780e3b`, services wait object
   `0x780202` through `0x10c8`, and returns from the parser loop when
   macro/page state byte `0x782a92 == 0x63`. This consumes a parser-loop turn
   without routing the current normalized byte to a command-family handler.
-  Owner: [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract).
+  Owner: [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix).
 - Mode-zero no-match fallback:
   `0x118b2..0x11900` handles bytes that did not match a normal-table row while
   parser mode is zero. Context byte `0x782ee6 + 16 * 0x782f06 + 5 == 1`
   routes the byte to printable handler `0xd04a`; other values ignore the byte
   and fetch again. Owner:
-  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract).
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix).
 - Nonzero-mode callback no-match:
   `0x11b32..0x11b7e` passes the byte to active callback pointer `0x78299a`
   when a nonzero parser mode has no matching table row. A callback return to
   mode zero clears parser cursors and pending delayed-payload byte
   `0x782a1a`; otherwise the parser remains in the command-family mode and
   fetches again. Owner:
-  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract).
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix).
 - Parameterized command terminal:
   `0xdaf0` / `0xdb74` materialize one or more six-byte records at
   `0x78299e..`; `0x11774` dispatches the terminal handler from normal table
@@ -6626,7 +6627,8 @@ Address-level cluster map:
   different future input.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
-  The checked-in contracts are [pcl-parser-core.md](pcl-parser-core.md) and
+  The checked-in contracts are
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) and
   `Parser Record And Delayed Payload State` in
   [semantic-state-model.md](semantic-state-model.md), surfaced first as
   `Worked Path: Command Record And Payload Dispatch` in
@@ -6643,7 +6645,8 @@ Address-level cluster map:
   no-match paths `0x118b2..0x11900` and `0x11b32..0x11b8a`, terminal reset
   path `0x119a6..0x119f4`, delayed restore helper `0x12218`, normal parser
   table `0x112a4`, and alternate/data parser table `0x116f6`. Checked-in
-  documentation is [pcl-parser-core.md](pcl-parser-core.md),
+  documentation is
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix),
   [pcl-command-map.md](pcl-command-map.md), and `Parser Record And Delayed
   Payload State` in [semantic-state-model.md](semantic-state-model.md),
   surfaced first as `Worked Path: Explicit No-Output Parser Rows` in

@@ -140,6 +140,208 @@ Field classification at this boundary:
   parser outcomes. Remaining unknowns are command-family, resource, or
   hardware boundaries named by the downstream owner notes.
 
+## Parser Core Outcome Matrix
+
+This matrix composes the shared parser layer from an admitted host byte to the
+first semantic owner. It stops at handler entry, delayed-payload reader entry,
+alternate/data append, or explicit parser no-output state.
+
+ESC-aware byte wrapper:
+
+- ROM path:
+  `0xa904 -> 0xda9a`.
+- State category:
+  parser scratch and firmware bookkeeping.
+- Writers:
+  no command record is written. Non-`ESC` bytes are returned unchanged;
+  `ESC` returns as one parser byte after the non-`?` lookahead byte is
+  reported through `0x9ec0`; private `ESC ? 0x11` is swallowed and fetch
+  restarts.
+- Readers / consumers:
+  tokenizer `0xdaf0` / `0xdb74` and parser loop `0x11774` consume the
+  returned byte.
+- Output effect:
+  no page state. It defines which byte the parser sees and which lookahead
+  byte remains visible through firmware reporting/pushback behavior.
+- Evidence:
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst` and the
+  `Parser Byte Wrapper At 0xda9a` section below.
+
+Tokenizer and command combining:
+
+- ROM path:
+  `0xdaf0 -> 0xdb74`.
+- State category:
+  canonical parser state and parser scratch.
+- Writers:
+  writes six-byte command records rooted at `0x7829a2`, advances and rewinds
+  cursor `0x78299e`, stores final byte `+1`, integer word `+2`, fractional
+  word `+4`, and keeps digit/sign scratch under `0x782a42..`.
+- Readers / consumers:
+  setup handlers, terminal command handlers, and delayed-payload scheduler
+  `0x121cc` consume the records. Downstream command-family notes consume the
+  parsed values after handler dispatch.
+- Output effect:
+  no pixels directly. It creates the command records that later state or page
+  producers interpret.
+- Evidence:
+  `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`,
+  fixtures `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte
+  records` and `0xdb74 parses sign, capped fraction digits, and final byte`.
+
+Normal printable dispatch:
+
+- ROM path:
+  `0x11774 -> 0xd04a`.
+- State category:
+  canonical parser state and downstream page/text state.
+- Writers:
+  parser loop does not write a page object; it calls `0xd04a(D5)` in normal
+  mode zero when `(D5 & 0x7f) >= 0x20`, or from the no-match printable
+  fallback when selected context byte permits it.
+- Readers / consumers:
+  printable source capture `0x1393a`, compact queueing `0x12f2e`, page
+  publication, and render owners consume the downstream text state.
+- Output effect:
+  first page/image effects begin in the printable/text owner, not in the
+  parser loop.
+- Evidence: `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  [font-context-metrics.md](font-context-metrics.md#printable-source-capture), and
+  [page-record-storage.md](page-record-storage.md#context-slot-preservation-checkpoint).
+
+Matched command handler:
+
+- ROM path:
+  `0x11774 -> table row handler`.
+- State category:
+  canonical parser state and command-family state.
+- Writers:
+  parser loop selects normal table `0x112a4..0x112a8` or alternate/data table
+  `0x116f6..0x116fa`, records matched bytes in `0x783196..0x783199` when
+  space remains, calls the nonzero handler longword, then runs terminal reset
+  for the row's next mode.
+- Readers / consumers:
+  [pcl-command-map.md](pcl-command-map.md) maps the terminal handler to the
+  command-family owner that writes cursor, font, page, raster, macro, status,
+  or publication state.
+- Output effect:
+  command-specific. The parser matrix proves only the route to the owner.
+- Evidence:
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+
+Delayed payload arm and restore:
+
+- ROM path:
+  setup handlers `0x11f5a`, `0x11f6e`, `0x11f82`, and `0x11f96` call
+  `0x121cc`; terminal restore is `0x12218 -> saved handler`.
+- State category:
+  canonical parser state, parser scratch, and firmware bookkeeping.
+- Writers:
+  `0x121cc` stores pending flag `0x782a1a`, handler pointer `0x782a1c`, and
+  saved six-byte record `0x782a20..0x782a25`. `0x12218` restores that record
+  to the live cursor and calls the saved handler when parser mode returns to
+  zero.
+- Readers / consumers:
+  transparent data `0x12452`, VFC table load `0x12cfe`, raster transfer
+  `0x105d0`, font descriptor `0x15d0a`, downloaded-character payload
+  `0x16c14`, and generic drains consume the restored payload contract.
+- Output effect:
+  payload bytes do not belong to table dispatch anymore; page effects begin in
+  the restored payload owner.
+- Evidence:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  fixtures `0x121cc snapshots delayed payload handler and parsed record` and
+  `0x12218 restores delayed parsed record and dispatches saved handler`.
+
+Alternate/data append and drain:
+
+- ROM path:
+  `0x11774 -> 0xe002`, plus delayed restore drains `0x1228a` / `0x12358`.
+- State category:
+  parser scratch, firmware bookkeeping, and macro/data-chain state.
+- Writers:
+  printable bytes, no-match bytes, and selected blank rows append through
+  `0xe002` while alternate/data mode `0x782c18` is active. Delayed restore can
+  route counted bytes through `0x1228a` or direct positive-count echo through
+  `0x12358`.
+- Readers / consumers:
+  macro/data-chain replay later re-enters the appended bytes through the host
+  byte source and parser loop.
+- Output effect:
+  no immediate page object unless the stored bytes are replayed later through
+  ordinary parser and command owners.
+- Evidence:
+  [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint),
+  fixtures `0x1228a consumes absolute delayed payload count without echo` and
+  `0x12358 direct alternate path echoes positive payload bytes only`.
+
+Explicit no-output parser rows:
+
+- ROM path:
+  zero-handler terminal paths `0x119a6..0x119f4` and
+  `0x11930..0x11ab8`, plus wrapper-consumed `ESC ? 0x11`.
+- State category:
+  parser scratch and firmware bookkeeping.
+- Writers:
+  matched zero-handler rows write next mode, optionally call `0x12218`, reset
+  command-record and scratch cursors, and clear local matched-byte state. In
+  alternate/data mode they can preserve bytes through append before reset.
+- Readers / consumers:
+  the next parser byte observes the reset parser state; delayed payload owners
+  may run if `0x12218` restores a pending handler.
+- Output effect:
+  no direct page object. These rows are meaningful because they preserve parser
+  state and delayed-payload boundaries exactly.
+- Evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  [pcl-command-map.md](pcl-command-map.md#no-output-parser-rows), and the
+  `No-Output And Reported-Byte Checkpoint` below.
+
+Parser-external service return:
+
+- ROM path:
+  `0x117d2..0x11818`.
+- State category:
+  firmware bookkeeping.
+- Writers:
+  services latch `0x780e3b` through `0x10c8`, and rewrites macro/page state
+  byte `0x782a92 == 0x63` to `1` before returning from the parser loop.
+- Readers / consumers:
+  caller-side service and macro/page logic observes the return before command
+  dispatch mutates downstream state.
+- Output effect:
+  no parser-dispatched page or command output for the current byte.
+- Evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` and
+  [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix).
+
+State grouping for this matrix:
+
+- Canonical parser state:
+  parser mode `0x782999`, alternate/data selector `0x782c18`, command-record
+  cursor `0x78299e`, six-byte records, delayed-payload fields
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`, and parser table roots.
+- Parser scratch:
+  byte/numeric scratch cursors and buffers, matched-byte buffer
+  `0x783196..0x783199`, tokenizer digits, transient lookahead bytes, and
+  alternate/data append scratch.
+- Firmware bookkeeping:
+  callback pointer `0x78299a`, append sink `0xe002`, report/pushback helper
+  `0x9ec0`, payload reader `0xdace`, service latch `0x780e3b`, macro/page
+  byte `0x782a92`, and restore helper `0x12218`.
+- Canonical page/render state:
+  none is written by the parser loop itself. Page roots, records, publication,
+  scheduler fields, and bitmap rows start in the downstream owner reached by
+  this matrix.
+- Hardware/external state:
+  none after host-byte owner `0xa904` has admitted a byte.
+- Unknown:
+  no parser-record layout, table-dispatch, delayed-restore, append, or
+  no-output parser middle edge remains unknown for the documented command
+  families.
+
 ## State Blocks
 
 The parser initializes these fields at `0x11774` before entering the byte loop:

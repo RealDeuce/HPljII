@@ -95,8 +95,9 @@ Output effect:
 For a supported byte stream, the parser firmware layer is reproduced when the
 same host-byte sequence produces the same normalized parser bytes, six-byte
 command records, parser mode transitions, delayed-payload restore events, and
-terminal handler entries documented in [pcl-parser-core.md](pcl-parser-core.md)
-and [pcl-command-map.md](pcl-command-map.md). The required ROM-visible
+terminal handler entries documented in
+[pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) and
+[pcl-command-map.md](pcl-command-map.md). The required ROM-visible
 behavior is:
 
 - `0xa904` supplies bytes and source-side state; consumer-specific handling of
@@ -114,8 +115,9 @@ behavior is:
   and selected payload boundaries.
 - This file is a trace and address ledger for parser firmware. The canonical
   behavioral contracts live in [host-byte-fetch.md](host-byte-fetch.md#owner-summary),
-  [pcl-parser-core.md](pcl-parser-core.md), [pcl-command-map.md](pcl-command-map.md),
-  and the command-family owner notes.
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix),
+  [pcl-command-map.md](pcl-command-map.md), and the command-family owner
+  notes.
 
 No pixel claim is complete at this layer alone. A parser terminal is only the
 handoff to command behavior; page-object, publication, render scheduling, and
@@ -126,10 +128,10 @@ row-generation claims belong to the downstream owner notes.
 See [host-byte-fetch.md](host-byte-fetch.md#owner-summary) for the tracked explanation
 of routine `0x0000a904`.
 
-See [pcl-parser-core.md](pcl-parser-core.md) for the tracked explanation
-of shared parser routines `0xda9a`, `0xdaf0`, `0xdb74`, `0x11774`,
-`0x121cc`, and `0x12218`. The generated files listed above are evidence
-inputs, not the documentation deliverable.
+See [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) for
+the tracked explanation of shared parser routines `0xda9a`, `0xdaf0`,
+`0xdb74`, `0x11774`, `0x121cc`, and `0x12218`. The generated files listed
+above are evidence inputs, not the documentation deliverable.
 
 Summary: `0xa904` returns the next normalized input byte in `D7`, or
 `D7 = -1` for the immediate no-byte/error branch where `0x780e66` and

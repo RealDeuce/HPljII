@@ -120,7 +120,7 @@ In the ROM model, "ignored" is not a single behavior:
   no-match path `0x11b82..0x11b8a` appends through `0xe002`; and nonzero-mode
   no-match path `0x11b32..0x11b7e` delegates to callback `0x78299a`.
 
-Evidence: [pcl-parser-core.md](pcl-parser-core.md),
+Evidence: [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix),
 [pcl-command-map.md](pcl-command-map.md), the ignored/no-output walkthrough in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), and table
 extracts in `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
@@ -151,7 +151,7 @@ ROM-backed Level IV command families include:
   replay, overlay publication, and display-functions append behavior.
 
 Concrete evidence is in [pcl-command-map.md](pcl-command-map.md),
-[pcl-parser-core.md](pcl-parser-core.md),
+[pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix),
 [semantic-state-model.md](semantic-state-model.md), and the command-family
 notes cited from those files.
 

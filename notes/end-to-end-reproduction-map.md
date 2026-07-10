@@ -5532,6 +5532,27 @@ Address-level cluster map:
   Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
   [host-byte-fetch.md](host-byte-fetch.md), and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+  Host/status state classification: canonical parser/backchannel state is the
+  synthetic setup record from `0x12034 -> 0x11efe`, active parser cursor
+  `0x78299e`, accepted query byte `0x11`, and response literal
+  `33440A\r\n`. Canonical host-output state is FIFO storage
+  `0x783e92..0x783ed1`, count `0x783ed2`, read pointer `0x783ed4`, write
+  pointer `0x783ed8`, wait object `0x7801e2`, backend selector `0x780e40`,
+  and backend-ready state consumed by `0xa1b0` / `0xa1d6`. Canonical status
+  state is selected page/control bytes `+6/+7/+8`, folded status fields
+  `0x780e12`, `0x780e0e`, `0x780e0a`, `0x780e1a`, accumulator `0x780e2a`,
+  active service byte `0x783e61`, reason byte `0x783e60`, and bridge/status
+  byte `0x780e90`. Derived/cache state is pending status count `0x780e22`,
+  last accepted service/status byte `0x780e62`, host-status composition bits,
+  and reason-byte folding in `0xaece`. Parser scratch is the synthetic setup
+  record plus query byte consumed by `0x122be..0x12326`; these bytes do not
+  become page/image state. Firmware bookkeeping is FIFO critical sections,
+  blocking enqueue through `0xb090`, worker drain selection in `0xae2c`,
+  `ESC z` service markers `0x7821cc` / `0x7822db`, and external protocol or
+  register naming behind `0x780e40`. Hardware/external state is limited to
+  physical output backend readiness and host reaction to emitted bytes; no
+  status/FIFO path creates page roots, page objects, render records, or pixels
+  directly.
 - Font-selection cluster:
   designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
   0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and

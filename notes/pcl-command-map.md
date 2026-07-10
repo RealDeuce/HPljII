@@ -507,6 +507,88 @@ classes before any page pixels can be derived:
   These commands create host-visible response bytes, not page roots, page
   objects, or render work.
 
+### Byte-Family Quick Route
+
+Use this quick route before opening the longer supported-stream matrix. It
+maps representative admitted byte forms to the first semantic owner and the
+output class that a byte-stream reader should follow next.
+
+- Plain printable bytes:
+  normal mode-zero no-row-match dispatch reaches `0xd04a`; the text owner then
+  uses `0x1393a` and `0x12f2e` to create compact bucket objects. Continue in
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [page-raster-imaging.md](page-raster-imaging.md). Output class:
+  page-object producer, then compact render.
+- Direct C0 controls:
+  CR/LF/FF/HT/BS/SO/SI route to `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
+  `0xf2a8`, `0xc6b8`, or `0xc68a`. Continue in
+  [direct-control-codes.md](direct-control-codes.md) and
+  [publication-commands.md](publication-commands.md) for cursor movement,
+  selected-slot switching, span flush, or page publication. Output class:
+  state-only, span/page-object producer, or publication depending on the
+  control.
+- Parser artifacts and explicit no-output rows:
+  normal zero-handler rows `0x00`, `0x07`, `0x0b`, wrapper-handled `ESC ?`,
+  display-reader terminator `ESC Z`, and `ESC &lT/t` do not own imaging state.
+  Continue in [pcl-parser-core.md](pcl-parser-core.md). Output class:
+  parser bookkeeping or explicit no-output.
+- Cursor, margin, text-motion, and dot-position commands:
+  handlers `0xeb58`, `0xec0c`, `0xedb0`, `0xedf8`, `0xee64`, `0xf39e`,
+  `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, and `0xf692` write placement,
+  wrap, HMI/VMI, or span state. Continue in
+  [direct-control-codes.md](direct-control-codes.md). Output class:
+  state-only until later printable text, rectangle/raster placement, span
+  flush, VFC, or publication consumes the fields.
+- Page environment and publication commands:
+  reset `0xcc52`, FF `0xf0f0`, page-size and page-length handlers
+  `0xfc74` / `0xcb00`, orientation `0xc992`, paper source `0xece2`, and
+  copies `0xeef0` update page/control state or publish through `0xff1e`.
+  Continue in [publication-commands.md](publication-commands.md) and
+  [reset-default-environment.md](reset-default-environment.md). Output class:
+  environment state, current-root publication, or no-publication reset clear.
+- Transparent and display reader bytes:
+  `ESC &p#X` arms `0x11f5a -> 0x121cc` and restores to payload reader
+  `0x12452`; `ESC Y ... ESC Z` uses readers `0x12536` or `0x12120`.
+  Continue in [transparent-print-data.md](transparent-print-data.md) and
+  [display-functions.md](display-functions.md). Output class:
+  routed printable text, alternate/data append, display/status side effect, or
+  explicit reader termination.
+- Raster bytes:
+  setup handlers `0x1075a`, `0x107fa`, `0x10808`, `0x10e22`, and `0x10e68`
+  write raster state; delayed `ESC *b#W` restores to transfer reader
+  `0x105d0`. Continue in [raster-graphics.md](raster-graphics.md) and
+  [page-raster-imaging.md](page-raster-imaging.md). Output class:
+  encoded raster bucket object, then `0x1f88e` render.
+- Rectangle/rule bytes:
+  `ESC *c#H/#V/#G/#P` route to `0x10a40`, `0x10ae0`, `0x10dce`, and
+  `0x10898`; fill reaches rule producer `0x13386 -> 0x133aa`. Continue in
+  [rectangle-graphics.md](rectangle-graphics.md) and
+  [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
+  Output class: rule-list page object, then rule render.
+- Font selection and downloaded-font bytes:
+  font selectors and symbol/designation rows route through `0xc390`,
+  `0xc6ec..0xc930`, and `0x12046..0x120be`; downloaded-font payloads use
+  delayed setup `0x11f96`, descriptor `0x15d0a`, resource install `0x16c14`,
+  or character install `0x16498`. Continue in
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [downloaded-fonts.md](downloaded-fonts.md). Output class:
+  selected-font state, installed resources, later compact text, or exact
+  downloaded-glyph render boundary.
+- Macro and alternate/data bytes:
+  macro id/control handlers `0xe112` and `0xdd08`, append sink `0xe002`,
+  execute/call frame builder `0xe418`, and overlay frame builder `0xe4f4`
+  store or replay byte streams through the same `0xa904` source contract.
+  Continue in [macro-data-chain.md](macro-data-chain.md). Output class:
+  stored input, replayed parser input, overlay publication mutation, or skip
+  gate with base publication.
+- Host/status side-channel commands:
+  model/status queries use `0x12034 -> 0x122be` and FIFO helper `0xb090`.
+  Continue in [errors-and-status.md](errors-and-status.md) and
+  [io-interfaces.md](io-interfaces.md). Output class:
+  host-visible response bytes with no page-object output.
+
 These classes are mutually useful for reproduction: a byte-stream renderer
 does not need physical paper output to classify a byte. It must preserve the
 ROM parser state, command records, delayed-payload state, and page/render

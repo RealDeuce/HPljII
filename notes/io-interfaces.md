@@ -137,6 +137,101 @@ indirectly: a full output FIFO can stall a parser-side response producer, and a
 bidirectional host may react to service/status bytes, changing the later host
 byte stream.
 
+### Interface Outcome Matrix
+
+This matrix is the ROM-facing contract for host input and host/status output.
+It separates byte-stream reproduction state from physical interface naming:
+the ROM-local question is which byte or status effect reaches firmware state,
+not which external connector caused it.
+
+- Buffered source no-byte gate:
+  `0xa904` first checks immediate no-byte gate `0x780e3b` with buffered-source
+  gate bits `0x780e66`. When this gate is active, it returns `D7 = -1`
+  before first pushback, data-chain replay, second pushback, ring input, or
+  direct hardware sources. The output effect is no admitted parser byte and no
+  page state change.
+- First pushback stack:
+  when `0x783e8c` is nonzero, `0xa904` consumes the first pushback source at
+  `0x783e8e`, updates its count/pointer state, and returns the byte to parser
+  wrapper `0xda9a` or a family payload reader. The downstream pixel effect is
+  whatever that returned byte does through parser dispatch.
+- Active data-chain frame:
+  when `0x782d76` names an active frame, `0xa904` reads frame payload pointer
+  `+0x00`, count `+0x04`, offset byte `+0x08`, and frame kind `+0x09`.
+  Execute/call frames from `0xe418` use kinds `2` and `3`; overlay
+  publication frames from `0xe4f4` use kind `4`. End markers call `0xe22c`
+  and restart source selection. Replayed bytes are canonical parser input, so
+  macro output has no separate renderer.
+- Second pushback stack:
+  after data-chain replay and before ring/direct input, `0xa904` consumes the
+  second pushback source at `0x783e78` when count `0x783e76` is nonzero. Its
+  output effect is the same as first pushback: one parser-visible byte and
+  updated source bookkeeping.
+- Ring input source:
+  in normal buffered mode, `0xa904` consumes the ring source rooted at
+  `0x783a4c..0x783e53`, using count `0x783e54`, read pointer `0x783e56`, and
+  write pointer `0x783e5a`. Once returned, the byte is indistinguishable from
+  other admitted sources to `0x11774` and command-family handlers.
+- Direct input mode 1:
+  with `0x780e40 == 1`, `0xa904` polls status-ready bit `0x8e01.4`, reads
+  data from `0x8801`, performs handshake/control writes through `0xa601` and
+  `0xaa01`, clears `0x7828ec` and `0x7821c4`, and preserves local `0x1a`
+  reporting behavior. The unknown part is the physical name of this MMIO bank,
+  not the parser-visible byte returned to firmware.
+- Direct input mode 2:
+  with `0x780e40 != 0 && != 1`, `0xa904` polls `0xfffee005.0`, reads data
+  from `0xfffee001`, ORs status bits `0xfffee005.6/.7` into `0x780e2e`, and
+  sets control-shadow bit `0xfffee009.6` mirrored in `0x7828fb`. This path can
+  change status state as well as admit a byte.
+- Host-output FIFO enqueue:
+  producers such as the model-ID response call `0xb090`, which retries
+  `0xb0c0` until the 64-byte FIFO at `0x783e92..0x783ed1` accepts the byte.
+  When count `0x783ed2` is full, `0xb090` waits on object `0x7801e2`; this can
+  stall the producer, but it creates no page object.
+- Host-output worker:
+  `0xae2c` consumes pending service/status fields and FIFO state. In output
+  mode `0`, it can call status helper `0xaece`, dequeue FIFO bytes through
+  `0xb022`, and write through the mode-0 backend. In mode `1`, it dequeues and
+  discards FIFO bytes. In other nonzero modes, it writes through the alternate
+  backend rooted at `0xfffee003`.
+- Status-byte construction:
+  `0xaece` emits service byte `0x13` from latch `0x783e61`, consumes pending
+  status count `0x780e22`, reason byte `0x783e60`, and status fields such as
+  `0x780e90` / `0x780e2a`, then writes host-visible status bytes. It affects
+  pixels only if a bidirectional host changes later input in response.
+
+State grouping for this matrix:
+
+- Canonical input state:
+  pushback stacks `0x783e8c/0x783e8e` and `0x783e76/0x783e78`, data-chain
+  frame pointer `0x782d76`, ring count/pointers
+  `0x783e54/0x783e56/0x783e5a`, direct-input selector `0x780e40`, and the
+  returned byte in `D7`.
+- Canonical output state:
+  FIFO count/read/write/storage `0x783ed2`, `0x783ed4`, `0x783ed8`, and
+  `0x783e92..0x783ed1`; backend selector `0x780e40`; service/status latches
+  `0x783e61`, `0x783e60`, `0x780e22`, and `0x780e62`.
+- Derived/cache state:
+  source gate bits `0x780e66`, direct-mode shadows `0x7828fa` / `0x7828fb`,
+  direct active-byte/status fields `0x7828ec`, `0x7821c4`, and `0x780e2e`,
+  and page/status fields consumed by `0xaece`.
+- Parser scratch:
+  none owned by the interface layer after `D7` is returned. Parser records,
+  delayed-payload snapshots, and command-family scratch begin in
+  `0xda9a` / `0x11774` or the family payload reader that consumes the byte.
+- Firmware bookkeeping:
+  service-needed marker `0x7821cd`, in-service marker `0x7821cc`, wait object
+  `0x7801e2`, data-chain frame cleanup `0xe22c`, and output-worker sleep or
+  wake state.
+- Hardware/external state:
+  the physical identities, connector mapping, and timing for the short and
+  long MMIO banks and output registers.
+- Unknown:
+  no ROM-local byte-source priority, FIFO ordering, or status-byte producer
+  edge is unknown for the documented paths. Remaining unknowns are physical
+  interface names, connector timing, and unobserved data-chain frame producer
+  values beyond kinds `2`, `3`, and `4`.
+
 ### Confidence And Evidence
 
 Confidence is high for source priority, service retry, no-byte return,

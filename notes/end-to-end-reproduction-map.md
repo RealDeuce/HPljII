@@ -5860,6 +5860,34 @@ Address-level cluster map:
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix),
   [rectangle-graphics.md](rectangle-graphics.md), and
   [raster-graphics.md](raster-graphics.md).
+  Raster/rectangle state classification: canonical rectangle state is width
+  `0x78316a`, height `0x783166`, area-fill id `0x78316e`, page/cursor inputs
+  `0x782c8a/0x782c8e`, orientation `0x782da3`, extents
+  `0x782db8/0x782db6`, source record `0x782a88`, page-root rule-list head
+  `root+0x24`, 14-byte rule objects from `0x133aa`, selector byte `+0x05`,
+  packed key `+0x06`, width `+0x08`, height `+0x0a`, and continuation word
+  `+0x0c`. Canonical raster state is block `0x783170`, including baseline
+  `+0x00`, row `+0x02`, accepted count `+0x04`, overflow/drain count
+  `+0x06`, encoded mode `+0x08`, origin `+0x0a`, scale `+0x0e`, row byte
+  limit `+0x10`, and active byte `+0x12`. Canonical page/image state is
+  current root `0x78297a`, bucket root `+0x1c`, encoded object class `+0x04`,
+  raster mode byte `+0x05`, count `+0x06`, key `+0x08`, copied payload bytes
+  `+0x0a..`, bridge-normalized rule list `+0x1c`, and render bucket root
+  `+0x18`. Derived/cache state is rule/raster bucket index `0x782a7c`, low
+  bucket byte `0x782a7d`, packed key `0x782a7e`, allocation capacity
+  `0x782a80`, horizontal phase `0x782dc0`, band caches
+  `0x783a20/0x783a22/0x783a28`, destination stride `0x783a1c`, fallback
+  storage rooted at `0x7810b4`, and dense-row split objects inserted by
+  `0x13250`. Parser scratch is the six-byte `ESC *c` command record consumed
+  by rectangle handlers, delayed-payload byte `0x782a1a`, saved handler
+  `0x782a1c`, saved record `0x782a20..0x782a25`, restored cursor
+  `0x78299e`, and the live `ESC *b#W` record until `0x105d0` reads it.
+  Firmware bookkeeping is stream allocator state `0x782a70`, `0x782a72`, and
+  `0x782a76`, copy-stop/publication flag `0x782996`, root retry flag
+  `+0x15.0`, no-room retry path `0x10d22 -> 0xff1e -> 0x10084`, and chunk
+  allocator behavior in `0x132b6..0x13382`. Hardware/external state is absent
+  after payload bytes are admitted by `0xa904` / `0xdace`; later physical
+  engine consumption starts after the shared render buffers are written.
 - Publication and render-scheduler cluster:
   reset, FF, page-size, page-length zero/default, orientation, paper-source,
   copies, VFC publication, and no-room retries converge on `0xff1e`.

@@ -3015,80 +3015,64 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0x3003`. The segmented cases emit two objects for segment `1` and
   segment `0`, with bucket indices `9/1` or `8/0` depending on the
   positioned y coordinate.
-- Fixture `0x12f2e-modeled short bucket object fields` pins the default
-  flagged short object from source glyph `0x20`: path `short`, object size
-  `0x26`, capacity `0x0a`, entry size `3`, bucket `0`, selector `0`, coord
-  `0`, rows `22`, width `4`, and object prefix
+- `0x12f2e` turns the positioned source object into compact bucket entries.
+  For the default flagged `LINE_PRINTER` source glyph `0x20`, it selects the
+  short path: object size `0x26`, capacity `0x0a`, entry size `3`, bucket `0`,
+  selector `0`, coord `0`, rows `22`, width `4`, and object prefix
   `00 00 00 00 00 00 00 01 20 00 00`.
-- Fixtures `0x12f2e-modeled segmented bucket metadata` and
-  `0x12f2e-modeled segmented bucket objects` pin the tall built-in source
-  path: selector `0x2000`, glyph `0x1f`, rows `1108`, width `74`, object size
+- Tall built-in sources take the segmented path. A source with selector
+  `0x2000`, glyph `0x1f`, rows `1108`, and width `74` produces object size
   `0x28`, capacity `8`, and nine segment objects for buckets
   `64,56,48,40,32,24,16,8,0` with segment bytes `8..0`.
-- Fixture `addressed 0x12f2e selector-mode matrix allocates and renders all
-  compact modes` runs the four unflagged selector modes through real
-  addressed `0x1381c` storage in one page-record state block. Glyph `1`
-  queues selector `0x0003` short object
-  `00 00 00 00 00 03 00 01 01 66 01` at `0x00d09004`; glyph `2`
-  queues selector `0x1003` wide object
-  `00 d0 90 04 10 03 00 01 02 66 01` at `0x00d0902a`; glyph `3`
-  queues selector `0x2003` segmented objects for buckets `9/1`; glyph `4`
-  queues selector `0x3003` segmented-wide objects for buckets `9/1`.
-  The resulting bucket heads are bucket `1 -> 0x00d090c8` and bucket
-  `9 -> 0x00d090a0`; bucket word `1` dispatches object bytes
-  `0x30`, `0x20`, `0x10`, and `0x00` through `0x1effe`, while bucket word
-  `9` dispatches `0x30` and `0x20`. Render row digests are
-  `c9de5a8a4ed4f2805e35e1a7c8bdad2f6f832fc129bd26f5ec49a82a6023b25b`
-  for bucket `1` and
-  `dfd0b3d07e16f8d06a8ef12c1c51dedac61149493fb1e90981866da521e98e58`
-  for bucket `9`.
-- Fixture `compact text bucket object fixture metadata` pins the short
-  renderer-facing metadata for the ordinary built-in compact object:
-  selector `0`, context slot `0`, count `1`, glyph `0x20`, coord `0x0001`,
+- The unflagged compact selector matrix is selected from source width, rows,
+  and source class. Glyph `1` queues selector `0x0003` short object
+  `00 00 00 00 00 03 00 01 01 66 01`; glyph `2` queues selector `0x1003`
+  wide object `00 d0 90 04 10 03 00 01 02 66 01`; glyph `3` queues selector
+  `0x2003` segmented objects for buckets `9/1`; and glyph `4` queues selector
+  `0x3003` segmented-wide objects for buckets `9/1`. The resulting bucket
+  heads are bucket `1 -> 0x00d090c8` and bucket `9 -> 0x00d090a0`; renderer
+  `0x1effe` dispatches object bytes `0x30`, `0x20`, `0x10`, and `0x00` in
+  bucket `1`, and `0x30` plus `0x20` in bucket `9`.
+- The renderer-facing short metadata for the ordinary built-in compact object
+  is selector `0`, context slot `0`, count `1`, glyph `0x20`, coord `0x0001`,
   rows `22`, width `4`, helper `0x01fa5c`, and payload
-  `00 01 20 00 01`. Fixture `compact text bucket object fixture rendered rows`
-  proves those metadata fields render the Line Printer glyph rows.
-- Fixtures `0xd824-positioned compact text rendered rows` and
-  `0xd824-negative-overflow compact text rendered rows` connect the
-  `0xd824` positioned source coordinates to visible rows. The ordinary
-  positioned case renders the Line Printer glyph at x `16`; the negative
-  overflow case renders the same glyph after the wider x correction at x
-  `32`.
-- The selected inline/downloaded fixture starts at `0x1393a`: host
-  `0x21` maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`,
-  source flag `0`, then queues and renders through the unflagged path
-  with context slot `3`.
-- The constructed inline/downloaded map fixtures extend that same selected-map
-  source through the other compact classes. Host bytes `0x23`, `0x24`, and
-  `0x25` map to fixed records that drive `0x1393a`, `0xd3b2`, and `0x12f2e`
-  into compact-wide `0x1f0d2`, segmented `0x1f1f0`, and segmented-wide
-  `0x1f264` output.
-- Fixture `unflagged printable d4ac low-watermark flush renders span`
-  uses the same inline/downloaded source class with context bytes
-  `+0x2b=7`, `+0x2c=0`, and `+0x2d=10`. It queues host byte `0x21`
-  through `0x1393a` / `0xd3b2` into compact coord `0x7a00`, advances
-  x to `28` through the `0xd140` cursor path, and then reaches
-  `0xd4ac` before the shared `0x12714` span output.
-- The two-printable stream fixture proves the ordinary flagged path can
-  repeat: `!!` maps both host bytes through `0xd04a`/`0x1393a`,
-  advances the cursor through `0xd550`, reuses the same short object,
-  and renders compact entries at `0x0001` and `0x0002`; the initialized
-  HMI fixture renders the second glyph from coord `0x0202`.
-- Fixtures `single printable byte stream renders expected rows`,
-  `two printable byte stream renders advanced glyph rows`, and
-  `two printable byte stream with line-printer HMI renders subbyte rows`
-  close the direct byte-stream-to-pixels edge for the same compact object.
-  The first stream renders the positioned `!` rows, the second places two
-  glyphs at ordinary cursor advances, and the HMI case uses the selected
-  Line Printer metric to shift the second glyph to subbyte coord `0x0202`.
-- Split-row compact renderer fixtures prove the band-boundary carry
-  contract for all non-short compact classes. `0x1f0d2 wide compact text
-  splits current band and fallback rows` splits glyph `1` at coord
-  `0xe601` into two active-band rows plus one fallback row. `0x1f1f0
-  segmented compact text splits current band and fallback rows` applies the
-  same split to selector `0x2003`, segment `1`. `0x1f264 segmented-wide
-  compact text splits current band and fallback rows` applies it to selector
+  `00 01 20 00 01`. Ordinary positioning renders the Line Printer glyph at x
+  `16`; negative overflow correction renders the same glyph at x `32`.
+- The unflagged inline/downloaded source starts at `0x1393a`: host `0x21`
+  maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`, source flag `0`,
+  and context slot `3`, then queues through `0xd3b2`/`0x12f2e`. Host bytes
+  `0x23`, `0x24`, and `0x25` drive the same source class into compact-wide
+  `0x1f0d2`, segmented `0x1f1f0`, and segmented-wide `0x1f264` output.
+- The unflagged low-watermark span route uses context bytes `+0x2b=7`,
+  `+0x2c=0`, and `+0x2d=10`. Host byte `0x21` queues through
+  `0x1393a` / `0xd3b2` into compact coord `0x7a00`, advances x to `28`
+  through the `0xd140` cursor path, and then reaches `0xd4ac` before shared
+  span output through `0x12714`.
+- Repeated ordinary printable bytes reuse the same short object shape. Stream
+  `!!` maps both bytes through `0xd04a`/`0x1393a`, advances the cursor through
+  `0xd550`, reuses the short object, and produces compact entries at
+  `0x0001` and `0x0002`; initialized Line Printer HMI shifts the second entry
+  to subbyte coord `0x0202`.
+- Non-short compact classes carry across band boundaries in their renderer
+  helpers. `0x1f0d2` splits wide glyph `1` at coord `0xe601` into two
+  active-band rows plus one fallback row; `0x1f1f0` applies the same split to
+  selector `0x2003`, segment `1`; and `0x1f264` applies it to selector
   `0x3003`, segment `1`, with the wide trailing-plane source layout.
+- Supporting fixture anchors: `0x12f2e-modeled short bucket object fields`,
+  `0x12f2e-modeled segmented bucket metadata`,
+  `0x12f2e-modeled segmented bucket objects`,
+  `addressed 0x12f2e selector-mode matrix allocates and renders all compact
+  modes`, `compact text bucket object fixture metadata`,
+  `compact text bucket object fixture rendered rows`,
+  `0xd824-positioned compact text rendered rows`,
+  `0xd824-negative-overflow compact text rendered rows`,
+  `unflagged printable d4ac low-watermark flush renders span`,
+  `single printable byte stream renders expected rows`,
+  `two printable byte stream renders advanced glyph rows`,
+  `two printable byte stream with line-printer HMI renders subbyte rows`,
+  `0x1f0d2 wide compact text splits current band and fallback rows`,
+  `0x1f1f0 segmented compact text splits current band and fallback rows`, and
+  `0x1f264 segmented-wide compact text splits current band and fallback rows`.
 - Fixture `0xd04a printable entry normalizes over-0xff and high-bit
   values` pins the printable-entry normalization boundary before source
   placement. Entry value `0x100` with nonzero `0xd99a` result exits before

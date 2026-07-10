@@ -12478,8 +12478,12 @@ record.
 - Unknown:
   - exact physical engine pacing behind trap veneers `0x10bc`,
     `0x10c4`, `0x10c8`, `0x10d0`, `0x10d8`, `0x10e0`, and `0x10ec`.
-  - complete multi-band timing and stop conditions across
-    `0x1eba4..0x1ecd2`.
+    ROM-local branch predicates and stop/continue conditions across
+    `0x1eba4..0x1ecd2` are documented below and in
+    [active-render-scheduler.md](active-render-scheduler.md#active-loop-branches):
+    cleanup on `0x780ea5`, stale-work cleanup on active `+0x0c < +0x10`,
+    throttle yield on `+0x0e > 0x28`, render on capacity `>= 9`, and
+    capacity wait below `9`.
   - direct caller into optional pattern helper `0x247c..0x270c` is not
     located. Its accumulator, pattern-pointer cache, and destination writes are
     documented, but ordinary active rendering still reaches copied rows through

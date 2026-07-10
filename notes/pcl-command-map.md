@@ -324,8 +324,9 @@ classes before any page pixels can be derived:
   rows append through `0xe002`. They preserve bytes for macro/data contexts
   but do not immediately call `0xd04a`, cursor-control handlers, page-layout
   handlers, or render producers. The append-vs-execute split is documented in
-  [pcl-parser-core.md](pcl-parser-core.md#owner-summary) and
-  [macro-data-chain.md](macro-data-chain.md#owner-summary).
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary),
+  [macro-data-chain.md](macro-data-chain.md#owner-summary), and the
+  `Alternate/Data Dispatch Decision Checkpoint` below.
 - Explicit no-output parser byte:
   normal-table blank C0 rows `0x00`, `0x07`, and `0x0b` match table entries,
   run the terminal reset path through `0x12218`, reset parser scratch, and
@@ -460,6 +461,102 @@ Checked-in dispatch audit, generated from
   without running the normal uppercase terminal handler; `0x11eda` covers the
   same `12` family prefixes; `0x11f96` covers the `4` downloaded-font payload
   entries that must remain stored in data/macro contexts.
+
+## Alternate/Data Dispatch Decision Checkpoint
+
+This checkpoint is the checked-in semantic grouping for alternate/data table
+`0x116f6`. It starts after host fetch and tokenizer have admitted a byte to
+parser loop `0x11774`, and ends at one of four outcomes: append stored input,
+rewind/continue a command family, run an allowed storage/payload handler, or
+return through the terminal reset path without page-state mutation.
+
+Decision rules:
+
+- Mode-zero printable bytes do not call `0xd04a` while alternate/data flag
+  `0x782c18` is set. The mode-zero fast path reaches append helper
+  `0xe002(D5)` and fetches the next byte, so the byte becomes stored
+  macro/data input rather than an immediate compact text object.
+- Matched blank C0 rows `0x00` and `0x07..0x0f` are not ignored. Path
+  `0x11930..0x11ab8` flushes byte and numeric scratch through `0x123ae` /
+  `0x123de`, appends the matched byte through `0xe002`, then rejoins the
+  terminal reset and delayed-restore boundary at `0x12218`.
+- Most uppercase terminal rows in table `0x116f6` have blank handlers. They
+  preserve parser syntax and terminal state but suppress the normal cursor,
+  layout, font-selection, rectangle, raster-control, and dot-position
+  handlers for that stored stream.
+- Lowercase chaining finals mostly route to `0x11f4c`, which rewinds
+  `0x78299e` by one six-byte command record and keeps the command family
+  active without running the corresponding uppercase state writer.
+- Storage and payload exceptions remain active because their bytes must be
+  represented in the stored stream: `ESC &p#X` / `x`, `ESC &l#W` / `w`,
+  `ESC *b#W` / `w`, `ESC (s#W` / `w`, `ESC )s#W` / `w`, display append
+  `ESC Y -> 0x12120`, local Control-Z append/report handlers `0x1210c` /
+  `0x121b2`, and macro control `ESC &f#X` / `x -> 0xdd08`.
+- `ESC E` still reaches reset handler `0xcc52`. Alternate/data table
+  selection does not protect current parser, macro, page-root, or environment
+  state from an explicit reset command.
+- If `0x12218` restores a delayed payload while alternate/data mode is active,
+  it calls `0x12358`. Saved wrapper `0x1228a` drains through
+  `0x1228a -> 0x12328`; non-wrapper saved handlers are not called, and
+  positive payload counts are drained through `0xdace` while each normalized
+  byte is appended through `0xe002`.
+
+Field groups:
+
+- Canonical parser state:
+  alternate/data selector `0x782c18`, mode byte `0x782999`, table root
+  `0x116f6`, six-byte command records at `0x78299e`, delayed fields
+  `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, and current macro/data
+  record pointer `0x782d7a`.
+- Parser scratch:
+  matched-byte buffer `0x783196..0x783199`, byte scratch cursor
+  `0x782a26`, numeric scratch cursor `0x782a3e`, and scratch buffers flushed
+  through `0x123ae` and `0x123de`.
+- Firmware bookkeeping:
+  append sink `0xe002`, lowercase rewind helper `0x11f4c`, terminal reset
+  path `0x11930..0x11ab8`, delayed restore `0x12218`, alternate payload
+  dispatcher `0x12358`, generic drain wrapper `0x1228a`, and payload drain
+  helper `0x12328`.
+- Canonical page/render state:
+  none is written by the alternate/data table policy itself. Page state can
+  change only through the explicit active exceptions above, reset `0xcc52`, or
+  later replay of bytes stored by `0xe002`.
+- Unknown:
+  no ROM-local parser-table edge remains for classifying an alternate/data
+  row as append, rewind, active storage/payload handler, reset, or no-output
+  terminal. Remaining behavior belongs to the called owner note or to later
+  replay when stored bytes re-enter `0xa904`.
+
+Writers, readers, and output effect:
+
+- Writers are parser loop `0x11774`, append helper `0xe002`, scratch flush
+  helpers `0x123ae` / `0x123de`, lowercase rewind helper `0x11f4c`, delayed
+  restore `0x12218`, and alternate payload dispatcher `0x12358`.
+- Readers and consumers are macro definition/storage helpers that own
+  `0xe002` chunks, data-chain replay frames that later feed those bytes back
+  through `0xa904`, and the storage/payload owner notes reached by the active
+  exceptions.
+- The immediate output effect is stored input or parser synchronization, not
+  pixels. A stored C0 byte, command byte, or payload byte affects page output
+  only if a later data-chain or macro replay frame returns it to the normal
+  parser route.
+
+Evidence:
+
+- `generated/analysis/ic30_ic13_pcl_command_map.md`, alternate/data table
+  `0x116f6`, names the blank rows, `0x11f4c` chaining rows, active
+  storage/payload rows, `0x12120`, `0x1210c`, `0x121b2`, `0xdd08`, and
+  `0xcc52`.
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` anchors the
+  mode-zero append path, table scan, `0x11930..0x11ab8` append-preserving
+  terminal path, and `0x11b82` no-match append path.
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` anchors
+  `0x12218`, `0x1228a`, `0x12328`, and `0x12358`.
+- [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract),
+  [macro-data-chain.md](macro-data-chain.md#owner-summary), and
+  [display-functions.md](display-functions.md#owner-summary) provide the
+  checked-in semantic owners for parser outcomes, append storage, display
+  append, Control-Z append/report siblings, and later replay.
 
 ## Parser Handler Owner Matrix
 

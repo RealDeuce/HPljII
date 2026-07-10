@@ -372,6 +372,91 @@ Output effect:
   publication-to-render scheduling needs `0x2feb6` and `0x0c24`, and host
   status responses need the `0x31d6` FIFO.
 
+### Startup Outcome Matrix
+
+This matrix is the owner-level route from reset/startup code to the baseline
+state consumed by host-byte, parser, page-record, and render owners. Startup
+is successful for byte-stream reproduction when these software-visible
+outcomes are present; early hardware probes remain boundaries only when they
+change one of the fields listed here.
+
+- Reset diagnostics and RAM trampoline setup:
+  `0x0110..0x0240` masks interrupts, performs early MMIO writes, runs RAM
+  tests through `0x08a2` and `0x08dc`, clears RAM, and copies RAM trampoline
+  stubs through `0x0298` into `0x780000..0x780173`. The outcome is firmware
+  bookkeeping and scheduler/trap entry plumbing, not parser state or page
+  output. Failure codes `0xb407`, `0xb418`, and related verifier codes are
+  diagnostic exits.
+- Startup memory/config fields:
+  `0x02b2..0x031e`, `0x071c`, and optional probe `0x05ba` write
+  `0x780e59`, `0x780e5a`, `0x780e60`, and `0x780e4c`. These are canonical
+  startup configuration fields consumed by `0x0b18` and resource/window setup.
+  The physical meaning of `$8000`, `$8c01`, and `$ff8000` bits is external;
+  the RAM fields written from those reads are ROM-local state.
+- Default-environment startup handoff:
+  `0x2c84` bulk-reads retained/default records, handles cold-reset/service
+  fallback, and seeds default-environment bytes `0x780e44..0x780e58`. Those
+  fields are firmware bookkeeping and canonical defaults for later reset,
+  page-layout, paper-source, and font/context owners.
+- Verifier and heap/resource window:
+  `0x073a..0x0c22` verifies code/resource/RAM windows, then `0x099e` /
+  `0x0b18` derive heap inputs `0x780efa` / `0x780efe` and resource/fallback
+  window `0x7810b4` / `0x7810b8`. These fields are canonical allocator and
+  resource-window inputs. The exact continuation after verified resource pair
+  `0x0bffff` remains a physical memory-map boundary.
+- Heap allocator baseline:
+  `0x164a` consumes heap inputs and writes free-unit count `0x780e86`,
+  allocator bitmap pointer `0x783972`, scan cursors `0x783976..0x783986`, and
+  payload base `0x783988`. Page-root stream storage, macro chunks, raster
+  rows, and downloaded-font payloads later consume this canonical allocator
+  state through `0x170c`, `0x1710`, and `0x18b4`.
+- Render-work seeds:
+  `0x2feb6` consumes the resource/fallback window once, writes
+  `0x7820bc = 1` and `0x7820c0 = 1`, and clears `0x7820c8` / `0x78212c`.
+  This is derived render-work baseline state consumed by the active render
+  scheduler before it alternates between work records.
+- Host byte-source buffers:
+  `0x3178` clears ring and pushback counts `0x783e54`, `0x783e76`, and
+  `0x783e8c`, initializes ring pointers `0x783e56` / `0x783e5a`, LIFO
+  pointers `0x783e78` / `0x783e8e`, and mirror `0x7821c4`. This is canonical
+  input state consumed by `0xa904`; startup does not admit bytes itself.
+- Host-output FIFO:
+  `0x31d6` clears output count `0x783ed2` and initializes FIFO read/write
+  pointers `0x783ed4` / `0x783ed8` to storage `0x783e92`. This is canonical
+  host-output state consumed by `0xb022`, `0xb090`, `0xb0c0`, and `0xae2c`.
+  It does not affect pixels except by possible host backchannel behavior.
+- Wait-object scheduler ring:
+  `0x0c24` builds records `0x780182..0x780262` from table `0x15d0`, allocates
+  private stacks, stores restart PCs, closes the linked ring, and enters
+  scheduler switch `0x1266`. This is canonical scheduler state consumed by
+  wait/trap helpers, parser scheduling, interface output, and active render
+  scheduling.
+
+State grouping for this matrix:
+
+- Canonical state:
+  startup memory/config fields, heap/resource inputs, allocator cursors,
+  byte-source buffers, output FIFO fields, wait-object records, and
+  retained/default-environment startup fields.
+- Derived/cache state:
+  MMIO shadows `0x7828fa`, `0x7828f9`, `0x7828f6`, timer divider bytes
+  `0x78017f..0x780181`, debounce bytes, render-work selector seeds, and
+  startup-test gate `0x783eee`.
+- Parser scratch:
+  none. Parser records, delayed-payload state, and command-family scratch are
+  created after startup by parser/reset owners.
+- Firmware bookkeeping:
+  RAM trampoline stubs, diagnostic failure codes, private scheduler stack
+  frames, and retained/default loader scratch.
+- Hardware/external state:
+  early MMIO source identities, optional `PROG` extension contents, retained
+  storage identity, and resource continuation decode beyond verified bytes.
+- Unknown:
+  no ROM-local startup writer/consumer edge is unknown for the documented
+  baseline. Remaining unknowns are physical names/timing for MMIO inputs and
+  outputs, optional external code/resource contents, and board memory-map
+  policy for resource continuation.
+
 Evidence and unresolved boundary:
 
 - Detailed semantic composition is mirrored in

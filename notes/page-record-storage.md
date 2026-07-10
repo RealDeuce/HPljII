@@ -755,8 +755,9 @@ Field grouping for this route:
   no ROM-local producer-to-render middle edge remains for documented
   single-entry and split portrait spans. Remaining work starts only from
   byte streams that change `0x137a2` key derivation, the split predicate in
-  `0x1354a`, `0x135f0` entry bytes, partial split allocation failure, bucket
-  bridge state, or row construction through `0x1f812` / `0x1f862`.
+  `0x1354a`, `0x135f0` entry bytes, a different allocation-failure
+  publication/retry outcome, bucket bridge state, or row construction through
+  `0x1f812` / `0x1f862`.
 
 Evidence: producer listing
 `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`

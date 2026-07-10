@@ -9231,8 +9231,8 @@ Priority ROM-local documentation targets:
    index, or an exact boundary beyond the [compact selector outcome
    matrix](downloaded-fonts.md#compact-selector-outcome-matrix). Segment-list
    portrait-span streams should start only when they change key derivation, split
-   buckets, entry bytes, bucket bridge state, partial split allocation failure, or row
-   construction beyond the [segment-list outcome
+   buckets, entry bytes, bucket bridge state, a new allocation-failure
+   publication/retry outcome, or row construction beyond the [segment-list outcome
    matrix](page-record-storage.md#segment-list-outcome-matrix). Fixed-list
    landscape-span streams should start only when they change key derivation, insertion
    order, object bytes, bridge continuation fields, five-band gating, or row

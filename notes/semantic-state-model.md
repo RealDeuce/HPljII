@@ -10850,12 +10850,15 @@ byte streams and ROM row-construction branches.
   transformed by the same `0x12714` source package, inserted through
   `0x136d2` as fixed-list objects under page-root `+0x28`, bridged to
   render-record `+0x20`, and consumed by `0x1f756` / `0x1f7b0`. The
-  allocation-failure retry edge is explicit at `0x127ae..0x12808`: mark
-  page-root `+0x14`, publish through `0xff1e`, rebuild the local source, and
-  retry `0x13520`. Remaining work starts only from byte streams or selected
-  metric/orientation states that change the `0x12790..0x127a0` page-extent
-  gate, segment-list/fixed-list object fields, bridge roots, or render
-  dispatch.
+  allocation-failure retry edge is explicit at `0x127ae..0x12808`: set bit 0
+  in the page-root flags word at `+0x14` (written at byte `+0x15.0`),
+  publish through `0xff1e`, rebuild the local source, and retry `0x13520`.
+  A failed second `0x135f0` call after a split segment leaves the first
+  segment in the root that is published before retry; the fresh root retries
+  the full pending-span source. Remaining work starts only from byte streams
+  or selected metric/orientation states that change the `0x12790..0x127a0`
+  page-extent gate, segment-list/fixed-list object fields, bridge roots, or
+  render dispatch.
 - `0x13070..0x1f88e`: raster producers and encoded renderers are connected for
   modes `0..3`. Remaining work must change a concrete raster boundary:
   accepted count or drain result at `0x105d0`, encoded object fields

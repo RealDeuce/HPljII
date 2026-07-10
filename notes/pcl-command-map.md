@@ -799,6 +799,117 @@ It names the parser route for the concrete supported stream families before the 
 notes take over field writes, page objects, and pixels. The generated table files remain
 supporting evidence; the checked-in owner notes are the semantic source of truth.
 
+### Parser-To-Owner Outcome Handoff
+
+This checkpoint is the semantic join between parser dispatch rows and the
+command-family outcome notes. It is intentionally a routing layer: the parser
+record names the handler and family, then the owner checkpoint below carries
+the field writers, readers, page-object bytes, render consumers, and exact
+unresolved boundary.
+
+Shared parser state classification:
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data flag `0x782c18`, live six-byte command
+  record `0x78299e..0x7829a3`, normal dispatch table `0x112a4`, and
+  alternate/data dispatch table `0x116f6`.
+- Canonical delayed-payload state:
+  pending byte `0x782a1a`, saved handler pointer `0x782a1c`, saved command
+  record `0x782a20..0x782a25`, restore boundary `0x12218`, and family
+  payload readers such as `0x12452`, `0x12cfe`, `0x105d0`, and `0x15a18`.
+- Parser scratch:
+  matched prefix bytes `0x783196..0x783199`, callback pointer `0x78299a`,
+  tokenizer locals in `0xda9a` / `0xdaf0` / `0xdb74`, and the current host
+  byte fetched through `0xa904`.
+- Firmware bookkeeping:
+  prefix/setup helpers `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11ff6`,
+  delayed scheduler `0x121cc`, delayed restore `0x12218`, alternate/data
+  append sink `0xe002`, and zero-handler reset `0x12218` for ignored rows.
+- Derived/cache state:
+  generated table rows and the owner route selected by the parsed family.
+  The semantic owner note, not this routing checkpoint, owns downstream
+  derived coordinates, bucket keys, render-band inputs, or glyph caches.
+- Unknown:
+  no current parser table handler lacks an assigned checked-in owner. Remaining
+  unknowns are owner-specific boundaries such as external resource bytes,
+  board/MMIO edges, or command variants named in the owner note.
+
+Outcome owners:
+
+- Printable text and direct C0 controls: bytes reaching `0xd04a`, `0xd0f0`, `0xf02c`,
+  `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a` are owned by [Printable
+  Source Outcome Matrix](direct-control-codes.md#printable-source-outcome-matrix),
+  [Direct-Control Output Decision
+  Checkpoint](direct-control-codes.md#direct-control-output-decision-checkpoint), and
+  [Page Assembly Decision
+  Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint). Output effects
+  are compact text, fixed-space advances, span flushes, cursor changes, or publication
+  through the shared page-root path.
+- Cursor, margin, text-motion, underline, and dot-position commands:
+  handlers `0xeb58`, `0xec0c`, `0xedb0`, `0xedf8`, `0xf39e`, `0xf416`,
+  `0xf48c`, `0xf560`, `0xf60a`, `0xf692`, and `0x12622` are owned by
+  [direct-control-codes.md](direct-control-codes.md). Their visible effects
+  are delayed until later printable text, span flush, raster start, rectangle
+  start, VFC, or publication consumes cursor/span state.
+- Page environment, VFC, and publication: handlers `0xfc74`, `0xcb00`, `0xc992`,
+  `0xece2`, `0xea9e`, `0xef62`, `0xee64`, `0xeef0`, `0xf9e8`, `0x10220`, `0x1280a`, and
+  delayed VFC reader `0x12cfe` are owned by [Page Environment Outcome
+  Matrix](publication-commands.md#page-environment-outcome-matrix), [Layout State To
+  Output Checkpoint](direct-control-codes.md#layout-state-to-output-checkpoint), and
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary). Output effects
+  are environment state, page-root publication, VFC table installation, or later page
+  movement.
+- Raster imaging: raster setup handlers `0x1075a`, `0x107fa`, `0x10808`, `0x10dce`,
+  `0x10e22`, `0x10e68`, delayed raster reader `0x105d0`, and transfer gate `0x138de` are
+  owned by [Transfer Gate Outcome
+  Matrix](raster-graphics.md#transfer-gate-outcome-matrix) and [Encoded Raster Object
+  Outcome Matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Output
+  effects are raster bucket objects under page-root `+0x1c` consumed by the shared
+  publication and render bridge.
+- Rectangle and rule imaging:
+  handlers `0x10898`, `0x10a40`, and `0x10ae0` are owned by
+  [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix)
+  and
+  [Rule-List Outcome Matrix](page-record-storage.md#rule-list-outcome-matrix).
+  Output effects are rule-list objects under page-root `+0x24`.
+- Page-object storage and render handoff: compact, segment-list, fixed-list, rule-list,
+  raster-bucket, publication, and render-bridge records are owned by [Page Assembly
+  Decision Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
+  [Segment-List Outcome Matrix](page-record-storage.md#segment-list-outcome-matrix),
+  [Fixed-List Outcome Matrix](page-record-storage.md#fixed-list-outcome-matrix), and
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-owner-summary). This is
+  the common owner for the object-to-pixel hop after a command-family note has created
+  page content.
+- Font selection, symbol selection, and downloaded font output: handlers `0xc390`,
+  `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`, `0x12046`, `0x1205a`,
+  `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, `0x120be`, `0x15a18`, `0x15a56`, and
+  `0x16df6` are owned by
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), and
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary). The compact and fixed output
+  checkpoints are [Compact Selector Outcome
+  Matrix](downloaded-fonts.md#compact-selector-outcome-matrix), [Downloaded-Glyph Render
+  Decision Checkpoint](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+  and [Fixed-Record Render Decision
+  Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint).
+- Transparent, display, macro/data append, and host/status side channels: delayed
+  transparent reader `0x12452`, display readers `0x12536` and `0x12120`, local Control-Z
+  handlers `0x120d2`, `0x1210c`, `0x1219e`, `0x121b2`, guarded status handler `0xcd86`,
+  and macro handlers `0xdd08` / `0xe112` are owned by [Transparent Payload Decision
+  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint),
+  [Display Functions Decision
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint), [Host/Status
+  Side-Channel Decision
+  Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint), and
+  [macro-data-chain.md](macro-data-chain.md#owner-summary). Output effects are normal
+  text routing, append-only stored bytes, macro replay, or host status bytes rather than
+  direct page objects in the parser itself.
+- Parser-only or no-output rows:
+  blank rows, `ESC ?`, `ESC Z`, setup rows, and invalid/error exits are owned
+  by [pcl-parser-core.md](pcl-parser-core.md#owner-summary). They update
+  parser mode, clear partial state, or report ignored commands without
+  creating page objects.
+
 - Printable text and direct C0 controls:
   mode-zero printable bytes go from `0x11774` to `0xd04a` in normal mode.
   Direct controls use normal mode-zero rows: BS `0xf2a8`, HT `0xf1cc`,

@@ -138,6 +138,21 @@ Output effect:
 - Rules crossing a band mutate continuation word `+0x0c` so later band walks
   continue from the same ROM-defined rule object.
 
+Concrete route for the primary supported stream:
+
+- `ESC *c12a5b0P` stays in parser mode `16` across chained lowercase finals,
+  then calls `0x10e68`, `0x10e22`, and `0x10898`.
+- `0x10e68` writes width `0x78316a = 12`; `0x10e22` writes height
+  `0x783166 = 5`; `0x10898` maps final `0P` to selector `7`.
+- `0x10b80` clips the current-cursor rectangle, `0x10084` ensures the current
+  page root, and `0x13386 -> 0x133aa` writes the 14-byte selector-7 rule node
+  under root `+0x24`.
+- `0xff1e`, `0x1ed84`, and `0x1edc6` preserve that rule-list node for the
+  render record, OR selector byte `+0x05` with `0x10`, and copy object height
+  into continuation word `+0x0c`.
+- `0x1ef6a` reaches rule walker `0x1f446`, which dispatches selector `7` to
+  solid helper `0x1f596`; non-solid mapped selectors use `0x1f4e0`.
+
 Evidence and boundaries:
 
 - Disassembly evidence is in
@@ -145,7 +160,7 @@ Evidence and boundaries:
   `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
 - Generated flow evidence is in
   `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.
-- Fixture evidence is named in the Evidence list above; those streams pin
+- Evidence streams named in the Evidence list above anchor
   parser routing, clipping, rule object creation, bridge normalization,
   no-room retry, solid/pattern render helpers, and composition with text and
   raster objects.
@@ -351,7 +366,7 @@ subunits per decipoint, round fractional subunits up, add the firmware's
 `+11` subunit bias, and store the packed result. Missing, negative, or zero
 values clear the stored size.
 
-Fixture-pinned examples:
+Evidence examples:
 
 - `ESC *c72H` stores `0x001e000b`.
 - `ESC *c1.5V` stores `0x00010007`.
@@ -551,7 +566,7 @@ Invalid mode/id combinations return without queueing. If either
 `0x78316a` or `0x783166` is zero, the handler records the selector but does
 not queue an object.
 
-Fixture-pinned selector examples:
+Selector evidence examples:
 
 - black fill selector: `7`
 - gray-fill id `50`: selector `4`

@@ -785,7 +785,7 @@ Evidence and remaining boundaries:
   `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
   `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`,
   `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`, and
-  `generated/disasm/ic30_ic13_rectangle_handlers_010898.lst`.
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`.
 - Confidence is high for the listed writer and consumer addresses because the
   fields are named by direct handler disassembly and by checked-in worked paths
   that follow those fields into page-object producers or render dispatch. It
@@ -1041,7 +1041,7 @@ Evidence and unresolved edges:
 - Key listings and reports include
   `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
   `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
-  `generated/disasm/ic30_ic13_rectangle_handlers_010898.lst`,
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
   `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
   `generated/analysis/ic30_ic13_raster_graphics_flow.md`.

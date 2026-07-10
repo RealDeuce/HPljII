@@ -1486,16 +1486,29 @@ A byte-stream renderer must preserve:
 - `0x1381c` chunk accounting and link behavior;
 - `0x1387c` bucket object reuse/new-head behavior;
 - short versus segmented compact bucket object shapes;
+- root `+0x1c` as the shared bucket array for compact text, downloaded glyphs,
+  portrait segment-list spans, and encoded raster rows;
+- bucket class dispatch after bridge: `+0x04` in `0x00..0x3f` reaches
+  `0x1effe`, `0x40..0x7f` reaches `0x1f812`, and `0x80..0xff` reaches
+  `0x1f88e`;
 - portrait text-span storage as class-`0x40` segment-list bucket objects under
   root `+0x1c`;
 - landscape text-span storage as fixed-list objects under root `+0x28`;
 - encoded-raster dense-row splitting through `0x132b6` and `0x13070`;
 - ordered rule/fixed-list insertion through `0x133aa` and `0x136d2`;
 - no-room returns that leave existing visible lists unchanged;
+- rule-list root `+0x24` and fixed-list root `+0x28` as ordered lists, not
+  bucket classes; `0x1edc6` copies them to render roots `+0x1c` and `+0x20`,
+  then normalizes their continuation fields before `0x1f446` and `0x1f756`
+  consume them;
 - publication through `0xff1e` before commands such as reset, FF, page-size,
   orientation, paper-source, and copies clear or mutate page state;
 - render-record bridge copies through `0x1ed84` and `0x1edc6`;
-- context-slot preservation from page record to render record.
+- context-slot preservation from page record to render record;
+- no parser-time full-page bitmap. Parser and command-family handlers produce
+  roots, object bytes, selected context slots, publication records, and bridge
+  fields; `0x1ef6a` and its object-class helpers are where those records become
+  band-buffer pixels.
 
 ## Confidence
 

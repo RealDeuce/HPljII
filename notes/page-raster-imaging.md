@@ -1424,11 +1424,13 @@ from `0x783a18` into `A6`. It then:
 - calls `0x1f756`, which walks the render-record `+0x20` list and writes
   fixed-width/rule-like bitmap spans.
 
-The executable render-band setup coverage now pins `0x1ef86`: it divides
-`(render word +0x10 + word +0x08 - word +0x0a)` by word `+0x06`, stores
-the remainder in `0x783a22`, stores `(word +0x06 - remainder) << 4` in
-`0x783a20`, and stores `long +0x00 + ((remainder << 6) * word +0x04)` in
-both `0x783a28` and render-record long `+0x12`.
+Render-band setup helper `0x1ef86` derives the destination state consumed by
+every per-band object renderer. It divides
+`(render word +0x10 + word +0x08 - word +0x0a)` by word `+0x06`, stores the
+remainder in `0x783a22`, stores `(word +0x06 - remainder) << 4` in
+`0x783a20`, and stores `long +0x00 + ((remainder << 6) * word +0x04)` in both
+`0x783a28` and render-record long `+0x12`. Evidence anchor:
+`0x1ef86 render-band setup computes destination rows and base`.
 
 The render-entry route consumes render records with bucket objects selected
 from render-record `+0x18`, selector-7 rule lists from `+0x1c`, and
@@ -3585,16 +3587,27 @@ parser-to-retry boundary for that same stream: the `0x10d22` no-room
 path publishes an existing compact text bucket through `0xff1e`,
 allocates a fresh root through `0x10084`, retries the selector-7 rule
 object, bridges it through `0x1edc6`, and renders the retried rule rows.
-Page-root allocation coverage is now backed by
-`generated/analysis/ic30_ic13_page_root_allocation.md` and pins the
-`0x10110` selected-context slot bootstrap after `0x10084` first-root
-allocation, plus root `+0x06`, `+0x09`, and `+0x16` geometry fields;
-page-root publication coverage now also pins the `0xff1e` pool-record
-header fields for default reset publication and nonzero
-status/environment copies before render bridging, and page-record bridge
-coverage now pins the `0x1ed84` active-record header copies plus the
-render-record destination offsets `+0x18/+0x1c/+0x20/+0x24` written by
-`0x1edc6`. Direct plain text coverage now traces `!!` through two
+Page-root allocation and publication are the source-side half of the render
+handoff. `0x10084` / `0x10110` allocate the first root, bootstrap the selected
+context slot, and write geometry fields `+0x06`, `+0x09`, and `+0x16`;
+`0xff1e` accepts only an active root whose byte `+0x04` is `1`, copies
+status/environment bytes into the root header, writes publication state
+`+0x04 = 2`, links the source through protected pool head `0x780ea6`, sets
+publication flag `0x782996`, and clears current root `0x78297a`. The scheduler
+later promotes that published record to active source `0x780eae`.
+
+Page-record bridge `0x1ed84 -> 0x1edc6` is the render-side handoff.
+`0x1ed84` copies active source words `+0x18` and `+0x1a` into the selected
+render work record, initializes work words `+0x0a`, `+0x0c`, `+0x10`, and
+`+0x16`, clears throttle word `+0x0e`, then calls `0x1edc6`. The bridge copies
+source bucket root `+0x1c` to render `+0x18`, source rule-list root `+0x24` to
+render `+0x1c`, source fixed-list root `+0x28` to render `+0x20`, and source
+context slots `+0x2c..+0x68` to render `+0x24..+0x60`. Evidence anchors:
+`generated/analysis/ic30_ic13_page_root_allocation.md`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, and
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+
+Direct plain text coverage now traces `!!` through two
 `0xd04a` parser events and ties that stream to one page-record root
 allocation, bucket-0 reuse, and real-HMI rows rendered after the
 `0x1edc6` bridge. The `!\x0e!\x0f!` stream now carries normal-mode

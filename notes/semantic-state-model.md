@@ -12558,9 +12558,11 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
   invalid active-record edge reaches `0x56c2 -> 0x1284` (`67 SERVICE`), but no
   ROM edge has been found from a failed startup load into the factory-default
   ROM-table writers.
-- `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
-  for compact text. Physical-device page capture is optional correlation
-  outside this checkpoint, not required ROM-local evidence.
+- `0xcc52..0x1ef6a`: ROM-internal compact-text publication/render is
+  documented from reset publication through `0xff1e`, active-source selection
+  through `0x1eb32..0x1ecd6`, render-record bridge `0x1ed84 -> 0x1edc6`, and
+  per-band dispatch `0x1ef6a`. Physical-device page capture is optional
+  correlation outside this checkpoint, not required ROM-local evidence.
 
 ## Shared Page-Record Storage And Allocator
 

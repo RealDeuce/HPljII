@@ -8046,23 +8046,26 @@ Active band loop:
 
 Output effect:
 
-- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` checks
-  published source `0x00d0eaa0` reaches active source `0x780eae`, render work
-  `0x782128`, active render pointer `0x783a18`, and the same ROM-local
-  render-entry path as a direct `0x1ed84` / `0x1ef6a` setup.
-- Fixture `0x1ecd6 same-geometry render work reuse reaches render entry`
-  checks the same-geometry branch computing destination word `+8`, deriving
-  `0x783a20 = 0x0020`, `0x783a22 = 3`, and
-  `0x783a28 = 0x00103800`, and still reaches the documented render-entry
-  path.
-- Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` pins
-  the render, capacity-wait, cleanup, and throttle outcomes from active and
-  paired work-record fields.
-- Fixture `0x1eba4 scheduler band words render published downloaded glyph`
-  checks ten scheduler-produced band words `0..9` feeding a published
-  downloaded-glyph page record into `0x1ef6a`; only buckets `1` and `9`
-  dispatch compact objects, and bucket `9` reaches the ROM-derived row-write
-  path for page row `86`.
+- Published source selection promotes a pool record into active rendering:
+  `0x1eb32..0x1eb50` copies scheduler cursor `0x780eaa` to active source
+  `0x780eae`, `0x1ecd6` chooses render work record `0x7820c4` or `0x782128`,
+  and `0x1ed84 -> 0x1edc6` copies source roots/context slots into the selected
+  render record.
+- Same-geometry work reuse and new-geometry setup both reach the same
+  render-entry copy path. Same-geometry reuse computes destination word `+8`
+  and then derives per-band caches such as `0x783a20`, `0x783a22`, and
+  `0x783a28` through `0x1ef86`.
+- Active-loop outcomes come from work-record fields: the loop either renders
+  by calling `0x1ef6a`, waits for capacity, cleans up stale work, or throttles
+  after progress word `+0x0e > 0x28`.
+- Scheduler-produced band words are the handoff to object dispatch. For the
+  published downloaded-glyph page record, band words `0..9` reach `0x1ef6a`;
+  only buckets `1` and `9` dispatch compact objects, and bucket `9` reaches
+  the ROM-derived row-write path for page row `86`. Evidence anchors:
+  `0x1eb2a/0x1ecd6 selects published record for render entry`,
+  `0x1ecd6 same-geometry render work reuse reaches render entry`,
+  `0x1eba4/0x1ef6a active render loop advances or yields bands`, and
+  `0x1eba4 scheduler band words render published downloaded glyph`.
 
 State classification for this path:
 

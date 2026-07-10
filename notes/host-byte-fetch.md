@@ -600,11 +600,17 @@ status byte from base `0x30`: `0x780e12` or `0x780e90` sets bit 0,
 into the byte. Only after `0xa1b0` accepts that byte does the firmware
 clear `0x783e60` and decrement `0x780e22`.
 
-The page-environment source of status bit 0 is fixture-backed through
-`0x2888 sets page-environment status consumed by 0xaece`: an eligible
-selected pool record can set `0x780e90`, cache `0x780e98`, OR
-`0x10` into `0x780e2a`, and make `0xaece` emit the corresponding
-combined status byte.
+The ROM-local page-environment source of status bit 0 is
+`0x2888..0x2a80`. When the selected pool record is eligible, `0x2888`
+sets canonical status flag `0x780e90`, caches selected record byte `+6`
+in `0x780e98`, and ORs `0x10` into warning/status accumulator
+`0x780e2a`. The consumer is the mode-0 status builder `0xaece`: it treats
+`0x780e90` as one source for bit 0 of the outbound `0x30`-based status
+byte, combines `0x780e2a` as bit 1, and sends the byte only after
+`0xa1b0` accepts it. Fixture
+`0x2888 sets page-environment status consumed by 0xaece` is supporting
+evidence for that writer-to-consumer route; the documented fields and
+addresses are the semantic contract.
 
 The observed producers are bounded. `0xa8c8` increments `0x780e22` and
 signals wait object `0x7801e2` when sequence dispatch is enabled by
@@ -617,17 +623,45 @@ and ORs low-water bit `0x2` into `0x780e2a`. Status aggregate helper
 `0x780e0a = 0x780e68 | 0x780e12`, then mirrors nonzero `0x780e0a` as
 byte `0xff` in `0x780e68`.
 
-This FIFO is host/interface backchannel state, not input state and not a
-page-object field. Its pixel-reproduction risk is indirect: a full FIFO
-can stall the parser-side enqueue caller through `0xb090`, and a
-bidirectional host might react to the emitted bytes. No observed FIFO
-consumer feeds `0xda9a`, page records, or bitmap renderers.
+State classification for this route:
 
-Fixture coverage now pins the software-visible FIFO boundary:
-`0xb0c0/0xb022 output FIFO wraps and preserves order`,
-`0xb090 waits on full FIFO then enqueues after drain`,
-`0xaece emits service byte and combined status byte`, and
-`0xae2c drains FIFO by configured output mode`.
+- Canonical host-output queue: storage `0x783e92..0x783ed1`, count
+  `0x783ed2`, read pointer `0x783ed4`, write pointer `0x783ed8`, wait
+  object `0x7801e2`, and backend selector `0x780e40`.
+- Canonical status/backchannel state: pending status count `0x780e22`,
+  bridge-service latch `0x783e61`, service reason `0x783e60`, last accepted
+  status byte `0x780e62`, page-environment flag `0x780e90`, status cache
+  `0x780e98`, and warning/status accumulator `0x780e2a`.
+- Derived/cache status state: aggregate fields `0x780e12`, `0x780e0e`,
+  `0x780e0a`, and mirror `0x780e68`, all derived by `0x36e4`.
+- Parser scratch: the transient `0xda9a` return byte and active six-byte
+  parser record word `+2` used by `0x122be..0x12326` to decide whether the
+  `0x11` query emits the literal response or is reported through `0x9ec0`.
+- Firmware bookkeeping: critical-section helpers `0x15a6` / `0x15ac`,
+  blocking wait/yield helper `0x10c8`, sleep helper `0x10d0`, and wake object
+  `0x780202`.
+- Hardware/external state: readiness and data registers
+  `0xfffe0001` / `0xfffe0003`, `0xfffee005` / `0xfffee003`, and
+  `0xfffee009`. Their ROM polling and write behavior is documented; physical
+  signal names remain external.
+
+Output effect and reproduction boundary:
+
+- The FIFO is host/interface backchannel state, not input state and not a
+  page-object field. No observed FIFO consumer feeds `0xda9a`, page records,
+  raster payload objects, glyph objects, or bitmap renderers.
+- Its pixel-reproduction risk is indirect. A full FIFO can stall the
+  parser-side producer in `0xb090`, and a bidirectional host could react to
+  the emitted bytes by sending later input. Without that host reaction, this
+  route emits host-visible bytes only.
+- The ROM-local boundary is `0x12034 -> 0x122be..0x12326` for the observed
+  model/status producer, `0xb0c0` / `0xb090` for enqueue, `0xb022` for
+  dequeue, `0xae2c` / `0xaece` for worker/status drain, `0x2888` for
+  page-environment status, and `0x36e4` for aggregate status fields.
+  Supporting fixtures named below exercise FIFO wrapping, full-FIFO waits,
+  status-byte construction, worker drain modes, and the `0x2888` status-bit
+  producer, but those fixtures are evidence for this route rather than a
+  replacement for it.
 
 ## Caller Semantics
 
@@ -920,26 +954,30 @@ Output effect:
   the same byte sequence can be supplied by ring input, data-chain replay,
   pushback stacks, or direct hardware and still enter the same parser and
   imaging handlers.
-- Fixture `host-fetched mixed control stream reaches parser and page-record
-  render` proves ring-sourced bytes route through `0xedf8`, `0xd04a`,
-  `0xf02c`, and `0xd04a` before page-record rendering.
-- Fixture `macro execute frame payload feeds 0xa904 data-chain bytes`
-  proves replayed data-chain bytes enter through the same fetch routine.
-- Fixture `combined host-fetched font download stream prints installed
-  glyph` proves a long `0xa904` byte stream can cross font-control,
-  payload, printable, publication, bridge, and render-entry boundaries.
-- Fixture `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` proves the even-span `ESC )s18W` font payload and following
-  mixed page stream are fetched as one 54-byte `0xa904` ring sequence before
-  the page bytes route through rectangle, printable, raster, and render-entry
-  handlers.
-- Fixture `0xa620/0xa668/0xa6cc engine shadow and byte bridge` proves
-  the bridge can place byte `0x41` in the ring and the next `0xa904`
-  fetch returns `D7 = 0x41`.
-- FIFO fixtures prove the sibling output direction: `0xb0c0` / `0xb022`
-  preserve order across the 64-byte wrap, `0xb090` waits on
-  `0x7801e2` when full, `0xaece` emits service/status bytes, and
-  `0xae2c` drains through the mode-selected backend.
+- Ring-sourced bytes enter parser/page-record paths through handlers
+  `0xedf8`, `0xd04a`, and `0xf02c`; fixture
+  `host-fetched mixed control stream reaches parser and page-record render`
+  supports that route.
+- Replayed data-chain bytes enter through the same `0xa904` return channel;
+  fixture `macro execute frame payload feeds 0xa904 data-chain bytes`
+  supports that replay path.
+- Long `0xa904` byte streams can cross font-control, payload, printable,
+  publication, bridge, and render-entry boundaries; fixture
+  `combined host-fetched font download stream prints installed glyph`
+  supports that multi-family route.
+- The even-span `ESC )s18W` font payload and following mixed page stream are
+  fetched as one 54-byte `0xa904` ring sequence before the page bytes route
+  through rectangle, printable, raster, and render-entry handlers; fixture
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` supports that ordering.
+- The bridge path `0xa6cc` / `0xa846` can place a byte in the ring source
+  consumed by the next `0xa904` fetch; fixture
+  `0xa620/0xa668/0xa6cc engine shadow and byte bridge` supports the concrete
+  byte case `D7 = 0x41`.
+- The sibling output direction uses `0xb0c0` / `0xb022` for FIFO mutation,
+  `0xb090` for full-FIFO wait, `0xaece` for service/status bytes, and
+  `0xae2c` for mode-selected drain. The FIFO fixtures listed below support
+  those helper contracts.
 
 Confidence:
 

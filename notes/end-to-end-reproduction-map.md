@@ -77,11 +77,10 @@ signals to exact MMIO bits; the board-facing boundary is tracked in
 
 Use these entry points according to the artifact in hand:
 
-- For a manual PCL command name or syntax row, start with the ROM Semantic
-  Index in [pcl4-language.md](pcl4-language.md). That index maps PCL Level IV
-  command families to first parser handlers, concrete stream examples,
-  page-object bytes, render routes, and owner notes. It is a routing map, not
-  the full proof.
+- For a manual PCL command name or syntax row, start with the ROM Semantic Index in
+  [pcl4-language.md](pcl4-language.md#owner-summary). That index maps PCL Level IV
+  command families to first parser handlers, concrete stream examples, page-object
+  bytes, render routes, and owner notes. It is a routing map, not the full proof.
 - For a concrete byte stream, use `Stream Trace Procedure` below, then the
   `Supported Stream Entry Points` cluster map. Those sections keep the trace
   byte-oriented: source bytes, parser records, command handler, state fields,
@@ -278,7 +277,7 @@ controlling artifact.
   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and
   the command-family classes are indexed by
   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
-  The ROM Semantic Index in [pcl4-language.md](pcl4-language.md) adds the
+  The ROM Semantic Index in [pcl4-language.md](pcl4-language.md#owner-summary) adds the
   command-language entry point: for each major PCL Level IV family it names
   first parser handlers, representative byte streams, page-object bytes or
   state fields, render routes, and owner notes.

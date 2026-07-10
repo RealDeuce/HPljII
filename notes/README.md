@@ -49,9 +49,9 @@ standalone deliverables.
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
 - Manual PCL command names and syntax rows are indexed by
-  [pcl4-language.md](pcl4-language.md). Its ROM Semantic Index maps PCL Level
-  IV families to first parser handlers, representative byte streams,
-  page-object bytes or state fields, render routes, and owner notes.
+  [pcl4-language.md](pcl4-language.md#owner-summary). Its ROM Semantic Index maps PCL
+  Level IV families to first parser handlers, representative byte streams, page-object
+  bytes or state fields, render routes, and owner notes.
 - Page/image assembly is owned by
   [page-record-storage.md](page-record-storage.md#owner-summary): current root
   `0x78297a`, compact/raster buckets at root `+0x1c`, rules at `+0x24`,
@@ -112,13 +112,12 @@ checked-in ROM model:
    records. Physical MMIO names, retained-storage identity, and optional extension
    contents are boundaries unless they change one of those ROM-visible fields.
 1. If starting from a manual command name, use the ROM Semantic Index in
-   [pcl4-language.md](pcl4-language.md) to find the command-family route and
-   concrete stream anchor. If starting from raw bytes, use `Reader Entry
-   Points` and `Stream Trace Procedure` in
-   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
-   For the compact route through the current spine, start with
-   `Inbound Byte Route Matrix` and `Minimal End-To-End Example` in
-   [firmware-dataflow-model.md](firmware-dataflow-model.md).
+   [pcl4-language.md](pcl4-language.md#owner-summary) to find the command-family route
+   and concrete stream anchor. If starting from raw bytes, use `Reader Entry Points` and
+   `Stream Trace Procedure` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). For the compact
+   route through the current spine, start with `Inbound Byte Route Matrix` and `Minimal
+   End-To-End Example` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
 2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md#owner-summary):
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch.
@@ -203,7 +202,7 @@ checked-in ROM model:
   keys, menu state, resets, service mode, self tests.
 - [io-interfaces.md](io-interfaces.md) - Centronics, RS-232C, RS-422,
   flow control, buffers.
-- [pcl4-language.md](pcl4-language.md) - PCL Level IV semantics,
+- [pcl4-language.md](pcl4-language.md#owner-summary) - PCL Level IV semantics,
   environment, command syntax, command quick reference.
 - [pcl-to-pdf-rom-goals.md](pcl-to-pdf-rom-goals.md) - revised goal:
   stream-to-PDF renderer, and what ROMs are expected to contribute.

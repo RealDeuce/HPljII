@@ -4,6 +4,70 @@ Sources:
 `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`,
 especially ch. 1-3, ch. 13, appendix A.
 
+## Owner Summary
+
+This note owns the manual PCL Level IV command vocabulary as an index into the
+ROM dataflow model. It does not prove command behavior by manual syntax alone:
+each command family below is tied to parser records, handler addresses, RAM
+fields, page-object producers, render consumers, and owner notes that carry the
+evidence.
+
+Primary route from syntax to ROM behavior:
+
+- Host bytes enter through `0xa904`, parser wrapper `0xda9a`, tokenizer
+  helpers `0xdaf0` / `0xdb74`, and main dispatch loop `0x11774`.
+- Command combining is represented by parser modes, lowercase finals, and
+  six-byte records rooted at the parser record cursor `0x78299e`; counted
+  payloads use delayed snapshot/restore `0x121cc -> 0x12218`.
+- Manual control-code, two-character escape, and parameterized escape forms
+  map into the command-family owners listed in the ROM Semantic Index:
+  publication commands, direct controls, VFC, transparent/display readers,
+  raster, rectangle/rules, font selection/downloads, macro/data-chain replay,
+  and status/model side channels.
+- Pixel-producing families converge through page root `0x78297a`, publication
+  `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, active scheduler state, and render
+  entry `0x1ef6a`.
+
+Field groups:
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data selector `0x782c18`, six-byte command
+  records, delayed-payload fields `0x782a1a..0x782a25`, and payload budget
+  `0x783140`.
+- Canonical command/page state:
+  cursor, HMI/VMI, page geometry, copy count, paper source, font contexts,
+  symbol maps, raster state, rectangle state, macro state, and current page
+  root fields named in the ROM Semantic Index.
+- Derived/cache state:
+  compact bucket keys, pending-span watermarks, selected-font/map caches,
+  raster capacity, rule selector state, render-band caches, and row-helper
+  products.
+- Parser scratch:
+  numeric accumulation, lowercase chaining records, delayed payload snapshots,
+  alternate/data append bytes, and no-output parser reset rows.
+- Firmware bookkeeping:
+  parser callback pointer, page allocator cursors, macro heap/data-chain
+  frames, publication flag, host-output FIFO, and scheduler work records.
+- Hardware/external state:
+  live host buses, retained storage, optional resource windows, and
+  formatter/DC timing only after the ROM reduces them to bytes, fields,
+  page objects, selected resources, or render inputs.
+- Unknown:
+  no parser-table mapping gap remains for the quick-reference command
+  clusters. Residuals are exact resource, invalid-target/source,
+  hardware/MMIO, or broader-variant boundaries documented in the owner notes.
+
+Output effect:
+
+- Some PCL commands produce visible output only by changing later consumers:
+  cursor, font, symbol, VMI/HMI, macro, raster-control, and layout commands
+  are stateful even when they do not immediately queue a page object.
+- Commands that publish or queue page objects are visible only after the page
+  storage, publication, scheduler, and render owners consume their state.
+- Unsupported or no-output commands are still ROM behavior: they consume the
+  documented syntax and take explicit no-output parser, handler, or status
+  paths.
+
 ## PCL Level
 
 LaserJet Series II is a PCL Level IV device. PCL levels are

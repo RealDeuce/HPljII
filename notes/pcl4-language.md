@@ -255,6 +255,82 @@ truncates to physical dot positions when printing.
 
 Columns are based on HMI. Rows are based on VMI or lines per inch.
 
+## ROM Coordinate Conversion Contract
+
+The firmware does not carry manual PCL units directly into page objects. Parser
+records hold the parsed integer and fractional command values; terminal
+handlers convert those values into ROM cursor and layout fields before any
+printable, raster, rectangle, or publication path consumes them.
+
+Conversion routes:
+
+- Whole-dot positioning:
+  `ESC *p#X` and `ESC *p#Y` enter `0xf48c` and `0xf692`. Each rewinds
+  parser record cursor `0x78299e`, reads parsed word `+2`, shifts it into the
+  high word of a cursor longword, and commits it through `0xf4ca` for X or
+  `0xf6e2` for Y. Relative forms are selected by command-record byte bit `0`.
+- Decipoint positioning:
+  `ESC &a#H` / `ESC &a#V` and cursor row/column forms enter the direct-control
+  handlers documented in [direct-control-codes.md](direct-control-codes.md).
+  They scale parsed integer/fraction words through helpers such as `0x332ee`,
+  `0x3324a`, and `0x104d8` before writing cursor fields.
+- Column and row positioning:
+  `ESC &a#C` consumes HMI `0x78315c`; `ESC &a#R` consumes VMI `0x783160` and
+  top offset `0x782dce`. The resulting coordinates are committed through the
+  same X/Y commit helpers used by dot and decipoint forms.
+- Layout conversion:
+  HMI handler `0xca8c`, VMI handler `0xcb00`, lines-per-inch handler
+  `0xc992`, page-length handler `0xf9e8`, top-margin handler `0xece2`, and
+  text-length handler `0xea9e` write the canonical motion and page-bound
+  fields that later cursor conversions read.
+
+State classification:
+
+- Canonical placement state:
+  horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, left/right
+  margins `0x782dd6` / `0x782dda`, top offset `0x782dce`, page extent
+  `0x782dba`, text bottom `0x782dd2`, and bottom/perforation limit
+  `0x782dc2`.
+- Canonical motion state:
+  HMI `0x78315c`, VMI `0x783160`, line-termination mode `0x78318f`,
+  wrap byte `0x783190`, and perforation-skip byte `0x783191`.
+- Parser scratch:
+  six-byte command records at `0x78299e` and parsed integer/fraction words.
+  The records are consumed by terminal handlers and do not become page objects.
+- Derived/cache state:
+  packed cursor values, compact object coordinates derived later by
+  `0xd04a -> 0x1393a -> 0x12f2e`, and render-band caches after publication.
+- Firmware bookkeeping:
+  pending cursor/text byte `0x782a6d`, previous-width latches
+  `0x782a58..0x782a5c`, pending span byte `0x783184`, and modified-layout
+  byte `0x782ee1`.
+
+Output effect:
+
+Coordinate commands are state producers, not pixel writers. Their visible
+effect appears when a later printable byte, raster row, rectangle/rule, VFC
+jump, span flush, FF, or reset consumes the updated placement fields and
+creates or publishes page objects. Printable text reaches
+`0xd04a -> 0x1393a -> 0x12f2e`; raster and rectangle paths read the same
+cursor/layout fields before writing page-root objects. The render layer then
+derives pixels from those object fields after publication, active-copy,
+bridge, and render entry:
+`0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_coordinate_math_0104d8.lst` anchors the shared
+  coordinate helpers, including `0x104d8`, `0x104fe`, `0x10518`, and
+  `0x10550`.
+- `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst` anchors dot,
+  row, column, and decipoint cursor commits through `0xf4ca` and `0xf6e2`.
+- `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst` and
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst` anchor HMI/VMI,
+  LPI, top-margin, text-length, and page-length writers.
+- Checked-in semantic detail and fixtures are in
+  [direct-control-codes.md](direct-control-codes.md) and
+  [publication-commands.md](publication-commands.md#owner-summary).
+
 ## Logical Page and Printable Area
 
 The logical page is the addressable area in which the PCL cursor can be

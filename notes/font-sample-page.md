@@ -429,6 +429,103 @@ record` covers the `0x1d868` D7 `1` caller path
 `0x00520000 -> 0x00900000` and pins bucket digest
 `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
 
+## Font-Sample Outcome Matrix
+
+This matrix is the owner-level route for firmware-generated font sample pages.
+The source bytes are not fetched from `0xa904`; ROM helpers synthesize row text
+and then intentionally rejoin the ordinary printable/page-record/render path.
+
+- No font records:
+  entry `0x1c204` checks accepted resource count `0x78278e`. A zero count
+  reports status `(0xe3, 0x51)` and produces no sample page objects.
+- Sample setup:
+  `0x1e0b2` prepares page/font state, clears copy/wrap/perforation state,
+  forces sample-page VMI/HMI defaults in `0x783160` / `0x78315c`, initializes
+  cursor/page state, and reaches printout entry `0x1c204`. This is canonical
+  page/text setup state, not visible text by itself.
+- Source/class traversal:
+  `0x1c28e..0x1c344` run class-zero and class-one passes, while
+  `0x1c2fe..0x1c332` iterate source groups `0..3`. Per-source status bytes
+  `0x783f02..0x783f05` record whether a source has no rows or has resumed
+  after a prior pass. Empty groups produce heading-only page records or no
+  row records according to the source fixture.
+- Candidate resolution:
+  `0x1b50e`, `0x1b750`, and `0x1b7b2` select candidate rows from first/second
+  windows, fast probes, class filters, current-slot suppression, and Roman-8
+  substitution. The result is selected context state for the row, not printable
+  bytes until `0x1c5e8` and `0x1cabe` consume it.
+- Selected context install:
+  `0x1c5e8` installs the selected resource into current-font/page-root state,
+  rebuilds maps through `0x14c64`, and refreshes page-root font slot state
+  through `0xc428`. Later `0xd04a -> 0x1393a -> 0x12f2e` consumes those
+  context slots exactly like host printable bytes.
+- Source heading output:
+  `0x1ca2c` selects labels from table `0x1c170`, writes row-height state
+  `0x783f06`, checks page limit `0x782db6`, and emits heading text through
+  printable helpers. The output is compact text bucket objects, not a direct
+  bitmap.
+- Row field output:
+  `0x1cabe` emits row prefix, font name/style, pitch/height, symbol-set text,
+  fixed-space gaps, and cursor advances. Helper cluster `0x1d198..0x1d79c`
+  converts resource/name fields into sanitized printable bytes before
+  `0xd04a` queues compact text objects.
+- Sample run output:
+  `0x1cf34` emits ROM sample run table `0x1c1cf`, may move to the alternate
+  sample row, emits run table `0x1c1e9`, and writes the caller page-break flag
+  at local `-6(A6)`. These bytes reach the same compact page-object path as
+  the row fields.
+- Continuation pages:
+  `0x1ca2c`, `0x1d050`, `0x1d868`, and `0x1dcf2` compare projected row
+  placement against page limit `0x782db6`. Continuation helper `0x1c9f6`
+  creates fresh heading/source page records for the fixture-backed
+  heading-preflight, cartridge heading, row-overrun, class-one row-overrun, and
+  alternate-row cases.
+- Publication and rendering:
+  every visible sample byte rejoins `0xd04a -> 0x1393a -> 0x12f2e`, publishes
+  page-record segments, bridges through `0x1ed84 -> 0x1edc6`, and renders
+  through `0x1ef6a` compact text helpers. There is no font-sample-specific
+  renderer.
+
+State grouping for this matrix:
+
+- Canonical sample state:
+  candidate windows/counts `0x78278e`, `0x782798`, `0x782790`,
+  `0x7827a0..0x7827b4`, current/alternate selected contexts, source labels
+  at `0x1c170`, and run tables `0x1c1cf` / `0x1c1e9`.
+- Canonical page/text state:
+  page root, page-root context slots, cursor `0x782c8e`, page limit
+  `0x782db6`, row-height word `0x783f06`, and VMI/HMI defaults
+  `0x783160` / `0x78315c`.
+- Derived/cache state:
+  row-to-row y advance from `0x1d050`, alternate-row fit from `0x1d868`,
+  multi-probe fit from `0x1dcf2`, and compact page-record/render bucket
+  products created by the ordinary text renderer.
+- Parser scratch:
+  no host byte is fetched. The only parser-like scratch is the synthetic
+  orientation record at `0x78299e` from `0x1d76c`; row text enters the
+  printable path by direct calls to `0xd04a`.
+- Firmware bookkeeping:
+  per-source status bytes `0x783f02..0x783f05`, recent-context count/list
+  `0x783f08` / `0x783f0a`, and local page-break word `-6(A6)`.
+- Unknown:
+  no ROM-local selected-resource, row-formatting, page-record, bridge, or
+  render middle edge is unknown for the documented sample segments. Remaining
+  unknowns are manual-facing names for baseline/cell fields and future
+  continuation cross-products that create a different page-object form.
+
+Evidence for this matrix is
+`generated/disasm/ic30_ic13_font_sample_page_01c170.lst`,
+`generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`,
+`generated/disasm/ic30_ic13_font_page_setup_01e0b2.lst`,
+`generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`,
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and fixtures
+`font sample source heading carries default plus first two Courier rows`,
+`font sample built-in row fields format through 0x1cabe`,
+`font sample full printout rows reuse ROM sample byte runs`,
+`font sample full printout segments render through 0x1ed84 and 0x1ef6a`,
+`font sample page-limit branches trigger continuation calls`, and
+`font sample alternate-row continuation emits preadvanced row page record`.
+
 ## Reproduction Contract
 
 A byte-stream-to-pixels renderer that also supports firmware-generated sample

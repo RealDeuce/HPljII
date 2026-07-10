@@ -4830,14 +4830,15 @@ State classification:
 - Canonical:
   restored transparent command record `80 58 00 02 00 00`, record word `+2`
   payload count, selected text/context slot `0x782f06`, routed payload bytes
-  `21 21`, current page root `0x78297a`, compact text object, published
-  source record, and render-record bucket/context roots.
+  `21 21`, selected-slot context byte `0x782eea + 0x10 * 0x782f06`,
+  fallback filtering byte `0x782efa`, high-character flags
+  `0x783132/0x783133`, current page root `0x78297a`, compact text object,
+  published source record, and render-record bucket/context roots.
 - Derived/cache:
-  selected-slot context byte `0x782eea + 0x10 * 0x782f06`, fallback filtering
-  byte `0x782efa`, high-character flags `0x783132/0x783133`, compact
-  coordinates for the two payload glyphs, compact bucket/key fields
-  `0x782a7c..0x782a7e`, glyph offsets from the selected font record, and
-  render-band fields `0x783a20`, `0x783a22`, and `0x783a28`.
+  local selected filter word, normalized payload values after the `0x1a`
+  probe rule, compact coordinates for the two payload glyphs, compact
+  bucket/key fields `0x782a7c..0x782a7e`, glyph offsets from the selected font
+  record, and render-band fields `0x783a20`, `0x783a22`, and `0x783a28`.
 - Parser scratch:
   delayed-payload pending flag `0x782a1a`, delayed handler pointer
   `0x782a1c`, saved record bytes `0x782a20..0x782a25`, command-record cursor
@@ -5067,21 +5068,21 @@ Alternate/data and status siblings:
 State classification:
 
 - Canonical:
-  direct-reader termination flag `D4`, normalized loop value `D5`, selected
-  text/context slot `0x782f06`, routed values, current page root `0x78297a`,
-  compact text objects, alternate append stream for `0x12120`, active
-  data-chain frame pointer `0x782d76`, published source record, and
+  selected text/context slot `0x782f06`, selected context byte
+  `0x782eea + 0x10 * slot`, fallback filter byte `0x782efa`,
+  high-character flags `0x783132/0x783133`, routed values, current page root
+  `0x78297a`, compact text objects, alternate append stream for `0x12120`,
+  active data-chain frame pointer `0x782d76`, published source record, and
   render-record bucket/context roots.
 - Derived/cache:
-  selected context byte `0x782eea + 0x10 * slot`, fallback filter byte
-  `0x782efa`, high-character flags `0x783132/0x783133`, local filter word,
-  compact coordinates and glyph mappings, status marker `0x7822db`,
-  warning/status bit `0x780e2a.3`, and render-band fields `0x783a20`,
-  `0x783a22`, and `0x783a28`.
+  local filter word, normalized loop value `D5`, compact coordinates and glyph
+  mappings, status marker `0x7822db`, warning/status bit `0x780e2a.3`, and
+  render-band fields `0x783a20`, `0x783a22`, and `0x783a28`.
 - Parser scratch:
-  the initial `ESC Y` parser mode/table dispatch state and the parser state
-  resumed after the direct reader returns. The loop bytes themselves are
-  direct-reader values, not normal parser command records.
+  the initial `ESC Y` parser mode/table dispatch state, direct-reader
+  termination flag `D4`, and the parser state resumed after the direct reader
+  returns. The loop bytes themselves are direct-reader values, not normal
+  parser command records.
 - Firmware bookkeeping:
   `0xd99a` local control-report side effect, `0xf054` CR post-handler, append
   sink `0xe002`, service-in-progress marker `0x7821cc`, `0x9c2c` wait

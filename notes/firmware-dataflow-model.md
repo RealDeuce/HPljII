@@ -6147,12 +6147,14 @@ State classification for this path:
 
 - Canonical state:
   restored command record word `+2`, selected text/context slot `0x782f06`,
-  text cursor `0x782c8a`, current page root `0x78297a`, compact text object,
+  selected-slot context byte `0x782eea + 0x10 * 0x782f06`, fallback filtering
+  byte `0x782efa`, high-character flags `0x783132` and `0x783133`, text
+  cursor `0x782c8a`, current page root `0x78297a`, compact text object,
   published source record, and render-record bucket/context roots.
 - Derived/cache state:
-  selected-slot context byte `0x782eea + 0x10 * 0x782f06`, fallback filtering
-  byte `0x782efa`, high-character flags `0x783132` and `0x783133`, compact
-  coordinates `0x0001` and `0x0604`, and render-band fields.
+  local selected filter word, normalized payload values after the `0x1a`
+  probe rule, compact coordinates `0x0001` and `0x0604`, and render-band
+  fields.
 - Parser scratch:
   delayed-payload pending flag `0x782a1a`, delayed handler pointer
   `0x782a1c`, saved record bytes `0x782a20..0x782a25`, command-record cursor

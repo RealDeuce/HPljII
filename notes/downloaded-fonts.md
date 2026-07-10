@@ -2654,6 +2654,116 @@ release/rewrite, and active-context rebuild. The output effect remains
 deferred until a printable byte uses the rebuilt map to queue a page-record
 text object and the render path consumes that object.
 
+### Fixed-Record Render Decision Checkpoint
+
+This checkpoint composes the bit-30-clear fixed-record route as a decision
+tree. It starts with a parsed zero-count `ESC )s0W` descriptor at `0x15d0a`
+and ends either in fixed-record state consumed by a later printable byte, a
+continuation block for a later descriptor, a release/rewrite, or no installed
+glyph.
+
+Decision rules:
+
+- Current-record status `1` plus candidate longword bit `30` clear takes
+  `0x15e3c..0x15e46 -> 0x16606`. `0x16606` first clears stale continuation
+  fields `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`,
+  `0x7827d2`, `0x7827d6`, and `0x7827d8`.
+- Character/type admission at `0x16656..0x166ba` accepts direct characters
+  `0x21..0x7f`. Extended characters `0xa0..0xff` require payload byte
+  `+0x0e = 1`; rejected cases leave fixed-record payload bytes unchanged and
+  no page-visible downloaded glyph can result from the command.
+- Table selection at `0x16692..0x16700` chooses the fixed-record table entry
+  under `payload + 0x40 + 8 * index`, plus side-table base `payload + 0x300`
+  for type `0` or `payload + 0x600` for type `1`. If an old entry's longword
+  differs from the base entry, `0x166f2..0x16700` calls release helper
+  `0x17d7c(payload, char)` before the new bitmap install continues.
+- Descriptor/object-prefix gates at `0x16702..0x16716` require budget
+  `0x783140 >= 0x0e` and an accepted fixed-record prefix from `0x15eb4`.
+  Failures rejoin active-context refresh without allocating a new bitmap.
+- Allocation/copy at `0x16718..0x16754` allocates the bitmap object and calls
+  `0x16874`. Copy status `1` installs a complete fixed-record bitmap; status
+  `2` saves continuation state at `0x167e0..0x16838`; status `0` frees the
+  new allocation and leaves no completed glyph.
+- Continuation status `2` plus bit `30` clear takes
+  `0x15e5c..0x15e68 -> 0x15c4c`. `0x15c4c..0x15c82` reloads the saved payload
+  `0x7827da`, saved character/table index `0x7827c8`, and table entry.
+  `0x15c84..0x15ca8` resumes `0x16874` with resume flag `1`.
+- Resume copy status `1` clears the continuation block at
+  `0x15cd6..0x15d08` and leaves the completed fixed-record bitmap installed.
+  Resume status `2` keeps advanced continuation state for a later descriptor.
+  Resume status `0` calls `0x17d7c` at `0x15cb8..0x15ccc`, then clears the
+  continuation block.
+- Active-context refresh at `0x16770..0x16870` is the consumer-facing edge:
+  when the installed payload matches primary `0x782ee6 & 0xffffff` or
+  secondary `0x782ef6 & 0xffffff`, `0x1b4c0` supplies the active object,
+  `0x7828a8` receives it, `0x7828de` is set to `0` or `1`, and `0x14c64`
+  rebuilds the selected map used later by printable text.
+
+Output model:
+
+- `ESC )s0W` and continuation descriptors do not draw. They only mutate
+  fixed-record payload state, continuation scratch, release bookkeeping, and
+  selected-map cache.
+- The visible route begins when a later printable byte reaches
+  `0xd04a -> 0x1393a -> 0x12f2e`. For the documented current-record and
+  linear-continuation fixtures, printable `!` maps to glyph `1`, queues
+  selector `0x0003`, and renders three mode-0 rows from bitmap
+  `aa 55 f0 0f c3 3c`.
+- The split-plane continuation fixture uses record
+  `03 02 04 00 00 00 02 00`; the saved prefix/trailing destinations let
+  `0x15c4c` complete bitmap layout `a0 a1 c0 c1 b0 d0`, and printable `!`
+  renders two rows from source rows `a0 a1 b0` and `c0 c1 d0`.
+- No-install exits, prefix/budget failures, allocation failure, and failed
+  resumes do not create a new fixed-record compact object. A failed resume can
+  still rewrite the previous table entry through `0x17d7c`; that replacement
+  is canonical fixed-record state for later selection, not an immediate draw.
+
+State classification:
+
+- Canonical state: selected bit-30-clear payload pointer `0x78285e`,
+  fixed-record entries under `payload + 0x40`, side-table bytes under
+  `payload + 0x300` or `payload + 0x600`, fixed bitmap bytes, active selector
+  `0x7828a8` / `0x7828de`, selected maps `0x782f32` and `0x783032`, queued
+  compact page objects, and bridged render-record context slots.
+- Derived/cache state: fixed-record table index, side-table cursor
+  `0x78286a`, allocation unit count, copy status, rebuilt map bytes from
+  `0x14c64` / `0x14e24`, source object from `0x1393a`, selector `0x0003`,
+  bucket placement from `0x12f2e`, and render dispatch through `0x1effe`.
+- Parser scratch: restored record `80 57 00 00 00 00`, payload budget
+  `0x783140`, current character `0x782f30`, and continuation block
+  `0x7827c6..0x7827d8`.
+- Firmware bookkeeping: stale-continuation clear, heap allocation/free,
+  `0x9b5e` error reporting, `0x1887a` cleanup, `0x17d7c` release/rewrite,
+  `0x12328` drain state, and active-context refresh markers.
+- Hardware/external state: none for this ROM-local fixed-record decision.
+- Unknown: broader branch combinations inside the named boundaries only when
+  they change table base, active context, release-helper result, copy status,
+  page-object selector, bridge root, or row-construction input.
+
+Evidence:
+
+- Fixtures:
+  `host-fetched 0x15d0a current-record resource object feeds fixed-record
+  render`, `0x16606 no-install exits clear stale continuation without payload
+  writes`, `host-fetched 0x15d0a continuation resource object resumes
+  fixed-record render`, `host-fetched 0x15d0a split-plane continuation
+  resource object resumes fixed-record render`,
+  `0x15c4c partial resource resumes update continuation state`, and
+  `0x15c4c failed resource resume releases fixed-record object`.
+- Disassembly:
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`,
+  `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`,
+  `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+- Related checked-in composition:
+  `Fixed-Record Resource Object Checkpoint` in
+  [semantic-state-model.md](semantic-state-model.md) and
+  `Worked Path: Fixed-Record Resource Object` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+
 The fixed-record extended-table fixture
 `0x17d7c releases extended fixed-record table with secondary refresh` enters
 the same helper directly with payload byte `+0x0e = 1` and char `0xa1`.

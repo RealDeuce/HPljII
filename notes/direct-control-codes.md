@@ -313,7 +313,9 @@ state-only mutation, or explicit no-output parser behavior.
   `ESC &k#G` reaches `0xedf8` and writes byte `0x78318f`: selector `1`
   writes `0x80`, selector `2` writes `0x60`, selector `3` writes `0xe0`, and
   selector `0` clears the byte. Readers are CR `0xf02c`, LF `0xf08c`, and FF
-  `0xf0f0`. Output effect is delayed until those controls consume the bits.
+  `0xf0f0`. Output effect is delayed until those controls consume the bits;
+  the concrete writer-to-consumer route is composed in
+  [Line-Termination Route Checkpoint](#line-termination-route-checkpoint).
   Evidence: fixtures `control stream ESC &k3G applies CR/LF/FF combined line
   termination` and `control stream ESC &k2G then FF applies CR+page-eject`.
 - CR and LF:
@@ -907,25 +909,67 @@ flush renders span`.
 
 ## Output Effect
 
-`ESC &k1G!\r!` routes `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`. The
-stored mode byte is `0x80`, so CR resets x and applies LF/VMI before the
-second printable byte. Fixture `mixed printable/control parser trace feeds
-page-record queue` pins the second compact coord as `0x3b00`; fixture
-`mixed printable/control page-record bridge renders post-CR glyph rows` pins
-the bridged rows.
+### Line-Termination Route Checkpoint
 
-`ESC &k2G!\n!` routes LF through `0xf08c` after storing mode `0x60`. Fixture
-`LF parser trace feeds page-record queue` proves LF applies CR+LF before the
-second glyph, which also queues at compact coord `0x3b00`.
+This checkpoint composes `ESC &k#G` with the direct CR/LF/FF consumers. It
+starts when parser dispatch reaches line-termination handler `0xedf8`, and it
+ends at either the following printable object's compact coordinate or the page
+publication edge reached by FF.
 
-`ESC &k2G!\f` routes FF through `0xf0f0` after storing mode `0x60`. Fixture
-`control stream ESC &k2G then FF applies CR+page-eject` proves the CR-style
-horizontal reset, page-root finalization, span flush, and pending page-eject
-state.
+Route summary:
 
-`ESC &k3G` followed by CR, LF, and FF proves all three line-termination bits
-are consumed in sequence. Fixture `control stream ESC &k3G applies CR/LF/FF
-combined line termination` pins that behavior.
+- `ESC &k#G` reaches `0xedf8`, which rewinds parser record cursor
+  `0x78299e`, reads record word `+2`, normalizes negative selectors to their
+  absolute value, and writes canonical line-termination mode byte `0x78318f`.
+  Selector `0` writes `0x00`, selector `1` writes `0x80`, selector `2`
+  writes `0x60`, and selector `3` writes `0xe0`.
+- CR `0xf02c` always runs CR reset helper `0xf06e` and span helper `0xf34a`.
+  It then consumes bit `0x78318f.7`; when set, CR also calls LF advance helper
+  `0xf0b2`.
+- LF `0xf08c` consumes bit `0x78318f.6`; when set, LF first calls
+  `0xf06e` for CR-style horizontal reset. It then runs `0xf34a` and
+  `0xf0b2`.
+- FF `0xf0f0` consumes bit `0x78318f.5`; when set, FF first calls
+  `0xf06e`. It then runs `0xf34a`, ensures a page root through `0x10084`,
+  publishes through `0xf124 -> 0xff1e`, and writes pending page-eject latch
+  `0x782a6d = 0xff`.
+
+State classification for this route:
+
+- Canonical state: line-termination byte `0x78318f`, horizontal cursor
+  `0x782c8a`, vertical cursor `0x782c8e`, left margin `0x782dd6`, VMI
+  `0x783160`, current page root `0x78297a`, and pending span fields consumed
+  by `0xf34a`.
+- Derived/cache state: printable compact coordinates after the next `0xd04a`,
+  page-root publication records after `0xff1e`, and render-record copies
+  created later by `0x1ed84` / `0x1edc6`.
+- Parser scratch: six-byte `ESC &k#G` command record at `0x78299e`, the
+  direct C0 byte that dispatches to `0xf02c`, `0xf08c`, or `0xf0f0`, and the
+  following printable byte if present.
+- Firmware bookkeeping: right-limit latch `0x782a57`, pending text/cursor
+  latch `0x782a6d`, previous-width latch `0x782a58`, and span-enable byte
+  `0x783184`.
+- Unknown: no ROM-local middle edge remains for the documented
+  line-termination selector map or CR/LF/FF consumers. Physical paper movement
+  after publication is external.
+
+Named byte-stream outcomes:
+
+- `ESC &k1G!\r!` routes `0xedf8 -> 0xd04a -> 0xf02c -> 0xd04a`. The stored
+  mode byte `0x80` makes CR reset x and apply LF/VMI before the second
+  printable byte; the second compact coordinate is `0x3b00`, and bridge/render
+  rows are downstream of the ordinary compact text path.
+- `ESC &k2G!\n!` writes mode byte `0x60`, routes LF through `0xf08c`, applies
+  CR+LF movement, and leaves the second printable byte to queue at compact
+  coordinate `0x3b00`.
+- `ESC &k2G!\f` writes mode byte `0x60`, routes FF through `0xf0f0`, applies
+  CR-style horizontal reset, flushes spans, finalizes the current root through
+  `0xff1e`, and sets pending page-eject state.
+- `ESC &k3G` followed by CR, LF, and FF exercises all three stored mode bits:
+  CR consumes bit `7`, LF consumes bit `6`, and FF consumes bit `5`.
+
+Fixture names for these streams are listed in the evidence sections below;
+they support the route above rather than defining it.
 
 `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`. HT
 advances x to `21`, BS backs it up to `20`, and the printable glyph queues at

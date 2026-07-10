@@ -1288,6 +1288,39 @@ Assembly sequence:
    calls bucket dispatcher `0x1efc2`, rule-list dispatcher `0x1f446`, and
    fixed-list dispatcher `0x1f756` in that order.
 
+Concrete mixed byte-stream route:
+
+```text
+! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF
+```
+
+- Host bytes enter through `0xa904` and parser loop `0x11774`.
+- Printable `!` reaches `0xd04a`, `0x1393a`, `0xd824`, `0x10084`, and
+  `0x12f2e` / `0x1387c`, creating a compact text object under root `+0x1c`.
+- Rectangle commands reach width/height/fill handlers `0x10e68`, `0x10e22`,
+  and `0x10898`; fill calls `0x10b80`, `0x13386`, and `0x133aa`, creating a
+  selector-7 rule node under root `+0x24`.
+- Raster setup reaches `0x10808` and `0x1075a`; delayed transfer
+  `ESC *b2W` schedules `0x105d0` through `0x11f82 -> 0x121cc -> 0x12218`.
+  Restore reinstalls record `80 57 00 02 00 00`, consumes payload bytes
+  `c3 3c`, and queues a mode-0 encoded raster object through `0x13070` /
+  `0x13250`.
+- FF reaches `0xf0f0` and publishes through `0xff1e`; scheduler copy
+  `0x1ed84` / `0x1edc6` then maps source root `+0x1c` to render root `+0x18`,
+  source root `+0x24` to render root `+0x1c`, and context slots
+  `+0x2c..+0x68` to render slots `+0x24..+0x60`.
+- Render entry `0x1ef6a` calls `0x1efc2` first, so the compact/raster bucket
+  chain renders before the selector-7 rule list that `0x1f446` sends to solid
+  helper `0x1f596`.
+
+The addressed stream records concrete object state for this route: compact
+text object at `0x00d0c004`, selector-7 rule object at `0x00d0c02a`,
+mode-0 raster object at `0x00d0c038`, context slot 0 `0x440946b4`,
+published bucket-root bytes `00 d0 c0 04 80 00 00 02 00 00 c3 3c`, and
+published rule bytes `00 00 00 00 01 07 5c 01 00 0c 00 05 00 00`. The
+allocator cursors after object storage are `0x782a70 = 0x00bc`,
+`0x782a72 = 0x00d0c000`, and `0x782a76 = 0x00d0c044`.
+
 Composition and overlap rule:
 
 - Bucket-chain output is written first. Within the selected render bucket,
@@ -1312,19 +1345,19 @@ Evidence and current boundary:
   rule objects use source root `+0x24`, publication passes both roots through
   `0xff1e`, bridge `0x1ed84` / `0x1edc6` maps them to render roots `+0x18`
   and `+0x1c`, and render entry `0x1ef6a` dispatches bucket-chain rows before
-  rule-list rows. Supporting fixture anchor:
+  rule-list rows. Supporting evidence stream:
   `addressed text/rule/raster field groups reach publication and render
   entry`.
 - Render-order evidence is the bridged bucket/rule/fixed route: `0x1ef6a`
   calls bucket dispatcher `0x1efc2`, rule dispatcher `0x1f446`, and fixed-list
   dispatcher `0x1f756` in that order for roots copied from source `+0x1c`,
-  `+0x24`, and `+0x28`. Supporting fixture anchor:
+  `+0x24`, and `+0x28`. Supporting evidence stream:
   `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
   order`.
 - Band-local mixed output evidence is the crossing-rule route: bucket-chain
   rows and a rule node can share the same render band; the bucket rows are
   written before the crossing rule according to the dispatcher order above.
-  Supporting fixture anchor:
+  Supporting evidence stream:
   `0x1ef6a page-band walk merges text raster and crossing rule`.
 - The supporting renderer details are in
   [page-raster-imaging.md](page-raster-imaging.md#owner-summary) under

@@ -208,7 +208,8 @@ owner, and whether visible pixels can result.
   happens later when bucket walkers dispatch encoded rows to `0x1f88e`, after
   page-record publication and render-record bridge.
 - Rectangle/rule graphics:
-  rectangle and fill handlers under `0x10898`, object insertion
+  rectangle dimension and fill handlers `0x10e68`, `0x10e22`, `0x10a40`,
+  `0x10ae0`, `0x10dce`, and `0x10898`; object insertion
   `0x13386` / `0x133aa`; owner
   [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
   Width/height and selector state become rule-list objects under root `+0x24`.
@@ -230,12 +231,14 @@ owner, and whether visible pixels can result.
   frames later replay bytes through the same parser and can queue text, spans,
   raster rows, rules, or publication effects.
 - Downloaded fonts and characters:
-  font descriptor/character payload readers `0x15d0a` and `0x16c14`, plus
-  active object dispatch around `0x14ba4`; owner
+  downloaded-font control writers `0x15a56`, `0x15a18`, and `0x16df6`,
+  descriptor/character payload readers `0x15d0a` and `0x16c14`, plus active
+  object dispatch around `0x14ba4`; owner
   [Downloaded-Font Outcome
   Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix).
-  Descriptor and bitmap payloads install resources. Printable bytes later
-  select installed glyphs through current font/map state and render through
+  `ESC *c#D/#E/#F` sets current id, character, and control state; descriptor
+  and bitmap payloads install resources. Printable bytes later select
+  installed glyphs through current font/map state and render through
   compact/downloaded-glyph helpers including `0x1f0d2`, `0x1f1f0`, and
   `0x1f264`.
 - Host/status side channels:

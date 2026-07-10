@@ -659,7 +659,7 @@ Rule object layout:
 | `+0x0a` | height |
 | `+0x0c` | render continuation height, set by bridge |
 
-The primary black-rule fixture queues this object before bridge:
+For the primary black-rule stream, `0x133aa` queues this object before bridge:
 
 ```text
 00 00 00 00 01 07 4a 00 00 0c 00 05 00 00
@@ -677,27 +677,59 @@ Bridge behavior:
 - It ORs object byte `+5` with `0x10`.
 - It copies height word `+0x0a` into continuation word `+0x0c`.
 
-Address-aware storage fixture:
+### Rule Storage And Bridge Route
 
-- `0x133aa` uses `0x1381c` storage.
-- The first object can become root `+0x24`.
-- A smaller bucket inserts at the head.
-- A larger bucket inserts at the tail.
-- An equal bucket inserts after the existing equal bucket.
+This checkpoint composes the successful rectangle storage path from clipped
+source record to render-list input. It starts at `0x13386` after `0x10b80`
+accepts a rectangle source record, and it ends when bridge `0x1edc6` exposes
+the rule list to render walker `0x1f446`.
 
-Fixture `0x133aa address-aware rule-list insertion uses 0x1381c storage`
-pins the allocator state and ordered insertion cases. Fixture `0x133aa
-no-room return preserves rule-list head` covers the failure return consumed by
-the `0x10d22` retry path: the old `+0x24` head remains canonical until the
-retry publishes the old root and allocates a fresh one.
+Route summary:
 
-The shared bridge fixture `0x1edc6 page-record bridge normalizes rule and
-fixed lists` proves that page-root rule list `+0x24` is copied to
-render-record `+0x1c` and normalized in place. It also covers the sibling
-fixed-list normalization path; fixture `0x137a2/0x136d2-modeled fixed-rule
-list object and bridge normalization` keeps that sibling list out of
-rectangle semantics except where `0x1ef6a` must walk both lists in a fixed
-call order.
+- `0x13386..0x133a8` derives bucket/key fields through `0x134d6` from source
+  record `0x782a88`, then calls allocator/linker `0x133aa`.
+- `0x133aa` allocates a 14-byte rule object through stream allocator
+  `0x1381c`. On allocation failure it returns zero before modifying page-root
+  rule-list head `+0x24`, existing rule nodes, or stream bookkeeping.
+- The first successful rule object becomes page-root `+0x24`. For nonempty
+  lists, `0x133aa` inserts by bucket/key order: smaller buckets insert before
+  larger buckets, larger buckets append after smaller predecessors, and equal
+  buckets append after the existing equal bucket.
+- `0x133aa` writes object byte `+0x04` from derived bucket byte `0x782a7d`,
+  byte `+0x05` from fill selector `0x782a88+8`, packed key `+0x06` from
+  `0x782a7e`, width `+0x08` from source width `0x782a88+4`, and height
+  `+0x0a` from source height `0x782a88+6`.
+- Publication preserves the page-root list. Bridge `0x1edc6` copies source
+  rule-list head `+0x24` to render-record `+0x1c`, ORs object byte `+0x05`
+  with `0x10`, and copies height `+0x0a` to continuation word `+0x0c`.
+- Render entry `0x1ef6a` later calls rule-list walker `0x1f446` on
+  render-record `+0x1c`. Selector low nibble `7` reaches solid helper
+  `0x1f596`; other documented selector nibbles reach pattern helper
+  `0x1f4e0`.
+
+State classification:
+
+- Canonical page state: current page root `0x78297a`, source record
+  `0x782a88`, page-root rule-list head `+0x24`, 14-byte rule object links and
+  fields.
+- Derived/cache state: bucket/key fields `0x782a7c..0x782a7e`, bridged
+  selector bit `0x10`, continuation word `+0x0c`, render-record rule list
+  `+0x1c`, and render-band row masks.
+- Parser scratch: the `ESC *c` six-byte records and selector scratch consumed
+  before `0x10b80` accepts a nonzero on-page rectangle. They are not rule-list
+  state after `0x133aa` writes the object.
+- Firmware bookkeeping: stream allocator fields, no-room retry bit
+  `root+0x15.0`, publication flag `0x782996`, and render scheduler progress.
+- Unknown: no ROM-local storage, link-order, bridge-normalization, or
+  selector-dispatch edge remains for the documented selector-7 and
+  gray/pattern rule paths. New work should start only when a stream changes an
+  object byte, allocation/retry branch, bridge field, continuation mutation, or
+  row-construction input.
+
+Supporting fixtures named in the evidence list exercise the ordered insertion
+cases, no-room preservation, rule/fixed bridge normalization, and fixed-list
+sibling path. The sibling fixed-list list remains outside rectangle semantics
+except where `0x1ef6a` walks rule and fixed lists in its fixed call order.
 
 ## No-Room Retry At 0x10d22
 

@@ -4268,8 +4268,9 @@ Macro record and overlay state:
 Publication detour:
 
 - Page finalization reaches `0xff1e`. When overlay state is enabled, the
-  selected overlay record exists, and current page-root retry bit `+0x14.0`
-  is clear, `0xff1e` / `0xff8e` reselects id `0x782a94` through `0xe0a4`.
+  selected overlay record exists, and current page-root flags word `+0x14`
+  bit 0 is clear, `0xff1e` / `0xff8e` reselects id `0x782a94` through
+  `0xe0a4`.
 - `0xe4f4` builds a non-replay frame at `0x782d4c`, snapshots the active
   page/parser environment, saves cursor longword `0x782c92`, and refreshes
   layout through `0xe5e2`.
@@ -4330,9 +4331,10 @@ Page-object and render effect:
 ```
 
   publishes unchanged when overlay mode is disabled, when `0xe0a4(0x782a94)`
-  finds no nonempty selected record, or when page-root retry flag `+0x14.0`
-  blocks overlay re-entry. Those gates therefore affect whether replay mutates
-  the page root, not how the renderer later interprets the base objects.
+  finds no nonempty selected record, or when page-root flags word `+0x14` bit
+  0 blocks overlay re-entry. Those gates therefore affect whether replay
+  mutates the page root, not how the renderer later interprets the base
+  objects.
 - After replay cleanup, `0xff1e` publishes the page root. `0x1ed84` and
   `0x1edc6` copy bucket, rule, fixed-list, and context roots into the active
   render record.
@@ -4416,8 +4418,8 @@ State classification:
 - Canonical:
   macro record pool `0x782a98`, selected record pointer `0x782d7a`, overlay
   state `0x782a92`, saved overlay id `0x782a94`, current page root
-  `0x78297a`, page-root retry flag `+0x14.0`, non-replay frame fields at
-  `0x782d4c`, replayed payload bytes, page-root object roots, published
+  `0x78297a`, page-root flags word `+0x14` bit 0, non-replay frame fields
+  at `0x782d4c`, replayed payload bytes, page-root object roots, published
   source record, and render-record roots.
 - Derived/cache:
   normalized macro payload count, replay-derived compact coordinates, rule
@@ -4448,8 +4450,8 @@ State classification:
 Skip-gate boundaries:
 
 - Disabled overlay mode, missing selected record from `0xe0a4(0x782a94)`, and
-  current page-root retry bit `+0x14.0` all skip `0xe4f4` and publish the base
-  page without overlay replay.
+  current page-root flags word `+0x14` bit 0 all skip `0xe4f4` and publish
+  the base page without overlay replay.
 - These are output-affecting parser/page boundaries, not hardware boundaries:
   they decide whether replayed bytes mutate the current page root before
   publication.
@@ -6334,8 +6336,8 @@ Address-level cluster map:
   `00 00 00 00 01 07 88 01 00 0c 00 03 00 00` and
   `00 00 00 00 01 07 e4 00 00 08 00 04 00 00`. Skip gates are concrete:
   disabled overlay mode, missing record from `0xe0a4(0x782a94)`, or page-root
-  retry flag `+0x14.0` skip `0xe4f4`, so a base printable/rule page such as
-  rule object `00 00 00 00 01 07 a2 00 00 06 00 02 00 00` publishes
+  flags word `+0x14` bit 0 skip `0xe4f4`, so a base printable/rule page such
+  as rule object `00 00 00 00 01 07 a2 00 00 06 00 02 00 00` publishes
   unchanged. Stored payload variants prove overlay replay uses ordinary owners:
   `ESC &p2X!!` routes through transparent restore `0x12452` and queues compact
   text prefix `00 00 00 00 00 00 00 02 20 00 01 20 02 02`; stored
@@ -6350,19 +6352,19 @@ Address-level cluster map:
   `0x783164`, macro record pool `0x782a98`, selected record pointer
   `0x782d7a`, active data-chain frame pointer `0x782d76`, frame fields
   `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay state byte `0x782a92`, saved
-  overlay id `0x782a94`, and page-root retry gate `+0x14.0`. Derived/cache
-  state is normalized stored payload length, replay compact coordinates,
-  replay-produced page objects, and the font/context refreshes restored from
-  frame snapshots. Parser scratch is definition-mode byte `0x782c18`, append
-  error byte `0x782c19`, parser records consumed by `0xdd08`, and alternate
-  parser bytes that append through `0xe002` instead of executing immediately.
-  Firmware bookkeeping is heap chunk allocation/free state, eight macro
-  context-stack records, host gate bit 1, frame-end unwinding through
-  `0xe22c`, and overlay detour state while `0xff1e` temporarily re-enters
-  `0x11774`. The output effect is not a macro-specific renderer: replayed
-  bytes re-enter the ordinary command owners, and overlay replay changes
-  pixels only through the page objects those ordinary handlers create before
-  `0xff1e` copies the root.
+  overlay id `0x782a94`, and page-root retry gate in flags word `+0x14` bit
+  zero. Derived/cache state is normalized stored payload length, replay
+  compact coordinates, replay-produced page objects, and the font/context
+  refreshes restored from frame snapshots. Parser scratch is definition-mode
+  byte `0x782c18`, append error byte `0x782c19`, parser records consumed by
+  `0xdd08`, and alternate parser bytes that append through `0xe002` instead
+  of executing immediately. Firmware bookkeeping is heap chunk allocation/free
+  state, eight macro context-stack records, host gate bit 1, frame-end
+  unwinding through `0xe22c`, and overlay detour state while `0xff1e`
+  temporarily re-enters `0x11774`. The output effect is not a macro-specific
+  renderer: replayed bytes re-enter the ordinary command owners, and overlay
+  replay changes pixels only through the page objects those ordinary handlers
+  create before `0xff1e` copies the root.
 - VFC cluster:
   `ESC &l#W` uses delayed route
   `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` consumes the table
@@ -8413,8 +8415,8 @@ Address-level cluster map:
   Firmware bookkeeping is host gate bit 1, frame-end cleanup through `0xe22c`,
   heap allocation/free chains through `0x170c` / `0x1710` / `0x18b4`,
   allocation-failure status through `0x9b5e(0x780e2e, 4)`, non-replay overlay
-  layout refresh through `0xe5e2`, page-root retry flag `+0x14.0`, and parser
-  reset/frame cleanup through `0x1240a`.
+  layout refresh through `0xe5e2`, page-root flags word `+0x14` bit 0, and
+  parser reset/frame cleanup through `0x1240a`.
   Writers are `0xe112` for current id, `0xe0a4` for selected record,
   `0xdd08` and selector handlers `0xdd86..0xdf36` for macro control state,
   `0xe002` for payload chunks, `0xe418` for execute/call frames, `0xe4f4` for
@@ -8435,11 +8437,12 @@ Address-level cluster map:
   the normal `0x1387c` / `0x1381c`, `0xff1e`, `0x1ed84` / `0x1edc6`, and
   `0x1ef6a` path.
   Overlay state uses `0x782a92` and saved overlay id `0x782a94`. During
-  publication, `0xff1e` consumes that state and page-root retry bit `+0x14.0`;
-  when the enabled overlay record exists, `0xe4f4` builds a non-replay frame
-  with kind `+0x09 = 4`, replays the stored payload before the same publication
-  boundary, and `0xe22c` restores parser/page state afterward. Disabled,
-  missing-record, or retry-flag skip gates preserve the base page publication.
+  publication, `0xff1e` consumes that state and page-root flags word `+0x14`
+  bit 0; when the enabled overlay record exists, `0xe4f4` builds a
+  non-replay frame with kind `+0x09 = 4`, replays the stored payload before
+  the same publication boundary, and `0xe22c` restores parser/page state
+  afterward. Disabled, missing-record, or retry-flag skip gates preserve the
+  base page publication.
   Concrete output evidence includes fixtures `0xe112 stores absolute parsed
   macro id`, `0xe0a4 macro record lookup uses head presence and first free
   slot`, `0xe002 appends macro definition bytes into 0x100 chunks`,
@@ -8758,8 +8761,8 @@ Address-level cluster map:
   pool `0x782a98`, selected record pointer `0x782d7a`, record head/count/id
   and permanence fields, active data-chain frame pointer `0x782d76`, frame
   fields `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay mode byte `0x782a92`,
-  saved overlay id `0x782a94`, and page-root retry gate `+0x14.0`. Evidence:
-  [macro-data-chain.md](macro-data-chain.md),
+  saved overlay id `0x782a94`, and page-root retry gate in flags word
+  `+0x14` bit 0. Evidence: [macro-data-chain.md](macro-data-chain.md),
   [host-byte-fetch.md](host-byte-fetch.md), and `Macro, Data-Chain, And
   Overlay` in [semantic-state-model.md](semantic-state-model.md).
 - Canonical print environment: cursor words `0x782c8a` and `0x782c8e`,
@@ -8970,14 +8973,14 @@ shape, publication boundary, or render helper inputs.
    payload bytes, delayed transparent/raster records, and the parser-mode
    state active inside a non-replay frame. Firmware bookkeeping is chunk
    allocation, environment snapshots, host gate bit 1, frame cleanup through
-   `0xe22c`, page-root retry flag `+0x14.0`, and page publication state.
+   `0xe22c`, page-root flags word `+0x14` bit 0, and page publication state.
    Execute/call selectors build replay frames through `0xe418`: frame byte
    `+0x09` is `2` for execute and `3` for call. `0xa904` gives those frames
    priority over live host bytes, so stored payloads re-enter parser loop
    `0x11774` and reach ordinary handlers such as `0xd04a`, `0xf02c`, and
    `0xedf8`. Overlay selector `4` is consumed during publication:
-   `0xff1e` checks `0x782a92`, saved id `0x782a94`, and root retry flag
-   `+0x14.0`; if replay is enabled, `0xe0a4` reselects the macro and
+   `0xff1e` checks `0x782a92`, saved id `0x782a94`, and root flags word
+   `+0x14` bit 0; if replay is enabled, `0xe0a4` reselects the macro and
    `0xe4f4` builds a non-replay frame with `+0x08 = 4` and `+0x09 = 4`
    before publication proceeds. Disabled overlay mode, missing selected
    record, and retry-flag cases skip replay and publish the base page.

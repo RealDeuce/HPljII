@@ -119,8 +119,8 @@ Field groups:
   payload head/count at `+0x00/+0x04`, source offset byte `+0x08`, frame kind
   byte `+0x09`, and snapshot pointer `+0x0a`.
 - Canonical overlay state: overlay state byte `0x782a92`, saved overlay id
-  `0x782a94`, page-root retry gate bit `root+0x14.0`, and publication detour
-  through `0xff1e`.
+  `0x782a94`, page-root retry gate in flags word `root+0x14` bit 0
+  (written at byte `root+0x15.0`), and publication detour through `0xff1e`.
 - Canonical context state: eight 10-byte macro context records
   `0x782c1e..0x782c6d`, stack pointer `0x782c6e`, static context record
   `0x782c64`, and primary/secondary refresh flags at entry bytes `+8/+9`.
@@ -228,8 +228,9 @@ Canonical overlay state:
   bit is clear.
 - `0x782a94`: saved overlay macro id copied from the current id by selector
   `4`.
-- Page-root flag bit `+0x14.0`: retry gate that suppresses overlay replay
-  while preserving base page publication.
+- Page-root flags word `+0x14` bit 0:
+  retry gate that suppresses overlay replay while preserving base page
+  publication; the disassembly writes it at byte `+0x15.0`.
 - Covered overlay payloads reuse canonical print-state fields rather than
   inventing an overlay-specific renderer. `0xf39e` writes horizontal cursor
   `0x782c8a`; `0xf60a` writes vertical cursor `0x782c8e`; `0xeb58` and
@@ -806,7 +807,7 @@ Overlay variant boundary map:
 - Overlay selection is canonical macro/page state: `ESC &f4X` stores overlay
   mode in `0x782a92` and overlay id in `0x782a94`; `ESC &f5X` clears that
   mode. Page publication `0xff1e` consumes both fields plus current page-root
-  retry flag `+0x14.0` before deciding whether overlay replay can run.
+  flags word `+0x14` bit 0 before deciding whether overlay replay can run.
 - Skip gates are exact: disabled overlay mode, missing/nonempty macro record
   lookup through `0xe0a4(0x782a94)`, and page-root retry flag all preserve the
   base page publication without producing a non-replay frame.

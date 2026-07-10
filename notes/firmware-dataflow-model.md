@@ -8711,9 +8711,9 @@ Overlay setup and publication entry:
   `0x782a92`. It copies the selected macro id into `0x782a94`.
 - `ESC &f5X` disables the same overlay state through `0xdef4`.
 - Page finalization reaches the overlay branch at `0xff1e` / `0xff8e`.
-  When overlay state is enabled and page-root flag bit `+0x14.0` is clear,
-  `0xe0a4(0x782a94)` reselects the saved macro record and `0xe4f4` builds a
-  non-replay data-chain frame.
+  When overlay state is enabled and page-root flags word `+0x14` bit 0 is
+  clear, `0xe0a4(0x782a94)` reselects the saved macro record and `0xe4f4`
+  builds a non-replay data-chain frame.
 - If overlay is disabled, the selected record is missing, or the page-root
   retry flag is set, fixture `macro overlay skip gates preserve base page
   publication` proves the base page still publishes without replaying overlay
@@ -8786,8 +8786,8 @@ State classification:
   parser-mode state while the non-replay frame is active.
 - Firmware bookkeeping:
   frame kind `+9 = 4`, frame stride byte `+8 = 4`, host gate bit 1 in
-  `0x780e66`, page-root retry flag `+0x14.0`, environment snapshots, and
-  frame cleanup through `0xe22c`.
+  `0x780e66`, page-root flags word `+0x14` bit 0, environment snapshots,
+  and frame cleanup through `0xe22c`.
 - Hardware/external state:
   none for the ROM-local overlay replay and publication behavior.
 - Unknown:

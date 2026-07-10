@@ -9151,7 +9151,10 @@ boundaries only when new evidence changes the documented state or pixel output.
    explanation for which continuation policy the ROM address bus actually sees. Do not
    re-trace `0x12452`, transparent filtering, secondary buckets through `448`, or
    compact renderer arithmetic unless new decode evidence contradicts the current
-   boundary.
+   boundary. The checked-in boundary entry [Secondary Segment-57 Resource
+   Source](unresolved-boundaries.md#secondary-segment-57-resource-source) records the
+   local probe hashes, suffix length, continuation length, and candidate-scan
+   consequences for the mirror, code-pair, and zero-fill interpretations.
 2. Reset/default provenance is no longer a ROM-local parser/page/render gap.
    [reset-default-environment.md](reset-default-environment.md) and
    `Default Environment Record Producers` cover the reset consumer, default

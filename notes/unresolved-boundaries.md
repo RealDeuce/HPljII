@@ -83,6 +83,24 @@ State classification for these pixel-affecting stops:
   selected-context filtering, page-record allocation, bridge fields, compact
   dispatch, segment skip arithmetic, and zero-offset glyph-entry
   interpretation.
+- Local probe evidence:
+  `tools/probe_resource_window.py --quiet` verifies the committed ROM images
+  and the byte-side choices for this stop. The segment-57 read is
+  `0x0bfe22..0x0c0321` inclusive (`1280` bytes). Only the first `478` bytes
+  are inside the verified IC32/IC15 resource image, with suffix hash
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`; the
+  continuation need is `802` bytes. The three modeled continuations are:
+  simple resource mirror, first longword `0x48454144`, hash
+  `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`;
+  firmware/code-pair continuation, first longword `0x00800000`, hash
+  `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`;
+  and zero-fill, first longword `0x00000000`, hash
+  `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`.
+  The same probe shows why this remains a decode question: a simple mirror
+  exposes `HEAD` at offsets `0` and `0x40000` and doubles candidate counts
+  to `48` with low class-one/class-zero counts `24/24`, while code-pair and
+  zero-fill expose only `HEAD` at offset `0` and keep candidate counts at
+  `24` with low class-one/class-zero counts `12/12`.
 - Evidence:
   [transparent-print-data.md](transparent-print-data.md),
   [resource-rom.md](resource-rom.md),

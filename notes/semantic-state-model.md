@@ -3530,6 +3530,14 @@ for how resource records become ordinary page-record text.
     explicit name string: table `0x1c0a6` handles special symbol/family names,
     table `0x1c11a` maps family bytes to names, and strings at `0x1d17a`,
     `0x1d17c`, `0x1d183`, `0x1d18b`, and `0x1d192` add style/weight suffixes.
+  - `0x1d460` walks resource container signatures `FONT`, `font`, `TABL`,
+    `tabl`, and `DUMY` to derive the fallback word consumed by `0x1d198`.
+    `0x1d4ee` scans 32 ten-byte rows at `0x782640` for the selected record
+    address and returns name/status length `1` or `0x15`, reporting
+    `(0xe3, 0x52)` through `0x1284` when the table is exhausted.
+  - `0x1d572`, `0x1d5fa`, and `0x1d65e` are the fixed and explicit-name
+    string readers. They trim trailing whitespace/control bytes, cap output
+    at 25 columns, and hand sanitized bytes to `0x1d71e`.
   - direct payload-render row hashes for the two ROM sample byte runs
     are evidence targets, not canonical runtime state.
 - Parser scratch:
@@ -3703,8 +3711,17 @@ for how resource records become ordinary page-record text.
 - `0x1d198` builds the font-name/style column and reads local lookup
   tables at `0x1c0a6` and `0x1c11a` for labels such as `UPC/EAN`,
   `OCR A`, `OCR B`, `LINE DRAW`, `COURIER`, and `LINE PRINTER`.
-- `0x1d6ea` emits capped strings through `0xd04a`; `0x1d71e`
-  sanitizes fixed-length name bytes before emission.
+  Its lower helpers are now explicit: `0x1d460` walks resource container
+  signatures for fallback words, `0x1d4ee` scans table `0x782640`,
+  `0x1d572` reads fixed-form ten-byte names, `0x1d5fa` reads explicit
+  name tables at record `+0x38`, and `0x1d65e` handles caller-length
+  strings.
+- `0x1d6ea` emits capped zero-terminated strings through `0xd04a`;
+  `0x1d71e` sanitizes fixed-length name bytes before emission.
+- `0x1d79c` probes row availability for a source by calling `0x1b50e`,
+  `0x1c746`, and `0x1c710`, comparing the class/orientation result against
+  `0x782da3`, and consulting source-status byte `0x783f02 + source` during
+  class-one resume.
 - `0x1d868` / `0x1d8ba` preflight the selected/alternate row gate against
   `0x782db6`; `0x1d964` consumes `0x1dcf2` to preflight current/alternate
   row placement before continuing row emission.

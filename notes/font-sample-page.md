@@ -192,6 +192,66 @@ Derived/cache state:
 - Page-record bucket sets and object hashes are derived render-facing
   artifacts, not canonical firmware fields.
 
+## Row Text Helper Ledger
+
+`0x1cabe` emits the visible row columns, but the lower helper cluster at
+`0x1d198..0x1d79c` decides which printable name bytes reach `0xd04a`.
+This cluster is part of the reproduction model because it converts selected
+resource records into the row text that later becomes compact page objects.
+
+- `0x1d198` is the 25-column name/style formatter. For fixed-form records
+  passed without an explicit name pointer, it masks the selected context to a
+  24-bit record address, reads bytes `+0x26` and `+0x27`, and either uses
+  resource-chain helper `0x1d4ee` or fallback helper `0x1d460`.
+- `0x1d460` walks resource container records starting at the masked record
+  address. It follows `FONT` and lowercase `font` records by adding longword
+  `+0x2e`, follows `TABL`, lowercase `tabl`, and `DUMY` records by adding
+  longword `+0x04`, and returns the word at the final record plus `6`.
+- `0x1d4ee` scans 32 ten-byte rows at `0x782640`. It matches the masked
+  selected record address against row longword `+0x06`. If the row's word
+  `+0x02` has bit 29 set, it returns `1`; otherwise it returns `0x15`.
+  Exhausting the table reports status `(0xe3, 0x52)` through `0x1284`.
+- `0x1d572` copies ten name bytes from record `+0x04`, trims trailing bytes
+  that are `<= 0x20` or in the control range `0x80..0x9f`, sanitizes the
+  surviving fixed-length string through `0x1d71e`, and returns the retained
+  length.
+- `0x1d5fa` is the explicit-name path used when a caller supplies the name
+  pointer. It reads a name table at record `+0x38`: with display mode `0` it
+  emits through `0x1d65e`; otherwise it caps the stored length at 25 and
+  emits through `0x1d71e`.
+- `0x1d65e` copies a caller-length string, trims the same trailing control or
+  whitespace bytes as `0x1d572`, emits the sanitized bytes through `0x1d71e`,
+  and returns the retained length.
+- `0x1d6ea` emits a zero-terminated string through printable handler `0xd04a`
+  until it reaches NUL or the 25-column cap.
+- `0x1d71e` emits a fixed-length string through `0xd04a`, replacing bytes
+  `<= 0x1f` and bytes `0x80..0x9f` with space before emission.
+- `0x1d79c` probes up to two candidate rows for a source group by calling
+  `0x1b50e`, normalizing with `0x1c746`, and checking class/orientation with
+  `0x1c710` against `0x782da3`. It also consults source-status byte
+  `0x783f02 + source` when class pass `1` needs to resume after the prior
+  pass. Its return is a row-availability flag for callers such as the sample
+  page setup and continuation paths, not printable output by itself.
+
+State classification for this helper cluster:
+
+- Canonical ROM/resource state: fixed-form record bytes `+0x04..+0x0d`,
+  `+0x18`, `+0x26`, `+0x27`, explicit name table pointer `+0x38`, and
+  resource-chain signatures `FONT`, `font`, `TABL`, `tabl`, and `DUMY`.
+- Canonical firmware state: name-status table `0x782640`, active class byte
+  `0x782da3`, and per-source resume/status bytes `0x783f02..0x783f05`.
+- Derived/cache state: the masked 24-bit record address, trimmed fixed-length
+  strings, fallback family/style names from tables `0x1c0a6` and `0x1c11a`,
+  and the 25-column cap enforced before the next row field.
+- Parser scratch: no host byte is fetched; all helper output rejoins the
+  ordinary printable path by calling `0xd04a` directly.
+- Firmware bookkeeping: local retained-length counters and row-availability
+  flags returned in `D7`.
+- Unknown: manual-facing names for bytes `+0x26`, `+0x27`, and the
+  `0x782640` row flags remain unresolved; their ROM-local formatting roles
+  are pinned by
+  `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`.
+
 Unknown:
 
 - Manual-facing baseline/cell names remain open; a known printed/self-test

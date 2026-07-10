@@ -524,24 +524,33 @@ controlling artifact.
   Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint), [Context Slot
   Preservation Checkpoint](page-record-storage.md#context-slot-preservation-checkpoint),
   [page-raster-imaging.md](page-raster-imaging.md), `Worked Path: Shared Page-Record
-  Storage And Allocator`, `Page Image Assembly` and `Page Versus Band Model` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), and the `Minimal Page
-  Assembly Walkthrough`. The canonical model is current root `0x78297a`, stream
+  Storage And Allocator`, `Page Object Shape Route Index`, `Page Image Assembly`, and
+  `Page Versus Band Model` in [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  and the `Minimal Page Assembly Walkthrough`. The canonical model is current root
+  `0x78297a`, stream
   allocator state `0x782a70/0x782a72/0x782a76`, compact and raster buckets under root
   `+0x1c`, rules under `+0x24`, fixed objects under `+0x28`, selected context/resource
   longword slots `+0x2c..+0x68`, publication `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and
   scheduler-selected band rendering rather than a parser-time full-page bitmap.
+  `Page Object Shape Route Index` is the compact proof map for producer, root field,
+  object bytes, bridge field, first renderer, field classification, and residual
+  boundary by object class.
 - Output/render engine:
   covered by [active-render-scheduler.md](active-render-scheduler.md),
   [page-raster-imaging.md](page-raster-imaging.md), `Published Record To Active
   Render Scheduler` and `Bitmap Render Dispatch Contract` in
-  [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Render
-  Dispatch And Pixel Composition`. The current ROM-local render path is
+  [semantic-state-model.md](semantic-state-model.md), `Band Scheduling Route Index`, and
+  `Worked Path: Render Dispatch And Pixel Composition` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). The current ROM-local render
+  path is
   published pool state `0x780ea6/0x780eaa/0x780eae`, active render pointer
   `0x783a18`, bridge roots `+0x18/+0x1c/+0x20`, render entry `0x1ef6a`, bucket
   dispatch `0x1efc2`, compact helpers `0x1f034..0x1f264`, segment-list helper
   `0x1f812`, rule helpers `0x1f4e0` / `0x1f596`, fixed-list helper `0x1f756`,
-  and raster helper `0x1f88e`.
+  and raster helper `0x1f88e`. `Band Scheduling Route Index` is the compact proof map
+  for `0xff1e` publication, source selection `0x780eaa -> 0x780eae`, work-record
+  alternation, active pointer `0x783a18`, band-loop no-pixel exits, and the
+  capacity-approved handoff into `0x1ef6a`.
 - Field/state classification:
   owned by [semantic-state-model.md](semantic-state-model.md#owner-summary),
   defined by the `State Classification Guide`, summarized in `Canonical State
@@ -5601,7 +5610,11 @@ or from a byte stream that changes a named field in the family sections.
   variants, compare the stream against `Page Object Shape Route Index` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index)
   and name the changed producer, root field, canonical object bytes, bridge
-  field, first render consumer, or exact residual boundary.
+  field, first render consumer, or exact residual boundary. For scheduler-only
+  variants, compare the stream against `Band Scheduling Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#band-scheduling-route-index)
+  and name the changed publication field, source selector, work record, band
+  word, no-pixel exit, or capacity-approved `0x1ef6a` call.
 - Checked-in documentation requirement:
   generated reports and fixtures can support the items above, but completion
   for any new edge means updating the relevant checked-in note with writers,

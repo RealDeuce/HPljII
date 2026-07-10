@@ -883,5 +883,5 @@ For `ESC &p#X`:
   continuation policies, and the startup scanner consequence is pinned for all
   three policies.
 - Manual-facing names for the active context filtering byte, fallback byte, and
-  high-character flags remain unknown; their transparent-routing effect is
-  documented by `0x12476..0x12534`.
+  high-character flags remain unknown. Their ROM-local writer/consumer contract
+  is documented in `High-Character Flag Producer/Consumer Checkpoint` above.

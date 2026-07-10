@@ -5678,9 +5678,9 @@ Payload reader behavior:
 - The writer/consumer contract for those flags is the
   `High-Character Flag Producer/Consumer Checkpoint` in
   [transparent-print-data.md](transparent-print-data.md): selected-font/map
-  activation writes `0x783132` / `0x783133`, transparent/display readers use
-  them to choose the local high-control filter source, and ordinary printable
-  entry `0xd04a` uses them for seven-bit masking and secondary-slot switching.
+  activation writes `0x783132` / `0x783133`, transparent readers use them to
+  choose the local high-control filter source, and ordinary printable entry
+  `0xd04a` uses them for seven-bit masking and secondary-slot switching.
 - The payload loop fetches raw bytes through `0xa904`. A `-1` byte returns
   early. A byte `0x1a` probes one more byte: `1a 58` becomes transparent
   value `0x7f` after `0xd99a`, while `1a xx` with `xx != 58` routes `xx` and

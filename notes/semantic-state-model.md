@@ -2321,8 +2321,13 @@ or fixed-space helper `0xd0f0`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected-context C0 filter byte, fallback
     high-control filter byte, and high-character flags remain unknown. Their
-    ROM-local transparent-routing role is documented in
-    `transparent-print-data.md`.
+    ROM-local routing role is documented in `High-Character Flag
+    Producer/Consumer Checkpoint` in
+    [transparent-print-data.md](transparent-print-data.md):
+    selected-font/map activation writes `0x783132` / `0x783133`,
+    transparent readers use those flags to choose the high-control filter
+    source, and printable entry `0xd04a` uses them for high-byte masking and
+    secondary-slot switching.
   - the board memory-map policy for firmware address `0x0c0000..0x0c0321`
     remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
     produce different fallback row digests in the harness. A simple full mirror

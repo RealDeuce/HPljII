@@ -7025,6 +7025,162 @@ output. There is no remaining ROM-internal validation no-install edge outside
 those predicates; the remaining edge is external naming for
 consumed-but-not-staged descriptor fields.
 
+### Downloaded Glyph Renderer Boundary State
+
+Status: anchored as a renderer-boundary checkpoint for downloaded-character row/span
+cases whose parser, install, page-record, publication, and bridge paths are documented,
+but whose final helper behavior reaches an exact ROM-local boundary. This checkpoint
+composes the command-family evidence in
+[downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-row-count-publication-checkpoint)
+with the residual boundaries in the `Boundary: Short Compact Downloaded-Glyph High Rows`
+cluster in [firmware-dataflow-model.md](firmware-dataflow-model.md): short compact high
+rows, wrapped-width low-byte selector cases, segmented-wide span-31 fallback source
+reads, and the `ESC )s#W` payload-count cap.
+
+The covered route is:
+
+- `0xa904` host bytes feed the PCL parser and route `ESC )s#W` through
+  `0x11f96 -> 0x121cc -> 0x12218`.
+- Downloaded-character payloads enter `0x16c14` and install records through
+  `0x16498`, using readers `0x168dc` or `0x16942`.
+- Later printable bytes resolve the installed glyph through `0x1393a`, queue
+  compact page objects through `0xd04a -> 0x12f2e`, publish through `0xff1e`,
+  bridge through `0x1ed84` / `0x1edc6`, and dispatch from `0x1ef6a` through
+  compact target `0x1effe`.
+- Final downloaded-glyph helpers are selected by the page-object selector:
+  `0x1fe76` for short compact, `0x1f0d2` for wide compact, `0x1f1f0` for
+  segmented compact, and `0x1f264` for segmented-wide compact.
+
+Field groups:
+
+- Canonical downloaded-glyph state:
+  - glyph pointer-table entries such as `0x010a`, `0x0116`, and the installed
+    object pointer bytes;
+  - installed record mode byte `+5`, 16-bit row word `+6`, 16-bit width word
+    `+8`, bitmap payload at `+0x0c`, and split-plane layout state when
+    `0x16942` is the reader;
+  - current page root, published bucket roots, and render-record bucket roots.
+- Derived/cache state:
+  - printable source low row byte and low width byte consumed by `0x12f2e`;
+  - selector words `0x0003`, `0x1003`, `0x2003`, and `0x3003`;
+  - render bucket words selected by `0x1ed84` / `0x1ef6a`;
+  - `0x1f414` current/fallback row split, compact helper table index, and
+    wide-helper A2/A3 source offsets.
+- Parser scratch:
+  - restored `ESC )s#W` records such as `80 57 02 04 00 00`;
+  - payload budget `0x783140`, copy status, zero-byte or partial drain through
+    `0x12328`, and next-handler recovery such as `0xd04a`.
+- Firmware bookkeeping:
+  - downloaded-record allocation/release state around `0x16c14`, `0x16498`,
+    and related current-record helpers;
+  - stream allocator state, publication flag `0x782996`, and render-work
+    progress words consumed by the active render scheduler.
+- Hardware/external state:
+  - none for these ROM-local renderer/payload boundaries.
+- Unknown:
+  - execution after invalid helper targets selected by unchecked compact helper
+    tables, or source bytes beyond the modeled bitmap source for the span-31
+    segmented-wide fallback case. These are bounded renderer-helper/source
+    edges, not parser, install, page-object, publication, or bridge unknowns.
+
+Writers:
+
+- `0x16498` writes installed downloaded-character records and preserves the
+  16-bit row/width words used by later renderers.
+- `0x168dc` copies linear bitmap payloads and decrements `0x783140`; `0x16942`
+  copies split-plane payloads into prefix and trailing planes.
+- `0x12f2e` writes compact page-object selector and bucket state from the
+  selected glyph's printable source bytes.
+- `0xff1e` publishes the page root, and `0x1ed84` / `0x1edc6` copy bucket,
+  rule, fixed-list, and context roots into render-record form.
+
+Readers and consumers:
+
+- `0x1393a` consumes the selected downloaded glyph record while building the
+  printable source object.
+- `0x12f2e` consumes only source low row/width bytes for selector choice, even
+  when `0x16498` preserved larger installed words.
+- `0x1ef6a` consumes the bridged bucket word and dispatches compact objects
+  through `0x1effe`.
+- `0x1f414` consumes installed row counts to split current-band and fallback
+  row work; `0x1fe76`, `0x1f0d2`, `0x1f1f0`, and `0x1f264` consume the resulting
+  helper-specific row/span/source state.
+
+Output effect:
+
+- Rows `0x0001..0x00ff` are modeled through parser, installed record,
+  page-record publication, bridge, compact helper dispatch, and row output in
+  `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts`.
+- Installed rows `0x0101..0x0103` preserve their 16-bit row words, but
+  `0x12f2e` publishes low-byte short selector `0x0003`; `0x1f414` then derives
+  fallback counts `199..201`, which exceed the `0x1fe76` valid table maximum
+  index `128`.
+- Wrapped widths with low source bytes `0x11..0xff` render through `0x1f0d2`
+  in the sampled matrix; low source bytes `0x00..0x10` select compact mode-0
+  helper targets such as `0x0102 -> 0x0066cc`, which is bounded as a jump into
+  unrelated firmware code, not a row-copy helper.
+- Segmented-wide high-row sampled spans `17`, `18`, and successful siblings
+  dispatch selected segment `1` through `0x1f264`; span `31` cases through row
+  `0x03ff` stop at fallback A2 source offset `+0xb50`.
+- Oversized segmented-wide payload products stop before `0x16498` completes an
+  installed glyph when the required payload exceeds the restored `0x7fff`
+  `ESC )s#W` budget. The minimum segmented-wide span is `17`, so the last
+  below-cap row word in this stream shape is `0x0787`.
+
+Confidence is high for the parser/install/page-record/bridge portions because
+the cited fixtures start from host-fetched command streams and preserve the
+same installed records through publication and render entry. Confidence is high
+for the invalid helper/source boundaries because the disassembly names the
+exact unchecked table or source-read boundary: `0x1fe76..0x2008e`,
+`0x1f034` table `0x1f08e`, `0x1f264` plus helper `0x2f27c`, and payload budget
+restore/drain through `0x12218`, `0x16c14`, `0x15dcc`, and `0x12328`.
+
+Fixtures:
+
+- `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`
+- `downloaded glyph high-row truncation matrix preserves installed rows`
+- `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts`
+- `downloaded glyph width-byte boundary truncates page-record span`
+- `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
+- `downloaded segmented-wide high-row span-31 fallback hits source boundary`
+- `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source
+  boundary`
+- `downloaded segmented-wide high-row 0x03xx span-31 matrix hits source
+  boundary`
+- `downloaded segmented-wide high-row 0x04xx oversized payload counts stop
+  before renderer`
+- `downloaded segmented-wide high-row parser-limit oversized counts stop before
+  renderer`
+- `downloaded segmented-wide row-byte boundary truncates page-record segments`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
+- `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+- `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`
+- `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`
+- `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`
+
+Unresolved middle edges:
+
+- `0x1fe76..0x2008e`: short compact fallback indices above `128` read row-copy
+  code bytes as jump-table targets. For rows `0x0101..0x0103`, fallback indices
+  `199..201` reach invalid target class `0x329ad3c0`.
+- `0x1f034` table `0x1f08e`: wrapped width low-byte selector cases index
+  compact mode-0 helper targets with full installed width words. The pinned
+  `0x0102` case reads target `0x0066cc` from entry address `0x1f496`.
+- `0x1f264` selected-segment fallback source: sampled span-31 high-row cases
+  stop at fallback A2 source offset `+0xb50`.
+- `0x12218 -> 0x16c14 -> 0x15dcc -> 0x12328`: oversized segmented-wide payload
+  products stop at the restored `0x7fff` byte-count cap before installed-glyph
+  publication or renderer entry.
+
 ### Downloaded Glyph Rule/Raster Composition
 
 Status: anchored as a composition checkpoint from a host-fetched downloaded

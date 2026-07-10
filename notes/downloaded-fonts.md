@@ -2136,6 +2136,87 @@ remaining higher-row segmented-wide gap to broader row/span combinations below
 row `0x0787`, plus byte streams that change the explicit source-boundary and
 parser-count-boundary cases.
 
+### Segmented-Wide Fallback Source Checkpoint
+
+This checkpoint composes the span-31 segmented-wide source stop into the
+ROM-local render model. The stop is a source-region boundary after the same
+parser, install, publication, bridge, and selected-segment dispatch used by
+neighboring successful spans.
+
+Writers and readers:
+
+- `0x16498` writes canonical downloaded-character records. The high-row
+  segmented-wide fixtures preserve installed row words from `0x0181` through
+  the parser limit, installed span words, mode byte, and bitmap payload.
+- `0x12f2e` reads only the printable source low row byte when choosing the
+  compact selector. Low row bytes above `0x80` publish selector `0x3003` with
+  segment objects in buckets `8` and `0`.
+- `0xff1e` publishes those buckets; `0x1ed84 -> 0x1ef6a -> 0x1effe` consumes
+  bucket `8` as selected segment `1` and dispatches object byte `0x30` to
+  segmented-wide helper `0x1f264`.
+- `0x1f264` reads the segment byte, shifts it left by seven, subtracts that
+  segment row skip from the installed row count, caps the current segment to
+  `0x80` rows, and advances `A3`. It clears bit `0` of the span before
+  multiplying by the segment row skip and advancing `A2` to the segment source.
+- `0x1f3d4` derives the destination row pointer. `0x1f414` splits selected
+  high-row cases into current-band and fallback row counts.
+- When fallback rows are present, `0x1f264` writes fallback row-copy state:
+  `0x783a42` receives the full-chunk row skip, `0x783a48` receives the
+  fallback source pointer, and the fallback pass restores `A2` from
+  `0x783a48` before re-entering the same `0x2f27c` full-chunk and `0x1f1ac`
+  remainder-copy path.
+
+State classification:
+
+- Canonical state:
+  installed downloaded-glyph table entries, full installed row and width
+  words, mode byte, bitmap bytes, selector-`0x3003` page objects, bucket `8`
+  selected segment `1`, bucket `0` segment `0`, and render-record bucket root.
+- Derived/cache state:
+  printable low row byte, segment row skip `0x80`, segment-adjusted A2/A3
+  source pointers, current/fallback split from `0x1f414`, full-chunk and
+  remainder metadata, `0x783a42`, `0x783a48`, and fallback A2 source offset
+  `+0xb50`.
+- Parser scratch:
+  restored `ESC )s#W` record, payload budget `0x783140`, copy status `1`,
+  zero-byte drain through `0x12328`, and next parser handler `0xd04a` for the
+  below-cap cases.
+- Firmware bookkeeping:
+  downloaded-record allocation around `0x16c14` / `0x16498`, publication flag
+  `0x782996`, and render-work progress.
+- Hardware/external state:
+  none for this boundary.
+- Unknown:
+  the source bytes past the documented span-31 fallback A2 region. Parser
+  restore, installed glyph state, selector choice, publication, bridge, helper
+  dispatch, current-band rows, and neighboring successful fallback rows are
+  documented.
+
+Output effect:
+
+- Neighboring spans `17`, `18`, and `32` reach pixels for the sampled high-row
+  families. They dispatch selected segment `1` through `0x1f264`, split as
+  `32` current rows plus `96` fallback rows, and derive both row groups from
+  installed bitmap data.
+- Span `31` follows the same path through bucket `8` and `0x1f264`, but the
+  fallback pass would read past the modeled A2 bitmap at offset `+0xb50`. A
+  reproducer should report that exact source boundary after modeling the
+  upstream state and the current-band portion, instead of inventing fallback
+  pixels beyond the documented source region.
+
+Evidence:
+
+- Parser/install/publication evidence is in the fixtures
+  `downloaded segmented-wide high-row span-31 fallback hits source boundary`,
+  `downloaded segmented-wide row-0x0182 span-31 fallback hits source
+  boundary`, `downloaded segmented-wide row-0x01ff span-31 fallback hits
+  source boundary`, and the `0x02xx` / `0x03xx` span-31 matrices.
+- Render-control evidence is
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` for
+  `0x1f264..0x1f34e`, `0x1f3d4`, and `0x1f414`.
+- Chunk-copy evidence is
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst` for `0x2f27c`.
+
 Fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
 segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits source
 boundary` repeat the same high-row fallback split for the next installed row

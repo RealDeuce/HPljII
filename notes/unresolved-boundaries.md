@@ -197,10 +197,15 @@ State classification for these pixel-affecting stops:
   documented for sampled rows through the payload-count cap.
 - Exact stopped state:
   span-31 fallback siblings reach a source offset beyond the documented copied
-  bitmap/source region. Larger row/span products stop earlier at the restored
-  `ESC )s#W` payload budget cap and never install a glyph.
+  bitmap/source region. `0x1f264` has already selected segment `1`, adjusted
+  A2/A3 by the `0x80` row skip, split the selected segment through `0x1f414`,
+  and saved fallback source state in `0x783a48`; the stop is the fallback A2
+  source read at offset `+0xb50`. Larger row/span products stop earlier at the
+  restored `ESC )s#W` payload budget cap and never install a glyph.
 - What is not unresolved:
-  selected-segment rendering, compact selector derivation, page-record bridge,
+  parser payload restore, installed row/span preservation, compact selector
+  derivation, bucket `8` selected-segment publication, page-record bridge,
+  `0x1f264` dispatch, current-band rows, neighboring successful fallback rows,
   and the arithmetic payload-count cap.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),

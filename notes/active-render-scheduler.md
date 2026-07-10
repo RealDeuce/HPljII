@@ -545,15 +545,14 @@ The scheduler does not create page objects. Its output effect is deciding
 which published source record becomes active, which render work record receives
 the copied page roots, and which band words reach `0x1ef6a`.
 
-Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` checks the
-documented branch with published source record `0x00d0eaa0`: the record is
-copied to active source `0x780eae`, assigned render work record `0x782128`
-through `0x783a18`, and reaches the same ROM-local render-entry path as a
-direct `0x1ed84` / `0x1ef6a` setup.
+Published-source route: source record `0x00d0eaa0` can be copied to active
+source `0x780eae`, assigned render work record `0x782128` through active
+render pointer `0x783a18`, and then reach the same ROM-local render-entry path
+as a direct `0x1ed84` / `0x1ef6a` setup.
 
-Fixture `0x1ecd6 same-geometry render work reuse reaches render entry` checks
-the sibling branch: it reuses prior geometry, computes destination word `+8`
-through `0x33238`, and still reaches the documented render-entry path.
+Same-geometry route: the sibling branch reuses prior geometry, computes
+destination word `+8` through `0x33238`, and still reaches the documented
+render-entry path.
 
 ### Work-Record Selector Branches
 
@@ -584,16 +583,19 @@ Branch effects:
   render work record, so later `0x1ef6a` sees the same page-object graph with
   scheduler-selected band geometry.
 
-Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` checks
-the render, capacity-wait, cleanup, and throttle outcomes. In the render case,
-the documented branch calls `0x1ef6a`, increments render work word `+0x10`,
-and increments throttle word `+0x0e`.
+Active-loop route: `0x1eba4..0x1ecd2` splits into render, capacity-wait,
+cleanup, and throttle outcomes. In the render case, the branch calls
+`0x1ef6a`, increments render work word `+0x10`, and increments throttle word
+`+0x0e`.
 
-Fixture `0x1eba4 scheduler band words render published downloaded glyph`
-checks scheduler-produced band words `0..9` against a published
-downloaded-glyph record through `0x1ef6a`: only buckets `1` and `9` dispatch
-compact objects, and bucket `9` reaches the ROM-derived row-write path for
-page row `86`.
+Scheduler-produced band words `0..9` can feed a published downloaded-glyph
+record through `0x1ef6a`: only buckets `1` and `9` dispatch compact objects,
+and bucket `9` reaches the ROM-derived row-write path for page row `86`.
+
+Supporting evidence names for these routes are `0x1eb2a/0x1ecd6 selects
+published record for render entry`, `0x1ecd6 same-geometry render work reuse
+reaches render entry`, `0x1eba4/0x1ef6a active render loop advances or yields
+bands`, and `0x1eba4 scheduler band words render published downloaded glyph`.
 
 ### Active Loop Branches
 

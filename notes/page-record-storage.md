@@ -342,16 +342,20 @@ Evidence and unresolved boundary:
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/analysis/ic30_ic13_page_record_bridge.md`.
-- Fixture `addressed text/rule/raster field groups reach publication and
-  render entry` covers a mixed bucket/rule/raster root through `0xff1e`,
-  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
-- Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists in
-  call order` pins the renderer-side order for roots `+0x1c`, `+0x24`, and
-  `+0x28`.
+- Mixed page-root route: compact/raster bucket root `+0x1c`, rule root
+  `+0x24`, fixed root `+0x28`, and context slots `+0x2c..+0x68` are the
+  canonical source fields. Publication `0xff1e` freezes those fields in the
+  page/control pool; `0x1ed84` / `0x1edc6` copy them to render roots
+  `+0x18`, `+0x1c`, `+0x20`, and render context slots `+0x24..+0x60`;
+  `0x1ef6a` then walks bucket, rule, and fixed consumers in ROM order.
+  Supporting fixture anchors:
+  `addressed text/rule/raster field groups reach publication and render
+  entry` and `0x1ef6a render entry composes bucket, rule, and fixed-width
+  lists in call order`.
 - Remaining work must expose a new producer, source-root field, object class,
-  bridge destination, or render helper write rule. Physical paper timing is
-  outside this page-record checkpoint unless it changes one of the
-  ROM-visible fields listed above.
+  bridge destination, render call order, or render helper write rule. Physical
+  paper timing is outside this page-record checkpoint unless it changes one of
+  the ROM-visible fields listed above.
 
 ### Page Image Shape And Band Contract
 
@@ -1303,15 +1307,25 @@ Composition and overlap rule:
 
 Evidence and current boundary:
 
-- Fixture `addressed text/rule/raster field groups reach publication and
-  render entry` carries compact text, selector-7 rule, and mode-0 raster
-  objects through one page root, `0xff1e`, `0x1ed84`, `0x1edc6`, and
-  `0x1ef6a`.
-- Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists in
-  call order` pins the render-entry ordering after the bridge.
-- Fixture `0x1ef6a page-band walk merges text raster and crossing rule` covers
-  the band-local mixed output case where bucket-chain rows and a crossing rule
-  share the same render band.
+- Mixed page-root evidence is the addressed compact/rule/raster route: compact
+  text and mode-0 raster objects share source bucket root `+0x1c`, selector-7
+  rule objects use source root `+0x24`, publication passes both roots through
+  `0xff1e`, bridge `0x1ed84` / `0x1edc6` maps them to render roots `+0x18`
+  and `+0x1c`, and render entry `0x1ef6a` dispatches bucket-chain rows before
+  rule-list rows. Supporting fixture anchor:
+  `addressed text/rule/raster field groups reach publication and render
+  entry`.
+- Render-order evidence is the bridged bucket/rule/fixed route: `0x1ef6a`
+  calls bucket dispatcher `0x1efc2`, rule dispatcher `0x1f446`, and fixed-list
+  dispatcher `0x1f756` in that order for roots copied from source `+0x1c`,
+  `+0x24`, and `+0x28`. Supporting fixture anchor:
+  `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+  order`.
+- Band-local mixed output evidence is the crossing-rule route: bucket-chain
+  rows and a rule node can share the same render band; the bucket rows are
+  written before the crossing rule according to the dispatcher order above.
+  Supporting fixture anchor:
+  `0x1ef6a page-band walk merges text raster and crossing rule`.
 - The supporting renderer details are in
   [page-raster-imaging.md](page-raster-imaging.md#owner-summary) under
   `Bitmap Object Dispatch Semantic Checkpoint`, with low-level storage evidence
@@ -1418,10 +1432,9 @@ Evidence:
   normalization.
 - `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` anchors the
   render consumers after the bridge.
-- Fixture `addressed text/rule/raster field groups reach publication and
-  render entry` carries one mixed page root through publication and bridge.
-- Fixture `0x1ef6a page-band walk merges text raster and crossing rule` shows
-  the same bridged object roots being rendered under band-local state.
+- Mixed page-root and crossing-rule supporting anchors are
+  `addressed text/rule/raster field groups reach publication and render entry`
+  and `0x1ef6a page-band walk merges text raster and crossing rule`.
 
 Unresolved middle edges:
 

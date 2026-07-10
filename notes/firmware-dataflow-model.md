@@ -1632,7 +1632,7 @@ Evidence and unresolved boundaries:
   row-copy helpers around `0x1f414`, `0x1fe76`, `0x1f034`, `0x1f0d2`, and
   `0x1f264`.
 - Semantic owner:
-  `Downloaded Glyph Row-Count Publication Checkpoint` in
+  `Downloaded Glyph Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md).
 - Focused boundary sections below:
   `Boundary: Short Compact Downloaded-Glyph High Rows`,
@@ -1989,7 +1989,7 @@ Raster graphics:
 - Immediate class:
   setup writers plus encoded-span page-object producer.
 - Owner and boundary: [Raster Command-To-Pixel Owner
-  Summary](raster-graphics.md#raster-command-to-pixel-owner-summary),
+  Summary](raster-graphics.md#owner-summary),
   [raster-graphics.md](raster-graphics.md), `Raster Row`, and `Raster Transfer Gates And
   Modes`; accepted payloads queue encoded-span objects through `0x13070 -> 0x13250`.
 
@@ -6491,7 +6491,7 @@ Evidence:
   `Downloaded Glyph Row-Count Publication Checkpoint`.
 - Renderer detail: [page-raster-imaging.md](page-raster-imaging.md),
   compact glyph row-copy sections around `0x1f414` and `0x1fe76`.
-- Semantic checkpoint: `Downloaded Glyph Row-Count Publication Checkpoint` in
+- Semantic checkpoint: `Downloaded Glyph Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md).
 - Fixture evidence:
   `host-fetched rows-0x102 downloaded glyph FF publication truncates
@@ -6595,7 +6595,7 @@ Evidence:
 
 - Detail note: [downloaded-fonts.md](downloaded-fonts.md), section
   `Downloaded Glyph Row-Count Publication Checkpoint`.
-- Semantic checkpoint: `Downloaded Glyph Row-Count Publication Checkpoint` in
+- Semantic checkpoint: `Downloaded Glyph Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md).
 - Fixture evidence:
   `downloaded glyph width-byte boundary truncates page-record span`,
@@ -6690,6 +6690,8 @@ Evidence:
   `Downloaded Glyph Row-Count Publication Checkpoint`.
 - Renderer detail: [page-raster-imaging.md](page-raster-imaging.md),
   compact glyph row-copy sections around `0x1f264`.
+- Semantic checkpoint: `Downloaded Glyph Renderer Boundary State` in
+  [semantic-state-model.md](semantic-state-model.md).
 - Fixture evidence:
   `downloaded segmented-wide high-row span-31 fallback hits source boundary`,
   `downloaded segmented-wide row-0x0182 span-31 fallback hits source
@@ -6799,7 +6801,7 @@ Evidence:
   `Downloaded Glyph Row-Count Publication Checkpoint`.
 - Renderer summary: [page-raster-imaging.md](page-raster-imaging.md),
   compact glyph row-copy checkpoint.
-- Semantic checkpoint: `Downloaded Glyph Row-Count Publication Checkpoint` in
+- Semantic checkpoint: `Downloaded Glyph Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md).
 - Fixture evidence:
   `downloaded segmented-wide high-row 0x04xx oversized payload counts stop

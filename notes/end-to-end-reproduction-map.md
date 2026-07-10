@@ -8008,7 +8008,7 @@ Address-level cluster map:
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed `ESC *b#W`,
   lowercase transfer chaining, active-raster resolution behavior, row caps,
   beyond-extent drains, and modes 0/1/2/3. Evidence: [Raster Command-To-Pixel Owner
-  Summary](raster-graphics.md#raster-command-to-pixel-owner-summary),
+  Summary](raster-graphics.md#owner-summary),
   [raster-graphics.md](raster-graphics.md), `Raster Transfer Gate And Encoded Rows` in
   [semantic-state-model.md](semantic-state-model.md), `Worked Path: Raster Transfer
   Gates And Modes` in [firmware-dataflow-model.md](firmware-dataflow-model.md),

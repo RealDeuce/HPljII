@@ -3,6 +3,67 @@
 Sources: `hplaserjetclassicsiiiii.pdf` ch. 1 section 1-7, ch. 3 sections 3-3
 through 3-7; `33440-90905...pdf` ch. 3.
 
+## Owner Summary
+
+This note owns the control-panel and retained-default provenance for ROM
+fields that later affect byte-stream rendering. It does not own parser command
+semantics or page rendering directly; it owns how panel/service input,
+selected default records, dirty retained words, and fallback tables produce
+canonical defaults consumed by reset and page-layout code.
+
+Primary route:
+
+- Panel/service byte source `0xa3ca` debounces `$8000.w & 0xff` before service
+  dispatcher `0x3dae` routes menu/default bytes.
+- Menu commit handler `0x4922` stages selections and reaches default update
+  helper `0x4fb0`.
+- Default loader `0x5e80` copies the selected backing record under
+  `0x780eda` into canonical runtime defaults `0x78219d`, `0x78219e`, and
+  `0x7821a2`.
+- Update handlers `0x5060`, `0x50be`, and `0x52ba` write selected backing
+  record bytes/words, mirror canonical defaults, and mark matching dirty
+  words.
+- Retained helpers `0x96c4`, `0x97e4`, `0x9a4a`, `0x571e`, and `0x5a16`
+  commit, read, serial-shift, maintain, or bulk-load retained records.
+- Reset/environment consumers such as `0xcda2` and paper-source handler
+  `0xef62` later read the canonical defaults and can change page geometry,
+  copy count, paper source, VMI, and later page-object placement.
+
+Field groups:
+
+- Canonical defaults:
+  selected bank `0x7822d5`, backing records `0x780eda..`, runtime defaults
+  `0x78219d`, `0x78219e`, `0x7821a2`, and related active/default bytes
+  `0x78219b`, `0x78219c`, `0x7821a0`, `0x7821a3`, and `0x780e97`.
+- Derived/cache state:
+  staged menu values `0x782280..0x782298`, selected candidate
+  `0x78227c`, selector index `0x782278`, and maintenance counter
+  `0x780ef0`.
+- Parser/service scratch:
+  last panel byte `0x7821aa`, progress byte `0x782272`, handler-table pointer
+  `0x782274`, and temporary commit flags `0x7822d4` / `0x7822dc`.
+- Firmware bookkeeping:
+  dirty/read-mask flags `0x780eba..0x780ed8`, auxiliary flags `0x780eb8`,
+  serial shadow `0x7828f6`, status bytes `0x780e36..0x780e39`, and
+  menu/service latches.
+- Hardware/external state:
+  immediate panel byte source `$8000.w`, retained-storage output/control
+  `$a400`, and retained-storage input/status `$8c01`.
+- Unknown:
+  physical panel protocol, retained-storage device identity, and manual-facing
+  names for some service/status outcomes. These are not ROM-local parser,
+  page-object, or render boundaries.
+
+Output effect:
+
+- Control-panel and NVRAM paths do not queue page objects or render rows.
+- Their byte-stream effect is baseline state: later reset, paper-source,
+  page-layout, text, and raster handlers consume the canonical defaults.
+- A renderer can start from canonical defaults for ordinary host-stream
+  reproduction; it only needs the retained-record and panel paths when it
+  models power-cycle, cold reset, menu reset, service failure, or user-default
+  provenance.
+
 ## Hardware
 
 The HP 33440 control panel has:

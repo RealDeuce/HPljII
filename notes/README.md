@@ -198,7 +198,7 @@ checked-in ROM model:
 - [dc-controller-engine.md](dc-controller-engine.md) - engine
   responsibilities, sensors, motors, laser, high voltage, formatter/DC
   signals.
-- [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) -
+- [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary) -
   keys, menu state, resets, service mode, self tests.
 - [io-interfaces.md](io-interfaces.md#owner-summary) - Centronics, RS-232C, RS-422,
   flow control, buffers.

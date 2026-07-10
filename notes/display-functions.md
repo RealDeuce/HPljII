@@ -128,6 +128,86 @@ Evidence and boundaries:
   interpretation of the status bits, not parser, page-record, or render
   routing.
 
+## Display Functions Decision Checkpoint
+
+This checkpoint composes the display-functions family from parser dispatch to
+its possible output classes. It starts when the parser table selects `ESC Y`,
+local Control-Z, or `ESC z`, and ends with routed text/fixed-space output,
+stored append bytes, local Control-Z behavior, or status signaling.
+
+Decision route:
+
+- Normal display reader: normal parser mode `1` maps `ESC Y` to `0x12536`.
+  The handler reads loop bytes directly through `0xa904`, normalizes local
+  `0x1a 0x58` to `0x7f`, routes each value through `0xd04a` or `0xd0f0`, and
+  returns only after routed `ESC Z` or no-byte return.
+- Alternate/data display reader: alternate/data parser mode `1` maps `ESC Y`
+  to `0x12120`. The handler appends literal `ESC Y`, then appends normalized
+  loop values through `0xe002` until appended `ESC Z` or no-byte return.
+- Local Control-Z terminals: mode-2 dispatch is table-dependent. Normal
+  `0x1a 0x1a` calls `0x120d2`, normal `0x1a X` calls `0x1219e`,
+  alternate/data `0x1a 0x1a` calls `0x1210c`, and alternate/data `0x1a X`
+  calls `0x121b2`.
+- Display-functions off/status: parser `ESC z` reaches `0xcd86`. It reads
+  active data-chain frame byte `+9`; only the guarded zero case calls
+  `0x9c2c`, which writes status markers and ORs `0x780e2a.3`.
+
+State classification:
+
+- Canonical reader state: local previous-ESC flag `D4`, normalized value `D5`,
+  direct loop source `0xa904`, and local termination on normalized `ESC Z`.
+- Canonical filter/text state: selected slot `0x782f06`, C0 filter byte
+  `0x782eea + 0x10 * slot`, fallback high-control filter `0x782efa`,
+  high-character flags `0x783132` / `0x783133`, and text/page state consumed by
+  `0xd04a` or `0xd0f0`.
+- Canonical append state: append sink `0xe002` and macro/data-chain storage
+  used by `0x12120`, `0x1210c`, and `0x121b2`.
+- Canonical status state: active data-chain frame pointer `0x782d76`, service
+  busy bit `0x780e2d.3`, status markers `0x7821cc` / `0x7822db`, and warning
+  bit `0x780e2a.3`.
+- Derived/cache state: selected-slot product from `0x332ee`, local high-control
+  filter word at `A6-2`, and normalized `0x7f` after `0xd99a`.
+- Parser scratch: mode-1 and mode-2 command-table state while dispatching
+  `ESC Y`, local Control-Z, or `ESC z`.
+- Firmware bookkeeping: `0xd99a`, `0xf054` after routed CR, and the status
+  helper `0x9c2c`.
+- Unknown: manual-facing names and physical consumers for the status bits
+  written by `0xcd86 -> 0x9c2c`.
+
+Writers, readers, and output effect:
+
+- Writers are `0x12536` for routed display-loop output, `0x12120` for
+  append-only display-loop bytes, `0x120d2` / `0x1219e` for normal local
+  Control-Z page-output variants, `0x1210c` / `0x121b2` for alternate append
+  variants, and `0xcd86 -> 0x9c2c` for status markers.
+- Readers and consumers are `0xa904` for loop bytes, filter fields
+  `0x782eea` / `0x782efa` / `0x783132` / `0x783133`, Control-Z context byte
+  `0x782eeb + 0x10 * slot`, append sink `0xe002`, printable/fixed-space
+  consumers `0xd04a` / `0xd0f0`, and status accumulator `0x780e2a`.
+- Visible output comes only from normal routed values that reach `0xd04a` or
+  from fixed-space effects through `0xd0f0`; alternate/data paths store bytes
+  for later replay, and `ESC z` is status-only.
+- Page objects and pixels are downstream of `0xd04a -> 0x1393a -> 0x12f2e`
+  and the shared `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` path.
+
+Evidence and unresolved boundary:
+
+- Parser-table evidence is
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
+  `generated/analysis/ic30_ic13_pcl_command_map.md`.
+- Reader and local-terminal evidence is
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst` and
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`.
+- Status evidence is
+  `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`.
+- Fixture evidence is `ESC Y display-functions stream reaches page-record
+  output`, `ESC Y display-functions filter-on routes controls as printable`,
+  and `0x12120 ESC Y alternate append stores normalized display bytes`.
+- No ROM-local middle edge remains for the documented `ESC Y` readers, local
+  Control-Z terminals, or `ESC z` status route. Remaining work is external
+  status-consumer naming or new byte streams that expose different filter,
+  append, page-object, or status fields.
+
 ## Field Groups
 
 Canonical reader state:

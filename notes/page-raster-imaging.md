@@ -169,9 +169,26 @@ ROM-derived row writes. The required ROM-visible behavior is:
   `0x1edc6` bridges page roots into render roots, and `0x1ef6a` walks the
   active band work record.
 - Object-class dispatch order is part of the pixel contract. `0x1ef6a` calls
-  the compact bucket chain, rule list, raster/fixed roots, and continuation
-  paths in the documented order before row helpers write current-band or
-  fallback destinations.
+  `0x1ef86`, bucket root `+0x18` through `0x1efc2`, rule root `+0x1c`
+  through `0x1f446`, and fixed-list root `+0x20` through `0x1f756`.
+- Bucket object class byte `+0x04` selects the first pixel writer family:
+  `0x00..0x3f` reaches compact dispatch `0x1effe`, `0x40..0x7f` reaches
+  segment-list renderer `0x1f812`, and `0x80..0xff` reaches encoded-raster
+  renderer `0x1f88e`.
+- Compact helper bits `+0x04 & 0x30` select `0x1f034`, `0x1f0d2`,
+  `0x1f1f0`, or `0x1f264`; encoded-raster mode bits `+0x05 & 3` select
+  `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`; rule selector low nibble
+  selects solid `0x1f596` for selector `7` or patterned `0x1f4e0` through
+  table `0x1f4a0`.
+- Current-band and fallback placement is part of pixel reproduction.
+  Destination helpers `0x1f3d4` and `0x1f626` use band caches `0x783a20`,
+  `0x783a22`, destination base `0x783a28`, stride `0x783a1c`, offset table
+  `0x7839f8..`, and fallback base `0x7810b4 + byte_pair_offset`; object bytes
+  alone do not identify the final destination rows.
+- Pixel composition at this layer is direct store in ROM call order. Compact,
+  encoded-raster, segment-list, rule, and fixed-list helpers write generated
+  words/bytes to the selected destination; no shared hidden destination
+  read-modify-write blend combines earlier object classes with later ones.
 - Compact text pixels depend on the selected font context and map that were
   installed before `0xd04a` queued the object. Raster pixels depend on the
   queued encoded mode and copied payload bytes. Rule pixels depend on clipped

@@ -486,6 +486,111 @@ Do not use fixtures as a separate state class. A fixture can exercise a
 documented interpretation, but the documented field must still be classified
 as one of the categories above.
 
+## Admitted Byte Outcome Bridge
+
+This bridge is the required handoff between raw host bytes and command-family
+owners. It exists so a byte-stream trace does not jump straight from parsed
+syntax to page output without naming the parser outcome that made the later
+state legal.
+
+The admitted byte source is `0xa904`. Parser syntax bytes then pass through
+wrapper `0xda9a`, tokenizer helpers `0xdaf0` / `0xdb74`, and parser loop
+`0x11774`. Counted payload readers use their family-specific direct fetch path
+after delayed-payload restore, so their raw data bytes should not be folded
+back into parser syntax unless the owner note names that route.
+
+Outcome classes:
+
+- Printable byte:
+  normal mode dispatch reaches `0xd04a`, then text source and compact-object
+  producers `0x1393a` / `0x12f2e`. Canonical state moves from parser byte to
+  selected-font context and page-root bucket objects under root `+0x1c`.
+  Owners: [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Direct C0 control:
+  CR, LF, FF, HT, and BS route through `0xf02c`, `0xf08c`, `0xf0f0`,
+  `0xf1cc`, and `0xf2a8`. These mutate cursor/page state, publish a page
+  for FF, or create no page object depending on the control. Owners:
+  [direct-control-codes.md](direct-control-codes.md) and
+  [publication-commands.md](publication-commands.md).
+- Explicit no-output parser row:
+  normal-table zero handlers such as `NUL`, `BEL`, and `VT` reset parser mode
+  and produce no page object or state mutation beyond parser bookkeeping.
+  Alternate/data blank C0 rows append through `0xe002` instead. Owners:
+  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract) and
+  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
+- Parameterized command terminal:
+  `0xdaf0` / `0xdb74` materialize one or more six-byte records at
+  `0x78299e..`; `0x11774` dispatches the terminal handler from normal table
+  `0x112a4` or alternate/data table `0x116f6`. The command-family owner,
+  not the parser note, owns the handler's RAM writes, downstream consumers,
+  and output effect. The route index is
+  [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix);
+  the language-facing entry point is
+  [pcl4-language.md](pcl4-language.md#rom-semantic-index-for-quick-reference).
+- Delayed binary payload:
+  setup helpers such as `0x11f5a`, `0x11f6e`, `0x11f82`, and `0x11f96` call
+  `0x121cc` to save a six-byte record in `0x782a20..0x782a25`, arm handler
+  pointer `0x782a1c`, and store the payload budget. Restore `0x12218` copies
+  the saved record back before the family reader consumes raw bytes. Owners:
+  [transparent-print-data.md](transparent-print-data.md),
+  [raster-graphics.md](raster-graphics.md),
+  [downloaded-fonts.md](downloaded-fonts.md), and
+  [vertical-forms-control.md](vertical-forms-control.md).
+- Alternate/data or macro replay byte:
+  alternate/data mode uses flag `0x782c18`, table `0x116f6`, append helper
+  `0xe002`, and delayed alternate restore `0x12358`. Macro and overlay replay
+  feed `0xa904` through active data-chain frame `0x782d76`, frame fields
+  `+0x00/+0x04/+0x08/+0x09`, and frame builders `0xe418` / `0xe4f4`.
+  Owner: [macro-data-chain.md](macro-data-chain.md).
+- Host/status side channel:
+  commands such as `ESC *r#K` and `ESC *s#^` parse like normal command
+  terminals but write response bytes through model/status output paths instead
+  of page objects. Owners:
+  [errors-and-status.md](errors-and-status.md) and
+  [io-interfaces.md](io-interfaces.md).
+
+State classification for this bridge:
+
+- Canonical parser state:
+  normalized byte `D7`, mode byte `0x782999`, alternate/data flag
+  `0x782c18`, record cursor `0x78299e`, and delayed-payload fields
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`.
+- Parser scratch:
+  tokenizer byte/numeric scratch `0x782a26/0x782a2a..` and
+  `0x782a3e/0x782a42..`, plus matched-byte scratch `0x783196..0x783199`.
+- Canonical downstream state:
+  only begins after the outcome class reaches a family owner: cursor/layout
+  fields, selected-font contexts, page roots, downloaded glyph records,
+  macro/data-chain frames, VFC table words, raster/rectangle state, status
+  output state, or published page/control records.
+- Derived/cache state:
+  command-combining records, object bucket keys, renderer cache words, and row
+  helper products are derived only after the terminal handler or page-object
+  producer has written the canonical fields named by its owner note.
+- Firmware bookkeeping:
+  callback pointer `0x78299a`, pushback/log helper `0x9ec0`, append sink
+  `0xe002`, drain helper `0x12328`, payload-control helper `0xd99a`, and
+  retry/publication flags.
+- Unknown:
+  no ROM-local parser outcome class is currently unknown for the supported
+  streams indexed in this note. Any remaining stop must be carried forward to
+  the exact downstream owner boundary, for example a resource source range,
+  invalid render-helper target, optional external data window, or hardware/MMIO
+  register identity.
+
+Writers are `0xa904`, `0xda9a`, `0xdaf0`, `0xdb74`, `0x11774`, delayed setup
+`0x121cc`, restore `0x12218`, alternate/data append `0xe002`, and data-chain
+frame builders `0xe418` / `0xe4f4`. Readers and consumers are the terminal
+handler selected by the parser tables, the family payload reader after restore,
+or the page/status/macro owner named above. The output effect at this bridge is
+therefore one of: a page-object-producing handler, a state-only command whose
+later consumers are named by its owner, a counted payload reader, a replay
+source feeding `0xa904`, a host/status response, or an explicit no-output
+parser row.
+
 ## Minimal Host Input Walkthrough
 
 This is the smallest top-level host-byte spine. It documents the firmware

@@ -44,6 +44,10 @@ Primary routes:
   normal `ESC (` uses `0x1201e -> 0x11f26` to append a slot-0 setup record;
   normal `ESC )` uses `0x12008 -> 0x11efe` to append a slot-1 setup record.
   Terminal wrapper `0x120be` calls `0x1be22` and then `0xc580`.
+  Alternate/data `ESC (` and `ESC )` use wrappers `0x11fe4` and `0x11fd2`.
+  They call `0x11ec8` and tokenize through `0xdaf0` without appending the
+  normal synthetic slot record, and the alternate/data ordinary final rows are
+  blank terminal handlers.
 - Ordinary symbol-set finals:
   `0x1be22` computes
   `(abs(parameter) << 5) + final_byte - 0x40`, writes `0x782ef4` or
@@ -85,6 +89,8 @@ Field groups:
 - Parser scratch:
   final byte, integer parameter, optional fractional parameter, and slot setup
   words parsed by `0xdaf0` and consumed by `0x1be22` / `0xc580`.
+  Alternate/data `0x11fe4` / `0x11fd2` records are parser scratch only when
+  followed by ordinary final rows, because those rows do not call `0x120be`.
 - Firmware bookkeeping:
   dirty flags `0x782f2c` / `0x782f2d`, transient full-root flag `0x78298f`,
   font-id/default side-effect marker `0x78287b`, and selected candidate
@@ -102,6 +108,9 @@ Output effect:
 - Later printable bytes are the visible consumers: they read the selected map
   and context through the font-context bridge, then publication/render code
   turns the resulting compact text objects into pixels.
+- Alternate/data ordinary font-designation rows preserve parser structure but
+  do not change requested symbol words, selected contexts, maps, page-root
+  context slots, page objects, publication records, or render inputs.
 
 ## Symbol/Font Designation Outcome Matrix
 
@@ -173,6 +182,15 @@ printable byte arrives.
   stores the mapped glyph byte in source `+0x0a/+0x0b`; `0xd3b2` or `0xd824`
   marks the page-root context slot live; `0x12f2e` queues compact text. This
   is the first page-object output after symbol/font designation.
+- Alternate/data font-designation boundary:
+  `0x11fe4` and `0x11fd2` preserve parser structure for `ESC (` and `ESC )`,
+  but ordinary final rows `@..^` in alternate/data mode have no handler. They
+  do not call `0x1be22`, write `0x782ef4` / `0x782f04`, set dirty flags
+  `0x782f2c` / `0x782f2d`, call `0xc580`, or change current-font contexts,
+  maps, page-root context slots, page objects, publication state, or render
+  inputs. `ESC (s` / `ESC )s` still reaches setup wrapper `0x11ff6`, and
+  `W/w` still reaches delayed payload setup `0x11f96`; those storage paths are
+  owned by [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 
 State classification for the matrix:
 
@@ -232,6 +250,17 @@ Alternate/data-mode wrappers `0x11fe4` and `0x11fd2` only call generic setup
 `0x11ec8` and tokenize through `0xdaf0`; they do not append the synthetic slot
 record. Normal symbol-set semantics therefore depend on the normal parser
 wrapper, not only on the final byte.
+
+Alternate/data ordinary font-designation finals `@..^` are blank terminal rows
+in `generated/analysis/ic30_ic13_pcl_command_map.md`. After `0x11fe4` /
+`0x11fd2` has tokenized the record, those finals rejoin the parser terminal
+reset path rather than `0x120be`. The output effect is parser-state cleanup
+only: requested symbol words, dirty flags, context maps, page-root context
+slots, publication records, and render inputs are unchanged. The `ESC (s` /
+`ESC )s` subfamily is different parser setup: wrapper `0x11ff6` calls
+`0x11eec` and rewinds `0x78299e`; ordinary font-attribute terminal rows are
+blank or lowercase rewind rows in alternate/data mode, while `W/w` keeps the
+downloaded-font delayed payload path through `0x11f96`.
 
 ## Requested Symbol Word
 

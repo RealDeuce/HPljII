@@ -412,6 +412,98 @@ The ROM-local command boundary for this family is:
   word `0x782a88+8`, width `+4`, and height `+6`, and returns zero without
   changing the list if allocation fails.
 
+### Rectangle Outcome Matrix
+
+This matrix is the owner-level routing table for new rectangle/rule streams.
+A new `ESC *c` trace belongs here only when it changes one of these selector
+predicates, clipped source records, allocation outcomes, rule object bytes,
+bridge fields, render helpers, continuation mutations, or row-construction
+inputs.
+
+- Size or fill state only:
+  `ESC *c#A/#B/#H/#V/#G` stops after handlers `0x10e68`, `0x10e22`,
+  `0x10a40`, `0x10ae0`, or `0x10dce` write rectangle state
+  `0x78316a`, `0x783166`, or `0x78316e`. No page root is ensured, no rule
+  object is allocated, and the visible consumer is a later `ESC *c#P`.
+- Selector maps to no output:
+  `0x10898..0x109fc` exits without queueing when selector `2` sees area-fill
+  id outside `1..100`, selector `3` sees pattern id outside `1..6`, or the
+  normalized selector is not one of the ROM-supported forms. The handler may
+  have read `0x78316e` and parser record `+2`, but no canonical page/image
+  state changes.
+- Zero dimension gate:
+  after selector mapping, `0x108f2..0x1090c` requires nonzero width
+  `0x78316a` and height `0x783166`. If either is zero, selector scratch
+  `0x782a88+8` can be written, but `0x10b80` is not called and no page object
+  exists for publication or rendering.
+- Off-page or empty-after-clip gate:
+  `0x10b80..0x10c10` rejects starts to the right or below the page extents,
+  rejects negative starts whose rectangle does not cross back onto the page,
+  and later rejects clipped width or height `<= 0`. These paths create no
+  rule object and do not call `0x13386`.
+- Portrait queue:
+  `0x10c42..0x10d0a` writes clipped source x/y/width/height to
+  `0x782a88+0/+2/+4/+6`, preserves selector `0x782a88+8`, ensures current
+  root `0x78297a` through `0x10084`, and calls `0x13386`. The canonical page
+  object, if allocation succeeds, is a 14-byte rule node under root `+0x24`.
+- Landscape queue:
+  `0x10c74..0x10dcc` uses the same reject/clip gates but swaps axes for the
+  queued source record: queued x comes from the portrait y axis, queued y
+  comes from the clipped portrait right edge, and queued width/height are the
+  swapped effective dimensions. The downstream `0x10084 -> 0x13386 ->
+  0x133aa` object path is the same as portrait.
+- Rule-list allocation success:
+  `0x13386..0x133aa` derives bucket/key fields through `0x134d6` and
+  `0x133aa..0x13470` links an allocated object into page-root rule list
+  `+0x24` in ascending bucket order. Object byte `+0x04` is the bucket byte,
+  `+0x05` is the fill selector, `+0x06` is the packed key, `+0x08` is width,
+  and `+0x0a` is height. The next visible consumer is publication `0xff1e`
+  followed by bridge `0x1ed84 -> 0x1edc6`.
+- Rule-list allocation failure and retry:
+  if `0x13386` returns zero, `0x10d22..0x10d3e` sets retry bit
+  `root+0x15.0`, publishes the current root through `0xff1e`, ensures a fresh
+  root through `0x10084`, and retries the same already-clipped source record
+  at `0x782a88`. The failed `0x133aa` call preserves the old rule-list head;
+  any later object bytes belong to the retry on the fresh root.
+- Bridge normalization:
+  `0x1edc6` copies page-root rule list `+0x24` to render-record list `+0x1c`,
+  ORs selector byte `+0x05` with `0x10`, and copies object height `+0x0a` to
+  continuation word `+0x0c`. After this point, selector byte and continuation
+  word are render state, not parser scratch.
+- Solid render:
+  render entry `0x1ef6a` calls rule walker `0x1f446`; low selector nibble `7`
+  dispatches to solid helper `0x1f596`. The helper consumes key `+0x06`,
+  width `+0x08`, continuation `+0x0c`, destination split from `0x1f626`, and
+  writes black mask words. Band-crossing rules mutate continuation `+0x0c`.
+- Pattern render:
+  all other pinned selector nibbles `0..6` and `8..13` dispatch from
+  `0x1f446` to pattern helper `0x1f4e0`. The helper consumes the same key,
+  width, and continuation fields plus pattern table `0x2fefe` and mask helper
+  `0x1f6ee`; shifted and band-crossing pattern rows are therefore part of the
+  rectangle pixel contract.
+
+State classification for the matrix:
+
+- Canonical command state is width `0x78316a`, height `0x783166`, and area-fill
+  id `0x78316e`.
+- Canonical page/image state is the clipped source record `0x782a88`, current
+  root `0x78297a`, rule-list head `root+0x24`, 14-byte rule object fields,
+  published source record, and render-record rule list `+0x1c`.
+- Derived/cache state is bucket byte/key `0x782a7c..0x782a7e`, horizontal
+  phase `0x782dc0`, bridged selector bit `0x10`, continuation word `+0x0c`,
+  render band fields, and solid/pattern destination masks.
+- Parser scratch is the six-byte `ESC *c` command record at `0x78299e - 6`,
+  parser modes for lowercase chaining, and selector scratch before
+  `0x10b80` accepts a nonzero on-page rectangle.
+- Firmware bookkeeping is stream allocator state `0x782a70/0x782a72/0x782a76`,
+  no-room retry bit `root+0x15.0`, publication flag `0x782996`, and render
+  scheduler progress.
+- Unknown: no ROM-local outcome in this matrix is unknown for the documented
+  selector-7, gray, pattern, landscape-remap, clipping, no-room, bridge, and
+  render paths. Future work must change a named predicate, source field,
+  object byte, retry field, bridge field, helper dispatch, continuation
+  mutation, or row construction before this matrix changes.
+
 ## Fill Selector At 0x10898
 
 `0x10898` handles `ESC *c#P`. It rewinds the parsed record and maps the fill

@@ -229,12 +229,30 @@ State classification for these pixel-affecting stops:
   the parser and payload reader restore the command record and byte budget, but
   the oversized stream does not reach downloaded-glyph install, page-object
   creation, publication, or render dispatch.
+- Exact stopped state:
+  `0xdb74` has already stored the capped count in parsed record word `+2`;
+  `0x121cc` has saved that six-byte record; `0x12218` has restored it; and
+  `0x16c14` has copied the absolute count into payload budget `0x783140`.
+  The bitmap readers under `0x16498` would need `row_word * span` accepted
+  bytes before a complete downloaded-character record exists. For row
+  `0x0788` and span `17`, the required `0x7ff8` bytes exceed the restored
+  budget, so the stream stops with parser payload state and no canonical glyph
+  record, page-root bucket, publication record, or render work.
+- What is not unresolved:
+  tokenizer clamp, delayed-record restore, payload-budget storage, descriptor
+  and resource drain exits, and the below-cap neighbor path through
+  `0x16498`, `0x12f2e`, selector `0x3003`, and renderer `0x1f264`.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint)
   and `Segmented-Wide Payload Count Cap Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#segmented-wide-payload-count-cap-checkpoint),
   plus `Downloaded Font Descriptor And Payload Chain` and `Downloaded Glyph Renderer
-  Boundary State` in [semantic-state-model.md](semantic-state-model.md).
+  Boundary State` in [semantic-state-model.md](semantic-state-model.md). Disassembly
+  evidence is `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`, and
+  `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`.
 - Needed to close:
   none for pixel reproduction. This is the documented stop point for that
   oversized byte-stream family.

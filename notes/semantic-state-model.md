@@ -12702,70 +12702,80 @@ ownership, not a separate renderer.
 
 ### Output Effect
 
-The allocator is not visible by itself. It determines object order,
-bucket selection, and list roots consumed by visible rendering. The
-addressed text/rule/raster fixture proves one chunk contains text object
-`0x00d0c004`, rule object `0x00d0c02a`, and raster object `0x00d0c038`,
-then the published render path composes those objects into the visible
-rows. The separate allocator fixture proves first chunk allocation,
-same-chunk reuse, and second-chunk linking.
+The allocator is not visible as pixels by itself. Its output effect is the
+page-object topology later consumed by publication and rendering: bucket
+selection for compact/raster objects, ordered rule and fixed-list roots, and
+stream-chunk links used by every display-list producer.
 
-The two local no-room fixtures prove the opposite output effect for
-allocation failure: `0x133aa no-room return preserves rule-list head`
-returns zero before modifying root `+0x24`, and
-`0x136d2 no-room return preserves fixed-list head after search` returns
-zero after the `0x13690` search but before modifying root `+0x28`. Both
-paths leave the existing visible page objects unchanged for later
-publication/rendering.
+`0x10084` ensures a current page root. If `0x78297a` is already nonzero, it
+returns without changing page-object topology. Otherwise it allocates a root,
+sets the stream allocator base by writing `0x782a72 = root + 0x20`, clears
+`0x782a70`, writes the new root to `0x78297a`, calls initializer `0x10110`,
+and clears the bucket array. The resulting root is the shared owner for
+bucket root `+0x1c`, rule root `+0x24`, fixed-list root `+0x28`, and context
+slots `+0x2c..+0x68`.
 
-For successful rule insertion, the storage order is ROM-defined before any
-renderer sees the object. `0x13386` calls `0x134d6`, which derives search key
-`0x782a7c` from source word `+2 >> 4` and packed object key `0x782a7e` from
-source words `+0/+2` plus horizontal offset `0x782dc0`. `0x133aa` then links
-the 14-byte object under root `+0x24` according to the three `0x13472` status
-cases described above. `0x1edc6` copies that rule-list root to render
-`+0x1c`, so `0x1f446` consumes the same ordered list after bridge
-normalization.
+Compact text and encoded raster producers allocate through the bucket side:
+`0x12f2e` / `0x1387c` for text-like bucket objects and `0x13070` / `0x13250`
+for encoded raster objects. Rule and fixed producers allocate through list
+side helpers: `0x13386 -> 0x133aa` inserts under root `+0x24`, and
+`0x1366c -> 0x136d2` inserts under root `+0x28`. All of those producers share
+stream allocator `0x1381c`, so mixed text/rule/raster pages are one allocator
+state block, not three independent stores.
 
-For successful fixed-list insertion, `0x1366c` calls `0x137a2`, which rewrites
-the source mode byte to `3` or `6`, adds `0x782dc0` into source word `+2`, sets
-selector bytes `0x782a7a/0x782a7b = 0x40/0`, derives key `0x782a7c` from
-source word `+4 >> 4`, and derives packed key `0x782a7e` from source words
-`+2/+4`. `0x136d2` links the 14-byte object under root `+0x28` according to
-the `0x13690` predecessor/tail result. `0x1edc6` copies that fixed-list root
-to render `+0x20`, so `0x1f756` consumes the same ordered list on its
-five-band boundary.
-
-The `addressed page-record writers share 0x1381c across chunk rollover`
-fixture composes those allocator facts into one page-record state block:
-`0x10084` seeds `0x782a72 = root + 0x20`, seven compact text writers
-through `0x12f2e`/`0x1387c` allocate objects
-`0x00d05004`, `0x00d0502a`, `0x00d05050`, `0x00d05076`,
-`0x00d0509c`, `0x00d050c2`, and `0x00d05104`, then
-`0x133aa` and `0x136d2` allocate rule/fixed objects at
-`0x00d0512a` and `0x00d05138`. The stream links are
-`root + 0x20 -> 0x00d05000 -> 0x00d05100`, and the final bookkeeping is
-`0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`,
+On a successful shared-allocation path, the documented rollover state is:
+`0x10084` seeds `0x782a72 = root + 0x20`; seven compact text writers through
+`0x12f2e`/`0x1387c` allocate objects `0x00d05004`, `0x00d0502a`,
+`0x00d05050`, `0x00d05076`, `0x00d0509c`, `0x00d050c2`, and `0x00d05104`;
+then `0x133aa` and `0x136d2` allocate rule/fixed objects at `0x00d0512a` and
+`0x00d05138`. The stream links are
+`root + 0x20 -> 0x00d05000 -> 0x00d05100`, and final bookkeeping is
+`0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
 `0x782a76 = 0x00d05146`, with two stream-chunk allocations. Publication
-through `0xff1e` preserves bucket index `0`; render entry
-`0x1ef6a` dispatches all seven compact objects to `0x1effe` and produces
-the `LINE_PRINTER` glyph-32 rows.
+through `0xff1e` preserves bucket index `0`; render entry `0x1ef6a`
+dispatches the compact objects through `0x1effe`.
 
-The bridge fixtures split publication from rendering:
-`0x1edc6 page-record bridge copies compact bucket and context slots`
-proves the compact bucket root and selected-font context slots survive
-into render-record fields, `0x1edc6 bridge records render-record
-destination offsets` pins the derived destination offset fields, and
-`0x1ed84 active page-record copy seeds render-record header words` pins
-the active-copy header words consumed before `0x1ef6a`.
+Allocation failure has an explicit non-output effect: failed rule/fixed-list
+insertion must leave existing page roots unchanged. `0x133aa` returns zero
+before modifying root `+0x24` when the initial `0x1381c` call at
+`0x133b6..0x133d0` fails. `0x136d2` can search the existing fixed-list through
+`0x13690`, but if its later `0x1381c` call at `0x1371a..0x13734` fails, it
+returns zero before modifying root `+0x28`. Existing visible page objects
+therefore remain available for later publication/rendering.
+
+Successful rule insertion is ordered before the renderer sees the object.
+`0x13386` calls `0x134d6`, which derives search key `0x782a7c` from source
+word `+2 >> 4` and packed object key `0x782a7e` from source words `+0/+2`
+plus horizontal offset `0x782dc0`. `0x133aa` links the 14-byte object under
+root `+0x24` according to the three `0x13472` status cases described above.
+`0x1edc6` later copies that rule-list root to render `+0x1c`, so `0x1f446`
+consumes the same ordered list after bridge normalization.
+
+Successful fixed-list insertion follows the parallel list route. `0x1366c`
+calls `0x137a2`, which rewrites the source mode byte to `3` or `6`, adds
+`0x782dc0` into source word `+2`, sets selector bytes
+`0x782a7a/0x782a7b = 0x40/0`, derives key `0x782a7c` from source word
+`+4 >> 4`, and derives packed key `0x782a7e` from source words `+2/+4`.
+`0x136d2` links the 14-byte object under root `+0x28` according to the
+`0x13690` predecessor/tail result. `0x1edc6` copies that fixed-list root to
+render `+0x20`, so `0x1f756` consumes the same ordered list on its five-band
+boundary.
+
+Publication and active rendering are separate consumers of the same
+page-object topology. `0xff1e` publishes page-root fields into a page/control
+record. `0x1ed84` prepares an active render record by copying source words
+`+0x18/+0x1a` into render header words `+0x0a/+0x0c/+0x10/+0x16`, clearing
+render word `+0x0e`, and delegating root/context copying to `0x1edc6`.
+`0x1edc6` copies source bucket/rule/fixed roots into render `+0x18`, `+0x1c`,
+and `+0x20`, and copies the 16 context slots for compact glyph resolution.
 
 This checkpoint narrows the repeated "parser-produced page roots" gap. The
 root allocation, object stream allocator, root fields, publication fields,
 active-copy header words, bridge roots, and render dispatch roots are
-field-discovered and fixture-pinned. Remaining work starts from byte streams
-that change the `0x10084 -> producer -> 0xff1e or 0x1ed84 -> 0x1edc6 ->
-0x1ef6a` chain: different pool-pointer topology, allocator failure, object
-layout, bridge-field value, dispatch root, or rendered rows.
+documented as ROM-owned state transitions. Remaining work starts from byte
+streams that change the `0x10084 -> producer -> 0xff1e or 0x1ed84 ->
+0x1edc6 -> 0x1ef6a` chain: different pool-pointer topology, allocator
+failure, object layout, bridge-field value, dispatch root, or rendered rows.
 
 ### Confidence
 

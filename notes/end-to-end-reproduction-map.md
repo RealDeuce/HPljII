@@ -2237,9 +2237,14 @@ State classification:
 - Unknown:
   no unresolved ROM-local middle edge remains for the documented
   `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a1R!`, `ESC &a2c+1R!`, HT/BS, or
-  cursor-stack streams. Remaining work starts from variants that change
-  compact object bytes, span object shape, bucket selection, bridge state, or
-  ROM-derived rows.
+  cursor-stack streams. Remaining direct-control work starts from variants
+  that change a named consumer boundary: line-termination byte `0x78318f`
+  before `0xf02c` / `0xf08c` / `0xf0f0`, cursor words
+  `0x782c8a` / `0x782c8e` before `0xd04a`, margin/HMI/VMI fields
+  `0x782dd6` / `0x782dda` / `0x78315c` / `0x783160`, span source fields
+  `0x783184..0x78318a` before `0xf34a` / `0x12714`, page-root publication
+  state before `0xff1e`, compact object bytes before `0x1ed84` / `0x1ef6a`,
+  or row-construction inputs below `0x1effe`.
 
 Evidence:
 

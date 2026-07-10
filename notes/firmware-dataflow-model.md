@@ -5645,9 +5645,18 @@ State classification for this path:
   and render-work progress words.
 - Unknown:
   no unresolved ROM-local middle edge remains for the documented
-  `ESC &k1G!\r!` parser-to-render path. Remaining uncertainty is outside this
-  stream: broader direct-control variants, hardware output timing, and
-  physical print-engine effects.
+  `ESC &k1G!\r!` parser-to-render path. New ROM-local direct-control work must
+  start from a byte stream that changes one of the documented consumers rather
+  than from another replay of the same path:
+  `0x78318f` line-termination bits consumed by `0xf02c`, `0xf08c`, or
+  `0xf0f0`; cursor fields `0x782c8a` / `0x782c8e` consumed by `0xd04a`;
+  margin/HMI/VMI fields `0x782dd6`, `0x782dda`, `0x78315c`, or `0x783160`
+  consumed by HT/BS, cursor commands, or printable placement; span-flush
+  fields `0x783184..0x78318a` consumed by `0xf34a` / `0x12714`; page-root
+  publication state consumed by `0xff1e`; compact object bytes consumed by
+  `0x1ed84` / `0x1ef6a`; or row-construction inputs consumed below `0x1effe`.
+  Hardware output timing and physical print-engine effects remain a
+  hardware/external boundary after the ROM writes row buffers.
 
 Evidence for this path is in
 [direct-control-codes.md](direct-control-codes.md),

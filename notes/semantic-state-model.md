@@ -5,6 +5,69 @@ concepts. It complements the low-level ledger in
 `notes/reverse-engineering-ledger.md`; it does not replace address-level
 notes, disassembly windows, or executable fixtures.
 
+## Owner Summary
+
+This note owns the cross-family state model used to follow a supported byte
+stream after individual owner notes have identified their handlers and field
+writes. Its job is to classify ROM fields into canonical state, derived/cache
+state, parser scratch, firmware bookkeeping, hardware/external state, or
+unknown, then show which later parser, page-object, publication, scheduler, or
+render consumer makes those fields matter.
+
+Primary handoff:
+
+- Host and parser owners write byte-source state around `0xa904`, parser mode
+  `0x782999`, six-byte records at `0x78299e`, alternate/data state
+  `0x782c18`, and delayed-payload fields `0x782a1a..0x782a25`.
+- Command-family owners write durable command state: cursor and layout fields,
+  selected font contexts and maps, macro/data-chain records, raster block
+  `0x783170`, rectangle state `0x783166..0x78316e`, downloaded glyph records,
+  VFC table words, host-output FIFO state, or current page root `0x78297a`.
+- Page/image owners convert visible producers into page-root objects under
+  root `+0x1c`, `+0x24`, `+0x28`, and context slots `+0x2c..+0x68`.
+- Publication and render owners consume published pool records, active source
+  `0x780eae`, active render pointer `0x783a18`, bridge roots copied by
+  `0x1edc6`, scheduler band words, and render helper inputs under `0x1ef6a`.
+- Boundary owners stop only at exact unknowns such as invalid downloaded-glyph
+  helper targets, missing resource range `0x0c0000..0x0c0321`, hardware/MMIO
+  identity, optional resource contents, or manual-facing names.
+
+Writers and readers:
+
+- Writers are the handler clusters documented in the family notes: parser
+  `0xda9a` / `0xdaf0` / `0xdb74` / `0x11774`, direct-control and publication
+  handlers, transparent/display readers, raster `0x105d0`, rectangle
+  `0x10898`, font and downloaded-font handlers, macro replay builders,
+  publication `0xff1e`, scheduler `0x1eba4`, bridge `0x1ed84` / `0x1edc6`,
+  and render entry `0x1ef6a`.
+- Readers and consumers are the later owners that observe those fields:
+  printable source builder `0x1393a`, page-object producers `0x12f2e`,
+  `0x12714`, `0x13070`, `0x133aa`, and `0x136d2`, publication `0xff1e`,
+  active-render scheduling, compact/rule/fixed/segment/raster render helpers,
+  host-output workers, or macro/data-chain replay.
+
+Output effect:
+
+- This note does not by itself prove a command's behavior. It records the
+  semantic role of fields after the command owner has documented the handler
+  route.
+- Pixel-affecting state is reproduced when the documented producer-to-consumer
+  chain carries the same canonical fields, derived render inputs, page objects,
+  scheduler state, and helper inputs to the same ROM row-writing boundary.
+- No-output, status-only, append-only, and hardware-boundary paths are part of
+  the model when their owner notes document the fields and consumers that keep
+  them from becoming page objects.
+
+Evidence:
+
+- Command behavior and page/output effects remain in the owner notes linked
+  from [README.md](README.md#controlling-documentation-spine) and
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+- This note is evidence for the field classification and cross-family
+  producer/consumer composition of those owner notes.
+- Exact residual stop points are owned by
+  [unresolved-boundaries.md](unresolved-boundaries.md#owner-summary).
+
 ## Reproduction Contract
 
 For a supported host byte stream, this state model is reproduced when the

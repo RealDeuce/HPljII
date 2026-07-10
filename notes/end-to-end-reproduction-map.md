@@ -6735,6 +6735,14 @@ Address-level cluster map:
   a wrapper, while non-wrapper raster, transparent-text, VFC, and font saved
   handlers are not called from that branch. `ESC E` still reaches reset
   handler `0xcc52`.
+  Imaging command families now have explicit no-output/storage consequences
+  from this branch: alternate/data `ESC *c` rows leave rectangle fields
+  `0x78316a`, `0x783166`, `0x78316e`, source record `0x782a88`, and rule-list
+  root `+0x24` unchanged; alternate/data `ESC *t` / `ESC *r` rows leave raster
+  block `0x783170` unchanged; and alternate/data `ESC *b#W/w` restores through
+  `0x12358` without calling `0x105d0`, `0x13070`, `0x13250`, or `0x138de`.
+  These bytes can affect imaging only after stored input replays through the
+  normal parser route.
   Related parser artifacts are bounded separately: `ESC ?` is consumed in
   wrapper `0xda9a`, `ESC Z` terminates the direct display-functions reader,
   and `ESC &lT/t` has no standalone page-output effect.
@@ -7065,6 +7073,14 @@ Address-level cluster map:
   `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` gate outcome,
   raster-object fields, bridge state, render dispatch, or reproduction
   contract.
+  Alternate/data raster syntax is an explicit no-object branch:
+  `ESC *t#R`, `ESC *r#A`, and `ESC *r#B` are blank or `0x11f4c` outcomes in
+  table `0x116f6`, so `0x10808`, `0x1075a`, and `0x107fa` do not write raster
+  block `0x783170`. `ESC *b#W/w` still arms `0x11f82 -> 0x121cc`, but
+  alternate/data restore reaches `0x12358` instead of saved handler
+  `0x105d0`; no accepted counts, raster objects, page-root bucket entries,
+  bridge roots, or `0x1f88e` inputs are produced until replay returns the
+  stored bytes to normal mode.
 - Page publication:
   Publication is the page-object-to-page/control-record boundary at
   `0xff1e..0x10080`.
@@ -8279,6 +8295,12 @@ Address-level cluster map:
   allocator state `0x782a70/0x782a72/0x782a76`, page-root retry bit
   `+0x15.0`, publication flag `0x782996`, scheduler cursors, and render-work
   progress.
+  Alternate/data `ESC *c` command records are parser scratch only: uppercase
+  `A/B/G/H/P/V` rows in table `0x116f6` are blank, lowercase
+  `a/b/g/h/p/v` rows call only rewind helper `0x11f4c`, and none of
+  `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`, `0x10dce`, or `0x10898` runs.
+  Rectangle dimensions, fill state, source record, rule-list object, bridge
+  state, and render inputs therefore do not change in alternate/data mode.
   Writers are `0x10e68`/`0x10e22` for dot dimensions,
   `0x10a40`/`0x10ae0` for decipoint dimensions, `0x10dce` for area-fill id,
   `0x10898` for fill-selector mapping, `0x10b80` for clipped source record,

@@ -2400,36 +2400,37 @@ A byte-stream reproduction must preserve these behaviors:
 ## Remaining Edges
 
 - `0x13eb8` selection, map rebuild, page-root install, printable source
-  capture, and low-water span effects are fixture-backed for the primary and
-  secondary cases above. The primary built-in selection request
-  `ESC (s0p10h12v0s0b3T!!` is driven from parser bytes to visible rows in one
-  mixed-stream state by fixture
-  `inline primary font selection stream renders visible rows`. The secondary
-  built-in selection request `ESC )s0p16h8v0s0b0T SO !!` is also driven in one
-  mixed-stream state by fixture
-  `inline secondary font selection stream renders SO visible rows`, including
-  SO handler `0xc6b8`, context `0xc00ae122`, and HMI `18`.
-  Symbol-miss fallback is fixture-backed for primary
+  capture, and low-water span effects are documented in the checked-in
+  checkpoints above:
+  `Active Candidate And Map Cache Checkpoint`, `Page-Root Context Install`,
+  `Printable Source Capture`, and `Span Metric Consumers`. Those checkpoints
+  name the parser records, request fields, dirty flags, selected context
+  records, map fields, page-root slot fields, source-object bytes, later
+  consumers, output effects, and exact residual boundaries. Fixtures remain
+  supporting checks for representative streams, not the owner of the semantic
+  route.
+- The documented primary built-in selection request
+  `ESC (s0p10h12v0s0b3T!!` and secondary request
+  `ESC )s0p16h8v0s0b0T SO !!` run from parser bytes through `0xc580`,
+  `0x13eb8`, `0x144d2`, `0x14c64`, page-root context install, source capture
+  `0x1393a`, compact object producer `0x12f2e`, bridge `0x1edc6`, and compact
+  renderer `0x1effe -> 0x1f354`. The secondary route additionally crosses SO
+  handler `0xc6b8`, context `0xc00ae122`, and HMI `18`.
+  Symbol-miss fallback is documented for primary
   `ESC (1234U ESC (s0p10h12v0s0b3T!!` from requested word `0x9a55` to fallback
   word `0x0115`, and for secondary
-  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through both remembered word
-  `0x000e` and fallback-table word `0x000e`.
-  Final-`X` now has the same visible-output treatment for primary built-in
+  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through remembered word `0x000e` or
+  fallback-table word `0x000e`.
+  Final-`X` follows the same visible-output route for primary built-in
   `ESC (7X!!`, secondary built-in `ESC )8X SO !!`, primary bit-30-clear
-  `ESC (4660X!`, and secondary bit-30-clear `ESC )4660X SO !`; the direct
-  `0x17708` non-selected exits are also carried into preserved primary and
-  secondary visible tails.
-  The primary current-font RAM handoff from seeded `0x782ee6` through
-  `0xc428` / `0xc4fc` into existing page-root slot `0` is fixture-backed by
-  `live primary current-font RAM install feeds SI page-record rows`. The
-  secondary handoff from seeded `0x782ef6` into existing page-root slot `1` is
-  fixture-backed by
-  `live secondary current-font RAM install feeds SO page-record rows`.
-  The composed fixtures `parsed primary selection current-font RAM feeds SI
-  visible rows` and
-  `parsed secondary selection current-font RAM feeds SO visible rows` tie
-  host-fetched font-selection bytes to those RAM handoff fixtures and matching
-  visible rows for existing page roots.
+  `ESC (4660X!`, and secondary bit-30-clear `ESC )4660X SO !`; direct
+  `0x17708` non-selected exits preserve prior primary or secondary visible
+  tails instead of installing a new context.
+- Current-font RAM handoff is documented as the same page-root slot route:
+  primary seeded `0x782ee6` crosses `0xc428` / `0xc4fc` into existing
+  page-root slot `0`, and secondary seeded `0x782ef6` crosses into existing
+  slot `1`. The parser-fed SI/SO streams compose those RAM handoff states with
+  host-fetched font-selection bytes and later printable rows.
   Remaining handoff risk is exact selected-font field combinations, not an
   unknown parser-to-printable edge. New work must show a different value or
   branch for at least one documented boundary: `0x13eb8` refresh state,
@@ -2441,10 +2442,11 @@ A byte-stream reproduction must preserve these behaviors:
   HMI/cursor advance, or compact row-helper inputs.
 - Broader metric producer work is now selected-font state expansion, not an
   unresolved parser-produced page boundary. Existing host-stream
-  downloaded-font fixtures prove install, visible glyph rendering,
+  downloaded-font owner routes document install, visible glyph rendering,
   and `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
-  `0xd8fc` span rows; the shared span-consumer branch family is also
-  fixture-backed. The legal descriptor metric matrix plus boundary fixture now
+  `0xd8fc` span rows; fixture coverage is a supporting consistency check for
+  those documented branches. The legal descriptor metric matrix plus boundary
+  fixture now
   covers visible extent flips, clamping, zero rounded/offset span publication,
   normal rounded input `0x0013` storing `+0x2c = 0x0014`, negative and
   max-positive offset copied words `0xfffe`/`0x007f`, `d8fc` lower-bound and

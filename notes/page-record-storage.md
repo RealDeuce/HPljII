@@ -606,6 +606,82 @@ higher, and equal-key examples; fixture
 branch; and fixture `0x1edc6 page-record bridge normalizes rule and fixed
 lists` for the root-to-render bridge.
 
+## Segment-List Outcome Matrix
+
+This matrix composes the portrait text-span route from pending-span flush to
+bucket-chain object bytes and the first render consumer. It is the owner
+checkpoint for segment-list variants that change entry count, split buckets,
+object payload bytes, or `0x1f812` inputs.
+
+- Landscape sibling:
+  `0x12714 -> 0x13520 -> 0x1366c -> 0x136d2` does not write a segment-list
+  bucket object. It routes to fixed-list root `+0x28`, covered by
+  [Fixed-List Outcome Matrix](#fixed-list-outcome-matrix).
+- Single-entry portrait span:
+  `0x13520 -> 0x1354a -> 0x137a2` derives selector/key state, then
+  `0x135f0` allocates or reuses a bucket-chain object through `0x1387c` with
+  selector word `0x4000`. The object word `+0x06` is incremented, and one
+  six-byte entry is appended.
+- Bucket-crossing portrait span:
+  `0x1354a` compares row low bits plus row count against `0x10`. When the
+  span crosses the 16-row bucket boundary, it shortens the first entry, calls
+  `0x135f0`, increments `0x782a7c`, clears row bits in `0x782a7e`, restores
+  the remaining row count, and calls `0x135f0` again.
+- Allocation failure before an entry:
+  if `0x1387c` returns zero inside `0x135f0`, `0x135f0` returns zero before
+  appending an entry. `0x1354a` propagates the zero result to `0x12714`, whose
+  retry/publication path owns the visible effect.
+- Allocation failure after the first split entry:
+  in the split path, a first successful `0x135f0` call is not rolled back
+  before the second call. If the second `0x135f0` returns zero, the exact
+  disassembly boundary is the zero return from `0x135de -> 0x135f0` back to
+  `0x12714`; a parser-fed fixture for that partial split retry is not yet
+  named.
+- Render consumption:
+  bridge `0x1edc6` copies bucket root `+0x1c` to render root `+0x18`.
+  `0x1efc2` dispatches class `0x40..0x7f` bucket objects to `0x1f812`.
+  `0x1f812` reads object word `+0x06` as entry count and consumes each
+  six-byte entry as packed coordinate word, row-count/phase byte, skipped
+  byte, and span-width word before writer `0x1f862` stores mask rows.
+
+Field grouping for this route:
+
+- Canonical state:
+  page root `0x78297a`, bucket root `+0x1c`, bucket object next pointer
+  `+0x00`, selector bytes `+0x04/+0x05`, count word `+0x06`, and six-byte
+  segment entries beginning at payload `+0x0a`.
+- Derived/cache state:
+  `0x137a2` key fields `0x782a7a`, `0x782a7b`, `0x782a7c`, `0x782a7d`, and
+  `0x782a7e`; split state in local source byte `+0x00` and byte `+0x01`;
+  render root `+0x18`; destination helper output from `0x1f3d4`; mask table
+  `0x308f2`; and stride `0x783a1c`.
+- Parser scratch:
+  none is owned by `0x1354a` or `0x135f0`. Parser records and control
+  handlers have already caused a pending-span flush before the local source
+  reaches this route.
+- Firmware bookkeeping:
+  `0x1387c` bucket storage and object capacity bookkeeping, return value
+  `D7`, page-root retry bit `+0x14.0` set by `0x12714` after a zero producer
+  result, and stream allocation fields behind the bucket object.
+- Unknown:
+  no ROM-local producer-to-render middle edge remains for documented
+  single-entry and split portrait spans. Remaining work starts only from
+  byte streams that change `0x137a2` key derivation, the split predicate in
+  `0x1354a`, `0x135f0` entry bytes, partial split allocation failure, bucket
+  bridge state, or row construction through `0x1f812` / `0x1f862`.
+
+Evidence: producer listing
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+`0x13520..0x1366a` and `0x137a2..0x1381a`; render listing
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`
+`0x1f812..0x1f88c`; fixtures
+`0x12714 portrait text span flush queues segment-list span`,
+`0x1354a portrait text span split queues adjacent buckets`,
+`live CR span flush materializes 0x12714 page object`,
+`left-margin parser span flush materializes 0x12714 page object`,
+`vertical-cursor parser span flush materializes 0x12714 page object`, and
+`0x1f812 segment-list object renders counted mask spans`.
+
 ## Fixed-List Insertion Order
 
 Landscape text-span storage enters through `0x1366c`: it calls `0x137a2` to

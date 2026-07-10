@@ -7306,7 +7306,7 @@ Address-level cluster map:
   [active-render-scheduler.md](active-render-scheduler.md),
   `Published Record To Active Render Scheduler` in
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
-  Published Record To Active Bands` in
+  Published Record To Active Bands` plus `Band Scheduling Route Index` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
   Confidence is high for pool-head versus cursor roles, candidate selection,
   `0x780eaa -> 0x780eae`, work-record alternation, `0x783a18`,
@@ -9171,7 +9171,10 @@ shape, publication boundary, or render helper inputs.
    band contract explicit: only the capacity-approved branch
    `0x1ec8e..0x1ecac` calls `0x1ef6a`; cleanup, stale-work,
    throttle-yield, and capacity-wait branches are no-pixel scheduler outcomes
-   for that iteration.
+   for that iteration. `Band Scheduling Route Index` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md#band-scheduling-route-index)
+   groups the same publication, source-selection, work-record, band-loop, and
+   renderer-handoff fields as a checked-in reader path.
    The remaining scheduler risk is not a ROM object/rendering middle edge: it is
    board-level timing for `$8000.4`
    selection at `0x0f84..0x0fa0` and `0x1020..0x102e`, MMIO effects around `$a601 =
@@ -9374,10 +9377,13 @@ Priority ROM-local documentation targets:
    Index](page-raster-imaging.md#render-helper-boundary-index) and the
    producer/root/object/bridge fields summarized by `Page Object Shape Route Index` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index):
-   compact selector class, segment/fixed-list object bytes, raster encoded object
-   fields, rule/fixed roots, continuation mutation, fallback split, or row-copy helper
-   inputs. Compact-selector streams should start only when they change source bytes
-   consumed by `0x12f2e`, selector bits, segment payload entries, helper target,
+   scheduler-only variants should use `Band Scheduling Route Index` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md#band-scheduling-route-index)
+   as the already-covered publication-to-renderer handoff boundary. Remaining variants
+   should change compact selector class, segment/fixed-list object bytes, raster encoded
+   object fields, rule/fixed roots, continuation mutation, fallback split, or row-copy
+   helper inputs. Compact-selector streams should start only when they change source
+   bytes consumed by `0x12f2e`, selector bits, segment payload entries, helper target,
    fallback split, row-copy index, or an exact boundary beyond the [compact selector
    outcome matrix](downloaded-fonts.md#compact-selector-outcome-matrix). Segment-list
    portrait-span streams should start only when they change key derivation, split

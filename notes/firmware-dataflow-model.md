@@ -139,6 +139,7 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Page Length, Wrap, And Perforation Controls`,
   `Worked Path: Shared Page-Record Storage And Allocator`,
   `Page Object Shape Route Index`,
+  `Band Scheduling Route Index`,
   `Worked Path: Published Record To Active Bands`,
   `Worked Path: Mixed Text/Rule/Raster Page Record`,
   `Worked Path: Compact Glyph Row-Copy Helpers`,
@@ -2677,6 +2678,93 @@ Reproduction rule:
   band/fallback buffers using `0x783a20`, `0x783a22`, and `0x783a28`; vertical
   coordinates choose buckets, segments, and fallback splits rather than causing
   a parser-time full-page bitmap allocation.
+
+### Band Scheduling Route Index
+
+This checkpoint is the compact reader path from a published page/control
+record to the first renderer call for one selected band. It owns scheduler
+routing, not object semantics: page-object bytes stay defined by `Page Object
+Shape Route Index` and pixel helper behavior stays defined by `Pixel And Object
+Rendering`.
+
+Route:
+
+- Publication boundary:
+  `0xff1e` writes the protected pool head `0x780ea6`, sets publication flag
+  `0x782996`, and clears the current page root. From this point, scheduler
+  state chooses a published pool record; parser scratch and delayed payload
+  counters are no longer inputs to the band route.
+- Source selection:
+  candidate paths `0x7ec6..0x7f90` and `0x7722..0x779a` promote a pool record
+  into scheduler cursor `0x780eaa`; active entry `0x1eb32..0x1eb50` copies
+  that cursor into active source `0x780eae` and maintains release cursor
+  `0x780eb2`.
+- Work-record selection and bridge:
+  `0x1ecd6..0x1ed76` toggles selector state `0x7820bc` / `0x7820c0`, chooses
+  render work record `0x7820c4` or `0x782128`, writes active render pointer
+  `0x783a18`, and calls `0x1ed84`. Bridge helper `0x1ed84 -> 0x1edc6` copies
+  source roots into render roots `+0x18/+0x1c/+0x20` and context slots
+  `+0x24..+0x60`.
+- Band-loop outcomes:
+  `0x1eba4..0x1ecd2` reads active render pointer `0x783a18` and active band
+  word `+0x10`. Cleanup, stale-work cleanup, throttle-yield, and capacity-wait
+  exits do not render because they do not call `0x1ef6a`. Only the
+  capacity-approved branch `0x1ec8e..0x1ecac` releases the scheduler lock,
+  calls `0x1ef6a`, then increments band word `+0x10` and throttle word
+  `+0x0e`.
+- Renderer handoff:
+  `0x1ef6a` consumes `0x783a18`, calls `0x1ef86` to derive current-band caches,
+  then dispatches bucket root `+0x18` through `0x1efc2`, rule root `+0x1c`
+  through `0x1f446`, and fixed-list root `+0x20` through `0x1f756`.
+
+Field grouping for this route:
+
+- Canonical state:
+  pool head `0x780ea6`, scheduler cursor `0x780eaa`, active source
+  `0x780eae`, release cursor `0x780eb2`, selector bytes `0x7820bc` /
+  `0x7820c0`, render work records `0x7820c4` / `0x782128`, active render
+  pointer `0x783a18`, render roots `+0x18/+0x1c/+0x20`, context slots
+  `+0x24..+0x60`, and active band word `+0x10`.
+- Derived/cache state:
+  same-geometry fields copied before `0x1ed84`, bridge-mutated continuation
+  fields, current-band rows `0x783a20`, remainder `0x783a22`, destination base
+  `0x783a28`, stride `0x783a1c`, and work-record destination cache `+0x12`.
+- Parser scratch:
+  none. Parser records, binary payload state, and command-family scratch have
+  already been committed to page objects or page environment fields before
+  `0xff1e` publishes the page/control record.
+- Firmware bookkeeping:
+  publication flag `0x782996`, scheduler flags `0x780ea4` / `0x780ea5`,
+  candidate slots `0x780e6e[]`, wait object `0x780182`, throttle word
+  `+0x0e`, and trap/wait helpers `0x10c8`, `0x10d0`, and `0x10d8`.
+- Hardware/external state:
+  MMIO-facing timing and formatter-engine predicates around
+  `0x0d52..0x1282` and `0x1cf8..0x1ea8`. These affect when the ROM waits or
+  yields; they do not change which published roots, render record, or band word
+  are presented to `0x1ef6a` on the documented capacity-approved branch.
+- Unknown:
+  no ROM-local middle edge remains between published source selection,
+  work-record bridge, and the `0x1ef6a` call for this route. Remaining
+  boundaries are hardware/MMIO timing and renderer-local invalid or resource
+  boundaries named by the downstream object-family notes.
+
+Writers are `0xff1e`, `0x7ec6..0x7f90`, `0x7722..0x779a`,
+`0x1eb32..0x1eb50`, `0x1ecd6..0x1ed76`, and `0x1ed84 -> 0x1edc6`.
+Readers and consumers are `0x1eba4..0x1ecd2`, `0x1ef6a`, `0x1ef86`,
+`0x1efc2`, `0x1f446`, and `0x1f756`. The output effect is scheduling one
+published page/control record into zero or one renderer calls per scheduler
+iteration: no-pixel exits for cleanup, stale, throttle, and wait branches;
+ROM-derived pixel rows only after the capacity-approved call into `0x1ef6a`.
+Disassembly support for this ROM-local route is complete for the writers,
+readers, field copies, and branch outcomes named above.
+
+Evidence:
+[active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+[page-raster-imaging.md](page-raster-imaging.md#active-render-scheduler-semantic-checkpoint),
+`generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`, and
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
 
 ### Page Versus Band Model
 

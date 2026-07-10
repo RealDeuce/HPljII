@@ -87,8 +87,11 @@ standalone deliverables.
   published-record scheduling, active render pointer `0x783a18`, bridge
   `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`, compact
   text/downloaded-glyph helpers, rule/fixed-list helpers, and encoded raster
-  helper `0x1f88e`. The shared row-store order, current-band/fallback
-  destination model, and overwrite composition rule are in
+  helper `0x1f88e`. The shortest publication-to-renderer handoff is
+  `Band Scheduling Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#band-scheduling-route-index).
+  The shared row-store order, current-band/fallback destination model, and
+  overwrite composition rule are in
   [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint).
 - The broad host-byte-to-pixel walkthrough and residual-boundary index is
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). Its
@@ -212,8 +215,10 @@ checked-in ROM model:
    follow `0xff1e` into the page/control pool and
    [active-render-scheduler.md](active-render-scheduler.md#owner-summary): scheduler
    source `0x780eae`, active render pointer `0x783a18`, and bridge `0x1ed84 -> 0x1edc6`.
-   Its `Scheduler To Renderer Ownership` checkpoint is the handoff map from page roots
-   to render roots, band word, and first renderer consumers.
+   `Band Scheduling Route Index` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md#band-scheduling-route-index)
+   is the handoff map from page roots to render roots, band word, and first renderer
+   consumers.
 7. For pixels, finish in
    [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary):
    render entry `0x1ef6a`,

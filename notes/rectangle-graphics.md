@@ -807,7 +807,7 @@ canonical render state after `0x1edc6`, not parser scratch.
 ### Pattern Rules
 
 `0x1f4e0` handles non-solid selectors through the pointer table at
-`0x2fefe`. The full fixture-pinned selector table is:
+`0x2fefe`. The selector table consumed by `0x1f4e0` is:
 
 | Selector | Pattern base |
 | ---: | ---: |
@@ -828,7 +828,7 @@ canonical render state after `0x1edc6`, not parser scratch.
 Sub-byte masks come from `0x1f6ee` using mask tables near
 `0x3089e` and `0x308be`.
 
-Gray selector `0` fixture:
+Gray selector `0` route example:
 
 - pattern base `0x02ff3e`
 - first words `0x8080, 0x0000, 0x0000, 0x0000`
@@ -844,7 +844,7 @@ Rendered gray-rule rows:
 ........
 ```
 
-Shifted HP-pattern selector `13` fixture:
+Shifted HP-pattern selector `13` route example:
 
 - key `0x3500`
 - decoded x `5`, y `3`
@@ -868,13 +868,57 @@ Rendered shifted HP-pattern rows:
 ...........####.........
 ```
 
-Fixture `0x1f446/0x1f4e0 renders gray selector pattern pixels` isolates the
-gray-selector helper path, while `0x1f4e0 renders sub-byte shifted HP pattern
-rule pixels` isolates the shifted HP-pattern path. Fixtures `0x1f4e0 carries
-patterned rule remainder across render bands` and `0x1f446 page-band walk
-assembles patterned rule rows` prove that non-solid rule continuation mutates
-the bridged node between bands and that the walker resumes from the carried
-node on the next band.
+Pattern render route:
+
+- Writer: `0x1edc6` publishes page-root rule list `+0x24` as render-record
+  rule root `+0x1c`, sets selector byte bit `+5.4`, and copies object height
+  word `+0x0a` into continuation word `+0x0c`.
+- Reader/dispatcher: `0x1f446..0x1f494` consumes render-record rule root
+  `+0x1c` on five-bucket render bands, filters each node by bucket byte
+  `+0x04`, skips exhausted continuation word `+0x0c`, and dispatches selector
+  byte `+0x05 & 0x0f` through table `0x1f4a0`.
+- Pattern helper: non-solid selectors enter `0x1f4e0`. The setup range
+  `0x1f4e0..0x1f514` clears bridge flag bit `+5.4`, derives the current-band
+  draw count from bucket displacement and continuation state, subtracts that
+  count from continuation word `+0x0c`, clips the active row count, and calls
+  destination helper `0x1f626`.
+- Pixel writer: `0x1f51a..0x1f57a` reads width word `+0x08`, calls mask
+  helper `0x1f6ee`, selects the pattern base through table `0x2fefe`, writes
+  the left-masked pattern word, any full interior pattern words, and the
+  right-masked tail word for each rendered row, then advances by stride
+  `0x783a1c`.
+- Band split: if destination helper `0x1f626` returns fallback rows in the
+  high word of `D3`, `0x1f57e..0x1f590` restarts the same row loop at
+  fallback buffer `0x7810b4 + A2`.
+- Output effect: the helper mutates canonical continuation word `+0x0c` and
+  writes masked pattern words into the active band buffer or fallback buffer;
+  no parser scratch remains in this render-stage path.
+
+State classes for this route:
+
+- Canonical page/render state: page-root rule list `+0x24`, render-record rule
+  root `+0x1c`, rule link `+0x00`, bucket byte `+0x04`, selector byte
+  `+0x05`, packed coordinate word `+0x06`, width word `+0x08`, height word
+  `+0x0a`, and continuation word `+0x0c`.
+- Derived/cache state: pattern base selected through `0x2fefe`, left/right
+  masks from `0x1f6ee`, destination phase `$a001`, byte-pair offset `A2`,
+  active-band row origin `0x783a28`, row stride `0x783a1c`, and fallback
+  base `0x7810b4`.
+- Parser scratch: none at `0x1f446..0x1f590`; parser records have already
+  been materialized into rule objects by `0x13386..0x133aa` and normalized by
+  `0x1edc6`.
+- Firmware bookkeeping: five-bucket scheduling gate from render word `+0x10`
+  and the helper's current-band/fallback split in `D3`.
+- Unknown: no ROM-local unknown remains inside `0x1f446..0x1f590` for
+  selector routing, pattern-table selection, mask construction, continuation
+  mutation, or active/fallback row writes. Remaining rectangle-pattern
+  unknowns start before `0x13386` only for byte streams that change clipped
+  source records, or after the bitmap buffers at the physical output boundary.
+
+Supporting fixtures named in the evidence list exercise the gray selector,
+shifted HP-pattern selector, non-solid continuation mutation, and page-band
+walk cases, but the route above is the ROM disassembly contract for the
+documented pattern output.
 
 ### Rule Destination And Row Writes
 
@@ -1001,14 +1045,17 @@ the same current page record contains:
 - mode-0 raster through delayed `0x11f82` / `0x12218` / `0x105d0` /
   `0x13070` / `0x13250`.
 
-The lower-level composition fixtures prove the same renderer layering without
-the full parser front end. `bridged compact text and rule objects compose into
-one page band` composes compact text with a selector-7 rule after the
-`0x1edc6` bridge. `bridged text, rule, and raster layers compose into one page
-band` adds the mode-0 raster layer. `0x1ef6a render entry composes bucket,
-rule, and fixed-width lists in call order` pins the dispatcher order as
+The same renderer layering can also be read without the full parser front
+end. After the `0x1edc6` bridge, compact text and selector-7 rule objects
+compose into one page band through the same `0x1ef6a` render entry; adding a
+mode-0 raster object inserts the raster layer without changing the rule-list
+contract. The render-entry dispatcher order is
 `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`; the fixed-list slot may be empty
 for rectangle-only streams, but it is still part of the render-entry contract.
+Supporting fixture names for these variants are
+`bridged compact text and rule objects compose into one page band`, `bridged
+text, rule, and raster layers compose into one page band`, and `0x1ef6a render
+entry composes bucket, rule, and fixed-width lists in call order`.
 
 The addressed FF publication fixtures pin the page-record storage for that
 mixed stream. Fixture `addressed text/rule/raster field groups reach
@@ -1108,8 +1155,8 @@ rows for these concrete clusters:
 These streams cover multiple handlers in the same command family, the shared
 `0x10b80 -> 0x13386 -> 0x133aa` producer path, the shared no-room exit, and
 end-to-end parser-to-render output. New rectangle work should start only from
-a stream that changes one of those fields or rows, not from another proof of
-the same selector/object/bridge path.
+a stream that changes one of those fields or rows, not from another fixture
+for the same selector/object/bridge path.
 
 Writers are the parser handlers and producers listed above, plus `0xff1e`
 when fixtures `host-fetched text rectangle raster FF publishes rendered page
@@ -1156,22 +1203,22 @@ A byte-stream reproduction must preserve these behaviors:
   work is limited to byte streams that change clipping output, `0x1381c`
   rollover/allocation state, retry publication fields, rule object bytes,
   bridge state, render dispatch, or ROM-derived row construction.
-- Pattern rendering is fixture-pinned for selectors, masks, shifted rows, and
-  band crossing. The initial mixed text/rule/raster/FF byte stream now provides
-  a complete parser-produced page-record/render composition with selector-7
+- Pattern rendering is documented through selector routing, mask derivation,
+  shifted-row addressing, continuation mutation, and active/fallback band
+  writes in `0x1f446..0x1f590`. The initial mixed text/rule/raster/FF byte
+  stream provides a parser-produced page-record/render route with selector-7
   rule output, mode-0 raster output, compact text, publication, and
   render-entry rows;
-  `host-fetched alternate rectangle selectors feed full page records` adds
-  detailed page-record fixtures for gray selector `4` from `50g2P` and
-  portrait pattern selector `9` from `2g3P`, and `host-fetched rectangle
-  selector matrix feeds full page records` extends that coverage to non-solid
-  selectors `0..6` and `8..13` plus the landscape pattern remaps for ids
-  `1..4`; the multi-row mixed text/rule/raster sibling now also proves the
-  same rule list can be published with two delayed raster objects in the
-  bucket chain;
-  checked-in coverage also includes font-selection streams, downloaded-glyph
-  FF publication, geometry-changing publication streams, and a parser-driven
-  downloaded-glyph/rule/raster page. Remaining rectangle work is limited to
-  cross-feature full-page combinations that expose new ROM-derived page-object
-  fields, bridge state, render dispatch, continuation mutation, or rows; it is
-  not the software-visible rectangle selector ids or landscape remap logic.
+  `host-fetched alternate rectangle selectors feed full page records`
+  exercises gray selector `4` from `50g2P` and portrait pattern selector `9`
+  from `2g3P`, and `host-fetched rectangle selector matrix feeds full page
+  records` exercises non-solid selectors `0..6` and `8..13` plus the
+  landscape pattern remaps for ids `1..4`. The multi-row mixed
+  text/rule/raster sibling routes the same rule list alongside two delayed
+  raster objects in the bucket chain. Checked-in notes also document
+  font-selection streams, downloaded-glyph FF publication, geometry-changing
+  publication streams, and a parser-driven downloaded-glyph/rule/raster page.
+  Remaining rectangle work is limited to cross-feature full-page combinations
+  that expose new ROM-derived page-object fields, bridge state, render
+  dispatch, continuation mutation, or rows; it is not the software-visible
+  rectangle selector ids or landscape remap logic.

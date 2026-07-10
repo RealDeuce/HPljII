@@ -192,6 +192,94 @@ Derived/cache state:
 - Page-record bucket sets and object hashes are derived render-facing
   artifacts, not canonical firmware fields.
 
+## Multi-Probe Continuation Preflight
+
+`0x1dcf2` is the later font-sample fit gate used before selected row output is
+committed. It does not emit text or allocate page objects itself. It installs
+candidate contexts, asks shared calculator `0x1dc38` to project one or more
+sample-row positions, compares each projected bottom against page-limit word
+`0x782db6`, and returns D7 as the caller's continuation decision.
+
+The shared calculator `0x1dc38..0x1dcf0` receives current and selected context
+pointers, an output row-height pointer, a starting packed y, and a mode word.
+It reads selected line-advance and row-height inputs through `0x1c6a4` and
+`0x1c6da`, writes the caller's row-height word, converts between packed cursor
+units through `0x332ee`, `0x3324a`, `0x104fe`, and `0x104d8`, and returns the
+projected packed y in D7. Mode `1` adds the reset-row offset used after an
+overflowed first pass; mode `0` preserves the normal current-row projection.
+
+`0x1dcf2..0x1de2c` has four observable branches:
+
+- Initial fit:
+  `0x1dd1e..0x1dd54` probes current y with calculator mode `0`. If projected
+  y plus the row-height word is below `0x782db6` and alternate-row flag
+  `0x783132` is clear, it exits D7 `0` at `0x1de1a`.
+- Alternate second-row fit:
+  when `0x783132` is set, `0x1dd5a..0x1dd8e` probes the second row from the
+  first projected y. If the second projected bottom still fits, it exits D7
+  `0` at `0x1dd8e`.
+- Reset-row continuation:
+  after an overflow, `0x1dd98..0x1dde0` converts raw subunits `0x1218` to a
+  reset packed y through `0x104d8`, probes mode `1`, and returns D7 `1` at
+  `0x1de24` when the reset-row projected bottom is still outside the limit.
+- Reset-row recovery:
+  if the mode-`1` reset row fits, then `0x1dde2..0x1de16` optionally probes a
+  final mode-`0` selected row when `0x783132` is set. It returns D7 `0` at
+  `0x1de16` when both reset probes fit, or D7 `1` at `0x1de2c` when the final
+  selected-row bottom still crosses the page limit.
+
+State grouping for this checkpoint:
+
+- Canonical page/text state:
+  current y `0x782c8e`, page limit `0x782db6`, alternate-row flag
+  `0x783132`, selected current/alternate contexts passed by the caller, and
+  the caller row-height word written by `0x1dc38`.
+- Derived/cache state:
+  projected packed y in local `-6(A6)`, row-height word in local `-2(A6)`,
+  reset packed y derived from raw `0x1218`, and the D7 fit/continuation return.
+- Parser scratch:
+  none. The sample generator is firmware-produced; no host byte or parser
+  record is consumed by this fit gate.
+- Firmware bookkeeping:
+  temporary context installation through `0x1cece` and `0x1c5e8` so the
+  calculator reads the same metrics that later printable row emission will use.
+- Unknown:
+  no ROM-local branch, field, or page-output side effect remains unknown for
+  `0x1dcf2`. Manual-facing names for the row-height and baseline components
+  remain external terminology, not a sample-page dataflow gap.
+
+Writers and readers:
+
+- `0x1dcf2` writes only local projection state and the D7 return flag.
+- `0x1cece` and `0x1c5e8` install the current and selected contexts before the
+  probes.
+- `0x1dc38` reads the installed context metrics, writes the caller row-height
+  word, and returns projected y.
+- The caller at `0x1d964` consumes D7 to decide whether to continue on the
+  current page or run the existing continuation path before row emission.
+
+Output effect:
+
+- D7 `0` is a no-publication preflight result: later `0x1cabe` and `0x1cf34`
+  emit row bytes on the current page through `0xd04a`.
+- D7 `1` is a page-boundary decision for the caller. The visible effect occurs
+  only after the caller invokes the already documented continuation/page-record
+  path; `0x1dcf2` itself creates no compact object, source heading, or rendered
+  row.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`
+  `0x1dc38..0x1dcf0` and `0x1dcf2..0x1de2c`.
+- Fixture:
+  `font sample multi-probe preflight follows 0x1dcf2` records the first
+  `COURIER` case with `0x783132 = 0` returning D7 `0` at `0x1de1a`, the
+  `0x783132 = 1` two-row case projecting y
+  `0x00900000 -> 0x00ce0000 -> 0x010c0000` under limit `300`, the tightened
+  limit `250` returning D7 `1` at `0x1de24`, and the high-y reset case
+  starting at `0x01f40000` with limit `600` returning D7 `0` at `0x1de16`.
+
 ## Row Text Helper Ledger
 
 `0x1cabe` emits the visible row columns, but the lower helper cluster at

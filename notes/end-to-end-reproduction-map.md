@@ -5852,11 +5852,11 @@ Address-level cluster map:
   `Worked Path: Explicit No-Output Parser Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md) and
   [pcl-parser-core.md](pcl-parser-core.md).
-- Transparent/display payload readers:
-  `ESC &p#X...`, `ESC Y ... ESC Z`, and local Control-Z forms; start with
-  [transparent-print-data.md](transparent-print-data.md),
-  [display-functions.md](display-functions.md), and their worked paths in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Transparent/display payload readers: `ESC &p#X...`, `ESC Y ... ESC Z`, and local
+  Control-Z forms; start with [transparent-print-data.md](transparent-print-data.md),
+  [Display Functions Decision
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint), and their
+  worked paths in [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Font selection and visible glyph output:
   `ESC (s0p10h12v0s0b3T!!`,
   `ESC )s0p16h8v0s0b0T SO !!`, final-`X` / final-`@` streams, and
@@ -6078,34 +6078,29 @@ Address-level cluster map:
   [firmware-startup.md](firmware-startup.md) records the resource-pair byte-sum range as
   `0x080000..0x0bffff`, so it covers the verified suffix but not the `0x0c0000`
   continuation bytes.
-- Display functions:
-  ROM evidence is normal handler `0x12536..0x1261e`, alternate/data handler
-  `0x12120..0x1219c`, and parser-table entries in normal table `0x112a4`
-  and alternate table `0x116f6`. Reproduction evidence is
-  [display-functions.md](display-functions.md),
-  `Display Functions ESC Y Reader` in `notes/semantic-state-model.md`,
-  `ESC Y Display Functions Readers` in `notes/pcl-parser-core.md`, surfaced
-  first as `Worked Path: Display Functions Direct Reader` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md), and disassembly
-  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
-  The covered command-family contract is `ESC Y ... ESC Z` as a direct
-  `0xa904` reader loop with local `1a 58 -> 7f` normalization, loop-local
-  `ESC`-seen scratch in `D4`, normalized payload byte in `D7`, and termination
-  when routed/appended `ESC Z` is seen or fetch returns `-1`. Normal handler
-  `0x12536` routes normalized bytes through `0xd04a` or `0xd0f0` according to
-  selected-context filtering state: canonical `0x782c18`, `0x782f06`, and
-  parser dispatch state; derived/filtering state
-  `0x782eea + 0x10 * 0x782f06`, `0x782efa`, `0x783132`, and `0x783133`; and
-  parser scratch stack word `A6-2`. Alternate/data handler `0x12120` appends
-  literal `ESC Y` plus normalized loop bytes through firmware bookkeeping sink
-  `0xe002` into macro/data-chain chunk `0x783988`; normal CR output also uses
-  bookkeeping helper `0xf054`. Fixtures
-  `ESC Y display-functions stream reaches page-record output`,
-  `ESC Y display-functions filter-on routes controls as printable`, and
-  `0x12120 ESC Y alternate append stores normalized display bytes` cover the
-  default-filter page-output path, nonzero context/filter page-output path,
-  and alternate/data append-only path. No unresolved middle edge remains for
-  this command-family loop.
+- Display functions: ROM evidence is normal handler `0x12536..0x1261e`, alternate/data
+  handler `0x12120..0x1219c`, and parser-table entries in normal table `0x112a4` and
+  alternate table `0x116f6`. Reproduction evidence is [Display Functions Decision
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint), `Display
+  Functions ESC Y Reader` in `notes/semantic-state-model.md`, `ESC Y Display Functions
+  Readers` in `notes/pcl-parser-core.md`, surfaced first as `Worked Path: Display
+  Functions Direct Reader` in [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  and disassembly `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+  The covered command-family contract is `ESC Y ... ESC Z` as a direct `0xa904` reader
+  loop with local `1a 58 -> 7f` normalization, loop-local `ESC`-seen scratch in `D4`,
+  normalized payload byte in `D7`, and termination when routed/appended `ESC Z` is seen
+  or fetch returns `-1`. Normal handler `0x12536` routes normalized bytes through
+  `0xd04a` or `0xd0f0` according to selected-context filtering state: canonical
+  `0x782c18`, `0x782f06`, and parser dispatch state; derived/filtering state `0x782eea +
+  0x10 * 0x782f06`, `0x782efa`, `0x783132`, and `0x783133`; and parser scratch stack
+  word `A6-2`. Alternate/data handler `0x12120` appends literal `ESC Y` plus normalized
+  loop bytes through firmware bookkeeping sink `0xe002` into macro/data-chain chunk
+  `0x783988`; normal CR output also uses bookkeeping helper `0xf054`. Fixtures `ESC Y
+  display-functions stream reaches page-record output`, `ESC Y display-functions
+  filter-on routes controls as printable`, and `0x12120 ESC Y alternate append stores
+  normalized display bytes` cover the default-filter page-output path, nonzero
+  context/filter page-output path, and alternate/data append-only path. No unresolved
+  middle edge remains for this command-family loop.
 - Parser dispatch tables:
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
   Checked-in documentation is [pcl-command-map.md](pcl-command-map.md),

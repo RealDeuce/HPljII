@@ -215,9 +215,9 @@ boundaries:
   dot position, cursor stack, underline/span flushing, and vertical layout
   helpers:
   [direct-control-codes.md](direct-control-codes.md).
-- `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append,
-  and guarded `ESC z` status signaling:
-  [display-functions.md](display-functions.md#owner-summary).
+- `ESC Y ... ESC Z`, local Control-Z siblings, alternate/data display append, and
+  guarded `ESC z` status signaling: [Display Functions Decision
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint).
 - Reset, FF publication, page size, page-length zero/default, orientation,
   paper source, and copies:
   [publication-commands.md](publication-commands.md#owner-summary) plus reset
@@ -495,14 +495,14 @@ Normal table `0x112a4`:
   cursor, motion, selected-font slot, page geometry, span, publication, VFC, or
   page-control state; visible rows appear through later printable, span flush,
   VFC publication, FF/reset publication, or render-bridge consumers.
-- Display, transparent, local Control-Z, and host/status side-channel
-  handlers:
-  `0xcd86`, `0x12034`, `0x120d2`, `0x1219e`, and `0x12536`.
-  Owners are [display-functions.md](display-functions.md#owner-summary),
+- Display, transparent, local Control-Z, and host/status side-channel handlers:
+  `0xcd86`, `0x12034`, `0x120d2`, `0x1219e`, and `0x12536`. Owners are [Display
+  Functions Decision
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint),
   [transparent-print-data.md](transparent-print-data.md), and
   [errors-and-status.md](errors-and-status.md#owner-summary). Normal display/transparent
-  readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and `0x12034`
-  are host/status side channels with no page-object output.
+  readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and `0x12034` are
+  host/status side channels with no page-object output.
 - Raster and rectangle imaging handlers:
   `0x1075a`, `0x107fa`, `0x10808`, `0x10898`, `0x10a40`, `0x10ae0`,
   `0x10dce`, `0x10e22`, and `0x10e68`.
@@ -550,12 +550,11 @@ Alternate/data table `0x116f6`:
   [publication-commands.md](publication-commands.md#owner-summary). Counted payloads and
   macro-stop/reset behavior remain active because they delimit stored data or
   reset the environment; most ordinary page-state handlers are suppressed.
-- Alternate display and Control-Z append handlers:
-  `0x1210c`, `0x12120`, and `0x121b2`.
-  Owner is [display-functions.md](display-functions.md#owner-summary). These
-  append normalized bytes through `0xe002` instead of sending them to printable
-  text, so their immediate output effect is stored macro/data-chain content
-  rather than page objects.
+- Alternate display and Control-Z append handlers: `0x1210c`, `0x12120`, and `0x121b2`.
+  Owner is [Display Functions Decision
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint). These append
+  normalized bytes through `0xe002` instead of sending them to printable text, so their
+  immediate output effect is stored macro/data-chain content rather than page objects.
 
 ## Supported Stream Dispatch Matrix
 

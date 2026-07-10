@@ -649,6 +649,105 @@ Exact disassembly boundaries:
   source byte `+0x0b` and either a full coordinate word or its two coordinate
   bytes, depending on entry parity, then returns success.
 
+### Printable Source Outcome Matrix
+
+This matrix is the direct-control owner for a printable byte after parser
+dispatch has selected `0xd04a` or an internal printable producer has selected
+the fixed-space helper `0xd0f0`. It composes the byte normalization, source
+record, placement branch, compact object, and delayed span consumer.
+
+- Extended value service:
+  when entry `D5 > 0xff`, `0xd04a..0xd070` calls `0xd99a`. A nonzero return
+  exits before source record construction; a zero return replaces the value
+  with `0x7f` and re-enters the normal printable path.
+- High-bit printable normalization:
+  when `0x80 <= D5 <= 0xff` and high-character flags `0x783132` and
+  `0x783133` are both clear, `0xd084..0xd0a6` masks the byte to seven bits.
+  If the selected text slot `0x782f06` is primary, the path calls SO handler
+  `0xc6b8` before source capture and records a local restore flag; after
+  placement it calls SI handler `0xc68a`.
+- Source capture:
+  `0xd0a8..0xd0b4` calls `0x1393a(host_byte, 0x782d7e)`. In
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+  `0x1393a..0x1397a` selects `0x782f32/0x782ee6` or
+  `0x783032/0x782ef6`, maps the host byte, writes source `+0x0a`, copies the
+  selected context longword to source `+0x00`, and copies the context flag to
+  source `+0x10`.
+- Unflagged placement:
+  source `+0x10 == 0` dispatches `0xd140 -> 0xd3b2 -> 0xd4ac`. The queue
+  handoff writes source `+0x12/+0x14/+0x16`, marks live slot
+  `0x78297f + 0x78297e`, calls `0x12f2e`, and then span consumer `0xd4ac`
+  reads unflagged metric bytes `+0x2b/+0x2c/+0x2d` from the selected context.
+- Flagged placement:
+  source `+0x10 != 0` dispatches `0xd550 -> 0xd824 -> 0xd8fc`. The handoff
+  writes the same source output fields and live slot, but derives placement
+  from glyph-entry words and calls span consumer `0xd8fc`, which reads flagged
+  metric words `+0x16/+0x18/+0x1a`.
+- Precheck suppression:
+  precheck result `0x782a6e != 0` skips the queue handoff. The handler still
+  commits cursor state and clears pending-width flag `0x782a58`, but it does
+  not call `0x12f2e` and therefore creates no compact page object for that
+  byte.
+- Allocation retry:
+  if `0x12f2e -> 0x1387c` returns zero, both `0xd3b2` and `0xd824` set page
+  root retry flag `root+0x15.0`, publish through `0xff1e`, ensure a fresh
+  root through `0x10084`, and retry from the source publication point.
+- Short compact object:
+  when the selector-shape checks keep row count at or below `0x80`,
+  `0x12ff4..0x1306e` requests object size `0x26`, appends source byte
+  `+0x0b`, and stores the packed coordinate word as either a word or two
+  bytes according to entry parity.
+- Segmented compact object:
+  when row count exceeds `0x80`, `0x12fc0..0x1303c` sets selector bit
+  `0x2000`, requests object size `0x28`, emits segment entries containing
+  source byte `+0x0b`, segment index, and packed coordinate word, and advances
+  bucket/key state by eight per segment.
+
+Field grouping for this route:
+
+- Canonical state:
+  selected text slot `0x782f06`, primary/secondary maps
+  `0x782f32/0x783032`, primary/secondary current-font contexts
+  `0x782ee6/0x782ef6`, current page root `0x78297a`, selected page-root slot
+  `0x78297e`, live-slot bytes `0x78297f..`, compact bucket root `+0x1c`,
+  source glyph byte `+0x0b`, positioned source words `+0x12/+0x14/+0x16`,
+  and compact object payload entries.
+- Derived/cache state:
+  source scratch `0x782d7e`, source flag byte `+0x10`, high-character flags
+  `0x783132/0x783133`, range caches `0x783134..0x78313c`, queue key
+  `0x782a7c`, packed coordinate word, pending-width latch
+  `0x782a58/0x782a5a/0x782a5c`, precheck result `0x782a6e`, and span
+  watermarks `0x783184..0x78318a`.
+- Parser scratch:
+  the admitted printable byte and parser mode state before entry `0xd04a`.
+  After `0x1393a`, compact object creation consumes source scratch rather
+  than the parser record.
+- Firmware bookkeeping:
+  local SO/SI restore flag in `D4`, extended-value helper `0xd99a`, retry
+  publication flag `root+0x15.0`, and post-printable latch `0x782a6d`.
+- Unknown:
+  no ROM-local middle edge remains for byte normalization, primary/secondary
+  source selection, flagged/unflagged placement, short/segmented compact object
+  creation, allocation retry, or span-consumer dispatch. Future printable work
+  starts only from a stream that changes one of the fields above, an allocation
+  outcome, or a compact-render helper input.
+
+Evidence:
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+`0xd04a..0xd8fc`,
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+`0x1393a..0x13994`,
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+`0x12f2e..0x1306e`,
+[font-context-metrics.md](font-context-metrics.md#printable-source-capture),
+[page-record-storage.md](page-record-storage.md#page-assembly-decision-checkpoint),
+and fixtures `plain printable parser trace feeds page-record queue`,
+`host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`,
+`mixed printable/control parser trace feeds page-record queue`, `SO/SI
+parser trace feeds selected context output`, `flagged printable d8fc
+low-watermark flush renders span`, and `unflagged printable d4ac low-watermark
+flush renders span`.
+
 Field groups for this path:
 
 - Canonical state:
@@ -1364,15 +1463,22 @@ High for `ESC &s#C` selector handling and printable precheck consumption,
 because the `0xedb0` writer and paired `0xd28a` / `0xd6bc` consumers are pinned
 by fixtures and by disassembly reads of `0x783190`.
 
-Medium only for manual-facing latch names and untested source-object variants
-inside `0xd04a -> 0x12f2e`. The documented handlers and fixtures cover the
-renderer contract for the byte-stream cases listed above.
+High for printable source capture and compact object publication from
+`0xd04a` / `0xd0f0` through `0x1393a`, `0xd3b2` / `0xd824`, and `0x12f2e`,
+because the source fields, branch decisions, compact object shapes, allocation
+retry, and span-consumer handoff are now enumerated in the
+[Printable Source Outcome Matrix](#printable-source-outcome-matrix).
+
+Medium only for manual-facing latch names and byte-stream variants that would
+change a named field, object byte, allocation outcome, or render-helper input
+outside the documented matrix.
 
 ## Remaining Edges
 
 - No ROM parser-to-page-record middle edge remains for the documented
   CR/LF/FF/HT/BS plus `ESC &k#G` control family.
-- Remaining work is byte-stream cases that create new `0xd04a` source-object
-  fields, `0x12f2e` bucket shapes, span-flush state, or render-dispatch
-  effects, not re-proving already documented direct-control fields from
-  another execution source.
+- Remaining work is byte-stream cases that change a field or boundary named in
+  the [Printable Source Outcome Matrix](#printable-source-outcome-matrix),
+  span-flush state outside the documented `0xd4ac` / `0xd8fc` consumers, or a
+  later render-dispatch input. Replaying already documented direct-control
+  fields from another execution source is not a new ROM-local edge.

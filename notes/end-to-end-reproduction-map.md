@@ -9283,11 +9283,14 @@ Priority ROM-local documentation targets:
    raster origin/bounds, rectangle clipping, publication, or page overflow. If
    no later consumer is known, record that exact field and consumer boundary
    instead of treating the command as visually complete. SO/SI selected-context
-   switching, cursor-stack push/pop, and the documented layout writers are now
+   switching, printable source capture, cursor-stack push/pop, and the documented
+   layout writers are now
    owned by [direct-control-codes.md](direct-control-codes.md); new state-only
    work should start only when a stream changes a canonical field, downstream
-   consumer, page-object field, or exact boundary not named by those
-   checkpoints.
+   consumer, page-object field, compact source/object field beyond the
+   [printable source outcome
+   matrix](direct-control-codes.md#printable-source-outcome-matrix), or exact
+   boundary not named by those checkpoints.
 
 Edges that should not drive more ROM tracing unless new evidence changes a
 named upstream field:

@@ -9203,9 +9203,13 @@ reader follow what the ROM does.
 Priority ROM-local documentation targets:
 
 1. Command-family variants that change page-object shape or render input. Useful
-   remaining examples are render-helper choices under `0x1ef6a`, raster streams only
-   when they change accepted-byte counts, row advancement, object bytes, or render
-   inputs beyond the [raster transfer gate outcome
+   remaining examples are new streams that change the concrete render-helper fields
+   named in [Render Helper Boundary
+   Index](page-raster-imaging.md#render-helper-boundary-index): compact selector class,
+   segment/fixed-list object bytes, raster encoded object fields, rule/fixed roots,
+   continuation mutation, fallback split, or row-copy helper inputs. Raster streams
+   should start only when they change accepted-byte counts, row advancement, object
+   bytes, or render inputs beyond the [raster transfer gate outcome
    matrix](raster-graphics.md#transfer-gate-outcome-matrix), and rectangle streams only
    when they change the boundaries named in [Remaining
    Edges](rectangle-graphics.md#remaining-edges): clipping output, `0x1381c`

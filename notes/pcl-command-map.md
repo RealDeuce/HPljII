@@ -261,6 +261,42 @@ boundaries:
   `Worked Path: Page Font Scheduler Resource Handoff` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
 
+### Dispatch-To-Render Handoff
+
+After a row in normal table `0x112a4` or alternate/data table `0x116f6` selects a
+terminal handler, the command map stops being the owner of page semantics. Use the owner
+note above for the command-family ledger, then use `Command-Family To Render Route
+Table` in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md)
+for the common object/render join.
+
+The handoff classes are:
+
+- State-only parser outcomes:
+  explicit zero-handler rows, `ESC ?`, display-reader `ESC Z`, unimplemented
+  `ESC &lT/t`, no-byte service `0x117d2..0x11818`, normal no-match ignore
+  `0x118b2..0x11900`, and host/status side-channel commands do not create page
+  roots or render work by themselves.
+- Deferred payload owners:
+  `0x11f5a`, `0x11f6e`, `0x11f82`, and `0x11f96` arm delayed handlers; page
+  state begins only when restore `0x12218` calls `0x12452`, `0x12cfe`,
+  `0x105d0`, `0x15d0a`, or `0x16c14`.
+- Page-object producers:
+  printable text `0xd04a`, raster transfer `0x105d0`, rectangle fill
+  `0x10898`, span flush `0x12714`, downloaded-glyph printable output, and
+  replayed macro bytes write page roots or object records through their owner
+  notes.
+- Publication/render owners:
+  FF/reset/layout boundaries and allocation retry publish through `0xff1e`.
+  After publication, `0x1ed84 -> 0x1edc6 -> 0x1ef6a` owns render roots,
+  object dispatch, and row-helper output.
+
+This section is intentionally a route join, not a duplicate proof. The
+command-family owner carries parsed inputs, RAM fields, writers/readers, output
+effect, evidence, confidence, and exact residuals; the end-to-end route table
+maps those owner outputs to compact, segment-list, encoded-raster, rule,
+fixed-list, and downloaded-glyph render consumers.
+
 The end-to-end spine that joins those owners from byte stream to
 ROM-derived row construction is
 [firmware-dataflow-model.md](firmware-dataflow-model.md). The shorter coverage
@@ -288,10 +324,14 @@ these ROM-defined boundaries before jumping to command-family notes:
    lowercase finals either keep the family mode or call rewind helper
    `0x11f4c`; uppercase or terminal finals usually return to mode zero after
    the handler or zero-handler terminal path runs.
-4. Terminal handlers in the matrix below are the handoff from syntax to
-   semantics. From that point, use the owner note named by the row to find
-   field writers, readers/consumers, page-object effects, publication effects,
-   render effects, confidence, and exact unresolved boundaries.
+4. Terminal handlers in the matrix below are the handoff from syntax to semantics. From
+   that point, use the owner note named by the row to find field writers,
+   readers/consumers, page-object effects, publication effects, render effects,
+   confidence, and exact unresolved boundaries. Use `Command-Family To Render Route
+   Table` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md)
+   when the owner output needs to be followed into page-root storage, publication,
+   bridge, or row-helper dispatch.
 5. Delayed binary payload commands are two-stage. The table handler records a
    pending transfer (`0x11f5a`, `0x11f6e`, `0x11f82`, `0x11f96`), then
    restore path `0x121cc -> 0x12218` calls the payload consumer such as

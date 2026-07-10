@@ -686,10 +686,11 @@ notes. The required ROM-visible behavior is:
   same state. Cursor, font, symbol, page-layout, macro, and raster-control
   commands often change later printable/page behavior without drawing
   immediately.
-- Pixel-producing streams must pass through page-object publication and render
-  dispatch where applicable: current page root `0x78297a`, publication
-  `0xff1e`, active-record bridge `0x1ed84` / `0x1edc6`, and render entry
-  `0x1ef6a`.
+- Pixel-producing streams must pass through page-object publication and render dispatch
+  where applicable: current page root `0x78297a`, publication `0xff1e`, active-record
+  bridge `0x1ed84` / `0x1edc6`, and render entry `0x1ef6a`. The shared
+  command-family-to-render join is indexed in `Command-Family To Render Route Table` in
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
 - Unsupported or no-output rows are reproduced by consuming exactly the ROM
   syntax and then following the documented no-output path; they should not be
   treated as unknown imaging commands.

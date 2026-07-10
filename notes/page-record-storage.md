@@ -715,10 +715,15 @@ object payload bytes, or `0x1f812` inputs.
   retry/publication path owns the visible effect.
 - Allocation failure after the first split entry:
   in the split path, a first successful `0x135f0` call is not rolled back
-  before the second call. If the second `0x135f0` returns zero, the exact
-  disassembly boundary is the zero return from `0x135de -> 0x135f0` back to
-  `0x12714`; a parser-fed fixture for that partial split retry is not yet
-  named.
+  before the second call. If the second `0x135f0` returns zero, `0x1354a`
+  returns zero from the `0x135de -> 0x135f0` call to `0x12714`. The
+  caller-visible outcome is the shared retry path at `0x127ae..0x12808`: set
+  the current root retry flag, publish the current root through `0xff1e`,
+  ensure a fresh root through `0x10084`, rebuild the original local span
+  source from pending state `0x783184..0x78318a`, and retry `0x13520`. The
+  first split entry therefore remains part of the root published before the
+  retry; the replacement root receives a fresh attempt for the full span
+  source.
 - Render consumption:
   bridge `0x1edc6` copies bucket root `+0x1c` to render root `+0x18`.
   `0x1efc2` dispatches class `0x40..0x7f` bucket objects to `0x1f812`.
@@ -743,8 +748,9 @@ Field grouping for this route:
   reaches this route.
 - Firmware bookkeeping:
   `0x1387c` bucket storage and object capacity bookkeeping, return value
-  `D7`, page-root retry bit `+0x14.0` set by `0x12714` after a zero producer
-  result, and stream allocation fields behind the bucket object.
+  `D7`, page-root flags word `+0x14` bit 0 set by `0x12714` after a zero
+  producer result (the disassembly writes byte `+0x15.0`), and stream
+  allocation fields behind the bucket object.
 - Unknown:
   no ROM-local producer-to-render middle edge remains for documented
   single-entry and split portrait spans. Remaining work starts only from
@@ -759,6 +765,7 @@ Evidence: producer listing
 `0x1f812..0x1f88c`; fixtures
 `0x12714 portrait text span flush queues segment-list span`,
 `0x1354a portrait text span split queues adjacent buckets`,
+`0x12714 allocation failure publishes page and retries span`,
 `live CR span flush materializes 0x12714 page object`,
 `left-margin parser span flush materializes 0x12714 page object`,
 `vertical-cursor parser span flush materializes 0x12714 page object`, and

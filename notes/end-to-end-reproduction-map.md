@@ -1412,7 +1412,7 @@ Parser classification:
   `0xf1cc`, LF `0xf08c`, FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, and SI
   `0xc68a`; the no-output rows deliberately have no handler.
 - A zero-handler row writes parser mode `0`, enters terminal path
-  `0x11912..0x119bc`, calls delayed restore boundary `0x12218`, and then
+  `0x119a6..0x119f4`, calls delayed restore boundary `0x12218`, and then
   resets parser scratch.
 - Because `0x12218` can restore and dispatch a pending delayed payload before
   scratch reset, these rows are not a simple byte skip when
@@ -5656,15 +5656,16 @@ Address-level cluster map:
   Parser scratch is matched-byte buffer `0x783196..0x783199`, nonnumeric
   cursor/buffer `0x782a26` / `0x782a2a..`, numeric cursor/buffer
   `0x782a3e` / `0x782a42..`, tokenizer lookahead, and alternate echo latch
-  `0x782a56`. Firmware bookkeeping is callback pointer `0x78299a`, terminal
-  reset path `0x11912..0x119bc`, delayed restore boundary `0x12218`, generic
-  drain helpers `0x1228a` / `0x12328`, alternate dispatcher `0x12358`, scratch
-  flush helpers `0x123ae` / `0x123de`, append sink `0xe002`, pushback/log
-  helper `0x9ec0`, and payload-control helper `0xd99a`. Hardware/external
-  state is outside this cluster after `0xa904` admits the bytes. Unknown
-  state remains only for future streams that reach a different rejecting
-  predicate, callback owner, delayed consumer, append path, or status/error
-  side channel.
+  `0x782a56`. Firmware bookkeeping is callback pointer `0x78299a`, service
+  path `0x117d2..0x11818`, terminal reset path `0x119a6..0x119f4`,
+  no-match paths `0x118b2..0x11900` and `0x11b32..0x11b8a`, delayed restore
+  boundary `0x12218`, generic drain helpers `0x1228a` / `0x12328`,
+  alternate dispatcher `0x12358`, scratch flush helpers `0x123ae` /
+  `0x123de`, append sink `0xe002`, pushback/log helper `0x9ec0`, and
+  payload-control helper `0xd99a`. Hardware/external state is outside this
+  cluster after `0xa904` admits the bytes. Unknown state remains only for
+  future streams that reach a different rejecting predicate, callback owner,
+  delayed consumer, append path, or status/error side channel.
 - Transparent/display-reader cluster: transparent data uses `0x11f5a -> 0x121cc ->
   0x12218 -> 0x12452`; display functions use normal reader `0x12536` or alternate/data
   reader `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and
@@ -6456,9 +6457,10 @@ Address-level cluster map:
   and then consumed by raster, transparent text, downloaded-font, generic
   payload, macro, and alternate/data handlers.
 - Ignored and no-output parser rows:
-  ROM evidence is parser loop `0x11774`, terminal reset path
-  `0x11912..0x119bc`, delayed restore helper `0x12218`, normal parser table
-  `0x112a4`, and alternate/data parser table `0x116f6`. Checked-in
+  ROM evidence is parser loop `0x11774`, service path `0x117d2..0x11818`,
+  no-match paths `0x118b2..0x11900` and `0x11b32..0x11b8a`, terminal reset
+  path `0x119a6..0x119f4`, delayed restore helper `0x12218`, normal parser
+  table `0x112a4`, and alternate/data parser table `0x116f6`. Checked-in
   documentation is [pcl-parser-core.md](pcl-parser-core.md),
   [pcl-command-map.md](pcl-command-map.md), and `Parser Record And Delayed
   Payload State` in [semantic-state-model.md](semantic-state-model.md),

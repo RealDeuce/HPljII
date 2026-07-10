@@ -343,7 +343,7 @@ parser values.
 
 The normal table's mode-zero blank C0 rows `0x00`, `0x07`, and `0x0b`
 are concrete examples of that matched zero-handler path. They have next mode
-zero, so they enter `0x11912..0x119bc`, call `0x12218`, reset
+zero, so they enter `0x119a6..0x119f4`, call `0x12218`, reset
 `0x78299e`, `0x782a26`, `0x782a3e`, and `0x782a56`, and clear the
 local matched-byte buffer. Because these bytes match explicit table entries,
 they bypass the unmatched mode-zero normal fallback at `0x118d6..0x11900`.

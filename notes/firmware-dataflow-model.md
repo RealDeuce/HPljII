@@ -183,13 +183,16 @@ dropping into the command-family detail notes. The longer ledger is
   `Page Length, Wrap, And Perforation Controls`.
 - Parser artifacts and no-output rows:
   normal zero-handler rows `0x00`, `0x07`, and `0x0b`, wrapper-consumed
-  `ESC ?`, local display terminator `ESC Z`, unimplemented `ESC &lT/t`, and
-  generic counted drains remain in parser or delayed-restore code:
-  `0x11774`, `0x11912..0x119bc`, `0x121cc`, `0x12218`, `0x1228a`,
-  `0x12328`, `0x12358`, normal table `0x112a4`, and alternate table
-  `0x116f6`. They create no page roots unless alternate/data append or later
-  replay feeds stored bytes back through `0xa904`. Owner worked path:
-  `Explicit No-Output Parser Rows`.
+  `ESC ?`, local display terminator `ESC Z`, unimplemented `ESC &lT/t`,
+  parser-external service/return, no-match fallback/append/callback paths,
+  and generic counted drains remain in parser or delayed-restore code:
+  `0x11774`, `0x117d2..0x11818`, `0x118b2..0x11900`,
+  `0x11930..0x11ab8`, `0x119a6..0x119f4`, `0x11b32..0x11b8a`,
+  `0x121cc`, `0x12218`, `0x1228a`, `0x12328`, `0x12358`, normal table
+  `0x112a4`, and alternate table `0x116f6`. They create no page roots unless
+  a branch explicitly reaches `0xd04a`, a callback owner, a delayed-payload
+  owner, or later replay feeds stored bytes back through `0xa904`. Owner
+  worked path: `Explicit No-Output Parser Rows`.
 - Transparent and display-function readers:
   `ESC &p#X` routes through
   `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`; normal `ESC Y ... ESC Z`
@@ -512,7 +515,10 @@ Evidence and unresolved edges:
 Some admitted host bytes are consumed by the parser and deliberately produce no
 page object. These are still part of reproduction because they can reset parser
 scratch, trigger delayed-payload restore, or preserve bytes in alternate/data
-storage for later replay.
+storage for later replay. The same boundary also includes parser-external
+service/return, no-match fallback, and callback-continuation outcomes where
+the parser loop consumes control flow without immediately entering a page
+producer.
 
 Normal zero-handler rows:
 
@@ -523,7 +529,7 @@ Normal zero-handler rows:
   `0xd04a` and do not call neighboring C0 handlers such as BS `0xf2a8`,
   HT `0xf1cc`, LF `0xf08c`, FF `0xf0f0`, CR `0xf02c`, SO `0xc6b8`, or
   SI `0xc68a`.
-- The matched terminal path reaches `0x11912..0x119bc`, calls delayed restore
+- The matched terminal path reaches `0x119a6..0x119f4`, calls delayed restore
   boundary `0x12218`, then resets parser scratch such as command-record cursor
   `0x78299e`, nonnumeric cursor `0x782a26`, numeric cursor `0x782a3e`, and
   alternate echo latch `0x782a56`.
@@ -560,6 +566,24 @@ Wrapper artifacts and unimplemented rows:
   route. It drains absolute payload counts through `0xdace` without echoing
   printable bytes or queueing page objects.
 
+Service, no-match, and callback outcomes:
+
+- Parser-external path `0x117d2..0x11818` clears no-byte latch `0x780e3b`,
+  repeatedly services wait object `0x780202` through `0x10c8`, and returns
+  from the parser loop instead of dispatching the current byte when
+  macro/page state byte `0x782a92 == 0x63`.
+- Normal mode-zero no-match path `0x118b2..0x11900` consults selected context
+  byte `0x782ee6 + 16 * 0x782f06 + 5`. Value `1` routes the byte to
+  printable handler `0xd04a`; any other value ignores the byte and fetches
+  again without page-object production.
+- Alternate/data mode-zero no-match path `0x11b82..0x11b8a` appends the
+  unmatched byte through `0xe002`. It is stored input for later replay, not an
+  immediate cursor, page, or render effect.
+- Nonzero-mode no-match path `0x11b32..0x11b7e` calls active callback pointer
+  `0x78299a`. A callback return to mode zero clears parser cursors and pending
+  delayed-payload byte `0x782a1a`; a nonzero return keeps the parser in the
+  command-family mode and fetches again.
+
 State classification:
 
 - Canonical parser state:
@@ -572,10 +596,13 @@ State classification:
   `0x782a26`, numeric scratch cursor `0x782a3e`, scratch buffers
   `0x782a2a..` / `0x782a42..`, and alternate echo latch `0x782a56`.
 - Firmware bookkeeping:
-  terminal reset path `0x11912..0x119bc`, alternate append path
-  `0x11930..0x11ab8`, delayed restore `0x12218`, scratch flush helpers
-  `0x123ae` / `0x123de`, append sink `0xe002`, and generic drain helpers
-  `0x1228a`, `0x12328`, and `0x12358`.
+  parser-external service path `0x117d2..0x11818`, terminal zero-handler path
+  `0x119a6..0x119f4`, alternate append path `0x11930..0x11ab8`, no-match
+  paths `0x118b2..0x11900` and `0x11b32..0x11b8a`, delayed restore
+  `0x12218`, scratch flush helpers `0x123ae` / `0x123de`, append sink
+  `0xe002`, active callback pointer `0x78299a`, no-byte latch `0x780e3b`,
+  macro/page state byte `0x782a92`, and generic drain helpers `0x1228a`,
+  `0x12328`, and `0x12358`.
 - Canonical page/render state:
   none for the normal no-output rows, wrapper artifacts, and generic drain
   route. Any later page state must come from a restored delayed handler,
@@ -585,21 +612,28 @@ State classification:
 - Unknown:
   no ROM-local middle edge remains for the documented normal no-output C0
   rows, alternate/data append-preserving C0 rows, `ESC ?`, display-reader
-  `ESC Z`, `ESC &lT/t`, or generic counted drains.
+  `ESC Z`, `ESC &lT/t`, parser-external service/return, no-match fallback,
+  callback continuation, or generic counted drains.
 
 Writers, readers, and output effects:
 
 - Writers:
   zero-handler rows write parser mode and reset parser scratch;
   `0x11930..0x11ab8` writes alternate/data append bytes through `0xe002`;
+  `0x117d2..0x11818` writes no-byte/service state;
+  `0x11b32..0x11b7e` can clear parser cursors and delayed byte `0x782a1a`;
   `0x12218` may restore and dispatch a pending delayed handler.
 - Readers/consumers:
   the parser table consumes admitted bytes; `0x12218` consumes saved delayed
-  records; macro/data replay later consumes bytes appended by `0xe002`.
+  records; `0x118b2..0x11900` reads selected context byte
+  `0x782ee6 + 16 * 0x782f06 + 5`; callback no-match consumes pointer
+  `0x78299a`; macro/data replay later consumes bytes appended by `0xe002`.
 - Output effect:
   normal no-output rows and generic drains create no page root, page object,
-  publication, render work, or pixels. Alternate/data rows can only affect
-  pixels through later replay as ordinary parser input.
+  publication, render work, or pixels. No-match fallback creates page state
+  only if it reaches `0xd04a`; callback no-match creates page state only if
+  the callback owner does so. Alternate/data rows can only affect pixels
+  through later replay as ordinary parser input.
 
 Evidence and unresolved edges:
 
@@ -614,9 +648,9 @@ Evidence and unresolved edges:
   `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`, and
   `generated/analysis/ic30_ic13_parser_dispatch_tables.md`.
 - Remaining ignored/error work starts only from streams that exercise a
-  different rejecting predicate, status/error-reporting side channel, delayed
-  consumer, or append/replay path. The rows above are not unknown hidden
-  drawing commands.
+  different rejecting predicate, callback owner, status/error-reporting side
+  channel, delayed consumer, or append/replay path. The rows above are not
+  unknown hidden drawing commands.
 
 ## State-Only Command Dependency Map
 
@@ -4761,7 +4795,7 @@ State effect:
 
 - The zero-handler row writes parser mode `0`.
 - Because the new mode is zero, the loop enters the terminal reset/finalize
-  path at `0x11912..0x119bc`.
+  path at `0x119a6..0x119f4`.
 - That path calls `0x12218`, so any pending delayed payload is restored and
   dispatched before parser scratch is reset.
 - It then resets command-record cursor `0x78299e`, nonnumeric scratch cursor
@@ -4791,6 +4825,19 @@ Alternate/data-mode counterpart:
 - Therefore alternate/data `0x08`, `0x09`, `0x0a`, `0x0c`, `0x0d`,
   `0x0e`, and `0x0f` are preserved as stored bytes instead of running the
   normal-mode BS, HT, LF, FF, CR, SO, or SI handlers.
+
+Service and no-match counterparts:
+
+- Parser-external service path `0x117d2..0x11818` clears no-byte latch
+  `0x780e3b`, services wait object `0x780202`, and can return from the parser
+  loop when macro/page state byte `0x782a92 == 0x63`; no page object is
+  produced unless later input resumes through a page-output handler.
+- Normal mode-zero no-match path `0x118b2..0x11900` reads selected context
+  byte `0x782ee6 + 16 * 0x782f06 + 5`. Value `1` routes to printable
+  `0xd04a`; other values ignore the byte and fetch again.
+- Alternate/data mode-zero no-match path `0x11b82..0x11b8a` appends through
+  `0xe002`; nonzero-mode no-match path `0x11b32..0x11b7e` calls active
+  callback pointer `0x78299a`.
 
 Other parser artifacts and unimplemented rows:
 
@@ -4827,6 +4874,10 @@ Reproduction rule:
   when the active font-context predicate at `0x782f06` / `0x782eeb` allows
   `0xd04a`. If the predicate rejects, the byte is ignored without page-object
   production.
+- Parser-external service, alternate/data no-match append, and nonzero-mode
+  callback no-match are parser-control outcomes. Treat them as no-page-output
+  unless the branch explicitly reaches `0xd04a`, a callback owner, or later
+  replay of bytes appended through `0xe002`.
 - Treat `ESC ?`, display-reader `ESC Z`, and `ESC &lT/t` as parser artifacts
   or unimplemented rows unless a later byte stream reaches a documented
   command-family handler. They are not hidden drawing commands.

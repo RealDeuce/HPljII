@@ -1323,7 +1323,7 @@ The helper cluster has no pixels by itself. Its output effect is preserving the
 command/payload boundary that later pixel-producing handlers consume.
 Normal mode-zero C0 rows `0x00`, `0x07`, and `0x0b` have the same parser-only
 effect: they are matched table entries with zero handlers and next mode zero,
-so the parser finalizes and resets state through `0x11912..0x119bc` instead
+so the parser finalizes and resets state through `0x119a6..0x119f4` instead
 of reaching the unmatched-byte fallback at `0x118d6..0x11900`.
 Their reproduction contract is to preserve parser finalization and any pending
 delayed-payload restore, not to emit text, fixed-space, or page objects.

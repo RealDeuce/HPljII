@@ -4344,34 +4344,41 @@ selected candidate that feed this primary path.
 same contract: the secondary selection writes context `0xc00ae122`, SO selects
 slot 1 through `0xc6b8`, and the two printable bytes render from that
 class-one Line Printer context.
-`ESC (1234U ESC (s0p10h12v0s0b3T!!` proves the primary fallback form:
-the symbol-set request writes word `0x9a55`, no class-zero candidate matches,
-`0x156de` takes fallback table word `0x0115`, and the later primary selection
-plus printable output still render through context `0xc008004c`.
-`ESC )1234U ESC )s0p16h8v0s0b0T SO !!` proves the fallback form of that
-secondary contract: the symbol-set request writes word `0x9a55`, no class-one
-candidate matches, `0x156de` takes fallback table word `0x000e`, and the later
-secondary selection plus SO output still render through context `0xc00ae122`.
-Fixture `remembered secondary symbol feeds visible SO page-record rows` proves
-the remembered middle source for that secondary contract. With requested word
-`0x9a55` and remembered secondary word `0x000e`, `0x156de` rejects requested
-candidates, first probes remembered slot `0x782324` / record `0x019d18`
-without a match, then accepts remembered slot `0x782330` / record `0x01a984`.
-The later selection still writes secondary context `0xc00ae122`, rebuilds map
-`0x783032`, crosses SO handler `0xc6b8`, queues object prefix
-`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and renders row digest
-`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
-Fixture `live parser symbol-set streams select non-Roman built-ins` proves the
-primary non-Roman form before visible text: `ESC (0N`, `ESC (10U`, and
-`ESC (11U` pass through the ROM parser and selected-font refresh, select
-distinct class-zero built-in records, and rebuild primary map `0x782f32`
-through the non-Roman selected-symbol path rather than Roman-8 patching.
-Fixture `non-Roman symbol streams select visible built-ins` carries those
-symbols through visible output for both slots. The primary cases append
-`ESC (s0p10h12v0s0b3T!!` and render from selected contexts `0xc0080cb8`,
-`0xc4080418`, and `0xc4080868`; the secondary cases append
-`ESC )s0p16h8v0s0b0T SO !!`, cross SO handler `0xc6b8`, and render from
-selected contexts `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`.
+Symbol fallback is part of the same refresh contract. In
+`ESC (1234U ESC (s0p10h12v0s0b3T!!`, the symbol-set request writes word
+`0x9a55`; `0x156de` finds no class-zero match and takes fallback table word
+`0x0115`, after which the primary selection and printable output still consume
+context `0xc008004c`. In `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, the
+secondary request writes the same requested word, misses class-one candidates,
+takes fallback table word `0x000e`, and later SO-selected printable output
+consumes context `0xc00ae122`.
+
+The remembered-symbol middle source is also ROM-owned state, not a separate
+visible-output rule. With requested word `0x9a55` and remembered secondary word
+`0x000e`, `0x156de` rejects requested candidates, probes remembered slot
+`0x782324` / record `0x019d18` without a match, then accepts remembered slot
+`0x782330` / record `0x01a984`. The later refresh writes secondary context
+`0xc00ae122`, rebuilds map `0x783032`, SO handler `0xc6b8` selects slot 1, and
+printable `!!` queues object prefix
+`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`.
+
+Non-Roman symbol streams select distinct built-in records before any text
+object is queued. `ESC (0N`, `ESC (10U`, and `ESC (11U` pass through parser
+setup and selected-font refresh, select class-zero built-ins, and rebuild
+primary map `0x782f32` through the non-Roman selected-symbol path rather than
+Roman-8 patching. When printable text follows, the primary streams consume
+selected contexts `0xc0080cb8`, `0xc4080418`, and `0xc4080868`; secondary
+streams cross SO handler `0xc6b8` and consume contexts `0xc00ae122`,
+`0xc40ad87a`, and `0xc40adcce`.
+
+Supporting fixture anchors:
+
+- `primary symbol miss falls back before visible page-record rows`
+- `secondary symbol miss falls back before visible SO page-record rows`
+- `remembered secondary symbol feeds visible SO page-record rows`
+- `live parser symbol-set streams select non-Roman built-ins`
+- `non-Roman symbol streams select visible built-ins`
+
 The parser-exposed final-`@` variants are now a documented symbol-state
 contract, not an unresolved parser curiosity. Fixture
 `symbol-set parser trace covers X and @ special cases` proves that final `X`

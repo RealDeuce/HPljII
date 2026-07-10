@@ -232,6 +232,13 @@ resource records into the row text that later becomes compact page objects.
   `0x783f02 + source` when class pass `1` needs to resume after the prior
   pass. Its return is a row-availability flag for callers such as the sample
   page setup and continuation paths, not printable output by itself.
+- The apparent call targets `0x1df11`, `0x1df48`, `0x1df80`, `0x1dfba`,
+  `0x1dfc1`, `0x1dfd0`, `0x1e202`, `0x1e20c`, and `0x1e210` are not ROM
+  control-flow edges in this path. They are `unidasm` interpretations of
+  embedded data after the helper bodies: text/table bytes around
+  `0x1de78..0x1dfff` and `0x1e18e..0x1e1a0`, including status/menu strings
+  and symbol-set lookup entries. Treat them as data boundaries, not
+  undocumented handlers.
 
 State classification for this helper cluster:
 
@@ -240,6 +247,9 @@ State classification for this helper cluster:
   resource-chain signatures `FONT`, `font`, `TABL`, `tabl`, and `DUMY`.
 - Canonical firmware state: name-status table `0x782640`, active class byte
   `0x782da3`, and per-source resume/status bytes `0x783f02..0x783f05`.
+- Canonical ROM table state: row-helper local strings and tables under
+  `0x1de78..0x1dfff`, plus setup text/table bytes under
+  `0x1e18e..0x1e1a0`.
 - Derived/cache state: the masked 24-bit record address, trimmed fixed-length
   strings, fallback family/style names from tables `0x1c0a6` and `0x1c11a`,
   and the 25-column cap enforced before the next row field.

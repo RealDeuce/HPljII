@@ -258,9 +258,12 @@ Evidence:
 - Page and render consumers: `0xd04a`, `0xd0f0`, `0xd550`, `0xd140`,
   `0xd3b2`, `0x12f2e`, `0x1387c`, `0xff1e`, `0x1ed84`, `0x1edc6`,
   and `0x1ef6a`, with fixture names listed in this note's evidence block.
-- Unresolved boundary: secondary segment-57 source bytes
-  `0x0c0000..0x0c0321` are missing external resource-window data. This is not
-  an unresolved parser, page-object, bridge, or compact-render dispatch edge.
+- Unresolved boundary: secondary segment-57 source bytes `0x0c0000..0x0c0321` are
+  missing external resource-window data. This is not an unresolved parser, page-object,
+  bridge, or compact-render dispatch edge. The global stop-point owner is
+  [unresolved-boundaries.md](unresolved-boundaries.md#secondary-segment-57-resource-source),
+  and the resource-byte owner is
+  [resource-rom.md](resource-rom.md#continuation-decision-rule).
 
 ## Transparent Payload Decision Checkpoint
 
@@ -977,7 +980,10 @@ For `ESC &p#X`:
   source `0x0bfe22`, and read window `0x0bfe22..0x0c0321`. Rows backed by
   verified bytes `0x0bfe22..0x0bffff` are ROM-derived; fallback rows that need
   bytes at `0x0c0000..0x0c0321` must stop at the physical/resource-window
-  decode boundary unless a board/emulator memory map supplies those bytes.
+  decode boundary unless a board/emulator memory map supplies those bytes. The
+  canonical unresolved-boundary entry is
+  [Secondary Segment-57 Resource
+  Source](unresolved-boundaries.md#secondary-segment-57-resource-source).
 
 ## Remaining Edges
 

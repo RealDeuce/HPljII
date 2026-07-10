@@ -89,9 +89,11 @@ standalone deliverables.
   destination model, and overwrite composition rule are in
   [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint).
 - The broad host-byte-to-pixel walkthrough and residual-boundary index is
-  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). The unified
-  semantic field index is [semantic-state-model.md](semantic-state-model.md),
-  and the detailed dataflow spine is
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). Its
+  [Objective Coverage Index](end-to-end-reproduction-map.md#objective-coverage-index)
+  maps the active documentation requirements to the checked-in owner notes and
+  concrete ROM address boundaries. The unified semantic field index is
+  [semantic-state-model.md](semantic-state-model.md), and the detailed dataflow spine is
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Its
   `Inbound Byte Route Matrix`, `Minimal End-To-End Example`, parser
   command-dispatch anchors, `Binary Payload Lifecycle`, `State-Only Command

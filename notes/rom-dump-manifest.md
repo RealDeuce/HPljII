@@ -6,6 +6,69 @@ The verified ROM images are local-only artifacts and are intentionally
 ignored by Git. Track filenames, hashes, package locations, read method,
 and analysis notes here; keep raw bytes in the working directory.
 
+## Owner Summary
+
+This note owns ROM provenance for the disassembly. It identifies which
+local-only mask-ROM reads are verified, which board locations form the
+executable 68000 pair and resource/font pair, and which generated interleaves
+are valid evidence for checked-in disassembly and resource notes.
+
+Primary route:
+
+- Raw TC531000P reads are verified by repeated matching dumps and by package
+  tail markers printed inside each image.
+- `IC30,IC13` interleaves into the executable firmware image. It owns the ROM
+  bytes used by 68000 disassembly, parser tables, command handlers, page
+  assembly, render scheduling, and bitmap/render helpers.
+- `IC32,IC15` interleaves into the built-in resource/font image. It owns the
+  verified resource bytes consumed by font and glyph lookup until the
+  documented resource-window boundary at firmware address `0x0c0000`.
+- Rejected reverse orders are negative evidence only. They are not valid
+  firmware or resource sources for semantic claims.
+
+State classification:
+
+- Canonical ROM provenance: board locations `IC13`, `IC15`, `IC30`, `IC32`,
+  chip markings, verified raw SHA-256 hashes, read method, and repeated-read
+  evidence.
+- Canonical firmware/resource evidence: generated interleave hashes
+  `ic30_ic13.bin` and `ic32_ic15.bin`, firmware reset vector
+  `SP=0x00800000` / `PC=0x00000110`, and the readable resource `HEAD`
+  header/copyright string.
+- Derived/cache evidence: files under `generated/`, disassembly listings, and
+  analysis reports produced from these interleaves. They are reproducible
+  artifacts, not separate ROM sources.
+- Firmware bookkeeping: `data/rom_manifest.json`, which mirrors this
+  checked-in manifest in machine-readable form for local tools.
+- Hardware/external state: board decode after the verified resource pair,
+  including the secondary segment-57 continuation at
+  `0x0c0000..0x0c0321`.
+- Unknown: physical gate-array decode and any external resource bytes outside
+  the verified local images.
+
+Output effect:
+
+- This manifest does not describe parser behavior or draw pixels directly.
+  Its output effect is evidentiary: it defines the byte images from which
+  handler addresses, ROM fields, command tables, resource bytes, and
+  unresolved resource boundaries are derived.
+- A byte-stream reproduction claim should cite disassembly or owner notes built
+  from `IC30,IC13` for executable behavior, and resource notes built from
+  `IC32,IC15` for built-in glyph/resource bytes. Claims past `0x0bffff` must
+  stop at the documented external-resource boundary unless new board or
+  resource evidence supplies those bytes.
+
+Evidence and unresolved boundaries:
+
+- Evidence for the valid firmware pair is the vector table and MAME 68000
+  startup disassembly at reset PC `0x00000110`.
+- Evidence for the valid resource pair is the readable `HEAD` header and
+  copyright string, plus the resource scan and transparent segment-57 notes
+  that consume the image through `0x0bffff`.
+- The exact remaining provenance boundary is the built-in resource decode after the
+  verified `IC32,IC15` suffix, especially `0x0c0000..0x0c0321`. It is tracked in
+  [unresolved-boundaries.md](unresolved-boundaries.md#secondary-segment-57-resource-source).
+
 ## Read Setup
 
 - Device family: Toshiba `TC531000P`, 128K x 8 mask ROM, DIP28.

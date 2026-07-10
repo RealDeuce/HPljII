@@ -1144,8 +1144,12 @@ Outcome owners:
   mode `8` and reaches `0xedb0` (`C/c`). Pitch-mode `0xc390` accepts
   selectors `0`, `2`, and `4`, rewrites synthetic pitch records as
   `10.0000`, `16.6600`, or `12.0000`, and rejoins
-  `0xc89c -> 0xc580`; later printable bytes see the effect through refreshed
-  selected-font context, HMI, glyph maps, and compact text objects. `0xedf8`
+  `0xc89c -> 0xc580`. Selector `0` is a two-step synthetic-record route:
+  after the `10.0000` update, it advances `0x78299e` again, writes word `1`
+  into the next synthetic record, and calls the same pitch/update pair a
+  second time. Later printable bytes see the effect through refreshed
+  selected-font context, HMI, glyph maps, and compact text objects. Owner:
+  [Pitch Mode Command](font-context-metrics.md#pitch-mode-command). `0xedf8`
   writes
   line-termination byte `0x78318f`: CR `0xf02c` tests bit `7` before applying
   LF movement, LF `0xf08c` tests bit `6` before applying CR-style x reset,
@@ -2326,7 +2330,9 @@ documented in the owner notes.
 - `ESC &k#G`, handler `0x00edf8`: CR/LF/FF line-termination mode.
 - `ESC &k#S`, handler `0x00c390`: pitch mode; ROM-confirmed selectors
   `0`, `2`, and `4` synthesize pitch-update records and feed the existing
-  `0xc89c` / `0xc580` font-selection refresh path.
+  `0xc89c` / `0xc580` font-selection refresh path. Selector `0` runs that
+  path twice through the second synthetic record described in
+  [Pitch Mode Command](font-context-metrics.md#pitch-mode-command).
 - `ESC &f#S`, handler `0x00f75e`: cursor stack at `0x782c96..0x782d36`;
   selector `0` pushes, selector `1` pops.
 - `ESC &f#Y`, handler `0x00e112`: macro ID; stores absolute parsed word

@@ -149,9 +149,9 @@ The parser initializes these fields at `0x11774` before entering the byte loop:
 | `0x782999` | canonical | Current parser mode. Cleared at parser start. |
 | `0x78299a` | firmware bookkeeping | State handler pointer; starts as `0x11b8e`. |
 | `0x78299e` | canonical | Cursor for six-byte parsed command records. |
-| `0x782a1a` | firmware bookkeeping | Delayed-payload pending flag. |
-| `0x782a1c` | firmware bookkeeping | Delayed-payload handler pointer. |
-| `0x782a20..0x782a25` | firmware bookkeeping | Saved six-byte command record. |
+| `0x782a1a` | canonical | Delayed-payload pending flag. |
+| `0x782a1c` | canonical | Delayed-payload handler pointer. |
+| `0x782a20..0x782a25` | canonical | Saved six-byte command record. |
 | `0x782a26` | parser scratch | Cursor into byte scratch at `0x782a2a`. |
 | `0x782a2a..` | parser scratch | Accumulated nonnumeric command bytes. |
 | `0x782a3e` | parser scratch | Cursor into numeric text scratch at `0x782a42`. |
@@ -488,11 +488,12 @@ state and page-object details after a nonzero handler is called.
 Field grouping for this parser contract:
 
 - Canonical parser state: mode byte `0x782999`, normal/alternate table slices
-  at `0x112a4..0x116fa`, parser record fields `0x78299e..0x7829a3`, and
-  selected context index `0x782f06`.
+  at `0x112a4..0x116fa`, parser record fields `0x78299e..0x7829a3`,
+  delayed-payload fields `0x782a1a` / `0x782a1c` /
+  `0x782a20..0x782a25`, and selected context index `0x782f06`.
 - Parser scratch: byte and numeric scratch cursors `0x782a26` / `0x782a3e`,
-  local matched-byte buffer `0x783196..0x783199`, and delayed-payload pending
-  fields `0x782a1a` / `0x782a1c`.
+  local matched-byte buffer `0x783196..0x783199`, and transient lookahead or
+  tokenizer bytes.
 - Firmware bookkeeping: active callback pointer `0x78299a`,
   alternate/data selector `0x782c18`, service latch `0x780e3b`,
   macro/page state byte `0x782a92`, error/report helper `0x9ec0`, append

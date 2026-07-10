@@ -1961,7 +1961,13 @@ instead of rechecking the same state through another byte-stream variant.
 
 ## Reproduction Contract
 
-A byte-stream renderer must preserve:
+A byte-stream renderer must treat direct controls as parser-visible state and
+placement mutations unless the path explicitly queues a page object or
+publishes the current page. The visible contract is the later consumer of that
+state: printable source capture, span flush, raster origin, rectangle clipping,
+VFC/page-eject logic, publication, bridge, and render entry.
+
+It must preserve:
 
 - normal-mode direct-control dispatch for CR, LF, FF, HT, BS, SO, and SI;
 - the `ESC &k#G` mode byte and its per-control-bit consumption;
@@ -1972,6 +1978,9 @@ A byte-stream renderer must preserve:
   horizontal overflow decisions;
 - VMI/LPI, page-length, top-margin, text-length, and perforation-skip state as
   delayed inputs to following printable placement and vertical overflow;
+- cursor, margin, HMI/VMI, wrap, selected-context, and span fields until the
+  exact downstream consumer reads them, rather than treating the writer as a
+  pixel output point;
 - the `ESC &lT/t` no-output page-layout slot: uppercase ignores the command and
   lowercase only performs `0x11f4c` parser chaining;
 - CR reset through left margin before optional LF movement;

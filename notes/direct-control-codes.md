@@ -21,6 +21,7 @@ renderer-facing documentation checkpoint.
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
 - `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`
 - `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`
+- `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
 - `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`
 - `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`
 - `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`
@@ -111,9 +112,10 @@ Primary route:
 
 - Host/parser/dispatch owners deliver printable bytes to `0xd04a` or terminal
   handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xedf8`,
-  `0xca8c`, `0xedb0`, `0xeb58`, `0xec0c`, `0xe9ba`, `0xf176`, `0xf39e`,
-  `0xf416`, `0xf560`, `0xf60a`, `0xf48c`, `0xf692`, `0xf75e`, `0x12622`,
-  `0xcb00`, `0xc992`, `0xece2`, `0xea9e`, `0xee64`, or `0xf9e8`.
+  `0xc68a`, `0xc6b8`, `0xca8c`, `0xedb0`, `0xeb58`, `0xec0c`, `0xe9ba`,
+  `0xf176`, `0xf39e`, `0xf416`, `0xf560`, `0xf60a`, `0xf48c`, `0xf692`,
+  `0xf75e`, `0x12622`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`,
+  `0xee64`, or `0xf9e8`.
 - Printable route:
   `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0xd3b2/0xd824 -> 0x12f2e
   -> 0x1387c -> page-record storage -> publication/render`.
@@ -235,6 +237,14 @@ Decision rules:
   word `0x782db8` to right margin `0x782dda`, and `0xe9ce` clears fractional
   companion `0x782ddc`. The visible effect appears when CR, HT, margin checks,
   or a later printable consumes the reset margin state.
+- SI `0xc68a` and SO `0xc6b8` are selected-context controls. Both set
+  dirty-map byte `0x782f2d` before testing selected slot `0x782f06`. SI skips
+  page-root context install when the selected slot is already primary; otherwise
+  it calls `0xc428(0)` and clears `0x782f06` only after a nonzero return. SO
+  skips the install when the selected slot is already secondary; otherwise it
+  calls `0xc428(1)` and writes `0x782f06 = 1` only after a nonzero return.
+  They create no page object directly, but the next printable byte consumes the
+  selected slot, map, and page-root context slot through `0xd04a -> 0x1393a`.
 - `ESC =` handler `0xf176` is a vertical-placement command. It ensures page
   root `0x78297a` through `0x10084`, flushes pending span state through
   `0xf34a`, converts VMI `0x783160` through `0x104fe`, halves it, normalizes
@@ -287,6 +297,7 @@ Evidence:
 - Disassembly:
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
   `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`,
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
   `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,

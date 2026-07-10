@@ -75,6 +75,179 @@ Use the classification column before continuing work:
 - Manual/physical correlation: the ROM behavior is documented, but user-facing
   names or service-manual labels are not assigned.
 
+## Unresolved Boundary Outcome Matrix
+
+This matrix is the audit entry point for the exact places where the checked-in
+ROM model intentionally stops. Each entry keeps the upstream route documented
+and limits the unknown to a named address, range, physical identity, optional
+data source, or manual label.
+
+ROM-local invalid render target/source:
+
+- Boundary class:
+  ROM-local invalid target/source.
+- Exact stops:
+  `0x1fe76..0x1fe88` compact downloaded-glyph high-row jump-table over-index;
+  `0x1f034 -> 0x1f08e` wrapped mode-0 width target selection; and
+  `0x1f264` segmented-wide fallback source offset `+0xb50`.
+- Covered upstream state:
+  downloaded-font parser payload restore, glyph install, compact object
+  queueing, publication, render-record bridge, and dispatch to the named
+  compact helper are documented before these stops.
+- Output effect:
+  a reproducer should report the invalid computed target/source instead of
+  inventing final pixels after the ROM selects an unchecked helper address or
+  source range.
+- Evidence:
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix), and
+  `Render Helper Boundary Index` in
+  [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+- Needed to close:
+  ROM-local guard evidence, a valid target/source rule, or a documented
+  invalid-target behavior for the computed address family.
+
+Missing built-in resource continuation:
+
+- Boundary class:
+  missing external resource data.
+- Exact stop:
+  verified resource suffix `0x0bfe22..0x0bffff`, then required firmware range
+  `0x0c0000..0x0c0321`.
+- Covered upstream state:
+  transparent `ESC &p#X` parser dispatch, payload handling, selected context,
+  page-record allocation, publication, render bridge, compact dispatch, and
+  verified suffix rows.
+- Output effect:
+  rows needing bytes after `0x0bffff` remain unresolved until the physical
+  byte source is known.
+- Evidence: [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
+  [transparent-print-data.md](transparent-print-data.md#transparent-payload-outcome-matrix),
+  [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+  and `tools/probe_resource_window.py`.
+- Needed to close:
+  static board, emulator, gate-array, or recovered resource evidence for
+  `0x0c0000..0x0c0321`.
+
+Exact parser payload-count stop:
+
+- Boundary class:
+  exact ROM stop, not a render-helper unknown.
+- Exact stop:
+  tokenizer cap `0xdb74 -> 0x7fff`, delayed restore
+  `0x121cc -> 0x12218`, payload budget `0x783140`, and
+  span-17 row count `0x0788` requiring more bytes than the restored budget.
+- Covered upstream state:
+  parser record creation, delayed restore, descriptor/resource payload routing,
+  and below-cap downloaded-glyph neighbor paths.
+- Output effect:
+  no glyph object, page-root bucket, publication record, or render work exists
+  for the oversized stream; reproduction stops at parser payload state.
+- Evidence:
+  [downloaded-fonts.md](downloaded-fonts.md#segmented-wide-payload-count-cap-checkpoint)
+  and [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix).
+- Needed to close:
+  none for pixel reproduction. This is a documented terminal ROM behavior.
+
+Host and formatter/MMIO boundaries:
+
+- Boundary class:
+  hardware/MMIO boundary.
+- Exact stops:
+  direct input mode 1 `0xa9e2..0xaa86`, direct input mode 2 `0xaaa6..0xab8a`,
+  ring/status bridge `0xa6cc..0xa810`, timer/status and scan/status paths
+  `0x0d52..0x0f7a` / `0x0f84..0x10f2`, wait-object/trap paths
+  `0x10bc..0x1282`, active-pool wrapper `0x1cf8..0x1ea8`, and active render
+  device handoff around `0x1eba4`.
+- Covered upstream state:
+  byte-source priority, parser-visible return values, wait-object effects,
+  scheduler state, active source selection, render work records, and band
+  words are documented.
+- Output effect:
+  physical timing or device identity matters only if it changes admitted byte
+  order, status branch, wait-object wake order, selected page/control record,
+  render band word, or render input.
+- Evidence:
+  [host-byte-fetch.md](host-byte-fetch.md#host-byte-source-outcome-matrix),
+  [dc-controller-engine.md](dc-controller-engine.md#dc-boundary-outcome-matrix),
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+  and [io-interfaces.md](io-interfaces.md#interface-outcome-matrix).
+- Needed to close:
+  board/register-to-connector evidence and physical timing evidence for the
+  named MMIO registers and formatter/DC signals.
+
+Optional external resource windows:
+
+- Boundary class:
+  optional external data.
+- Exact stop:
+  optional resource windows `0x200000..0x3ffffe` and
+  `0x400000..0x5ffffe`.
+- Covered upstream state:
+  page/font scheduler handoff, optional-window scan control flow, candidate
+  table updates, and font-resource caller return behavior are documented.
+- Output effect:
+  optional data can change font/resource candidates and later glyph rows, but
+  absent cartridge contents cannot be inferred from the base ROM.
+- Evidence:
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix),
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix), and
+  `Page/Font Scheduler Handoff` in
+  [semantic-state-model.md](semantic-state-model.md).
+- Needed to close:
+  physical cartridge/resource images or emulator memory-map data for those
+  windows.
+
+Manual and service-name correlation:
+
+- Boundary class:
+  manual/physical correlation.
+- Exact stops:
+  host quiesce/no-byte callers `0x4218..0x44d2` and `0x61e4..0x6362`,
+  retained default/service paths through `$8000.w`, `$a400`, `$8c01`,
+  folded status aggregation `0x36e4..0x37f2`, output status helper `0xaece`,
+  and page-environment producer `0x2888`.
+- Covered upstream state:
+  ROM-visible status fields, no-byte gates, retained/default records, service
+  bits, host-output status byte composition, and no-page-output boundaries are
+  documented.
+- Output effect:
+  firmware behavior is reproducible from fields; the unresolved part is the
+  HP/manual name, physical storage identity, or service wording.
+- Evidence:
+  [host-byte-fetch.md](host-byte-fetch.md#host-byte-source-outcome-matrix),
+  control-panel default outcome matrix in
+  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md),
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix),
+  and [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix).
+- Needed to close:
+  service-manual correlation, board-level retained-storage evidence, or
+  physical failure-condition evidence.
+
+State grouping for this matrix:
+
+- Canonical:
+  documented upstream handler records, resource/glyph records, page roots,
+  publication records, render roots, status fields, and scheduler state.
+- Derived/cache:
+  computed helper indexes, source offsets, row/span products, resource ranges,
+  wait-object predicates, status folds, and continuation hashes.
+- Parser scratch:
+  restored six-byte records, delayed payload state, payload budgets, alternate
+  drains, and query/no-byte parser state that reach a boundary.
+- Firmware bookkeeping:
+  allocation/release state, publication flags, retry state, wait objects,
+  FIFO/status bytes, retained dirty flags, and render progress words.
+- Hardware/external:
+  physical resource decode, optional cartridge contents, MMIO identity,
+  connector timing, retained-storage identity, panel/sensor provenance, and
+  service-manual labels.
+- Unknown:
+  only the specific invalid target/source, missing range, physical identity,
+  optional contents, timing source, or manual name listed above. Earlier parser
+  dispatch, page-object production, bridge roots, and render dispatch remain
+  documented by their owner notes.
+
 ## Pixel-Affecting Boundaries
 
 For ROM-local invalid render targets, the reproduction rule is to stop the pixel

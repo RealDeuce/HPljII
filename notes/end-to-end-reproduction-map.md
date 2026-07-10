@@ -489,9 +489,9 @@ controlling artifact.
   cross-references, or named model-consistency fixtures cited from a checked-in
   owner note. Fixture output is never the primary semantic claim.
 - Explicit unresolved boundaries:
-  maintained first in
-  [unresolved-boundaries.md](unresolved-boundaries.md#owner-summary),
-  with route-specific context in `Current Residual Edge Index`,
+  maintained first in the `Unresolved Boundary Outcome Matrix` in
+  [unresolved-boundaries.md](unresolved-boundaries.md), with route-specific
+  context in `Current Residual Edge Index`,
   `Pixel-Perfect Coverage And Residual Risks`, `Next Documentation Targets`, and
   `Unresolved Boundaries` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Current bounded

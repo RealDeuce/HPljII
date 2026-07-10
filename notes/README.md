@@ -204,10 +204,13 @@ checked-in ROM model:
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarizes render
    call order, active-band and fallback buffers, object-class handoff, and
    direct-store composition.
-8. If the route stops, record the exact boundary as ROM-local unknown,
-   hardware/MMIO, missing external resource data, or optional physical
-   correlation. Do not replace a missing ROM edge with fixture output or a
-   hardware assumption. For the transparent secondary segment-57 path, use
+8. If the route stops, record the exact boundary in the
+   `Unresolved Boundary Outcome Matrix` in
+   [unresolved-boundaries.md](unresolved-boundaries.md). Classify it as
+   ROM-local unknown, hardware/MMIO, missing external resource data, optional
+   external data, or manual/physical correlation. Do not replace a missing ROM
+   edge with fixture output or a hardware assumption. For the transparent
+   secondary segment-57 path, use
    `Boundary: Secondary Segment-57 Source` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
    continuation rule in [resource-rom.md](resource-rom.md#owner-summary).

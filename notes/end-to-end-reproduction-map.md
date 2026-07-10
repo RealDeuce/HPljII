@@ -666,10 +666,10 @@ command-family and page-image structure:
    `0x1f88e`. Row vectors are derived from those ROM helpers, object fields, and
    ROM/resource bitmap bytes, not from an external print comparison.
 8. State any unresolved boundary exactly:
-   if the trace stops, classify the stop as ROM-local unknown,
-   hardware/MMIO boundary, missing external resource data, or optional
-   physical correlation. Name the exact address range and the state or byte
-   whose value is not proven.
+   if the trace stops, classify the stop as ROM-local invalid target/source,
+   ROM-local unresolved caller, hardware/MMIO boundary, missing external
+   resource data, optional external data, or manual/physical correlation. Name
+   the exact address range and the state or byte whose value is not proven.
 
 ## State Classification Guide
 
@@ -715,10 +715,11 @@ end-to-end stream:
 - Unknown or unresolved state:
   use only when a concrete address range or field has observed reads/writes
   but its source, consumer, physical identity, or legal values are not proven.
-  The boundary entry must say whether it is ROM-local unknown,
-  hardware/MMIO, missing external resource data, or optional physical
-  correlation. Current examples are the physical decode for
-  `0x0c0000..0x0c0321`, exact MMIO-to-formatter signal mapping, and bounded
+  The boundary entry must say whether it is ROM-local invalid target/source,
+  ROM-local unresolved caller, hardware/MMIO, missing external resource data,
+  optional external data, or manual/physical correlation. Current examples are
+  the physical decode for `0x0c0000..0x0c0321`, exact MMIO-to-formatter signal
+  mapping, optional active-pool helper entry `0x247c..0x270c`, and bounded
   downloaded-glyph helper table/source-read edges.
 
 Do not use fixtures as a separate state class. A fixture can exercise a

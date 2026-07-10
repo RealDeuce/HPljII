@@ -60,7 +60,8 @@ Field groups:
 - Unknown:
   no parser-table mapping gap remains for the quick-reference command
   clusters. Residuals are exact resource, invalid-target/source,
-  hardware/MMIO, or broader-variant boundaries documented in the owner notes.
+  unresolved-caller, hardware/MMIO, optional external-data, manual/physical,
+  or broader-variant boundaries documented in the owner notes.
 
 Output effect:
 

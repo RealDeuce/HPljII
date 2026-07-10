@@ -2805,7 +2805,9 @@ State classification at this handoff:
   committed into page objects or state records before publication.
 
 The detailed render contracts live in
-[Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+[Page Object Storage Outcome
+Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
+[Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix),
 [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint),
 [page-raster-imaging.md](page-raster-imaging.md), and the renderer sections of
 [semantic-state-model.md](semantic-state-model.md).

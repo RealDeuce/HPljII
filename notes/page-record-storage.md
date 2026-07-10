@@ -159,6 +159,120 @@ Evidence:
   publication, bridge copying, and render-entry handoff for text, rule, raster,
   fixed-list, and mixed page-record shapes.
 
+## Page Object Storage Outcome Matrix
+
+This matrix is the command-output-to-page-object contract. It starts after a
+command-family handler has decided to create visible content and ends when the
+object graph is ready for publication, bridge copy, and render entry.
+
+- Root ensure/reuse:
+  Producers call `0x10084`. If current root `0x78297a` exists, it is reused;
+  otherwise `0x10084` allocates a root, marks root byte `+0x04 = 1`, seeds
+  stream link cursor `0x782a72 = root + 0x20`, calls initializer `0x10110`,
+  clears transient byte `0x782990`, and zeroes the bucket/list roots. Output
+  effect: this creates the page image container, not pixels.
+
+- Stream storage:
+  Variable-size object payloads use `0x1381c`, which consumes and updates
+  stream allocator fields `0x782a70`, `0x782a72`, and `0x782a76`. New 0x100
+  byte chunks link through root `+0x20`. Output effect: compact, raster, rule,
+  and fixed producers share one page-root stream chain while preserving their
+  own root/list heads.
+
+- Compact text and downloaded glyph objects:
+  Printable/font paths reach `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`.
+  The allocator writes bucket objects under root `+0x1c` with object byte
+  `+4` in `0x00..0x3f`, count/capacity `+6`, compact coordinate/key `+8`,
+  and compact payload bytes. Output effect: bridge `0x1edc6` later maps this
+  root to render `+0x18`, where `0x1efc2 -> 0x1effe` consumes compact objects.
+
+- Segment-list span objects:
+  Portrait span flush `0x12714 -> 0x13520/0x1354a/0x135f0 -> 0x1387c`
+  writes class-`0x40` bucket objects under root `+0x1c`. Output effect:
+  bridge exposes them at render `+0x18`, and render dispatch reaches
+  `0x1f812`.
+
+- Encoded raster bucket objects:
+  Delayed raster transfer `0x105d0 -> 0x13070 / 0x13250 -> 0x138de` writes
+  class-`0x80` bucket objects under root `+0x1c`; dense rows can split through
+  `0x132b6` into multiple encoded-span objects. Output effect: bridge exposes
+  them at render `+0x18`, and render dispatch reaches `0x1f88e`.
+
+- Rule-list objects:
+  Rectangle/rule paths reach `0x10898 -> 0x13386 -> 0x133aa`, which allocates
+  ordered rule nodes under root `+0x24`. No-room returns leave root `+0x24`,
+  existing nodes, and stream bookkeeping unchanged. Output effect: bridge maps
+  root `+0x24` to render `+0x1c`, normalizes continuation fields, and render
+  dispatch reaches `0x1f446`.
+
+- Fixed-list span objects:
+  Landscape span flush reaches `0x12714 -> 0x136d2`, which allocates ordered
+  fixed-list nodes under root `+0x28`. No-room returns preserve root `+0x28`
+  and existing nodes. Output effect: bridge maps root `+0x28` to render
+  `+0x20`, normalizes continuation fields, and render dispatch reaches
+  `0x1f756`.
+
+- Context/resource slots:
+  Root initializer `0x10110`, current-font install path `0xc428 -> 0xc4fc`,
+  and printable queue paths `0xd3b2` / `0xd824` preserve selected
+  context/resource longwords in root slots `+0x2c..+0x68` and selected slot
+  state `0x78297e`. Output effect: bridge maps those slots to render
+  `+0x24..+0x60`, where compact and segment renderers resolve glyph/resource
+  bytes through copied context longwords.
+
+- Publication and bridge:
+  `0xff1e` accepts active roots, writes published state `+0x04 = 2`, links the
+  source through protected pool head `0x780ea6`, sets publication flag
+  `0x782996`, and clears `0x78297a`. `0x1ed84 -> 0x1edc6` then copies source
+  roots to render roots and normalizes rule/fixed continuation fields. Output
+  effect: page-record storage is now frozen as render input; pixel generation
+  belongs to [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
+State grouping:
+
+- Canonical page/image state: current root `0x78297a`, root byte `+0x04`,
+  bucket root `+0x1c`, stream chain root `+0x20`, rule root `+0x24`, fixed
+  root `+0x28`, context slots `+0x2c..+0x68`, published pool head
+  `0x780ea6`, and publication flag `0x782996`.
+- Canonical object state: bucket links, class byte `+4`, selector/mode
+  byte `+5`, count/capacity `+6`, coordinate/key `+8`, payload bytes, and
+  rule/fixed selector, dimension, key, and continuation fields.
+- Derived/cache state: stream allocator fields `0x782a70`, `0x782a72`,
+  `0x782a76`, producer keys `0x782a7a..0x782a7e`, and render roots/caches
+  after `0x1edc6` / `0x1ef86`.
+- Parser scratch: none. Parser records and delayed payloads have already been
+  consumed by command-family handlers before page objects are stored.
+- Firmware bookkeeping: pending-root latches `0x782c72` / `0x782c73`,
+  transient root byte `0x782990`, allocator/pool headers, and root retry
+  flags used by no-room publication/retry paths.
+- Hardware/external state: none at storage time. Physical output begins after
+  render entry writes ROM-visible row buffers.
+- Unknown: manual-facing names for some pool/header fields. No ROM-local
+  middle edge remains for the documented root allocation, object-class roots,
+  stream chunking, publication, or bridge field mapping.
+
+Evidence:
+
+- Root and stream evidence:
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+  `generated/analysis/ic30_ic13_page_root_allocation.md`, and
+  `generated/analysis/ic30_ic13_compact_bucket_allocator.md`.
+- Producer evidence:
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`, and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
+- Publication/bridge evidence:
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+- Detailed class evidence:
+  [Rule-List Outcome Matrix](#rule-list-outcome-matrix),
+  [Segment-List Outcome Matrix](#segment-list-outcome-matrix),
+  [Fixed-List Outcome Matrix](#fixed-list-outcome-matrix), and
+  [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
 ## Page Assembly Decision Checkpoint
 
 This checkpoint composes the page/image assembly decision made after parser

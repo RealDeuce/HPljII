@@ -932,8 +932,8 @@ Outcome owners:
   Source Outcome Matrix](direct-control-codes.md#printable-source-outcome-matrix),
   [Direct-Control Output Decision
   Checkpoint](direct-control-codes.md#direct-control-output-decision-checkpoint), and
-  [Page Assembly Decision
-  Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint). Output effects
+  [Page Object Storage Outcome
+  Matrix](page-record-storage.md#page-object-storage-outcome-matrix). Output effects
   are compact text, fixed-space advances, span flushes, cursor changes, or publication
   through the shared page-root path.
 - Cursor, margin, text-motion, underline, and dot-position commands:
@@ -964,8 +964,8 @@ Outcome owners:
   [Rule-List Outcome Matrix](page-record-storage.md#rule-list-outcome-matrix).
   Output effects are rule-list objects under page-root `+0x24`.
 - Page-object storage and render handoff: compact, segment-list, fixed-list, rule-list,
-  raster-bucket, publication, and render-bridge records are owned by [Page Assembly
-  Decision Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
+  raster-bucket, publication, and render-bridge records are owned by [Page Object
+  Storage Outcome Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
   [Segment-List Outcome Matrix](page-record-storage.md#segment-list-outcome-matrix),
   [Fixed-List Outcome Matrix](page-record-storage.md#fixed-list-outcome-matrix), and
   [Render Entry Outcome

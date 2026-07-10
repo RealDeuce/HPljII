@@ -117,8 +117,8 @@ handler addresses, fields, consumers, evidence, and unresolved boundaries.
 
 The current checked-in model treats page content as queued ROM objects, not as a
 parser-time bitmap. This section is the common object contract used by the
-command-family notes; detailed ledgers remain in [Page Assembly Decision
-Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
+command-family notes; detailed ledgers remain in [Page Object Storage Outcome
+Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
 [page-raster-imaging.md](page-raster-imaging.md), and
 [semantic-state-model.md](semantic-state-model.md).
 

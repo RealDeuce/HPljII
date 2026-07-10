@@ -273,9 +273,9 @@ checked-in ROM model:
 - [downloaded-fonts.md](downloaded-fonts.md#owner-summary) - documented soft-font
   descriptor, payload, validation/no-install, current-record, and
   downloaded-glyph render paths.
-- [font-sample-page.md](font-sample-page.md) - documented firmware-generated
-  font sample printout from resource candidates through page-record segments
-  and rendered surfaces.
+- [font-sample-page.md](font-sample-page.md#owner-summary) - documented
+  firmware-generated font sample printout from resource candidates through page-record
+  segments and rendered surfaces.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#owner-summary) - flattened PCL

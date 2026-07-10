@@ -10,6 +10,78 @@ continuation-page object forms. This is firmware-generated text, not host
 input: the path calls the ordinary printable handler `0xd04a` directly after
 selecting and formatting ROM/resource records.
 
+## Owner Summary
+
+This note owns the firmware-generated font sample printout path. Unlike normal
+PCL input, the source bytes are created by ROM helpers after candidate/resource
+selection. Once generated, they intentionally rejoin the ordinary printable
+text path through `0xd04a`, page-record queueing, publication, render bridge,
+and compact text row rendering.
+
+Primary routes:
+
+- Setup:
+  `0x1e0b2` prepares page/font state, forces sample-page VMI/HMI defaults, and
+  reaches printout entry `0x1c204`.
+- Source/class loops:
+  `0x1c28e..0x1c344` run class-zero and class-one passes; `0x1c2fe..0x1c332`
+  iterate source groups `0..3`; `0x1c354..0x1c5e4` walks rows within one
+  source group.
+- Candidate resolution:
+  `0x1b50e` resolves request indexes through fast probe `0x1b8ea`, mode
+  windows, current-slot suppression, and Roman-8 substitution before exposing
+  a selected candidate row.
+- Context install and row formatting:
+  `0x1c5e8` installs selected context through `0x14c64` and `0xc428`;
+  `0x1cabe` emits row prefix, font name/style, pitch/height, symbol text, and
+  sample columns through printable/fixed-space helpers.
+- Sample byte runs:
+  `0x1cf34` emits run table `0x1c1cf`, optionally advances to the alternate
+  context/sample row, and emits run table `0x1c1e9`.
+- Page/render route:
+  emitted bytes flow through `0xd04a`, `0x1393a`, `0x12f2e`, publication,
+  `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact text renderers.
+
+Field groups:
+
+- Canonical sample state:
+  candidate counts/windows `0x78278e`, `0x782798`, `0x782790`,
+  `0x7827a0..0x7827b4`, selected current/alternate contexts, source labels
+  at `0x1c170`, and sample run tables `0x1c1cf` / `0x1c1e9`.
+- Canonical page/text state:
+  current page root, page-root context slots, cursor `0x782c8e`, page limit
+  `0x782db6`, row-height word `0x783f06`, and VMI/HMI defaults
+  `0x783160` / `0x78315c`.
+- Parser scratch:
+  synthetic orientation record at `0x78299e` from `0x1d76c`, fast-probe
+  fields `0x7828a0`, `0x7828a4`, `0x78289f`, and Roman-8 substitution scratch
+  `0x7828ac` / `0x7821a0`.
+- Firmware bookkeeping:
+  per-source status bytes `0x783f02..0x783f05`, recent-context count
+  `0x783f08`, recent-context list `0x783f0a`, and local page-break word
+  `-6(A6)`.
+- Derived/cache state:
+  row-to-row placement from `0x1d050`, alternate-row fit from `0x1d868`,
+  multi-probe fit from `0x1dcf2`, and page-record/render bucket digests used
+  only as evidence.
+- Hardware/external state:
+  none required for the ROM-local sample-page path once resource bytes and
+  initial firmware state are fixed.
+- Unknown:
+  manual-facing baseline/cell terminology for resource fields, and future
+  forced-continuation cross-products that might expose new page-object forms.
+
+Output effect:
+
+- The sample generator creates visible text using the same compact text path as
+  host printable bytes, but the bytes are ROM-generated from resource/candidate
+  metadata and sample tables.
+- It produces page objects and rendered segment surfaces through the normal
+  page/render pipeline; it is not a direct resource-ROM dump.
+- A reproducer must preserve source/class order, candidate row resolution,
+  context installs, sample run bytes, continuation decisions, and the ordinary
+  compact-text rendering path.
+
 ## Evidence
 
 - `generated/analysis/ic30_ic13_font_sample_page.md`

@@ -320,7 +320,7 @@ word and fallback word.
 
 The font-sample generator consumes the same candidate windows when
 printing built-in resource listings. That path is documented in
-[font-sample-page.md](font-sample-page.md) and uses fixtures such as
+[font-sample-page.md](font-sample-page.md#owner-summary) and uses fixtures such as
 `font sample class-one row continuation emits fresh source heading page
 record`.
 

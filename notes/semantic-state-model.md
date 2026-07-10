@@ -3387,7 +3387,7 @@ resources because no image is available in this repo.
 ## Built-In Font Sample Printout Loop
 
 The standalone checkpoint is in
-[font-sample-page.md](font-sample-page.md). This section preserves the
+[font-sample-page.md](font-sample-page.md#owner-summary). This section preserves the
 detailed ledger, fixture digests, and low-level address notes.
 
 Status: anchored as the firmware font-sample page generator from

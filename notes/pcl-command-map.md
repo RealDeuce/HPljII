@@ -329,10 +329,26 @@ classes before any page pixels can be derived:
   `Alternate/Data Dispatch Decision Checkpoint` below.
 - Explicit no-output parser byte:
   normal-table blank C0 rows `0x00`, `0x07`, and `0x0b` match table entries,
-  run the terminal reset path through `0x12218`, reset parser scratch, and
-  produce no page object. `ESC ?` is consumed by the `0xda9a` wrapper, and
-  `ESC Z` is consumed by display-functions readers `0x12536` / `0x12120`.
-  These rows are parser behavior, not undocumented imaging commands.
+  run terminal path `0x119a6..0x119f4` through delayed restore `0x12218`,
+  reset parser scratch, and produce no page object. `ESC ?` is consumed by
+  the `0xda9a` wrapper, and `ESC Z` is consumed by display-functions readers
+  `0x12536` / `0x12120`. These rows are parser behavior, not undocumented
+  imaging commands.
+- Parser-external service or return:
+  `0x117d2..0x11818` consumes parser-loop service state before ordinary
+  dispatch. No-byte latch `0x780e3b` is cleared and wait object `0x780202` is
+  serviced through `0x10c8`; macro/page state byte `0x782a92 == 0x63` returns
+  from the parser loop instead of calling a command-family handler. This class
+  has no page/render effect unless later admitted bytes re-enter a page-output
+  route.
+- No-match fallback, append, or callback:
+  when a table scan finds no row, normal mode-zero path
+  `0x118b2..0x11900` consults selected context byte
+  `0x782ee6 + 16 * 0x782f06 + 5` and either calls printable `0xd04a` or
+  ignores the byte. Alternate/data mode-zero no-match `0x11b82..0x11b8a`
+  appends through `0xe002`. Nonzero-mode no-match `0x11b32..0x11b7e` calls
+  active callback pointer `0x78299a`, and only the callback owner can create a
+  downstream command effect.
 - Syntax or family-prefix byte:
   `ESC`, `ESC &`, `ESC *`, `ESC (`, `ESC )`, `ESC &l`, `ESC *c`, and similar
   prefixes update parser mode `0x782999` and callback pointer `0x78299a`
@@ -395,10 +411,11 @@ State at this classification boundary:
   `0xdb74` and `0xdaf0` are still combining a command family.
 - Firmware bookkeeping:
   current parser callback pointer `0x78299a`, table ranges rooted at
-  `0x112a4` / `0x116f6`, logging/pushback helper `0x9ec0`, delayed restore
+  `0x112a4` / `0x116f6`, parser-external service latch `0x780e3b`, macro/page
+  state byte `0x782a92`, logging/pushback helper `0x9ec0`, delayed restore
   boundary `0x12218`, generic payload drains `0x1228a` / `0x12328`,
-  alternate append sink `0xe002`, and payload-control side-effect helper
-  `0xd99a`.
+  alternate append sink `0xe002`, callback/no-match branches
+  `0x11b32..0x11b8a`, and payload-control side-effect helper `0xd99a`.
 - Hardware/external state:
   outside this classification. Host source selection and direct hardware modes
   have already been normalized by `0xa904`; formatter/DC timing only matters

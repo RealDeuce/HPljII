@@ -13,6 +13,7 @@ It covers:
 
 Evidence:
 
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
 - `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
 - `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`
@@ -92,6 +93,10 @@ Primary routes:
   font-attribute terminals and wrappers enter `0xc580`; compatibility
   pitch-mode handler `0xc390` first rewrites the active parser record and then
   calls `0xc89c -> 0xc580`.
+  Alternate/data `ESC (s` / `ESC )s` reaches setup wrapper `0x11ff6`, but
+  ordinary attribute terminal rows either have no handler or use lowercase
+  rewind helper `0x11f4c`; they do not call the attribute writers or
+  `0xc580`.
 - Selection and map route:
   `0xc580 -> 0x13eb8 -> 0x14398 -> 0x144d2 -> 0x14c64 -> 0x14f16 -> 0x1440c`
   chooses a candidate, writes `0x782ee6` or `0x782ef6`, rebuilds
@@ -166,6 +171,16 @@ page-object producer or explicit no-output outcome.
   spacing, pitch, stroke, or typeface fields under the primary/secondary
   request block, then mark dirty flags `0x782f2c` / `0x782f2d`. The output
   effect is pending font state; no page object is queued.
+- Alternate/data attribute boundary:
+  in alternate/data mode, `ESC (s` / `ESC )s` uses parser wrapper `0x11ff6`.
+  Uppercase ordinary attribute finals `B/H/P/S/T/V` are blank terminal rows,
+  and lowercase ordinary finals `b/h/p/s/t/v` route only to `0x11f4c`.
+  Neither path calls `0xc6ec`, `0xc780`, `0xc930`, `0xc89c`, `0xc840`,
+  `0xc7e0`, or `0xc580`; requested font fields, dirty flags, current
+  contexts, maps, page-root context slots, page objects, publication state,
+  and render inputs remain unchanged. `W/w` is the exception and remains a
+  downloaded-font delayed payload route through `0x11f96`, owned by
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
 - Pitch-mode compatibility writer:
   `0xc390` handles `ESC &k#S/s` selectors `0`, `2`, and `4` by rewriting the
   active parser record into synthetic pitch records and calling
@@ -231,6 +246,9 @@ State classification for this matrix:
   command records at `0x78299e`, synthetic pitch records written by `0xc390`,
   symbol/designation setup records, parsed integer/fraction fields, and the
   cursor advances that let shared writers consume synthetic records.
+  Alternate/data `ESC (s` / `ESC )s` records that end at blank or `0x11f4c`
+  terminal rows are parser scratch only; they do not become canonical font
+  request state.
 - Firmware bookkeeping:
   dirty flags `0x782f2c/0x782f2d`, page-root live flags
   `0x78297f..0x78298e`, transient full-root flag `0x78298f`, `0xc4fc`
@@ -248,6 +266,7 @@ State classification for this matrix:
   input.
 
 Evidence:
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
 `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
 `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,

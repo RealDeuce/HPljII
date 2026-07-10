@@ -44,7 +44,7 @@ standalone deliverables.
   alternate/data append, a matched command handler, a zero-handler reset, a
   no-match fallback, callback continuation, or parser-external return.
 - Command dispatch is indexed by
-  [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint):
+  [pcl-command-map.md](pcl-command-map.md#reproduction-contract):
   parser rows are classified as prefix/setup state, terminal handler
   handoff, delayed-payload setup/restore, explicit no-output row,
   alternate/data append, or service/no-match/callback outcome before a
@@ -95,7 +95,7 @@ standalone deliverables.
   [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint).
 - The broad host-byte-to-pixel walkthrough and residual-boundary index is
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). Its
-  [Objective Coverage Index](end-to-end-reproduction-map.md#objective-coverage-index)
+  [Objective Coverage Matrix](end-to-end-reproduction-map.md#objective-coverage-matrix)
   maps the active documentation requirements to the checked-in owner notes and
   concrete ROM address boundaries. The unified semantic field index is
   [semantic-state-model.md](semantic-state-model.md), and the detailed dataflow spine is
@@ -232,6 +232,10 @@ checked-in ROM model:
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarizes render
    call order, active-band and fallback buffers, object-class handoff, and
    direct-store composition.
+   Formatter/DC timing after ROM render work is a boundary, not a hidden pixel
+   source; use [dc-controller-engine.md](dc-controller-engine.md#reproduction-contract)
+   only to preserve ROM-visible wait, scheduler, and render fields that change
+   selected records, band words, or `0x1ef6a` call order.
 8. If the route stops, record the exact boundary in the
    `Unresolved Boundary Outcome Matrix` in
    [unresolved-boundaries.md](unresolved-boundaries.md). Classify it as

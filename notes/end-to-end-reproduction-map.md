@@ -9180,63 +9180,81 @@ shape, publication boundary, or render helper inputs.
    Physical baseline/cell placement names, if needed, are external correlation
    rather than ROM execution evidence.
 
-## Next Evidence Targets
+## Next Documentation Targets
 
-The next work should follow dataflow, not isolated handlers. ROM-local
-disassembly work starts only when a byte stream or static trace changes
-documented parser state, command-family state, page/image objects, render
-dispatch, or row construction. External boundaries below are evidence targets,
-not reasons to re-trace already documented ROM paths.
+The next work should add checked-in explanation for byte-stream dataflow, not
+standalone fixture output and not isolated handler traces. A new trace is worth
+opening only when it changes a named parser field, command-family state field,
+page/image object byte, publication or bridge field, render-helper input, or an
+exact unresolved boundary. The low-level ledger can grow underneath that work,
+but the checkpoint is complete only when the owner note and this map let a
+reader follow what the ROM does.
 
-1. Transparent secondary segment-57 resource decode remains the highest
-   pixel-affecting external-data boundary, but it is not a ROM disassembly
-   target. The parser, filtering, page-record, bridge, and renderer path is
+Priority ROM-local documentation targets:
+
+1. Command-family variants that change page-object shape or render input.
+   Useful examples are raster gate outcomes through `0x105d0`, rectangle rule
+   selector and clipping paths through `0x10898 -> 0x10b80 -> 0x133aa`,
+   publication selectors that change root `+0x1c/+0x24/+0x28`, allocator
+   rollover branches in `0x10084` / `0x10110`, and render-helper choices under
+   `0x1ef6a`. The owner update must name the handler, fields written, later
+   consumers, page-object bytes or no-output outcome, and the first render
+   boundary reached.
+2. Parser-to-family routes that currently have only table ownership but lack a
+   worked byte-stream path. Start at `0xa904`, keep the parser outcome class
+   from `Admitted Byte Outcome Bridge`, jump through
+   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix),
+   and finish in the family owner. The useful deliverable is a route that
+   explains parsed inputs, RAM writes, downstream readers, and visible or
+   state-only effects. A generated dispatch row by itself is not enough.
+3. Page-image composition cases that add a new object class interaction.
+   Extend the mixed text/rule/raster and downloaded-glyph composition paths
+   only when the stream changes root ordering, bucket/list selection, bridge
+   roots, scheduler band words, row-helper dispatch, or direct-store
+   composition. Do not repeat already-composed text/rule/raster,
+   downloaded-font, font-selection, VFC, macro, or publication streams only to
+   produce another digest.
+4. State-only commands whose pixel effect is delayed. The documentation should
+   connect the command's canonical field write to the later consumer that makes
+   it visible: for example layout fields consumed by printable placement,
+   raster origin/bounds, rectangle clipping, publication, or page overflow. If
+   no later consumer is known, record that exact field and consumer boundary
+   instead of treating the command as visually complete.
+
+Edges that should not drive more ROM tracing unless new evidence changes a
+named upstream field:
+
+1. Transparent secondary segment-57 resource decode is the current
+   pixel-affecting missing-data boundary, but the ROM path is already traced.
+   The parser, filtering, page-record, bridge, and renderer route is
    documented in [Transparent Payload Decision
-   Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
-   the Transparent Print Data section above. The unresolved input is
-   physical/resource-window data for firmware range `0x0c0000..0x0c0321`, after verified
-   resource-pair suffix `0x0bfe22..0x0bffff`. Useful next evidence is static
-   board/emulator/gate-array decode for that range, or a board-level memory-map
-   explanation for which continuation policy the ROM address bus actually sees. Do not
-   re-trace `0x12452`, transparent filtering, secondary buckets through `448`, or
-   compact renderer arithmetic unless new decode evidence contradicts the current
-   boundary. The checked-in boundary entry [Secondary Segment-57 Resource
-   Source](unresolved-boundaries.md#secondary-segment-57-resource-source) records the
-   local probe hashes, suffix length, continuation length, and candidate-scan
-   consequences for the mirror, code-pair, and zero-fill interpretations.
+   Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint)
+   and [Secondary Segment-57 Resource
+   Source](unresolved-boundaries.md#secondary-segment-57-resource-source).
+   The unresolved input is physical/resource-window data for firmware range
+   `0x0c0000..0x0c0321`, after verified resource-pair suffix
+   `0x0bfe22..0x0bffff`. Do not re-trace `0x12452`, transparent filtering,
+   secondary buckets through `448`, or compact renderer arithmetic unless new
+   decode evidence contradicts that boundary.
 2. Reset/default provenance is no longer a ROM-local parser/page/render gap.
    [reset-default-environment.md](reset-default-environment.md) and
    `Default Environment Record Producers` cover the reset consumer, default
    backing-record producers, retained-record helpers, page-root publication,
-   HMI/VMI conversion, and addressed compact-bucket publication. Remaining work
-   is external: the device or panel protocol behind `$8000.w`,
-   retained-storage identity and board-level serial pins behind `$a400` /
-   `$8c01`, physical retained-storage failure/content conditions behind
-   `67 SERVICE` and `68 SERVICE`, manual wording for retained-record failures,
-   physical self-test placement, and the manual-facing names for folded status
-   categories indexed in
-   [Folded Status Category
-   Names](unresolved-boundaries.md#folded-status-category-names).
+   HMI/VMI conversion, and addressed compact-bucket publication. Remaining
+   work is external naming or physical correlation for retained storage,
+   service conditions, folded status categories, and self-test placement.
 3. Font metrics, font selection, downloaded-glyph row/span publication, and
-   macro overlay replay are composed checkpoints. Treat additional cases as
-   regression expansion unless a byte stream changes a named state boundary:
-   copied metric fields, consumer branch, selected context or map, page-root
-   slot behavior, downloaded-glyph selector/helper dispatch, `0x783140`
-   remainder, `0x12328` drain status, replay frame state, delayed payload
-   state, page-object bytes, bridge roots, or row-construction inputs. The
-   controlling sections above cite the exact fixtures and notes for those
-   contracts.
-4. Page-image expansion should target new pixel-affecting ROM state only. Add
-   cases when they expose a new publication selector, allocator/rollover branch,
-   raster gate outcome, rectangle selector or clipping behavior, render helper
-   target, fallback split, continuation mutation, active scheduler state, or
-   row output. Do not re-run already-composed text/rule/raster, downloaded-font,
-   font-selection, VFC, macro, or publication streams only to produce another
-   digest.
-5. Final physical correlation remains separate from ROM-local documentation.
+   macro overlay replay are composed checkpoints. Additional cases are useful
+   only when they change copied metric fields, a consumer branch, selected
+   context or map, page-root slot behavior, downloaded-glyph selector/helper
+   dispatch, `0x783140` remainder, `0x12328` drain status, replay frame state,
+   delayed payload state, page-object bytes, bridge roots, or row-construction
+   inputs.
+4. Final physical correlation remains separate from ROM-local documentation.
    The current model derives rows from ROM disassembly, resource bytes,
    page-record fields, and render helpers. A representative physical print, if
    one is ever used, can only correlate that model with a device; it is not an
-   oracle for the documentation and is not a substitute for static ROM evidence.
-   Fixture output is likewise only a ROM-local branch or transcription check;
-   the deliverable is the documented path that constructs rows.
+   oracle for the documentation and is not a substitute for static ROM
+   evidence. Fixture output is likewise only a ROM-local branch or
+   transcription check; the deliverable is the documented path that constructs
+   rows.

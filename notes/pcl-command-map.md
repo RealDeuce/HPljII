@@ -953,15 +953,16 @@ Outcome owners:
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary). Output effects
   are environment state, page-root publication, VFC table installation, or later page
   movement.
-- Raster imaging: raster setup handlers `0x1075a`, `0x107fa`, `0x10808`, `0x10dce`,
-  `0x10e22`, `0x10e68`, delayed raster reader `0x105d0`, and transfer gate `0x138de` are
-  owned by [Transfer Gate Outcome
+- Raster imaging: raster setup handlers `0x1075a`, `0x107fa`, and
+  `0x10808`, delayed transfer setup `0x11f82`, delayed raster reader
+  `0x105d0`, and transfer gate `0x138de` are owned by [Transfer Gate Outcome
   Matrix](raster-graphics.md#transfer-gate-outcome-matrix) and [Encoded Raster Object
   Outcome Matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Output
   effects are raster bucket objects under page-root `+0x1c` consumed by the shared
   publication and render bridge.
 - Rectangle and rule imaging:
-  handlers `0x10898`, `0x10a40`, and `0x10ae0` are owned by
+  handlers `0x10898`, `0x10a40`, `0x10ae0`, `0x10dce`, `0x10e22`, and
+  `0x10e68` are owned by
   [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix)
   and
   [Rule-List Outcome Matrix](page-record-storage.md#rule-list-outcome-matrix).

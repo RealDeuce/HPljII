@@ -1568,6 +1568,31 @@ active exceptions are `ESC E` reset through `0xcc52` and VFC payload
 `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`, and
 `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
 
+For font and resource command families, alternate/data table `0x116f6`
+suppresses the normal selected-font and resource-control writers except where
+the command is itself a counted payload. Font-designation terminals
+`ESC (#` / `ESC )#` and uppercase font-selection finals
+`ESC (s#B/H/P/S/T/V` / `ESC )s#B/H/P/S/T/V` have blank alternate/data rows;
+lowercase finals rewind through `0x11f4c`. They do not write requested font
+fields, selected symbol/default words, candidate selection fields, selected
+maps `0x782f32` / `0x783032`, page-root context slots, or compact render
+context inputs until the stored bytes replay through normal parser mode.
+Downloaded-font payload rows `ESC (s#W/w` and `ESC )s#W/w` remain active
+because the stored stream needs the exact payload boundary; their immediate
+alternate/data effect is delayed-record storage or append/drain behavior, not
+installed glyphs or page objects.
+
+The full command-family suppression matrix is now the controlling dispatch
+checkpoint in
+[pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint).
+It classifies mode-zero printable bytes, C0 controls, cursor/layout commands,
+rectangle/raster commands, font commands, payload/storage exceptions, and
+reset. The semantic rule is uniform: if the alternate/data row is blank or
+only rewinds through `0x11f4c`, canonical command/page/render state is
+unchanged at parse time; if the row is an active exception, the named owner
+note decides whether bytes are appended, drained, stored as payload, reset, or
+later replayed.
+
 Delayed payload records share one ROM-owned snapshot/restore contract. Handler
 stubs such as raster transfer `0x11f82`, transparent data `0x11f5a`, generic
 payload wrappers, and downloaded-font payload dispatch call `0x121cc` with the

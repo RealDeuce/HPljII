@@ -1292,11 +1292,34 @@ Append-versus-execute split:
   and then rejoin the same terminal reset path.
 - Most uppercase family terminals have blank alternate/data handlers, so their
   parsed bytes do not immediately mutate cursor, layout, selected font,
-  rectangle, or raster-control state.
+  rectangle, raster-control, dot-position, page-environment, or page-object
+  state. Lowercase siblings mostly route to `0x11f4c`, preserving command
+  syntax by rewinding the six-byte record without running the normal writer.
 - Active exceptions remain intentional: macro stop/control `ESC &f#X` reaches
-  `0xdd08`; display functions use append reader `0x12120`; Control-Z siblings
-  append/report through `0x1210c` / `0x121b2`; delayed payload restore uses
-  `0x12358`; reset `ESC E` still reaches `0xcc52`.
+  `0xdd08`; transparent, VFC, raster-transfer, and downloaded-font counted
+  payload rows keep their payload boundaries; display functions use append
+  reader `0x12120`; Control-Z siblings append/report through `0x1210c` /
+  `0x121b2`; delayed payload restore uses `0x12358`; reset `ESC E` still
+  reaches `0xcc52`.
+
+Command-family consequences:
+
+- Alternate/data printable and C0 rows append stored bytes and do not call
+  printable or control handlers such as `0xd04a`, `0xf02c`, `0xf08c`,
+  `0xf0f0`, `0xc6b8`, or `0xc68a`.
+- Alternate/data cursor, layout, page-control, wrap, margin, and dot-position
+  rows do not write placement fields, page geometry, HMI/VMI, paper/copy
+  state, or publication inputs. The exception is `ESC E`, which remains an
+  immediate reset/publication owner.
+- Alternate/data rectangle and raster-control rows do not write rectangle
+  fields `0x78316a/0x783166/0x78316e`, raster state `0x783170..`, clipped
+  source records, or page objects. Raster transfer `ESC *b#W/w` remains an
+  active counted-payload row but is redirected through the alternate/data
+  payload boundary before replay.
+- Alternate/data font-designation and font-selection rows do not write
+  requested font fields, selected symbol/default words, selected maps, or
+  page-root context slots. Downloaded-font payload rows remain active only to
+  preserve payload bytes and counts for stored replay.
 
 Macro definition and stored bytes:
 
@@ -3452,14 +3475,20 @@ Alternate/data-mode contrast:
   command records and stop macro definitions, but many normal side effects
   are suppressed.
 - Immediate page-state commands mostly have blank alternate/data handlers:
-  cursor/layout controls, selected-font update terminals, rectangle setters,
-  raster-control setters, and dot-position commands parse without mutating
-  their normal canonical fields. Lowercase chaining finals mostly reach
-  `0x11f4c`, which rewinds `0x78299e` so command-family syntax can continue.
+  cursor/layout controls, page-environment writers, selected-font update
+  terminals, rectangle setters, raster-control setters, font-control setters,
+  and dot-position commands parse without mutating their normal canonical
+  fields. Lowercase chaining finals mostly reach `0x11f4c`, which rewinds
+  `0x78299e` so command-family syntax can continue.
 - Payload/storage commands remain active where stored input needs exact bytes:
   `ESC &p#X` / `x`, `ESC &l#W` / `w`, `ESC *b#W` / `w`,
   `ESC (s#W` / `w`, `ESC )s#W` / `w`, and macro control
   `ESC &f#X` / `x`.
+- The suppressed-row output effect is no page-object or render-input change:
+  printable/source objects, selected maps, context slots, raster blocks,
+  rectangle source records, publication fields, and render roots change only
+  after stored bytes replay through the normal table or an active exception
+  reaches its owner.
 - `ESC E` still reaches reset handler `0xcc52`; alternate/data mode does not
   shield parser or page state from an explicit reset command.
 - `0x12218` still restores delayed state in alternate/data mode. When the

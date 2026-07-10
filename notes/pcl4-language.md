@@ -226,8 +226,8 @@ owner, and whether visible pixels can result.
 - Downloaded fonts and characters:
   font descriptor/character payload readers `0x15d0a` and `0x16c14`, plus
   active object dispatch around `0x14ba4`; owner
-  [Downloaded-Glyph Render Decision
-  Checkpoint](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint).
+  [Downloaded-Font Outcome
+  Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix).
   Descriptor and bitmap payloads install resources. Printable bytes later
   select installed glyphs through current font/map state and render through
   compact/downloaded-glyph helpers including `0x1f0d2`, `0x1f1f0`, and

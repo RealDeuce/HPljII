@@ -299,6 +299,127 @@ Evidence and boundaries:
   manual soft-font fields. These do not block the documented installed-glyph
   route from host bytes to page-record and compact render output.
 
+## Downloaded-Font Outcome Matrix
+
+This matrix is the command-family contract for downloaded-font streams. It
+groups the parser-delayed `W` payloads, current id/character controls,
+installed resource state, later printable output, and compact render selectors
+by firmware outcome.
+
+- Current font and character selection:
+  `ESC *c#D` reaches `0x15a56` and writes current downloaded font id
+  `0x782f2e`; `ESC *c#E` reaches `0x15a18` and writes current character word
+  `0x782f30`. Output effect: state-only. These fields are consumed later by
+  descriptor, resource, character, and selected-map paths.
+
+- Delayed `W` selector:
+  `ESC )s#W` / `ESC (s#W` enter arming handler `0x11f96`. Count zero stores
+  delayed handler `0x15d0a`; nonzero count stores delayed handler `0x16c14`.
+  `0x121cc -> 0x12218` restores the six-byte record and the handlers load
+  absolute record word `+2` into payload budget `0x783140`. Output effect:
+  no font or page object is installed at the arming byte; payload ownership
+  begins at the restored handler.
+
+- Zero-count descriptor path:
+  `0x15d0a` consumes descriptor bytes, routes current-record and continuation
+  forms through `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`, and drains any
+  remaining payload budget through `0x12328`. Output effect: descriptor bytes
+  update current-record or continuation state, but do not draw until a later
+  printable byte selects an installed glyph.
+
+- Nonzero resource/header install:
+  `0x16c14 -> 0x16fae -> 0x17026 -> 0x1719c` validates staged payload data,
+  writes current-record ids, payload pointers, candidate longwords, counters,
+  and installed counts when allocation succeeds. Validation failure, skip,
+  no-slot, or post-install leftovers drain remaining budget through
+  `0x12328`. Output effect: installed candidate/resource state changes the
+  future selected map; failed paths preserve following printable output on the
+  prior/default route.
+
+- Downloaded-character bitmap copy:
+  `0x16498 -> 0x16874 -> 0x168dc/0x16942` consumes payload bytes through
+  `0xa904`, copies linear or split-plane bitmap bytes into the installed
+  glyph record, and saves continuation fields when the budget ends early.
+  Output effect: completed glyph records become available to selected-map and
+  printable paths; incomplete records resume or fail according to the saved
+  continuation state.
+
+- Font-control mark/delete/release:
+  `ESC *c#F` reaches `0x16df6`, then `0x17108` / `0x17150` for mark/unmark
+  state or destructive control selectors. Release helpers include `0x1887a`,
+  `0x18b92`, `0x18bf2`, `0x17a24`, and `0x17d7c`. Output effect: installed
+  resource availability changes, but no page object is produced directly.
+
+- Selected-map refresh and printable use:
+  `0x17708`, `0x14c64`, `0x14e24`, and `0x14eb6` consume installed candidates
+  and payload tables to build the selected map. A later printable byte then
+  flows through `0x1393a -> 0xd04a -> 0x12f2e -> 0x1387c`, using that map to
+  queue a compact downloaded-glyph object under page-root bucket `+0x1c`.
+  Output effect: the first visible effect of a successful install is a later
+  printable compact object, not the install command itself.
+
+- Publication and compact render:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe` consumes
+  the compact object and copied context slots. Selector `0x0003` reaches the
+  short compact path, `0x1003` compact-wide, `0x2003` segmented compact, and
+  `0x3003` segmented-wide. Output effect: row bytes come from installed glyph
+  records and context/resource longwords resolved by the compact helpers.
+
+- Boundary outcomes:
+  Oversized restored `ESC )s#W` payloads stop at the `0x7fff` tokenizer/count
+  cap before a complete glyph can be installed. High-row or high-span compact
+  cases can stop at invalid helper targets or missing resource/source bytes
+  named in `Remaining Edges` and [unresolved-boundaries.md](unresolved-boundaries.md).
+  These are exact ROM-local or missing-resource boundaries, not requirements
+  for external rendered-row comparison.
+
+State grouping:
+
+- Canonical command state: current downloaded font id `0x782f2e`, current
+  character word `0x782f30`, parser/device mode `0x782a92`, and restored
+  command record fields.
+- Canonical installed state: current records `0x782640..0x782776`, record
+  counts `0x782782` / `0x782786`, record id `+0x00`, flags `+0x02`, payload
+  pointer `+0x06`, candidate counters/cursors, candidate longword bits, glyph
+  pointer tables, downloaded character records, and bitmap payload bytes.
+- Canonical page/render state: page-root compact bucket objects from
+  `0x12f2e`, published bucket arrays from `0xff1e`, render roots from
+  `0x1edc6`, and compact selectors `0x0003`, `0x1003`, `0x2003`, `0x3003`.
+- Derived/cache state: selected-map bytes from `0x14e24`, printable source
+  objects from `0x1393a`, compact object keys from `0x12f2e`, tokenizer clamp
+  result, row/span products, render work words, and row-copy helper indexes.
+- Parser scratch: delayed-payload flag/handler/record fields
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`, payload budget `0x783140`, staged
+  descriptor/header bytes, and bitmap parse fields.
+- Firmware bookkeeping: candidate insertion `0x1bc38`, continuation fields
+  `0x7827c6..0x7827da`, release helpers, dirty context refresh, and default
+  refresh `0x1b04c`.
+- Hardware/external state: none for the documented ROM-local installed-glyph
+  path. Missing resource-window/source bytes remain external resource data.
+- Unknown: manual-facing names for validation fields in `0x16fae..0x17016`,
+  invalid compact helper targets, and the explicit high-row/source boundaries
+  named in `Remaining Edges`.
+
+Evidence:
+
+- Parser/install listings:
+  `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`,
+  and `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`.
+- Render listings:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+- Detailed owner sections: [Downloaded-Glyph Render Decision
+  Checkpoint](#downloaded-glyph-render-decision-checkpoint), [Compact Selector Outcome
+  Matrix](#compact-selector-outcome-matrix), [Fixed-Record Render Decision
+  Checkpoint](#fixed-record-render-decision-checkpoint), [Page Object Storage Outcome
+  Matrix](page-record-storage.md#page-object-storage-outcome-matrix), and [Render Entry
+  Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
 ## Downloaded-Glyph Render Decision Checkpoint
 
 This checkpoint composes the installed downloaded-glyph path into the decision

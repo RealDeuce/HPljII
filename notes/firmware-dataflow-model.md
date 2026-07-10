@@ -3108,6 +3108,8 @@ Delayed-payload family matrix:
   The handler interprets the following descriptor/current-record grammar,
   writes descriptor budget `0x783140`, fixed-record/current resource state,
   and later source records consumed by printable glyph output. Owner is
+  [Downloaded-Font Outcome
+  Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix) and
   `Worked Path: Fixed-Record Resource Object`.
 - `ESC (s#W` / `ESC )s#W`, nonzero count:
   arming path `0x11f96 -> 0x121cc`, restored handler `0x16c14`.

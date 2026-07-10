@@ -9175,7 +9175,8 @@ shape, publication boundary, or render helper inputs.
      `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and
      `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
    - Checked-in notes:
-     [downloaded-fonts.md](downloaded-fonts.md),
+     [Downloaded-Font Outcome
+     Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix),
      [semantic-state-model.md](semantic-state-model.md),
      `Downloaded-Glyph Render Decision Checkpoint` in
      [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),

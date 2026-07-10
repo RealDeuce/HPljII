@@ -978,8 +978,8 @@ Outcome owners:
   `0x16df6` are owned by
   [symbol-set-selection.md](symbol-set-selection.md#owner-summary), [Font Request
   Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix), and
-  [downloaded-fonts.md](downloaded-fonts.md#owner-summary). The compact and fixed output
-  checkpoints are [Compact Selector Outcome
+  [Downloaded-Font Outcome Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix).
+  The compact and fixed output checkpoints are [Compact Selector Outcome
   Matrix](downloaded-fonts.md#compact-selector-outcome-matrix), [Downloaded-Glyph Render
   Decision Checkpoint](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
   and [Fixed-Record Render Decision

@@ -3260,9 +3260,11 @@ object shapes or visible rows.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
   are fixture-backed for the paired result semantics of `0x782a6e`: ordinary
   continue, horizontal reject with queue suppression, horizontal wrap recovery
-  through `0xf054`, and vertical-extent reject. Remaining risk is additional
-  metric sources that change parser/output state, not the meaning of the
-  precheck result or the shared reject/retry gate.
+  through `0xf054`, and vertical-extent reject. Remaining precheck work starts
+  only when a metric source changes selected context metrics, pending-width
+  latches `0x782a58/0x782a5a/0x782a5c`, current cursor `0x782c8a`, right
+  margin/page extent fields, precheck result byte `0x782a6e`, or the
+  downstream decision to call `0x12f2e` versus suppress page-object creation.
 - `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
   `0xff1e` / `0x10084` is fixture-backed for both paired short-text source
   writers. The covered canonical state before the retry is the positioned
@@ -3273,10 +3275,11 @@ object shapes or visible rows.
   retry contract preserves the old published bucket prefix, allocates a fresh
   root, retries from the same source object, and dispatches the retried compact
   object through `0x1effe` for flagged `0xd824` and unflagged `0xd3b2` short
-  and segmented/tall objects. Remaining risk is selector-mode cross-products
-  only when they change source fields, allocator topology, object bytes,
-  helper dispatch, fallback split, or ROM-derived row construction, not the
-  paired failure-return semantics for these object families.
+  and segmented/tall objects. Remaining retry work starts only when a stream
+  changes source fields `0x782d7e+0x0b/+0x10/+0x12/+0x14/+0x16`, allocator
+  cursors `0x782a70/0x782a72/0x782a76`, page-root retry flag `+0x14.0`,
+  compact object bytes, bridge roots, helper dispatch, fallback split, or
+  ROM-derived row construction.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers
@@ -3294,10 +3297,11 @@ object shapes or visible rows.
   `0x1381c` allocator storage. Selector values `0x0003`, `0x1003`,
   `0x2003`, and `0x3003` share page-record storage, bridge/render dispatch
   through `0x1effe`, and the same ROM row-construction contract. Remaining
-  risk is dense parser-produced allocator variants and broader legal font
-  descriptor cross-products that change object bytes, bridge state, dispatch,
-  or ROM-derived row construction, not the selector-mode object production
-  contract.
+  compact-producer work starts only when a stream changes selector bits from
+  source byte `+0x10`, width or row-count inputs from source `+0x04`, source
+  glyph byte `+0x0b`, positioned fields `+0x12/+0x14/+0x16`, allocator
+  storage in `0x1387c` / `0x1381c`, bridge state, compact dispatch, or a
+  ROM-derived row-construction boundary.
 
 ## Built-In Resource Scan And Candidate Windows
 

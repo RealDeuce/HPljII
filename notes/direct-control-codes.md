@@ -110,9 +110,9 @@ Primary route:
 
 - Host/parser/dispatch owners deliver printable bytes to `0xd04a` or terminal
   handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xedf8`,
-  `0xca8c`, `0xedb0`, `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf560`,
-  `0xf60a`, `0xf48c`, `0xf692`, `0xf75e`, `0x12622`, `0xcb00`, `0xc992`,
-  `0xece2`, `0xea9e`, `0xee64`, or `0xf9e8`.
+  `0xca8c`, `0xedb0`, `0xeb58`, `0xec0c`, `0xf176`, `0xf39e`, `0xf416`,
+  `0xf560`, `0xf60a`, `0xf48c`, `0xf692`, `0xf75e`, `0x12622`, `0xcb00`,
+  `0xc992`, `0xece2`, `0xea9e`, `0xee64`, or `0xf9e8`.
 - Printable route:
   `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0xd3b2/0xd824 -> 0x12f2e
   -> 0x1387c -> page-record storage -> publication/render`.
@@ -229,6 +229,14 @@ Decision rules:
   `0x78315c`; BS subtracts HMI or previous-width state
   `0x782a58/0x782a5a/0x782a5c`. The next printable byte is the visible
   consumer.
+- `ESC =` handler `0xf176` is a vertical-placement command. It ensures page
+  root `0x78297a` through `0x10084`, flushes pending span state through
+  `0xf34a`, converts VMI `0x783160` through `0x104fe`, halves it, normalizes
+  the half-step through `0x104d8`, adds it to vertical cursor `0x782c8e`
+  through `0x10518`, runs overflow/perforation helper `0xf36c`, optionally
+  calls `0x1048c`, and clears pending text/cursor latch `0x782a6d`. It creates
+  no text object by itself; the following printable, raster, or rectangle
+  handler is the visible consumer of the shifted y position.
 - Cursor, margin, and dot-position handlers `0xeb58`, `0xec0c`, `0xf39e`,
   `0xf416`, `0xf560`, `0xf60a`, `0xf48c`, and `0xf692` commit placement
   fields through `0xf4ca` or `0xf6e2`. If pending span state exists, they can
@@ -293,7 +301,8 @@ Canonical placement state:
 - `0x782c8a`: horizontal cursor consumed by printable text, HT, BS,
   `ESC &a#C/#H`, `ESC *p#X`, margin reset, and raster-start positioning.
 - `0x782c8e`: vertical cursor consumed by LF, FF, `ESC &a#R/#V`,
-  `ESC *p#Y`, printable text bucketing, and raster-start positioning.
+  `ESC *p#Y`, `ESC =`, printable text bucketing, and raster-start
+  positioning.
 - `0x782dd6`: left/default margin copied into `0x782c8a` by CR helper
   `0xf06e`; written by `ESC &a#L` handler `0xeb58` and reset by `ESC 9`
   handler `0xe9ba`.
@@ -305,7 +314,7 @@ Canonical placement state:
   printable advance.
 - `0x783160`: VMI/line advance written by `ESC &l#C/#D` handlers
   `0xcb00` and `0xc992`, then consumed by LF, FF, vertical positioning, VFC,
-  page length, and top-margin paths.
+  `ESC =`, page length, and top-margin paths.
 
 Canonical control modes:
 

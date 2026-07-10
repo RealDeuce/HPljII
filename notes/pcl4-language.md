@@ -44,10 +44,12 @@ Field groups:
   products.
 - Parser scratch:
   numeric accumulation, lowercase chaining records, delayed payload snapshots,
-  alternate/data append bytes, and no-output parser reset rows.
+  alternate/data append bytes, no-output parser reset rows, service/no-byte
+  turns, and no-match callback handoffs.
 - Firmware bookkeeping:
   parser callback pointer, page allocator cursors, macro heap/data-chain
-  frames, publication flag, host-output FIFO, and scheduler work records.
+  frames, no-byte latch `0x780e3b`, macro/page state byte `0x782a92`,
+  publication flag, host-output FIFO, and scheduler work records.
 - Hardware/external state:
   live host buses, retained storage, optional resource windows, and
   formatter/DC timing only after the ROM reduces them to bytes, fields,
@@ -67,6 +69,12 @@ Output effect:
 - Unsupported or no-output commands are still ROM behavior: they consume the
   documented syntax and take explicit no-output parser, handler, or status
   paths.
+- Raw-byte traces can also stop at parser-control outcomes that are not manual
+  commands: service/return `0x117d2..0x11818`, no-match normal fallback
+  `0x118b2..0x11900`, alternate/data no-match append `0x11b82..0x11b8a`, or
+  nonzero-mode callback `0x11b32..0x11b7e`. These are parser routing outcomes
+  and only become page behavior when they explicitly reach `0xd04a`, a
+  callback owner, or later replay of bytes appended through `0xe002`.
 
 ## PCL Level
 
@@ -101,6 +109,13 @@ In the ROM model, "ignored" is not a single behavior:
   alternate table rooted at `0x116f6` appends matched C0 bytes through
   `0xe002` instead of running their normal control-code handlers, so they can
   matter later if macro/data-chain replay feeds them back to the parser.
+- Parser-control outcomes can also consume a byte-stream turn without being
+  manual commands. Service path `0x117d2..0x11818` handles no-byte latch
+  `0x780e3b` and parser return state `0x782a92 == 0x63`; normal no-match path
+  `0x118b2..0x11900` either calls `0xd04a` or ignores the byte according to
+  selected context byte `0x782ee6 + 16 * 0x782f06 + 5`; alternate/data
+  no-match path `0x11b82..0x11b8a` appends through `0xe002`; and nonzero-mode
+  no-match path `0x11b32..0x11b7e` delegates to callback `0x78299a`.
 
 Evidence: [pcl-parser-core.md](pcl-parser-core.md),
 [pcl-command-map.md](pcl-command-map.md), the ignored/no-output walkthrough in

@@ -593,6 +593,120 @@ to `0x782f08` and `0x782f0a`. If span byte `0x783184` is set, it clears that
 byte and calls `0x126e2`. Like the page-size handler, the final return path
 clears `0x782a92` unless it already equals `2`.
 
+### Shared Geometry Refresh Consumer Checkpoint
+
+This checkpoint connects page-control commands to later page-object and pixel
+routes. It starts after `ESC &l#A`, `ESC &l#P`, or `ESC &l#O` has selected an
+internal page code or orientation and ends when a later printable, raster,
+rectangle, VFC, or publication path consumes the refreshed fields.
+
+Writers:
+
+- Page size `0xfc74..0xfe52` maps accepted selectors to internal page code
+  `D5`, publishes the old root on explicit changes, sets pending layout byte
+  `0x782997`, writes `0x782da2`, refreshes table-derived words
+  `0x782db2` and `0x782db4`, recomputes phase word `0x782dc0`, writes top
+  offset `0x782dce = 0x96 - 0x782dbe`, clears `0x782dd0`, then calls
+  `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`.
+- Page length `0xf9e8..0xfc52` converts nonzero line counts through VMI
+  `0x783160`, writes page extent `0x782dba`, selects an orientation-dependent
+  page code from thresholds `0x782daa/0x782dac/0x782dae/0x782db0`, and then
+  runs the same geometry/VFC refresh. Its zero branch can first publish the
+  current root, mirror paper-source state to `0x780e8f` / `0x780e26`, and then
+  restore the default code from `0x780e97` or fallback code `2`.
+- Orientation `0x10220..0x103e6` publishes the old root only for a changed
+  selector below `2`, writes `0x782da3`, calls `0xf9ac`, `0xf87e`,
+  `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0x103ea`, then
+  refreshes selected font-context metrics and HMI `0x78315c`.
+
+Shared helper effects:
+
+- `0xf9ac` writes page extent `0x782dba` from the portrait or landscape length
+  table selected by orientation byte `0x782da3`.
+- `0xf87e` writes orientation offset `0x782dbe`, then swaps table-derived
+  words `0x782db2` / `0x782db4` into active extents
+  `0x782db6` / `0x782db8` according to orientation.
+- `0xea16` refreshes default text-bottom cache `0x782dd2`.
+- `0xe9ba` resets horizontal margins by clearing `0x782dd6`, copying active
+  page width `0x782db8` to `0x782dda`, and clearing `0x782ddc`.
+- `0xfe54` recomputes VFC line-count caches `0x782edf`, `0x782ee0`, and
+  `0x782ede` from VMI, top offset, and text-bottom state.
+- `0x12b96` rebuilds the default VFC table at `0x782dde..0x782edd`, copies
+  text-bottom cache `0x782dd2` to derived overflow limit `0x782dc2`, and
+  clears modified-layout byte `0x782ee1`.
+
+Readers and output consumers:
+
+- Printable path `0xd04a` consumes refreshed cursor, margin, extent, and HMI
+  state through prechecks `0xd28a` / `0xd6bc`, queueing compact text only after
+  those geometry gates accept the byte.
+- Direct cursor controls consume the same state: CR helper `0xf06e` copies
+  `0x782dd6` to `0x782c8a`; horizontal commit `0xf4ca` clamps against
+  `0x782db8` and right margin `0x782dda`; vertical commit `0xf6e2` uses top
+  offset `0x782dce` and bounds `0x782dca` / `0x782dc6`.
+- Raster start and transfer handlers consume logical width and active extents:
+  `0x1061e`, `0x1064c`, `0x107bc`, and `0x1086e` read
+  `0x782db2/0x782db4`, while encoded object production at `0x130ae` adds
+  phase word `0x782dc0`.
+- Rectangle/rule producers consume `0x782db8` / `0x782db6` for clipping and
+  add `0x782dc0` before packing rule keys at `0x13386..0x133aa`.
+- Text span and fixed-list production consume active extents: `0x12714`
+  checks `0x782db2` and gates output against `0x782db6` before inserting
+  segment-list or fixed-list objects.
+- VFC and vertical overflow consumers use caches from the same refresh:
+  `0x1280a` reads `0x782dce`, `0x782edf`, and `0x782ee0`, while overflow
+  helper `0xf36c` tests derived limit `0x782dc2`.
+
+Output effect:
+
+- The refresh creates no pixels immediately. Its visible effect is to change
+  how subsequent bytes are admitted, positioned, clipped, bucketed, and
+  eventually rendered.
+- If a current root exists, page-size, page-length zero/default, and
+  orientation change paths publish the old page before rewriting geometry.
+  Objects already queued under the old root therefore render with the old
+  geometry through the normal `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`
+  route. Later objects consume the new fields above.
+
+Field classification:
+
+- Canonical: page code `0x782da2`, orientation `0x782da3`, page extent
+  `0x782dba`, active extents `0x782db6/0x782db8`, margins
+  `0x782dd6/0x782dda`, top offset `0x782dce`, VMI/HMI
+  `0x783160/0x78315c`, current cursor `0x782c8a/0x782c8e`, and VFC table
+  `0x782dde..0x782edd`.
+- Derived/cache: table words `0x782db2/0x782db4`, phase word `0x782dc0`,
+  text-bottom cache `0x782dd2`, overflow limit `0x782dc2`, line-count caches
+  `0x782ede/0x782edf/0x782ee0`, and threshold words
+  `0x782daa/0x782dac/0x782dae/0x782db0`.
+- Parser scratch: six-byte parsed records consumed after `0x78299e` is
+  rewound by `0xfc74`, `0xf9e8`, or `0x10220`.
+- Firmware bookkeeping: pending publication byte `0x782997`, layout scratch
+  `0x782dd0`, modified-layout byte `0x782ee1`, macro/page state
+  `0x782a92`, and helper status side effects around `0x9ac2` / `0x9b5e`.
+- Unknown: no ROM-local writer-to-consumer edge remains unnamed for the shared
+  geometry refresh above. New work must change one of the named fields,
+  helper calls, consumer branches, or object/output fields.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
+  `generated/disasm/ic30_ic13_text_span_flush_012714.lst`, and
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`.
+- Checked-in explanations:
+  [page-raster-imaging.md](page-raster-imaging.md#page-size-tables),
+  [direct-control-codes.md](direct-control-codes.md#owner-summary),
+  [raster-graphics.md](raster-graphics.md#owner-summary),
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary), and
+  [vertical-forms-control.md](vertical-forms-control.md).
+
 ### Paper Source And Copies Details
 
 `ESC &l#H` enters `0xef62`. `0xef6a..0xef8e` saves current source byte

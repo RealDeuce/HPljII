@@ -457,12 +457,11 @@ Its behavior:
 The digit bytes copied into `0x782a42..0x782a3e` are parser scratch, not the canonical
 numeric value. The record words at `+2` and `+4` are the fields that handlers consume.
 
-Fixture `0xdb74 parses sign, capped fraction digits, and final byte` pins the
-record layout with signed integer and fractional fields, including the cap at
-six integer digits and four stored fractional digits. Fixture `0xdb74 returns
-D7 zero for semicolon continuation final` pins the tokenizer return contract:
-semicolon and colon continuation finals store the final byte in the record but
-return `D7 = 0` to the caller.
+Tokenizer route examples named in the evidence list exercise the signed
+integer/fractional record layout, the six-integer-digit cap, the four stored
+fractional digits, and the continuation return contract. Semicolon and colon
+continuation finals store the final byte in the record but return `D7 = 0` to
+the caller.
 
 ## Angle Helper At 0xdb46
 
@@ -501,11 +500,11 @@ This means lowercase PCL finals such as `c` or `b` can leave a record pending fo
 uppercase final in the same family, while the final uppercase byte is what causes
 command dispatch or delayed payload restore.
 
-Fixture `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte
-records` proves this command-family combine behavior directly. The lowercase
-record remains in the six-byte record stream, the cursor is positioned so the
-uppercase sibling can be parsed as a second record, and later handlers see the
-same canonical record sequence that the ROM parser built.
+Lowercase-final numeric chains use this route to produce multiple six-byte
+records in one family. The lowercase record remains in the record stream, the
+cursor is positioned so the uppercase sibling can be parsed as a second
+record, and later handlers see the same canonical record sequence that the ROM
+parser built.
 
 ## Main Parser Loop At 0x11774
 
@@ -1064,17 +1063,14 @@ rather than normal command-family effects. Raster `0x105d0`, transparent text
 `0x12452`, and font handlers do not run from this branch unless the parser has
 returned to normal mode before `0x12218` dispatches them.
 
-Fixtures `0x121cc snapshots delayed payload handler and parsed record` and
-`0x12218 restores delayed parsed record and dispatches saved handler` pin the
-bookkeeping fields: pending flag `0x782a1a`, handler pointer `0x782a1c`, saved
-record `0x782a20..0x782a25`, restored active record at `0x78299e`, and handler
-clear after dispatch. Fixture `0x1228a consumes absolute delayed payload count
-without echo` proves generic wrapper `0x1228a` uses the absolute value of
-record word `+2`, drains bytes through `0x12328` / `0xdace`, and does not echo
-payload bytes through the alternate/data append path.
-Fixture `0x12358 direct alternate path echoes positive payload bytes only`
-proves the non-wrapper alternate/data branch above: positive counts are echoed
-through `0xe002`, while nonpositive counts return without consuming payload.
+Delayed-payload bookkeeping fields are pending flag `0x782a1a`, handler
+pointer `0x782a1c`, saved record `0x782a20..0x782a25`, restored active record
+at `0x78299e`, and handler clear after dispatch. Generic wrapper `0x1228a`
+uses the absolute value of record word `+2`, drains bytes through
+`0x12328` / `0xdace`, and does not echo payload bytes through the
+alternate/data append path. The non-wrapper alternate/data branch echoes only
+positive counts through `0xe002`; nonpositive counts return without consuming
+payload.
 
 The downloaded-font delayed handlers use the same drain contract after their
 own install work. In `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
@@ -1090,11 +1086,9 @@ The alternate `0x15b9a`, `0x15c4c`, and `0x16606` branches also join the same
 Transparent print data is the direct parser-core delayed-payload sibling at
 `0x11f5a`. It schedules handler `0x12452` through `0x121cc`; after
 `0x12218` restores the saved count record, `0x12452` consumes the absolute
-byte count and routes bytes into text/fixed-space output. Fixture
-`0x11f5a/0x12452 transparent text restores and consumes counted bytes` pins
-that restore/consume boundary. Fixture `0x12452 transparent text probe keeps
-non-0x58 byte` pins the local Control-Z probe edge: `0x1a 0x58` is the
-normalized special pair, while a non-`0x58` second byte remains payload data.
+byte count and routes bytes into text/fixed-space output. Its local Control-Z
+probe treats `0x1a 0x58` as the normalized special pair; a non-`0x58` second
+byte remains payload data.
 
 ## Parser Record Semantic Checkpoint
 
@@ -1168,29 +1162,28 @@ Output effect:
 
 - This checkpoint has no pixels by itself. It preserves the record and
   payload state that later pixel-producing handlers consume.
-- Fixture `0x11774 ROM dispatch table routes raster stream to delayed
-  transfer` checks that the parser reaches `0x11f82` and stores the delayed
-  raster transfer record before payload bytes are consumed.
-- Fixture `modeled raster command stream parses ESC *t300R / ESC *r1A /
-  ESC *b4W payload boundary` checks that `0x12218` restores the saved `W`
-  record before the payload reader consumes the following bytes.
-- Fixture `transparent data parser trace feeds page-record queue` checks that
-  delayed transparent text restores through `0x12452` before routing
-  payload bytes into text/fixed-space output.
-- Fixture `0x121cc/0x15d0a-modeled font descriptor command stream` checks that
-  zero-count font descriptor `W` commands use the same scheduler fields before
-  handler `0x15d0a` consumes the restored record.
-- Fixtures `resource payload stream ties ROM parser dispatch to 0x16c14
-  install` and `downloaded character stream ties ROM parser dispatch to
-  rendered object` check that the same delayed-record contract feeds
-  downloaded-font payload handlers before visible glyph output.
+- Raster transfer route: parser dispatch reaches `0x11f82`, scheduler
+  `0x121cc` saves the `ESC *b#W` record and handler, and `0x12218` later
+  restores that record before payload reader `0x105d0` consumes the following
+  bytes.
+- Transparent text route: parser setup reaches `0x11f5a`, scheduler
+  `0x121cc` saves handler `0x12452`, and `0x12218` restores the count record
+  before transparent text routes payload bytes into text/fixed-space output.
+- Font descriptor and resource route: descriptor handler `0x15d0a` and
+  resource handler `0x16c14` consume restored delayed records after the same
+  scheduler boundary, then drain or install payload bytes according to their
+  command-family contracts.
+- Alternate/data route: `0x12358` prevents non-wrapper delayed handlers from
+  running in alternate/data mode; positive payload counts are normalized
+  through `0xdace` and appended through `0xe002`, while nonpositive counts
+  leave the payload stream untouched.
 
 Confidence:
 
 - High for tokenizer record layout, cursor rewind, helper selection, delayed
   snapshot/restore, and alternate/data redirection because these are direct
-  disassembly reads and checked by fixtures across raster, transparent text,
-  downloaded-font, and macro paths.
+  disassembly reads and exercised by supporting fixtures across raster,
+  transparent text, downloaded-font, and macro paths.
 - Medium only for command-family semantics beyond the parser boundary. Those
   are intentionally documented in command-family notes.
 

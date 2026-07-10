@@ -1521,27 +1521,43 @@ current-root state at `0xffa2`, and does not create a published page record.
 
 ## Reproduction Contract
 
-A byte-stream renderer must preserve:
+A byte-stream renderer must model publication as a page snapshot boundary, not
+as a pixel renderer.
 
-- publication before reset, page-size, orientation, and paper-source side
-  effects mutate the environment;
-- page-length nonzero updates before later placement consumes `0x782dba`,
-  `0x782da2`, and refreshed cursor state, plus page-length zero publishing
-  pending text before restoring default page state;
-- FF publication after line-termination mode has applied CR-style horizontal
-  reset when `ESC &k2G` is active;
-- copies state written by `0xeef0` before a later FF publication copies it
-  into pool-header word `+0x0c`;
-- paper-source selector `2` side effects after publication, including
-  `0x782da6`, `0x782998`, `0x780e8f`, and `0x780e26`;
-- non-default `0xff1e` status/environment/root header copies independently
-  from the bucket root and rendered compact rows;
-- missing-root reset with no publication;
-- `0xff1e` pool-header defaults, publication flag, and current-root clearing;
-- `0x1ed84` / `0x1edc6` bridge preservation of compact bucket and context
-  slot state;
-- ROM-derived compact row construction through the same render helpers for
-  reset, FF, page-size, page-length, orientation, paper-source, and copies.
+- `0xff1e` is the exact snapshot boundary. It accepts only current root
+  `0x78297a` with root byte `+0x04 == 1`; the no-root or inactive-root exit at
+  `0xff26..0xff40` clears current-root state without producing a published
+  page/control record.
+- Successful publication writes root byte `+0x04 = 2`, root header bytes and
+  words `+0x07/+0x08/+0x0a/+0x0c/+0x18/+0x1a`, pool head `0x780ea6`,
+  publication flag `0x782996`, and cleared current root `0x78297a = 0`.
+- Publication preserves object roots and context slots created before the
+  boundary: compact/raster buckets under `+0x1c`, rules under `+0x24`,
+  fixed-list objects under `+0x28`, and context slots under `+0x2c..+0x68`.
+  Pixels are derived only after `0x1ed84` / `0x1edc6` copies those source roots
+  into render-work fields and `0x1ef6a` dispatches the object renderers.
+- Reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, orientation `0x10220`, and
+  paper-source `0xef62` must publish any active current root before their
+  post-command environment changes are used by later bytes.
+- Page-length `0xf9e8` has a split contract: accepted nonzero values update
+  `0x782dba`, `0x782da2`, and refreshed cursor/geometry state for later
+  placement, while the zero/default branch can publish pending text before it
+  restores default page state.
+- FF publication must occur after line-termination mode has applied the
+  CR-style horizontal reset when `ESC &k2G` is active.
+- Copies handler `0xeef0` is state-only until a later publication copies
+  `0x782da4` into published root word `+0x0c`.
+- Paper-source selector `2` publishes the pre-change page, then writes
+  canonical and output/control state including `0x782da6`, `0x782998`,
+  `0x780e8f`, and `0x780e26` for following pages or device-facing consumers.
+- The macro overlay branch at `0xff40..0xffb0` replays overlay bytes through
+  the ordinary parser before final publication. It creates visible pixels only
+  through the normal command owners that run during replay and the later
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
+- For the documented reset, FF, page-size, page-length, orientation,
+  paper-source, and copies streams, ROM-derived compact rows come from the
+  same published-record bridge and render helpers. There is no separate
+  publication renderer.
 
 ## Confidence
 

@@ -152,6 +152,90 @@ Concrete evidence is in [pcl-command-map.md](pcl-command-map.md),
 [semantic-state-model.md](semantic-state-model.md), and the command-family
 notes cited from those files.
 
+## Level IV Command-Family Outcome Matrix
+
+This matrix is the top-level route from manual PCL categories to the ROM
+owners that document actual behavior. It is intentionally not a syntax-only
+quick reference: each row identifies the parser/handler boundary, the state
+owner, and whether visible pixels can result.
+
+- Reset, FF, page size, orientation, paper source, copies:
+  handlers `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
+  `0xeef0`; owner [publication-commands.md](publication-commands.md).
+  These handlers publish any old current root through `0xff1e` when required,
+  update page environment fields such as `0x782da2`, `0x782da3`,
+  `0x782da4`, and `0x782da6`, and leave later objects to render through
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+- Direct controls and text placement:
+  C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`,
+  SO/SI `0xc6b8` / `0xc68a`, plus cursor/margin helpers; owner
+  [direct-control-codes.md](direct-control-codes.md). These commands mostly
+  change cursor, selected text slot, line-termination, span, and margin state.
+  Visible output occurs when later printable text or a span flush queues
+  compact objects through `0xd04a`, `0x12f2e`, and `0x1387c`.
+- Printable text and font/symbol selection:
+  printable fallback `0xd04a`; owners
+  [font-context-metrics.md](font-context-metrics.md),
+  [symbol-set-selection.md](symbol-set-selection.md), and
+  [symbol-map-patching.md](symbol-map-patching.md). Selection commands update
+  font contexts, symbol maps, HMI, and map patch state. Printable bytes consume
+  those fields to create compact text objects under page-root bucket `+0x1c`
+  and render through compact helpers such as `0x1effe`.
+- Transparent and display readers:
+  delayed transparent handler `0x11f5a -> 0x12452` and display readers
+  `0x12536` / `0x12120`; owners
+  [transparent-print-data.md](transparent-print-data.md) and
+  [display-functions.md](display-functions.md). These are direct byte readers:
+  transparent payload and normal `ESC Y` bytes route to `0xd04a` or `0xd0f0`,
+  while alternate/display append stores bytes through `0xe002` with no
+  immediate page object.
+- Raster graphics:
+  `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
+  producer `0x13070`; owner [raster-graphics.md](raster-graphics.md). Raster
+  commands set resolution/mode and queue encoded raster row objects. Pixel
+  generation happens later when bucket walkers dispatch encoded rows to
+  `0x1f88e`, after page-record publication and render-record bridge.
+- Rectangle/rule graphics:
+  rectangle and fill handlers under `0x10898`, object insertion
+  `0x13386` / `0x133aa`; owner
+  [rectangle-graphics.md](rectangle-graphics.md). Width/height and selector
+  state become rule-list objects under root `+0x24`. Render entry consumes
+  those rule objects through selector helpers such as `0x1f446`, `0x1f596`,
+  and patterned-rule continuation state.
+- VFC and vertical layout: VMI/LPI, page length, VFC table load, and channel jumps;
+  owners [vertical-forms-control.md](vertical-forms-control.md) and the [geometry
+  refresh](publication-commands.md#shared-geometry-refresh-consumer-checkpoint). These
+  commands update VMI, top/text limits, VFC table bytes, and vertical cursor consumers.
+  They create pixels only when following printable, raster, rectangle, or publication
+  paths consume the refreshed coordinates.
+- Macros and alternate/data replay:
+  macro controls under `0xdd08`, data-chain builders `0xe418` / `0xe4f4`,
+  and replay through `0xa904`; owner [macro-data-chain.md](macro-data-chain.md).
+  Macro definition stores bytes and suppresses normal immediate handlers in
+  alternate/data contexts. Execute, call, and overlay frames later replay bytes
+  through the same parser and can queue text, spans, raster rows, rules, or
+  publication effects.
+- Downloaded fonts and characters:
+  font descriptor/character payload readers `0x15d0a` and `0x16c14`, plus
+  active object dispatch around `0x14ba4`; owner
+  [downloaded-fonts.md](downloaded-fonts.md). Descriptor and bitmap payloads
+  install resources. Printable bytes later select installed glyphs through
+  current font/map state and render through compact/downloaded-glyph helpers
+  including `0x1f0d2`, `0x1f1f0`, and `0x1f264`.
+- Host/status side channels:
+  model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, and worker
+  `0xae2c`; owner [errors-and-status.md](errors-and-status.md). These paths
+  produce host-visible protocol bytes or panel/status state, not page pixels.
+  Pixel reproduction changes only if a bidirectional host sends different
+  future bytes or if FIFO fullness stalls a producer.
+
+Common render convergence for pixel-producing rows is:
+page-root storage under `0x78297a`, publication `0xff1e`, active/render
+record bridge `0x1ed84 -> 0x1edc6`, and bucket/list walking through
+`0x1ef6a`. Rows that say "no immediate page object" still matter to exact
+reproduction because they update fields consumed by a later row in this
+matrix.
+
 The current ROM notes do not treat LaserJet III / PCL5-only features as part
 of the LaserJet II reproduction target. Scalable typefaces, RET, HP-GL/2,
 PCL5 font selection behavior, and LaserJet III-specific page-protection

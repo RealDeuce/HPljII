@@ -1706,9 +1706,15 @@ State classification:
   `$a801`, and the physical retained-storage device.
 - Unknown:
   no unresolved ROM-local page-object or render edge remains. Remaining
-  boundaries are the physical identity/timing of the external register family,
-  physical retained-storage failure conditions, and user-facing names for
-  sibling service bits not yet tied to strings.
+  boundaries are indexed as explicit external/manual-correlation entries:
+  physical identity/timing for the external register family under
+  [Active Render Device Handoff](unresolved-boundaries.md#active-render-device-handoff),
+  retained-storage identity/failure conditions under
+  [Retained Defaults And Service
+  Persistence](unresolved-boundaries.md#retained-defaults-and-service-persistence),
+  and HP/manual-facing names for folded status categories under
+  [Folded Status Category
+  Names](unresolved-boundaries.md#folded-status-category-names).
 
 Evidence:
 
@@ -8562,7 +8568,10 @@ boundaries only when new evidence changes the documented state or pixel output.
    retained-storage identity and board-level serial pins behind `$a400` /
    `$8c01`, physical retained-storage failure/content conditions behind
    `67 SERVICE` and `68 SERVICE`, manual wording for retained-record failures,
-   and physical self-test placement.
+   physical self-test placement, and the manual-facing names for folded status
+   categories indexed in
+   [Folded Status Category
+   Names](unresolved-boundaries.md#folded-status-category-names).
 3. Font metrics, font selection, downloaded-glyph row/span publication, and
    macro overlay replay are composed checkpoints. Treat additional cases as
    regression expansion unless a byte stream changes a named state boundary:

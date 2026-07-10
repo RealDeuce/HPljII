@@ -10717,43 +10717,41 @@ and publication flag `0x782996`.
 
 ### Output Effect
 
-The direct six publication streams render the same compact Line Printer `!`
-rows from the pre-publication printable byte. Fixture
-`published page records feed 0x1ed84 and 0x1ef6a render entry` asserts the
-full row set, not just the prefix, for reset, FF, page-size, orientation,
-paper-source, and copies. Page-length zero/default reaches the same
-publication helper through `0xf9e8`; its documented output effect here is the
-default-page refresh plus optional paper-source output/control signal, with
-publication routed through `0xf34a` and `0xff1e`. The reset, FF, page-size,
-orientation, paper-source, and copies addressed fixtures also assert that their
-materialized page records render those same rows after `0xff1e`.
+The direct six publication streams render the compact Line Printer `!` rows
+queued before the publication command. Reset, FF, page-size, orientation,
+paper-source, and copies all preserve the pre-command page object until the
+publication helper runs; `0xff1e` copies the current page root to the published
+pool record, writes state byte `+4 = 2`, preserves command-specific header
+fields such as copies word `+0x0c`, and clears `0x78297a`. Page-length
+zero/default reaches the same publication helper through `0xf9e8`; its output
+effect is the default-page refresh plus optional paper-source output/control
+signal, with publication routed through `0xf34a` and `0xff1e`. After
+publication, `0x1ed84 -> 0x1edc6` bridges the published bucket/context roots
+and `0x1ef6a` renders the same compact rows from the published record.
 
-The mixed page-record fixtures split the command boundary from rendering:
-reset queues the printable object through `0x1387c` before `0xcc52` clears
-the current root, FF publishes the queued text through `0xf0f0`, paper source
-publishes before `0xef62` leaves its output/control bytes, and page-size /
-orientation publish before `0xfc74` or `0x10220` installs the new geometry.
-Their finalization fixtures prove the published bucket root and context slots
-bridge through `0x1edc6` and render the pre-command rows.
+The mixed page-record routes split the command boundary from rendering: reset
+queues the printable object through `0x1387c` before `0xcc52` reaches
+`0xcc70 -> 0xf34a -> 0xff1e`, FF publishes queued text through `0xf0f0`,
+paper source publishes before `0xef62` leaves its output/control bytes, and
+page-size / orientation publish before `0xfc74` or `0x10220` installs the new
+geometry. In each case the published bucket root and context slots bridge
+through `0x1edc6` and render the pre-command rows.
 
-The direct modeled stream fixture `mixed printable/reset stream publishes page
-root after text` covers the shorter `! ESC E` path before page-record
-materialization: printable byte `0x21` advances cursor x from packed `10` to
-packed `28`, positions the compact text at `(16,0)`, then reset `0xcc52`
-publishes one current page root, clears it, flushes pending span/post state,
-refreshes HMI from the Line Printer metric, leaves orientation `0`, and sets
-data-chain pointer `0x782d3e`. Fixture `mixed printable/reset stream keeps
-pre-reset text rows renderable` proves that the compact rows survive the
-reset publication boundary. Fixture `mixed printable/copies/FF stream
-publishes copy count` pins the sibling copies stream `! ESC &l2X FF`: handler
-`0xeef0` stores copy count `2`, FF `0xf0f0` publishes the current page root,
-and the published pool header carries environment word `+0x0c = 2` while the
+The shorter `! ESC E` path before page-record materialization works the same
+way: printable byte `0x21` advances cursor x from packed `10` to packed `28`,
+positions the compact text at `(16,0)`, then reset `0xcc52` publishes one
+current page root, clears it, flushes pending span/post state, refreshes HMI
+from the Line Printer metric, leaves orientation `0`, and sets data-chain
+pointer `0x782d3e`. The compact rows survive because `0xff1e` publishes the
+root before clearing it. The sibling copies stream `! ESC &l2X FF` stores copy
+count `2` through `0xeef0`; FF `0xf0f0` publishes the current page root, and
+the published pool header carries environment word `+0x0c = 2` while the
 pre-command text rows remain renderable.
 
-The reset-specific missing-root fixture proves the opposite output boundary:
+The reset-specific missing-root route is the opposite output boundary:
 `host-fetched ESC E clears missing page root without publication` reaches reset
-handler `0xcc52`, clears the missing current page root state, and does not
-create a published page record.
+handler `0xcc52`; `0xff1e` sees no valid current page root at `0x78297a` and
+takes the `0xffa2` clear/return branch, so no published page record is created.
 
 ### Confidence
 

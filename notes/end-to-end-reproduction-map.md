@@ -9180,14 +9180,18 @@ shape, publication boundary, or render helper inputs.
    Physical baseline/cell placement names, if needed, are external correlation
    rather than ROM execution evidence.
 
-## Next Disassembly Targets
+## Next Evidence Targets
 
-The next work should follow dataflow, not isolated handlers. Start from these
-boundaries only when new evidence changes the documented state or pixel output.
+The next work should follow dataflow, not isolated handlers. ROM-local
+disassembly work starts only when a byte stream or static trace changes
+documented parser state, command-family state, page/image objects, render
+dispatch, or row construction. External boundaries below are evidence targets,
+not reasons to re-trace already documented ROM paths.
 
-1. Transparent secondary segment-57 resource decode remains the highest pixel-affecting
-   external-data boundary. The parser, filtering, page-record, bridge, and renderer path
-   is documented in [Transparent Payload Decision
+1. Transparent secondary segment-57 resource decode remains the highest
+   pixel-affecting external-data boundary, but it is not a ROM disassembly
+   target. The parser, filtering, page-record, bridge, and renderer path is
+   documented in [Transparent Payload Decision
    Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
    the Transparent Print Data section above. The unresolved input is
    physical/resource-window data for firmware range `0x0c0000..0x0c0321`, after verified

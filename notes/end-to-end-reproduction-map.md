@@ -180,8 +180,8 @@ boundary outside these owners, the relevant owner note must be extended.
   static cross-references, and named fixtures as supporting evidence.
   [unresolved-boundaries.md](unresolved-boundaries.md#unresolved-boundary-outcome-matrix)
   is the compact index of exact stop points by reason: ROM-local invalid target/source,
-  missing resource data, hardware/MMIO boundary, optional external data, or
-  manual/physical correlation.
+  ROM-local unresolved caller, missing resource data, hardware/MMIO boundary, optional
+  external data, or manual/physical correlation.
 
 ## Shared Page-Object Contract
 
@@ -5617,6 +5617,20 @@ or from a byte stream that changes a named field in the family sections.
   state machines. Remaining work is mapping external events and connector
   signals to those observed state changes, not deriving pixels from page
   objects.
+- ROM-local optional active-pool helper entry:
+  `0x247c..0x270c` is decoded as an optional accumulator-to-pattern helper,
+  but its direct caller or computed entry target is not located. The ordinary
+  active-render route still uses publication `0xff1e`, bridge `0x1ed84` /
+  `0x1edc6`, page-band dispatch `0x1ef6a`, and active-copy helper `0x22f4`.
+  The exact stop is
+  [Optional Active-Pool Pattern Helper
+  Caller](unresolved-boundaries.md#optional-active-pool-pattern-helper-caller):
+  decoded fields include source pointer `0x783992`, destination row base
+  `0x78399a`, row-copy jump offset `0x7839a4`, destination stride
+  `0x7839a8`, accumulator `0x7839d4`, and pattern-pointer cache
+  `0x7839d8..0x7839f7`. Remaining evidence needed is a static caller/xref,
+  computed jump target, trap/vector entry, or scheduler-entry proof into
+  `0x247c`.
 - ROM-local command variants:
   new parser work should begin only when a byte stream changes a documented
   field or branch boundary: selected font/context fields, transparent/display

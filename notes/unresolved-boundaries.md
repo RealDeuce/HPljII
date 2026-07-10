@@ -6,6 +6,60 @@ variant. A boundary belongs here only when the documented trace reaches a
 specific address, field, helper, or external memory range and cannot make a
 stronger claim from the ROM evidence currently available.
 
+## Owner Summary
+
+This note owns the residual stop points for the ROM dataflow model. Command
+owners and route maps should link here only after they have already documented
+the upstream parser route, command handler, fields, page/image objects, bridge
+state, and render-helper entry. A boundary here is therefore the exact point
+where the checked-in model must stop, not a license to leave the earlier route
+vague.
+
+Boundary classes:
+
+- ROM-local invalid target/source:
+  computed helper targets or source reads that leave the documented valid
+  table or bitmap/source range, such as downloaded-glyph compact helper
+  over-indexing after `0x1fe76`, wrapped mode-0 target selection through
+  `0x1f034 -> 0x1f08e`, or segmented-wide fallback source reads after
+  `0x1f264`.
+- Missing external resource data:
+  ROM-visible reads beyond the verified IC32/IC15 resource suffix, currently
+  the secondary segment-57 source range `0x0c0000..0x0c0321`.
+- Hardware/MMIO boundary:
+  ROM-visible polling, wait-object, status, or output-side behavior where the
+  physical device identity or connector timing is not proven.
+- Optional external data:
+  optional cartridge/resource windows whose ROM control flow is documented but
+  whose contents are not present.
+- Manual/physical correlation:
+  ROM behavior whose service-manual or user-facing name is not assigned.
+
+State classification:
+
+- Canonical upstream state:
+  the handler records, command-family fields, installed resources, page roots,
+  page objects, publication records, render roots, and helper inputs already
+  documented before the stop.
+- Derived/cache state:
+  computed indexes, row/span products, fallback counts, table offsets,
+  resource addresses, and scheduler/cache fields that expose the stop.
+- Parser scratch:
+  restored six-byte records, delayed-payload state, payload budgets, and
+  transient query or drain state consumed before the boundary.
+- Firmware bookkeeping:
+  allocator/release state, retry or publication flags, wait-object state,
+  FIFO/status state, and active render progress that controls how the ROM
+  reaches the stop.
+- Hardware/external state:
+  physical resource decode, MMIO identity, connector timing, optional
+  cartridge contents, retained-storage identity, or panel/sensor provenance.
+- Unknown:
+  only the named invalid target, missing range, physical identity, optional
+  contents, or manual-facing label. Upstream parser dispatch, page-object
+  production, bridge roots, and render dispatch are not unknown unless a
+  specific entry says they are.
+
 Use the classification column before continuing work:
 
 - ROM-local invalid target/source: the ROM reaches an address or table/source

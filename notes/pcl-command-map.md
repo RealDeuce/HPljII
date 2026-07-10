@@ -2139,14 +2139,13 @@ Printable prechecks `0xd28a` and `0xd6bc` test this flag and call
 `0xf054` for enabled-wrap horizontal recovery, so wrap mode is part of
 the page text-layout state rather than parser-only metadata.
 
-`ESC &p#X` at `0x011f5a` is a delayed transparent-print-data boundary.
-It saves handler `0x12452` through `0x121cc`; after `0x12218` restores
-the saved command record, `0x12452` consumes the absolute byte count
-from the host byte source, stops on `D7=-1`, normalizes `0x1a 0x58` to
-`0x7f`, sends printable bytes through `0xd04a`, and sends filtered
-control bytes through `0xd0f0` depending on the active symbol/high-byte
-state.
-See [transparent-print-data.md](transparent-print-data.md) for the
+`ESC &p#X` at `0x011f5a` is a delayed transparent-print-data boundary. It saves handler
+`0x12452` through `0x121cc`; after `0x12218` restores the saved command record,
+`0x12452` consumes the absolute byte count from the host byte source, stops on `D7=-1`,
+normalizes `0x1a 0x58` to `0x7f`, sends printable bytes through `0xd04a`, and sends
+filtered control bytes through `0xd0f0` depending on the active symbol/high-byte state.
+See [Transparent Payload Decision
+Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) for the
 tracked behavioral note and fixture evidence.
 
 `ESC *r#A` at `0x01075a` starts raster graphics by setting state in the

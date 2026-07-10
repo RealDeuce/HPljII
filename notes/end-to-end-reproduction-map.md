@@ -271,33 +271,29 @@ controlling artifact.
   `0xdb74`, parser mode `0x782999`, and six-byte records at `0x78299e..`.
   Residuals are physical bus/MMIO naming unless a new source changes the
   normalized byte sequence.
-- Normal bytes, control codes, ESC entry, parameterized commands, binary
-  payloads, macro/replay, and ignored/error cases:
-  the branch-level parser outcomes are documented in
-  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and
-  the command-family classes are indexed by
-  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
-  The ROM Semantic Index in [pcl4-language.md](pcl4-language.md#owner-summary) adds the
-  command-language entry point: for each major PCL Level IV family it names
-  first parser handlers, representative byte streams, page-object bytes or
-  state fields, render routes, and owner notes.
-  Checked-in owners are [direct-control-codes.md](direct-control-codes.md),
-  [transparent-print-data.md](transparent-print-data.md),
+- Normal bytes, control codes, ESC entry, parameterized commands, binary payloads,
+  macro/replay, and ignored/error cases: the branch-level parser outcomes are documented
+  in [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and the
+  command-family classes are indexed by
+  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes). The ROM
+  Semantic Index in [pcl4-language.md](pcl4-language.md#owner-summary) adds the
+  command-language entry point: for each major PCL Level IV family it names first parser
+  handlers, representative byte streams, page-object bytes or state fields, render
+  routes, and owner notes. Checked-in owners are
+  [direct-control-codes.md](direct-control-codes.md),
+  [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint),
   [display-functions.md](display-functions.md),
-  [macro-data-chain.md](macro-data-chain.md),
-  [raster-graphics.md](raster-graphics.md),
+  [macro-data-chain.md](macro-data-chain.md), [raster-graphics.md](raster-graphics.md),
   [downloaded-fonts.md](downloaded-fonts.md), and
-  [vertical-forms-control.md](vertical-forms-control.md). The minimal
-  walkthroughs for parser dispatch, ignored/no-output rows, transparent data,
-  display functions, symbol-set/map updates, macro replay, overlay replay,
-  VFC, raster, and downloaded glyphs give byte-stream examples. The
-  `Supported Stream Entry Points`
-  address-level cluster map is the current checked-in route index for starting
-  from a concrete byte stream: it names the parser route and the first
-  command-family/page/render owners for printable text, direct controls,
-  parser artifacts, transparent/display readers, font selection, scheduler
-  handoff, downloaded fonts, raster/rectangle graphics, publication/render,
-  macro replay, and VFC.
+  [vertical-forms-control.md](vertical-forms-control.md). The minimal walkthroughs for
+  parser dispatch, ignored/no-output rows, transparent data, display functions,
+  symbol-set/map updates, macro replay, overlay replay, VFC, raster, and downloaded
+  glyphs give byte-stream examples. The `Supported Stream Entry Points` address-level
+  cluster map is the current checked-in route index for starting from a concrete byte
+  stream: it names the parser route and the first command-family/page/render owners for
+  printable text, direct controls, parser artifacts, transparent/display readers, font
+  selection, scheduler handoff, downloaded fonts, raster/rectangle graphics,
+  publication/render, macro replay, and VFC.
 - Command dispatch tables and parsed forms to handlers:
   covered by [pcl-command-map.md](pcl-command-map.md), generated table extracts
   cited there, the ROM Semantic Index in
@@ -5420,50 +5416,43 @@ Address-level cluster map:
   [pcl-command-map.md](pcl-command-map.md), and `Worked Path: Explicit
   No-Output Parser Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-- Transparent/display-reader cluster:
-  transparent data uses `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
-  display functions use normal reader `0x12536` or alternate/data reader
-  `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and
-  `0x121b2`. Owners are
-  [transparent-print-data.md](transparent-print-data.md#owner-summary) and
-  [display-functions.md](display-functions.md). The remaining pixel-affecting
-  residual is not parser routing; it is the secondary segment-57 resource
-  continuation read at firmware range `0x0c0000..0x0c0321`. Transparent
-  `ESC &p#X` saves a delayed record through `0x121cc`; `0x12452` reopens the
-  restored count, fetches payload bytes directly through `0xa904`, locally
-  normalizes `1a 58` through `0xd99a`, and routes each value to printable
-  `0xd04a` or fixed-space `0xd0f0` using selected-context/high-control
-  filters. Normal `ESC Y ... ESC Z` enters `0x12536`, then reads directly
-  through `0xa904` until local `ESC Z` termination; the terminating pair is
-  routed before exit. Alternate/data `0x12120` appends literal `ESC Y` and
-  normalized loop values through `0xe002`, creating stored input rather than
-  immediate page objects. Control-Z handlers are local table consumers, not a
-  global parser rule.
-  Concrete direct-reader streams are now part of the route index.
-  `ESC &p2X!!` restores record `80 58 00 02 00 00`, routes payload bytes
-  `21 21` through `0xd04a`, queues compact coordinates `0x0001` and
-  `0x0202`, and later renders through the ordinary compact-text path.
-  `ESC &p4X!\x05\x85!` under default zero filters restores
-  `80 58 00 04 00 00`, routes `d04a d0f0 d0f0 d04a`, and queues object
-  prefix `00 00 00 00 00 00 00 02 20 00 01 20 06 04`; the two fixed-space
-  routes advance cursor state without compact entries in the flagged built-in
-  path. With nonzero filters, `ESC &p4X!\x05\x80!` routes all four payload
-  values through `0xd04a` and queues prefix
-  `00 00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`. Secondary
-  stream `SO ESC &p3X!\x80!` selects slot `1`, routes all values through
-  `0xd04a`, and the high-control byte creates selector-`0x2001` segmented
-  buckets; selected bucket `0` begins
-  `00 00 00 00 20 01 00 01 5f 00 1c 01 00 00 00 00` before the documented
-  source-read boundary at segment 57. Display stream `ESC Y!\x05! ESC Z`
-  reaches `0x12536`, consumes values `21 05 21 1b 5a`, routes
-  `d04a d0f0 d04a d0f0 d04a`, and queues visible `!`, `!`, and `Z` at
-  compact coordinates `0x0001`, `0x0403`, and `0x0405`. Filter-on display
-  stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes `1a 58` to `0x7f`, routes
-  all six values through `0xd04a`, and queues object prefix
-  `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05
-  59 06 06`. Alternate/data reader `0x12120` appends payload
-  `21 1a 58 1b 5a` as stored stream `1b 59 21 7f 1b 5a` through `0xe002`.
-  Evidence is [transparent-print-data.md](transparent-print-data.md#owner-summary),
+- Transparent/display-reader cluster: transparent data uses `0x11f5a -> 0x121cc ->
+  0x12218 -> 0x12452`; display functions use normal reader `0x12536` or alternate/data
+  reader `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and
+  `0x121b2`. Owners are [Transparent Payload Decision
+  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
+  [display-functions.md](display-functions.md). The remaining pixel-affecting residual
+  is not parser routing; it is the secondary segment-57 resource continuation read at
+  firmware range `0x0c0000..0x0c0321`. Transparent `ESC &p#X` saves a delayed record
+  through `0x121cc`; `0x12452` reopens the restored count, fetches payload bytes
+  directly through `0xa904`, locally normalizes `1a 58` through `0xd99a`, and routes
+  each value to printable `0xd04a` or fixed-space `0xd0f0` using
+  selected-context/high-control filters. Normal `ESC Y ... ESC Z` enters `0x12536`, then
+  reads directly through `0xa904` until local `ESC Z` termination; the terminating pair
+  is routed before exit. Alternate/data `0x12120` appends literal `ESC Y` and normalized
+  loop values through `0xe002`, creating stored input rather than immediate page
+  objects. Control-Z handlers are local table consumers, not a global parser rule.
+  Concrete direct-reader streams are now part of the route index. `ESC &p2X!!` restores
+  record `80 58 00 02 00 00`, routes payload bytes `21 21` through `0xd04a`, queues
+  compact coordinates `0x0001` and `0x0202`, and later renders through the ordinary
+  compact-text path. `ESC &p4X!\x05\x85!` under default zero filters restores `80 58 00
+  04 00 00`, routes `d04a d0f0 d0f0 d04a`, and queues object prefix `00 00 00 00 00 00
+  00 02 20 00 01 20 06 04`; the two fixed-space routes advance cursor state without
+  compact entries in the flagged built-in path. With nonzero filters, `ESC
+  &p4X!\x05\x80!` routes all four payload values through `0xd04a` and queues prefix `00
+  00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`. Secondary stream `SO ESC
+  &p3X!\x80!` selects slot `1`, routes all values through `0xd04a`, and the high-control
+  byte creates selector-`0x2001` segmented buckets; selected bucket `0` begins `00 00 00
+  00 20 01 00 01 5f 00 1c 01 00 00 00 00` before the documented source-read boundary at
+  segment 57. Display stream `ESC Y!\x05! ESC Z` reaches `0x12536`, consumes values `21
+  05 21 1b 5a`, routes `d04a d0f0 d04a d0f0 d04a`, and queues visible `!`, `!`, and `Z`
+  at compact coordinates `0x0001`, `0x0403`, and `0x0405`. Filter-on display stream `ESC
+  Y\x05\x80\x1aX! ESC Z` normalizes `1a 58` to `0x7f`, routes all six values through
+  `0xd04a`, and queues object prefix `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02
+  20 06 04 1a 53 05 59 06 06`. Alternate/data reader `0x12120` appends payload `21 1a 58
+  1b 5a` as stored stream `1b 59 21 7f 1b 5a` through `0xe002`. Evidence is [Transparent
+  Payload Decision
+  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint),
   [display-functions.md](display-functions.md), and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - Host/status side-channel cluster:
@@ -6063,36 +6052,32 @@ Address-level cluster map:
   alternate/data zero-handler rows preserve bytes through `0xe002`; unmatched
   normal bytes only become printable when the `0x782f06` / `0x782eeb`
   predicate allows the `0xd04a` fallback.
-- Transparent print data:
-  ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
-  plus disassembly
-  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`.
-  Reproduction evidence is
-  [transparent-print-data.md](transparent-print-data.md#owner-summary).
-  The tracked semantic contract is that `ESC &p#X` is a counted delayed
-  byte-stream splice, not an opaque skip. Handler `0x11f5a` schedules
-  `0x12452` through `0x121cc`; `0x12218` restores command record
-  `80 58 ...`; `0x12452` consumes the absolute record word `+2` count from
-  `0xa904`, preserves local `1a 58 -> 7f` and `1a xx -> xx` behavior, and
-  routes normalized payload bytes through `0xd04a` or `0xd0f0` according to
-  context filtering. Canonical fields are the command-record count, selected
-  context slot `0x782f06`, and text cursor `0x782c8a`; parser scratch is
-  `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`; derived/filtering state
-  is `0x782eea + 0x10 * 0x782f06`, `0x782efa`, and high-byte flags
-  `0x783132`/`0x783133`. Remaining risk is the secondary segment-57
-  resource-window continuation, tracked by
-  `Boundary: Secondary Segment-57 Source` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md): fixture
-  `transparent secondary segment-57 continuation policies diverge after
-  verified bytes` pins glyph `0x5f`, segment `0x39`, firmware source
-  `0x0bfe22`, required range `0x0bfe22..0x0c0321`, and the first `478`
-  bytes inside the verified `IC32,IC15` resource-pair image. Scanner fixtures
-  `0x41a HEAD scanner would duplicate records under simple resource mirror`
-  and `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrain
-  the physical continuation hypotheses. Startup checksum evidence narrows but
-  does not close the edge: [firmware-startup.md](firmware-startup.md) records
-  the resource-pair byte-sum range as `0x080000..0x0bffff`, so it covers the
-  verified suffix but not the `0x0c0000` continuation bytes.
+- Transparent print data: ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and
+  `0xd550`, plus disassembly
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`. Reproduction
+  evidence is [Transparent Payload Decision
+  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint). The
+  tracked semantic contract is that `ESC &p#X` is a counted delayed byte-stream splice,
+  not an opaque skip. Handler `0x11f5a` schedules `0x12452` through `0x121cc`; `0x12218`
+  restores command record `80 58 ...`; `0x12452` consumes the absolute record word `+2`
+  count from `0xa904`, preserves local `1a 58 -> 7f` and `1a xx -> xx` behavior, and
+  routes normalized payload bytes through `0xd04a` or `0xd0f0` according to context
+  filtering. Canonical fields are the command-record count, selected context slot
+  `0x782f06`, and text cursor `0x782c8a`; parser scratch is `0x782a1a`, `0x782a1c`, and
+  `0x782a20..0x782a25`; derived/filtering state is `0x782eea + 0x10 * 0x782f06`,
+  `0x782efa`, and high-byte flags `0x783132`/`0x783133`. Remaining risk is the secondary
+  segment-57 resource-window continuation, tracked by `Boundary: Secondary Segment-57
+  Source` in [firmware-dataflow-model.md](firmware-dataflow-model.md): fixture
+  `transparent secondary segment-57 continuation policies diverge after verified bytes`
+  pins glyph `0x5f`, segment `0x39`, firmware source `0x0bfe22`, required range
+  `0x0bfe22..0x0c0321`, and the first `478` bytes inside the verified `IC32,IC15`
+  resource-pair image. Scanner fixtures `0x41a HEAD scanner would duplicate records
+  under simple resource mirror` and `0x41a HEAD scanner rejects non-HEAD 0x40000
+  continuations` constrain the physical continuation hypotheses. Startup checksum
+  evidence narrows but does not close the edge:
+  [firmware-startup.md](firmware-startup.md) records the resource-pair byte-sum range as
+  `0x080000..0x0bffff`, so it covers the verified suffix but not the `0x0c0000`
+  continuation bytes.
 - Display functions:
   ROM evidence is normal handler `0x12536..0x1261e`, alternate/data handler
   `0x12120..0x1219c`, and parser-table entries in normal table `0x112a4`
@@ -8564,8 +8549,9 @@ boundaries only when new evidence changes the documented state or pixel output.
 
 1. Transparent secondary segment-57 resource decode remains the highest pixel-affecting
    external-data boundary. The parser, filtering, page-record, bridge, and renderer path
-   is documented in [transparent-print-data.md](transparent-print-data.md#owner-summary)
-   and the Transparent Print Data section above. The unresolved input is
+   is documented in [Transparent Payload Decision
+   Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
+   the Transparent Print Data section above. The unresolved input is
    physical/resource-window data for firmware range `0x0c0000..0x0c0321`, after verified
    resource-pair suffix `0x0bfe22..0x0bffff`. Useful next evidence is static
    board/emulator/gate-array decode for that range, or a board-level memory-map

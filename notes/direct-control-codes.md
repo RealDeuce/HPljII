@@ -727,6 +727,87 @@ output: `0xf75e ESC &f0S pushes cursor with vertical offset`,
 `0xf75e cursor stack bounds and pop clamps to current extents` pin the stored
 entry format, pointer bounds, vertical-offset subtraction, and clamp rules.
 
+### Cursor Stack State Checkpoint
+
+This checkpoint composes `ESC &f#S` as a state-only placement command with
+later page-output consumers. It starts at parser terminal handler `0xf75e` and
+ends when the restored cursor is consumed by printable text, raster start, or
+rectangle/rule fill.
+
+Route:
+
+- Parser mode `17` for `ESC &f` dispatches `S/s` to `0xf75e`.
+- `0xf766..0xf784` rewinds parser record cursor `0x78299e`, reads the parsed
+  word at record `+2`, sign-extends it, and uses its absolute value as the
+  cursor-stack selector.
+- Selector `0` pushes when the next-free pointer stored at `0x782d36` is below
+  literal upper-bound address `0x782d36`: it stores horizontal cursor
+  `0x782c8a` and stores vertical cursor `0x782c8e + (0x782dbe << 16)` as an
+  eight-byte entry under `0x782c96..0x782d36`.
+- Selector `1` pops when the pointer is above base `0x782c96`: it restores x
+  and y, subtracts `0x782dbe << 16` from stored y, clamps both positions to
+  current extents minus the ROM's `1/12` guard, clears right-limit and
+  pending-cursor latches, and flushes pending spans when `0x783184` is set.
+- Other selectors, full-stack pushes, and empty-stack pops return without page
+  output or stack mutation.
+
+State grouping:
+
+- Canonical state: stack storage `0x782c96..0x782d36`, next-free pointer
+  `0x782d36`, cursor `0x782c8a/0x782c8e`, vertical offset source
+  `0x782dbe`, page extents `0x782db8/0x782dc6`, and pending span state
+  `0x783184..0x78318a`.
+- Derived/cache state: stored y with vertical offset already added, popped y
+  after subtracting that offset, and clamped x/y candidates.
+- Parser scratch: the six-byte `ESC &f#S` command record rewound by
+  `0xf75e`.
+- Firmware bookkeeping: latch clears for `0x782a57` and `0x782a6d`, stack
+  pointer movement, and optional span flush through `0xf34a` /
+  `0x12714 -> 0x126e2`.
+- Unknown: no ROM-local cursor-stack field is unknown for the documented
+  push/pop, full-stack, empty-stack, clamp, and following-printable paths.
+
+Readers and output effect:
+
+- Cursor stack commands do not queue page objects or draw pixels by
+  themselves.
+- Printable text consumes the restored cursor through
+  `0xd04a -> 0x1393a -> 0x12f2e`. The worked stream
+  `ESC &f0S ESC &a2C ESC &f1S !` proves the intervening cursor move is undone
+  before the printable queues at compact coordinate `0x0001`.
+- Raster start `0x1075a` consumes the same cursor state as its origin source:
+  portrait uses horizontal cursor `0x782c8a`, while landscape uses vertical
+  cursor `0x782c8e`.
+- Rectangle/rule clip helper `0x10b80` consumes cursor
+  `0x782c8a/0x782c8e` as the rectangle origin before clipping and queueing a
+  rule object through `0x13386 -> 0x133aa`.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst` for
+  `0xf75e`, `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`, and
+  `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`.
+- Checked-in owners:
+  [raster-graphics.md](raster-graphics.md#start-and-end-raster),
+  [rectangle-graphics.md](rectangle-graphics.md#clip-and-queue-at-0x10b80),
+  and this note's printable-output contract.
+- Fixture anchors:
+  `0xf75e ESC &f0S pushes cursor with vertical offset`,
+  `0xf75e ESC &f1S pops cursor and clears pending flags`,
+  `cursor stack stream ESC &f0S / ESC &f1S selects 0xf75e push/pop`,
+  `0xf75e cursor stack bounds and pop clamps to current extents`, and
+  `cursor stack parser trace feeds page-record queue`.
+
+Unresolved boundary:
+
+- No ROM-local middle edge remains for the documented cursor-stack writer,
+  stack pointer, pop clamp, following-printable consumer, raster-origin
+  consumer, or rectangle-origin consumer. New cursor-stack work should start
+  only from byte streams that change stack entry bytes, clamp extents,
+  pending-span output, following page-object fields, or render-helper inputs.
+
 The cursor-position helper fixtures pin the conversion layer that feeds those
 visible page-record streams. `0xf39e ESC &a#C converts columns through HMI and
 relative flag` and `0xf416 ESC &a#H converts decipoints and clamps horizontal

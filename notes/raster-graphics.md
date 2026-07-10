@@ -830,12 +830,12 @@ Field classification:
 - Firmware bookkeeping: stream cursors `0x782a70`, `0x782a72`, `0x782a76`,
   allocator return pointer, and publication/copy-stop byte `0x782996`.
 - Unknown: no branch target or state field is unknown inside
-  `0x13070..0x13382`. The remaining dense-row work is byte streams that change
-  accepted count or drain result at `0x105d0`, allocator pre-state
+  `0x13070..0x13382`. Remaining dense-row work belongs here only when a byte
+  stream changes a named ROM input to the documented path: accepted count or
+  drain result at `0x105d0`, allocator pre-state
   `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, copy-stop byte
   `0x782996`, packed-key advance through `0x332ee`, bridge bucket roots, or
-  mode-specific `0x1f88e` row-construction paths beyond the static split cases
-  above.
+  mode-specific `0x1f88e` row-construction inputs.
 
 Evidence and confidence:
 
@@ -857,9 +857,9 @@ Evidence and confidence:
   only branch/path drivers and state-shape checks; they do not establish pixel
   truth beyond the ROM helper behavior they exercise. Broader dense-row
   documentation remains open only where static tracing has not yet tied a byte
-  stream to its accepted count or drain result, allocator pre-state, split
-  capacity, copy-stop behavior, packed-key advance, bridge bucket root, or the
-  `0x1f88e` mode-specific row-construction path.
+  stream to a changed accepted count or drain result, allocator pre-state,
+  split capacity, copy-stop behavior, packed-key advance, bridge bucket root,
+  or `0x1f88e` row-construction input.
 
 ## Render Dispatch
 

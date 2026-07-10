@@ -908,7 +908,7 @@ Field classification:
   unknown for the documented built-in, inline/downloaded, final-`X`, and
   current-RAM handoff streams. Remaining work must change selected candidate
   filters, cache predicate input, map rebuild form, symbol patch, page-root
-  context slot, printable source fields, or rendered rows.
+  context slot, printable source fields, or compact row-helper inputs.
 
 Evidence:
 
@@ -1797,8 +1797,8 @@ selected-font state combinations that change selected context records
 `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, unflagged metric bytes
 `+0x2b/+0x2c/+0x2d`, flagged metric words `+0x16/+0x18/+0x1a`, pending span
 fields `0x783184..0x78318a`, page-object fields, bridge context slots, or
-rendered rows. External/manual naming for consumed-but-not-staged validation
-fields remains open.
+row-construction helper inputs. External/manual naming for
+consumed-but-not-staged validation fields remains open.
 
 ## Descriptor Metric Semantic Checkpoint
 
@@ -1954,12 +1954,13 @@ Confidence:
   branch behavior, and visible span effects for the cited cases because each
   claim is backed by host-fetched descriptor fixtures, disassembly, and
   rendered row digests.
-- Medium for full descriptor compatibility only where selected-font state
-  combinations change selected context records, active maps, source-object
-  fields, copied metric fields, pending span fields, page-object fields,
-  bridge context slots, or rendered rows. Exact HP manual labels for
-  non-staged fields remain open; additional legal metric values are
-  cross-products of the documented producer formulas and consumer gates.
+- Medium for broader descriptor compatibility only where a new byte stream
+  changes a named ROM input to the documented path: selected context records,
+  active maps, source-object fields, copied metric fields, pending span
+  fields, page-object fields, bridge context slots, or row-construction
+  helper inputs. Exact HP manual labels for non-staged fields remain open;
+  additional legal metric values are cross-products of the documented producer
+  formulas and consumer gates.
 
 Fixture evidence:
 
@@ -2113,7 +2114,7 @@ A byte-stream reproduction must preserve these behaviors:
   `0x78297e`, page-root context slots `+0x2c..+0x68`, primary/secondary maps
   `0x782f32` / `0x783032`, source-object fields
   `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, compact selector class,
-  HMI/cursor advance, or rendered rows.
+  HMI/cursor advance, or compact row-helper inputs.
 - Broader metric producer work is now selected-font state expansion, not an
   unresolved parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering,
@@ -2147,5 +2148,5 @@ A byte-stream reproduction must preserve these behaviors:
   tight-range, low-nibble, and byte-boundary fixtures. The remaining gap is
   selected-font state combinations that change selected context records,
   active maps, source-object fields, copied metric fields, pending span
-  fields, page-object fields, bridge context slots, or rendered rows, plus
-  external/manual naming for consumed-but-not-staged fields.
+  fields, page-object fields, bridge context slots, or row-construction helper
+  inputs, plus external/manual naming for consumed-but-not-staged fields.

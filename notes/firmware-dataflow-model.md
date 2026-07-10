@@ -829,6 +829,40 @@ Consumers and output effect:
   can be written before the following printable takes the ordinary compact
   object path.
 
+Composed vertical-layout chain:
+
+- Same-family stream `ESC &l#C/#D/#E/#F/#L` remains in the `&l` parser family
+  while each terminal handler rewinds the six-byte record at `0x78299e` and
+  consumes its own parsed parameter. The lowercase `t` row is the only
+  parser-only member of this cluster: `0x11f4c` subtracts six from
+  `0x78299e` and returns, so any visible effect belongs to the following
+  chained final, not to `t`.
+- VMI writer `0xcb00` and LPI writer `0xc992` both commit canonical line
+  advance `0x783160`. `0xcb00` scales accepted 1/48-inch values by `75`;
+  `0xc992` accepts only the ROM LPI set, maps selector `0` to `12`, and
+  computes `3600 / LPI`. Both reject advances beyond page extent
+  `0x782dba`; when pending text byte `0x782a6d` is set, both refresh cursor y
+  `0x782c8e` from `0x782dce + VMI * 18 / 25`.
+- Top-margin writer `0xece2` consumes current VMI `0x783160`, rejects zero
+  VMI and positions at or beyond page extent `0x782dba`, writes top offset
+  `0x782dce`, then recomputes default text length and VFC cache through
+  `0xea16`, `0xfe54`, and `0x12b96`. Text-length writer `0xea9e` consumes the
+  same VMI/top-offset state, writes bottom state `0x782dd2` for accepted
+  nonzero lengths, and restores the default bottom for selector zero.
+- Perforation writer `0xee64` is a mode byte, not a placement command. It
+  clears `0x783191` for selector `0`, sets it for selector `1`, and leaves it
+  unchanged for other selectors. The consumer is overflow helper `0xf36c`,
+  which calls page-eject helper `0xf124` only when cursor y `0x782c8e`
+  exceeds nonzero limit `0x782dc2` and perforation byte `0x783191` is set.
+- The first visible consumer after a layout-only stream is usually a later
+  printable byte. `vertical layout parser trace feeds page-record queue` pins
+  this handoff: the parser reaches `0xcb00`, `0xc992`, `0xece2`, and
+  `0xea9e`, then the following printable queues through
+  `0xd04a -> 0x12f2e -> 0x1387c` using the updated VMI/top/text-length state.
+  The `ESC &l1L!` sibling proves the perforation byte can be written without
+  changing the immediate compact-text object; its pixel effect is deferred to
+  later `0xf36c -> 0xf124 -> 0xff1e` overflow publication.
+
 State classification:
 
 - Canonical geometry/layout state:

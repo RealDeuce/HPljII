@@ -1327,7 +1327,7 @@ The skip exits are three distinct ROM states, not one generic failure:
   current-record slot, the old payload has already been released through
   `0x1887a` at `0x16c80..0x16c92` before this count-full test runs.
 
-The `ESC )s80W` fixture proves the parser-to-install boundary:
+The host-fetched `ESC )s80W` parser-to-install boundary is:
 
 - parsed record `80 57 00 50 00 00`.
 - delayed handler `0x16c14`.
@@ -1339,35 +1339,33 @@ The `ESC )s80W` fixture proves the parser-to-install boundary:
 - `0x14c64` later dispatches that candidate as an offset-table resource,
   selecting symbol `0x1234` and range `0x0000..0x007f`.
 
-Fixture
-`host-fetched resource header plus glyph payload renders offset-table downloaded
-glyph` composes the next stream boundary without fixture-side glyph-table
-mutation. It starts from the fetched `ESC )s80W` header above, then feeds a
-separate fetched `ESC )s3W f0 f0 f0` payload into `0x16498` with current
-character `0x21`. The second stream restores record `80 57 00 03 00 00`, writes
-table entry `0x00ce` to record delta `0x0180`, installs record
-`00 00 00 00 0c 01 00 03 00 04 00 00`, copies bitmap bytes `f0 f0 f0` at
-`0x018c`, and leaves the installed resource context `0x40000000` resolving
-glyph `0x21` through the downloaded-pointer form. The following printable `!`
-uses the bit-30 offset-table map, queues the compact object
-`00 00 00 00 00 00 00 01 21 5a 00`, publishes the span object
+The next stream boundary is the downloaded glyph payload that populates the
+installed resource. A separate host-fetched `ESC )s3W f0 f0 f0` payload reaches
+`0x16498` with current character `0x21`. That path restores record
+`80 57 00 03 00 00`, writes table entry `0x00ce` to record delta `0x0180`,
+installs record `00 00 00 00 0c 01 00 03 00 04 00 00`, copies bitmap bytes
+`f0 f0 f0` at `0x018c`, and leaves installed resource context `0x40000000`
+resolving glyph `0x21` through the downloaded-pointer form. The following
+printable `!` uses the bit-30 offset-table map, queues compact object
+`00 00 00 00 00 00 00 01 21 5a 00`, publishes span object
 `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and renders the three installed
-glyph rows plus the `d8fc` span rows.
+glyph rows plus the `d8fc` span rows. Supporting fixture anchor:
+`host-fetched resource header plus glyph payload renders offset-table
+downloaded glyph`.
 
-The selected inline/downloaded path is also fixture-backed through final-`X`
-font-ID selection, not only by direct `0x16c14` installation. Fixture
-`0x17708 font-ID selects inline/downloaded candidate` proves a bit-30-clear
-candidate can be selected by id and reaches the same `0x14c64` active-object
-dispatch. Fixture `0x14c64 dispatches selected inline/downloaded font` proves
-that dispatch rebuilds the selected map through `0x14e24` / `0x14eb6`, and
-fixture `0x14e24-modeled inline/downloaded map entries` pins the resulting
-map entries. The visible primary and secondary final-`X` cases are
-`font-ID primary inline/downloaded selection feeds visible page-record rows`
-and `font-ID inline/downloaded selection feeds visible page-record rows`:
-host-fetched `ESC (4660X!` and `ESC )4660X SO !` reach
-`0x120be..0x17708..0x14c64..0xd04a`, reuse page-root slots `0` and `1`,
-queue unflagged object prefixes, preserve bridge context slots, and render
-the selected inline/downloaded rows.
+The selected inline/downloaded path can also be reached through final-`X`
+font-ID selection, not only through immediate `0x16c14` installation.
+`0x17708` selects a bit-30-clear candidate by id, `0x14c64` dispatches the
+active object, and `0x14e24` / `0x14eb6` rebuild the selected map. The visible
+primary and secondary final-`X` streams are host-fetched `ESC (4660X!` and
+`ESC )4660X SO !`: they reach `0x120be..0x17708..0x14c64..0xd04a`, reuse
+page-root slots `0` and `1`, queue unflagged object prefixes, preserve bridge
+context slots, and render the selected inline/downloaded rows. Supporting
+fixture anchors: `0x17708 font-ID selects inline/downloaded candidate`,
+`0x14c64 dispatches selected inline/downloaded font`,
+`0x14e24-modeled inline/downloaded map entries`,
+`font-ID primary inline/downloaded selection feeds visible page-record rows`,
+and `font-ID inline/downloaded selection feeds visible page-record rows`.
 
 Disassembly `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`
 shows the map builder itself. `0x14e24` selects map `0x782f32` for primary or
@@ -2343,8 +2341,10 @@ page-record bridge state.
 Writers and readers:
 
 - `0x16498` writes canonical downloaded-character records. The width-span
-  fixture proves installed width words through `0x020d` survive in record word
-  `+8`, while the bitmap payload and mode byte are installed normally.
+  route preserves installed width words through `0x020d` in record word `+8`,
+  while the bitmap payload and mode byte are installed normally. Supporting
+  fixture anchor: `downloaded glyph width-byte boundary truncates page-record
+  span`.
 - `0x12f2e` reads the printable source object's low width byte, not the
   installed record's full width word, when choosing the compact selector. Low
   source width bytes `0x00..0x10` therefore publish selector `0x0003`; source

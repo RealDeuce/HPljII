@@ -12452,7 +12452,10 @@ record.
     `0x7f76..0x7f90` writes it to the accepted candidate; `0x7760..0x779a`
     marks a state-2 record reusable and advances it through record `+0`.
   - `0x780eb6`: pool alias initialized with the same base at
-    `0x3144..0x3162`; no stronger role is assigned yet.
+    `0x3144..0x3162`. Long-reference scan
+    `generated/analysis/ic30_ic13_long_reference_scan.md` reports only this
+    one firmware reference, so it has no ROM-local reader or writer beyond
+    initialization in the current ROM image.
   - `0x780e04`: engine/status counter copied into released pool record
     word `+0x10` at `0x778c`.
   - `0x7839d2`: immediate ready flag consumed by `0x21b8` before
@@ -13062,12 +13065,12 @@ output for the selected source. Medium for the surrounding engine pacing
 loop because the fixture models firmware wait-state semantics but still
 does not name the board-level source of the interrupt/MMIO events that
 drive those states. High for `0x7828f9` bit 1/6 helper side effects,
-`0xa668`, and `0xa680` return polarity because the fixture covers set,
-clear, and test cases. Medium for the physical meaning of `$8000`,
-`$a601`, `$a801`, and `$aa01` because the byte-level side effects and
-branch returns are pinned but not tied to measured engine timing yet.
-Medium for `0x780eb6` because only its initialization is currently
-covered.
+`0xa668`, and `0xa680` return polarity because the fixture covers set, clear,
+and test cases. High for classifying `0x780eb6` as initialized-only firmware
+bookkeeping: the long-reference scan finds only the `0x3164` initialization
+store. Medium for the physical meaning of `$8000`, `$a601`, `$a801`, and
+`$aa01` because the byte-level side effects and branch returns are pinned but
+not tied to measured engine timing yet.
 
 ### Fixtures
 
@@ -13118,6 +13121,8 @@ covered.
   `0x22f4..0x247a`
 - `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
   `0x3144..0x3162`
+- `generated/analysis/ic30_ic13_long_reference_scan.md`: proves
+  `0x780eb6` has only the `0x3164` initialization reference in this ROM.
 - `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`:
   `0x2feb6..0x2fefc`
 - `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:

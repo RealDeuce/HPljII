@@ -2568,7 +2568,9 @@ Key scheduler state:
 Scheduler writers and branch boundaries:
 
 - Pool initialization `0x3144..0x3162` seeds pool and cursor pointers
-  `0x780ea6`, `0x780eaa`, `0x780eae`, `0x780eb2`, and `0x780eb6`.
+  `0x780ea6`, `0x780eaa`, `0x780eae`, and `0x780eb2`. It also initializes
+  `0x780eb6` to the same pool base; the long-reference scan finds no later
+  ROM-local reader for that alias.
 - Candidate and cursor paths `0x7ec6..0x7f90` and `0x7722..0x779a` promote a
   selectable pool record into scheduler cursor `0x780eaa` and release cursor
   `0x780eb2`.
@@ -7529,7 +7531,9 @@ Starting condition:
 Source selection:
 
 - Pool initialization `0x3144..0x3162` seeds `0x780ea6`, `0x780eaa`,
-  `0x780eae`, `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
+  `0x780eae`, and `0x780eb2` to pool base `0x780f02`; `0x780eb6` is also
+  initialized there but has no later ROM-local reader in the current
+  long-reference scan.
 - Candidate selection `0x7ec6..0x7f90` promotes a selectable candidate from
   `0x780e6e[]` into scheduler cursor `0x780eaa` and release cursor
   `0x780eb2`.

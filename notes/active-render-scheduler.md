@@ -28,6 +28,7 @@ remains a separate board-facing boundary.
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`
 - `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`
 - `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`
+- `generated/analysis/ic30_ic13_long_reference_scan.md`
 - `generated/analysis/ic30_ic13_page_record_bridge.md`
 - `generated/analysis/ic30_ic13_render_path_references.md`
 - `notes/page-raster-imaging.md` section
@@ -325,7 +326,9 @@ Field ownership after this handoff:
   selected and before or during object dispatch.
 - Firmware bookkeeping: throttle/progress word render `+0x0e`, active flags
   `0x780ea4` and `0x780ea5`, wait object `0x780182`, and the MMIO-facing
-  status latches that can delay or wake the next band call.
+  status latches that can delay or wake the next band call. `0x780eb6` is an
+  initialized-only pool alias: the long-reference scan finds only the
+  `0x3164` initialization store, with no ROM-local reader.
 - Parser scratch: none. Parser-family scratch has already been converted into
   page-record objects before `0xff1e` publication.
 
@@ -379,7 +382,9 @@ Unresolved middle edges:
 - `0xff1e` publishes state byte `+4 = 2`, writes source root longword to
   `0x780ea6`, sets publication flag `0x782996`, and clears the current root.
 - `0x3144..0x3162` initializes `0x780ea6`, `0x780eaa`, `0x780eae`,
-  `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
+  `0x780eb2`, and `0x780eb6` to pool base `0x780f02`; no later firmware
+  reference to `0x780eb6` is present in
+  `generated/analysis/ic30_ic13_long_reference_scan.md`.
 - `0x2feb6` initializes render work selector state by writing
   `0x7820bc = 1` and `0x7820c0 = 1`, then clearing `0x7820c8` and
   `0x78212c`.
@@ -528,8 +533,9 @@ A pixel-accurate ROM-derived renderer must preserve:
 High for pool-head versus scheduler-cursor distinction, candidate-slot
 staging/release, `0x780eaa -> 0x780eae`, work-record alternation,
 `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic,
-wait-object state transitions, active-loop branch predicates, and render-entry
-state handoff because each is backed by disassembly and checked by fixtures.
+wait-object state transitions, active-loop branch predicates, render-entry
+state handoff, and classifying `0x780eb6` as initialized-only bookkeeping
+because each is backed by disassembly, reference scans, or checked fixtures.
 
 Medium for physical engine pacing because the firmware-visible wait states and
 MMIO-facing predicates are modeled, but connector-signal timing and exact

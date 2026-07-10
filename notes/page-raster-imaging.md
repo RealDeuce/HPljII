@@ -1311,6 +1311,10 @@ Field groups:
     selected state `2`.
   - `0x7821fb`: candidate-slot scan mask.
   - `0x780eb2`: release/advance cursor paired with `0x780eaa`.
+  - `0x780eb6`: initialized-only pool alias. `0x3144..0x3162` stores pool
+    base `0x780f02` to it, and
+    `generated/analysis/ic30_ic13_long_reference_scan.md` finds no later
+    ROM-local reader.
   - `0x780e04`: engine/status counter copied into released pool record
     word `+0x10`.
   - `0x7839d2`, `0x78398c`, `0x783990`, `0x78399e`, `0x78399f`,
@@ -1432,7 +1436,8 @@ Confidence:
   staging/release, `0x780eaa -> 0x780eae`, two-work-record alternation,
   `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic,
   wait-object state transitions, active-loop branch predicates, and
-  render-entry output.
+  render-entry output. High for `0x780eb6` as initialized-only bookkeeping
+  because the reference scan finds only the pool-base initialization store.
 - Medium for physical engine pacing because the firmware wait-state and MMIO
   side effects are modeled, but the board-level event timing is not named.
 

@@ -128,18 +128,16 @@ checked-in ROM model:
 2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md#owner-summary):
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch.
-3. Classify the parser outcome in
-   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` /
-   `0xdaf0` / `0xdb74` into parser loop `0x11774`, preserving parser mode
-   `0x782999`, six-byte records at `0x78299e..`, alternate/data flag
-   `0x782c18`, and delayed restore `0x121cc -> 0x12218`. For counted binary
-   payload commands,
-   use `Binary Payload Lifecycle` in
-   [firmware-dataflow-model.md](firmware-dataflow-model.md). For
-   definition-mode or replayed bytes, use `Alternate/Data And Macro Replay
-   Boundary` in the same file before jumping to the family owner. For
-   explicit ignored rows, wrapper artifacts, or generic counted drains, use
-   `Parser Artifact And No-Output Boundary`.
+3. Classify the parser outcome in `Admitted Byte Outcome Bridge` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#admitted-byte-outcome-bridge),
+   then [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` /
+   `0xdaf0` / `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`,
+   six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and delayed restore
+   `0x121cc -> 0x12218`. For counted binary payload commands, use `Binary Payload
+   Lifecycle` in [firmware-dataflow-model.md](firmware-dataflow-model.md). For
+   definition-mode or replayed bytes, use `Alternate/Data And Macro Replay Boundary` in
+   the same file before jumping to the family owner. For explicit ignored rows, wrapper
+   artifacts, or generic counted drains, use `Parser Artifact And No-Output Boundary`.
 4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
    index. After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.

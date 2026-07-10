@@ -9200,8 +9200,9 @@ shape, publication boundary, or render helper inputs.
    isolated handler notes. The low-level ledger remains in
    [downloaded-fonts.md](downloaded-fonts.md), with composed checkpoints in
    [semantic-state-model.md](semantic-state-model.md) under `Downloaded Font Descriptor
-   And Payload Chain`, `Nonzero Resource Payload Checkpoint`, and `Fixed-Record Resource
-   Object Checkpoint`, plus [Fixed-Record Render Decision
+   And Payload Chain`, `Downloaded Character Route Checkpoint`, `Nonzero Resource
+   Payload Checkpoint`, and `Fixed-Record Resource Object Checkpoint`, plus
+   [Fixed-Record Render Decision
    Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint) and
    [Inline/Downloaded Compact Render
    Path](downloaded-fonts.md#inline-downloaded-compact-render-path) in
@@ -9246,12 +9247,11 @@ shape, publication boundary, or render helper inputs.
      compact short, compact-wide, segmented, and segmented-wide downloaded
      glyph output. The relevant render helpers are `0x1effe`, `0x1f0d2`,
      `0x1f1f0`, `0x1f264`, and current-band/fallback writer `0x1fe76`.
-   - The end-to-end handoff fixture named `downloaded glyph byte-24 state
-     handoff feeds following page handler` documents a single `0xa904` ring
-     stream split into font bytes `0..24` and page bytes `24..54`. The
-     installed glyph is `0x29`, table entry `0x00ee`, record delta `0x0780`,
-     bitmap offset `0x078c`, and `18` copied bitmap bytes before the following
-     page commands consume the same byte source.
+   - The byte-24 install-to-page handoff is a single `0xa904` ring stream split
+     into font bytes `0..24` and page bytes `24..54`. The installed glyph is
+     `0x29`, table entry `0x00ee`, record delta `0x0780`, bitmap offset
+     `0x078c`, and `18` copied bitmap bytes before the following page commands
+     consume the same byte source.
 
    State classification:
 

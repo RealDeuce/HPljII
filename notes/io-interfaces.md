@@ -229,8 +229,10 @@ State grouping for this matrix:
 - Unknown:
   no ROM-local byte-source priority, FIFO ordering, or status-byte producer
   edge is unknown for the documented paths. Remaining unknowns are physical
-  interface names, connector timing, and unobserved data-chain frame producer
-  values beyond kinds `2`, `3`, and `4`.
+  interface names and connector timing. Data-chain frame-kind production is
+  closed for the verified ROM image: `0xe418` is called only from `0xde96` and
+  `0xdebc` with kinds `2` and `3`, `0xe4f4` is called from `0xff8e` and writes
+  kind `4`, and `0xe1e4` clears stale frame kind bytes to `0`.
 
 ### Confidence And Evidence
 
@@ -275,8 +277,8 @@ Unresolved middle edges:
 - no unresolved ROM parser/object/rendering edge remains in the normalized
   input priority or output FIFO/status paths;
 - remaining interface work is physical naming/timing of the MMIO banks,
-  serial/parallel/RS-422/optional-I/O mapping, and any unobserved data-chain
-  frame producer values.
+  serial/parallel/RS-422/optional-I/O mapping, and board-level timing for the
+  documented status/control bits.
 
 ## Parallel Connector
 

@@ -157,8 +157,10 @@ State grouping:
   MMIO bank `0x8e01` / `0x8801` / `0x8c01`, long MMIO bank
   `0xfffee005` / `0xfffee001` / `0xfffee009`, and bridge/output registers.
 - Unknown: manual labels for the quiesce/reset branches
-  `0x4218..0x44d2` and `0x61e4..0x6362`, plus unobserved data-chain frame
-  kind byte values outside documented `0`, `2`, `3`, and `4`.
+  `0x4218..0x44d2` and `0x61e4..0x6362`. The data-chain frame-kind producer
+  set is not unknown for the verified image: `0xe418` is reached only from
+  `0xde96` / `0xdebc` with kinds `2` / `3`, `0xe4f4` writes kind `4` from
+  `0xff8e`, and `0xe1e4` clears stale kind bytes to `0`.
 
 Evidence:
 

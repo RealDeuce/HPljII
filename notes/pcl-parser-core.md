@@ -507,6 +507,99 @@ the branch ranges listed above;
 rows and handler longwords; [pcl-command-map.md](pcl-command-map.md) maps
 those rows to checked-in command-family owner notes.
 
+## No-Output And Reported-Byte Checkpoint
+
+This checkpoint owns the parser cases where an admitted byte does not become a
+page object and does not immediately mutate a command-family state block. These
+are still semantic parser outcomes: a reproducer must preserve the parser
+cursor, delayed-payload boundary, append stream, or reported-byte stack exactly
+because later bytes can observe those fields.
+
+Decision routes:
+
+- `ESC ? 0x11` is swallowed inside byte wrapper `0xda9a`. The wrapper fetches
+  the third byte at `0xdab2..0xdabe`; byte `0x11` restarts the wrapper without
+  returning a parser byte. Other third bytes rejoin the first-byte comparison,
+  and non-`?` ESC lookahead bytes are reported through `0x9ec0` before the
+  parser receives `ESC`.
+- Normal blank C0 table rows `0x00`, `0x07`, and `0x0b` match explicit
+  normal-table rows with zero handler longwords. Path `0x119a6..0x119f4`
+  stores the row's next mode, calls `0x12218` only when that mode is zero, and
+  resets parser cursors and scratch. These bytes do not fall through to
+  `0xd04a`.
+- Alternate/data blank C0 rows `0x00` and `0x07..0x0f` match explicit
+  alternate table rows. Path `0x11930..0x11ab8` flushes byte scratch through
+  `0x123ae`, numeric scratch through `0x123de`, appends the matched byte
+  through `0xe002`, and then rejoins the terminal reset path.
+- Display-reader terminator `ESC Z` is not a normal parser-table command.
+  Normal reader `0x12536` and alternate append reader `0x12120` consume the
+  terminating pair inside their direct `0xa904` loops before returning to the
+  main parser.
+- `ESC &lT/t` is a parser-table artifact. Uppercase `T` has no terminal
+  handler; lowercase `t` reaches lowercase rewind helper `0x11f4c`. The
+  command-map owner records it as unimplemented/no-output rather than a
+  layout, page, or render command.
+- Mode-zero no-match normal fallback is conditional, not an error. Path
+  `0x118d6..0x11900` reads selected context byte
+  `0x782ee6 + 16 * 0x782f06 + 5`; value `1` routes the byte to `0xd04a`, and
+  any other value ignores the byte and fetches again.
+- Parser-external no-byte service is consumed before dispatch. Path
+  `0x117d2..0x11818` clears latch `0x780e3b` and services wait object
+  `0x780202`; if macro/page state byte `0x782a92` is `0x63`, it rewrites that
+  byte to `1` and returns from the parser loop.
+
+Field classification:
+
+- Canonical parser state: mode byte `0x782999`, parser record cursor
+  `0x78299e`, normal and alternate table rows rooted at `0x112a4` and
+  `0x116f6`, delayed-payload fields `0x782a1a` / `0x782a1c` /
+  `0x782a20..0x782a25`, and selected context index `0x782f06`.
+- Parser scratch: byte scratch cursor `0x782a26`, numeric scratch cursor
+  `0x782a3e`, scratch buffers `0x782a2a..` / `0x782a42..`, and matched-byte
+  buffer `0x783196..0x783199`.
+- Firmware bookkeeping: reported-byte helper `0x9ec0`, append sink `0xe002`,
+  terminal restore helper `0x12218`, scratch flush helpers `0x123ae` /
+  `0x123de`, no-byte latch `0x780e3b`, and macro/page state byte `0x782a92`.
+- Canonical page/render state: none. These routes do not allocate page roots,
+  write page objects, publish through `0xff1e`, bridge through `0x1ed84` /
+  `0x1edc6`, or enter renderer `0x1ef6a`.
+- Unknown: no ROM-local no-output branch remains anonymous for the listed
+  parser routes. Manual names for reported/error bytes handled by `0x9ec0` are
+  outside this parser checkpoint and belong to host/status notes when they
+  become host-visible status.
+
+Writers, readers, and output effect:
+
+- Writers are `0xda9a` for ESC-private swallow/report behavior, `0x11774` for
+  table matching and mode transitions, `0x119a6..0x119f4` for normal
+  zero-handler reset, `0x11930..0x11ab8` for alternate append/reset,
+  `0x12536` / `0x12120` for local `ESC Z` consumption, and `0x117d2..0x11818`
+  for no-byte service and parser return.
+- Readers and consumers are `0x12218` for any pending delayed payload,
+  `0xe002` for alternate/data preserved bytes, `0x9ec0` for reported or
+  pushed-back lookahead bytes, display-functions readers for local
+  termination, and the next parser iteration after state reset.
+- The direct output effect is either no returned parser byte, parser scratch
+  reset, append-only preserved input, a reported/pushed-back byte, or parser
+  return. Pixel output can occur later only if appended or pushed-back bytes
+  re-enter the normal parser path and then reach a downstream page producer.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst` documents
+  `0xda9a..0xdacc`, including `ESC ? 0x11` and `0x9ec0` report behavior.
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` documents
+  `0x117d2..0x11818`, `0x118b2..0x11900`, `0x11930..0x11ab8`, and
+  `0x119a6..0x119f4`.
+- `generated/analysis/ic30_ic13_parser_dispatch_tables.md` lists the zero
+  handler rows for normal `0x00`, `0x07`, `0x0b`, and alternate/data
+  `0x00`, `0x07..0x0f`.
+- [display-functions.md](display-functions.md#owner-summary) owns local
+  `ESC Z` consumption inside `0x12536` / `0x12120`.
+- [pcl-command-map.md](pcl-command-map.md#parser-tables) owns the
+  `ESC &lT/t` unimplemented/no-output classification and assigns table rows
+  to checked-in semantic owners.
+
 ## Stateful Parser Helpers
 
 The helper family at `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` handles multi-record

@@ -1759,10 +1759,12 @@ and appends `0x7f` through `0xe002`.
 Alternate/data `0x12120` has no direct pixels in this checkpoint. It preserves
 the displayed byte stream by appending `ESC Y` and all normalized values
 through `0xe002`, with `0x1a 0x58` represented as `0x7f`, until `ESC Z`.
-Fixture `0x12120 ESC Y alternate append stores normalized display bytes`
-proves payload `21 1a 58 1b 5a` is stored as `1b 59 21 7f 1b 5a` in macro
-chunk `0x783988`; the fixture records allocation plus six `0xe002` byte
-appends with raw counts `4..10`.
+The append loop is `0x1212a..0x12140` for literal `ESC Y`,
+`0x12142..0x12168` for byte fetch and local `0x1a 0x58` normalization,
+`0x1216a..0x12178` for no-byte return or append, `0x1217a..0x12184` for the
+local previous-ESC flag, and `0x12186..0x12198` for terminating on appended
+`ESC Z`. In the documented byte stream `21 1a 58 1b 5a`, the stored macro
+chunk at `0x783988` is `1b 59 21 7f 1b 5a`.
 
 `ESC z` has no direct page-record output in this checkpoint. Its documented
 ROM effect is the guarded status-service path at `0xcd86..0xcda0` and
@@ -1778,21 +1780,33 @@ zero; all other values route through `0xd04a`. Therefore `ESC Y ... ESC Z`
 can expose control-looking bytes as visible text under nonzero filters, while
 default-filtered controls become fixed-space behavior.
 
-Fixture `ESC Y display-functions stream reaches page-record output` proves the
-normal parser-to-page-record boundary for `ESC Y!\x05! ESC Z`: handler
-`0x12536` consumes values `21 05 21 1b 5a`, routes them
-`d04a d0f0 d04a d0f0 d04a`, treats the terminating `ESC Z` bytes as routed
-values before exit, queues visible `!`, `!`, and `Z` entries at compact coords
-`0x0001`, `0x0403`, and `0x0405`, and renders row digest
-`c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`.
-Fixture `ESC Y display-functions filter-on routes controls as printable`
-proves the complementary normal branch: with selected-context C0 filter byte
-`1` and high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
-`0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through `0xd04a`,
-queues six compact entries with object prefix
+The normal-output loop is `0x1253e..0x12582` for selected-context C0 and
+high-control filter setup, `0x12582..0x125aa` for byte fetch and local
+`0x1a 0x58` normalization, `0x125aa..0x125b0` for no-byte return,
+`0x125b2..0x125c4` for default-filtered C0 routing, `0x125c6..0x125e2` for
+default-filtered high-control routing, `0x125e4..0x125e6` for printable
+routing through `0xd04a`, `0x125ec..0x125f4` for the CR post-handler
+`0xf054`, and `0x125fa..0x1261e` for the local `ESC Z` termination flag.
+
+For `ESC Y!\x05! ESC Z` under default filters, handler `0x12536` consumes
+values `21 05 21 1b 5a`, routes them `d04a d0f0 d04a d0f0 d04a`, and treats
+the terminating `ESC Z` bytes as routed values before exit. The page-record
+effect is visible `!`, `!`, and `Z` compact entries at coords `0x0001`,
+`0x0403`, and `0x0405`; the C0 byte `0x05` and routed `ESC` byte take
+fixed-space behavior through `0xd0f0`.
+
+For `ESC Y\x05\x80\x1aX! ESC Z` with selected-context C0 filter byte `1` and
+high-control filter `1`, values `05 80 7f 21 1b 5a` all route through
+`0xd04a`. The local `0x1a 0x58` normalization produces `0x7f`, and the compact
+object prefix becomes
 `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05 59
-06 06`, and renders row digest
-`1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`.
+06 06`.
+
+Supporting fixture anchors:
+
+- `ESC Y display-functions stream reaches page-record output`
+- `ESC Y display-functions filter-on routes controls as printable`
+- `0x12120 ESC Y alternate append stores normalized display bytes`
 
 ### Confidence
 

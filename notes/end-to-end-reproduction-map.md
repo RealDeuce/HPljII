@@ -734,7 +734,7 @@ end-to-end stream:
   ROM-local unresolved caller, hardware/MMIO, missing external resource data,
   optional external data, or manual/physical correlation. Current examples are
   the physical decode for `0x0c0000..0x0c0321`, exact MMIO-to-formatter signal
-  mapping, optional active-pool helper entry `0x247c..0x270c`, and bounded
+  mapping, optional active-pool helper entry `0x247c..0x2746`, and bounded
   downloaded-glyph helper table/source-read edges.
 
 Do not use fixtures as a separate state class. A fixture can exercise a
@@ -5634,7 +5634,8 @@ or from a byte stream that changes a named field in the family sections.
   signals to those observed state changes, not deriving pixels from page
   objects.
 - ROM-local optional active-pool helper entry:
-  `0x247c..0x270c` is decoded as an optional accumulator-to-pattern helper,
+  `0x247c..0x2746` is decoded as optional accumulator-to-pattern helper
+  bodies,
   but its direct caller or computed entry target is not located. The ordinary
   active-render route still uses publication `0xff1e`, bridge `0x1ed84` /
   `0x1edc6`, page-band dispatch `0x1ef6a`, and active-copy helper `0x22f4`.

@@ -99,7 +99,7 @@ Field groups:
   MMIO-backed readiness, copy, and wait predicates.
 - Unknown: no ROM-local field-meaning unknown remains for the active-pool
   row-copy accumulator. Direct call sites for the optional
-  `0x247c..0x270c` pattern helper are not located in the current xrefs:
+  `0x247c..0x2746` pattern helper bodies are not located in the current xrefs:
   `generated/analysis/ic30_ic13_long_reference_scan.md` lists accumulator
   `0x7839d4` references at `0x001bf8`, `0x0026c6`, and `0x0026ea`, but no
   absolute long target for `0x0000247c`; the adjacent copy-pass listing
@@ -189,6 +189,34 @@ Derived/cache state:
   nibbles by `0x26de..0x270a`; `0x270c..0x2746` writes seven words per
   pattern column into the destination row base `0x78399a`.
 
+Optional pattern helper body:
+
+- Entry `0x247c` seeds copy-table pointer `A0 = 0x24c4 + 2 * 0x7839a4`,
+  source pointer `A1 = 0x783992`, destination row base `A2 = 0x78399a`, and
+  row stride `D7 = 0x7839a8`.
+- `0x247c..0x24be` calls local thunk `0x24c0` eight times. Between calls it
+  advances `A2` by stride `0x7839a8`, so the helper targets eight destination
+  rows from the same source stream.
+- `0x24c0` clears `D0` and jumps through `A0` into the unrolled table
+  `0x24c4..0x26c2`. Each selected table pair copies one longword from
+  `(A1)+` to `(A2)`, advances `A2`, and adds the written longword into `D0`.
+  The `0x7839a4` offset therefore selects how many leading table pairs are
+  skipped, matching the active-copy width contract used by ordinary helper
+  `0x22f4`.
+- `0x26c4` adds the row-copy sum in `D0` into accumulator `0x7839d4`.
+  `0x26ca..0x26dc` consumes `0x7839ac` source-tail longwords and returns.
+- `0x26de..0x270a` rotates accumulator `0x7839d4` by four bits eight times,
+  masks the low nibble, multiplies it by `0x0e`, and stores eight pattern
+  table pointers from base `0x2748` into `0x7839d8..0x7839f7`.
+- `0x270c..0x2746` walks those eight pointers. For each pointer it writes
+  seven words into destination memory starting at `0x78399a`, advancing the
+  row address by `0x200` between words and advancing the column destination by
+  two bytes between pointers.
+- No current xref proves ROM control flow into `0x247c`, `0x26de`, or
+  `0x270c`. These bodies are decoded for a future caller proof, but they are
+  not part of the ordinary published-page render route unless that entry edge
+  is found.
+
 Firmware bookkeeping:
 
 - `0x780ea4` / `0x780ea5`: active render/scheduler flags written around
@@ -213,7 +241,7 @@ Unknown:
   latches.
 - Physical engine timing that decides when modeled ready/busy and wait-object
   predicates become true.
-- Direct caller into the optional `0x247c..0x270c` accumulator-to-pattern
+- Direct caller into the optional `0x247c..0x2746` accumulator-to-pattern
   helper is not located. The field writes and consumers are documented from
   disassembly; ordinary active rendering still uses `0x22f4` and `0x1ef6a`.
   Evidence for the caller boundary is the absence of a `0x0000247c` target in
@@ -700,6 +728,13 @@ Supported stream rendering rule:
   the ROM-visible fields named above. It can decide when the next scheduler
   iteration happens, but not what a documented `0x1ef6a` call does with a given
   render work record.
+- The optional pattern helper bodies at `0x247c..0x2746` are not a supported
+  byte-stream-to-pixel route until a ROM caller, computed target, trap/vector,
+  or scheduler entry into them is found. If such an entry is proven, preserve
+  the copy-table sum into `0x7839d4`, the pattern-pointer cache
+  `0x7839d8..0x7839f7`, and the seven-row column writes from `0x270c..0x2746`;
+  otherwise ordinary active rendering still follows `0x22f4` for engine row
+  copies and `0x1ef6a` for page-object rendering.
 
 ## Confidence
 
@@ -732,3 +767,12 @@ register-to-signal names are still board-level evidence.
 - `0xff1e..0x1ed84`: no unresolved software-visible middle edge remains for
   publication-to-active-render selection, render-work alternation, bridge
   fields, or scheduler-produced band words in the covered fixtures.
+- `0x247c..0x2746`: helper semantics are decoded, but entry provenance is not.
+  Current evidence stops at the absence of a `0x0000247c` target in
+  `generated/analysis/ic30_ic13_long_reference_scan.md`, local returns at
+  `0x2330` and `0x247a` before the separate helper body in
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, and the expanded
+  helper body in
+  `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. Closing this
+  edge requires a static caller, computed target, trap/vector entry, or
+  scheduler-entry proof into `0x247c`, `0x26de`, or `0x270c`.

@@ -188,23 +188,28 @@ Optional active-pool pattern helper caller:
 - Boundary class:
   ROM-local unresolved caller.
 - Exact stop:
-  direct entry provenance for helper `0x247c..0x270c`. The current xref scan
+  direct entry provenance for helper bodies `0x247c..0x2746`. The current xref scan
   does not locate an absolute `0x0000247c` target; the adjacent copy-pass
   listing returns at `0x2330` and the coordinate helper returns at `0x247a`
-  before the separate `0x247c` body.
+  before the separate `0x247c` body. No current evidence proves an entry into
+  sibling bodies `0x26de` or `0x270c`.
 - Covered upstream state:
   active-pool scheduling, work-record selection, source pointer `0x783992`,
   destination row base `0x78399a`, row-copy jump offset `0x7839a4`,
   destination stride `0x7839a8`, accumulator `0x7839d4`, and pattern-pointer
-  cache `0x7839d8..0x7839f7` are documented before the stop. Ordinary active
-  rendering still reaches page-band objects through `0x1ef6a` and copied rows
-  through `0x22f4`.
+  cache `0x7839d8..0x7839f7` are documented before the stop. The expanded
+  helper listing shows `0x247c..0x26dc` copying eight destination rows and
+  accumulating their longword sum into `0x7839d4`, `0x26de..0x270a` deriving
+  eight pattern pointers from accumulator nibbles, and `0x270c..0x2746`
+  writing seven words per pattern column into the destination rooted at
+  `0x78399a`. Ordinary active rendering still reaches page-band objects
+  through `0x1ef6a` and copied rows through `0x22f4`.
 - Output effect:
-  do not treat `0x247c..0x270c` as an ordinary page-object pixel route unless
+  do not treat `0x247c..0x2746` as an ordinary page-object pixel route unless
   a caller is located. If later ROM evidence proves an entry into `0x247c`,
-  model the decoded accumulator, pattern-pointer, and destination writes from
-  that helper; otherwise it remains a bounded side path outside the supported
-  parser-to-pixels route.
+  `0x26de`, or `0x270c`, model the decoded accumulator, pattern-pointer, and
+  destination writes from those helper bodies; otherwise it remains a bounded
+  side path outside the supported parser-to-pixels route.
 - Evidence:
   [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
   [semantic-state-model.md](semantic-state-model.md#published-record-to-active-render-scheduler),
@@ -213,7 +218,8 @@ Optional active-pool pattern helper caller:
   `generated/analysis/ic30_ic13_long_reference_scan.md`.
 - Needed to close:
   static caller/xref evidence, a computed jump target, a trap/vector entry, or
-  scheduler-entry evidence proving ROM control flow into `0x247c`.
+  scheduler-entry evidence proving ROM control flow into `0x247c`, `0x26de`,
+  or `0x270c`.
 
 Optional external resource windows:
 

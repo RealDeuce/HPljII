@@ -172,7 +172,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_page_pool_candidate_insert_001c04.lst", "0x1c04", "0x1c04", "0x414"),
         ("ic30_ic13_active_pool_engine_gate_002038.lst", "0x2038", "0x2038", "0x206"),
         ("ic30_ic13_engine_copy_pass_0022f4.lst", "0x22f4", "0x22f4", "0x190"),
-        ("ic30_ic13_engine_copy_pattern_00247c.lst", "0x247c", "0x247c", "0x1ac"),
+        ("ic30_ic13_engine_copy_pattern_00247c.lst", "0x247c", "0x247c", "0x2cc"),
         ("ic30_ic13_page_pool_cursor_007612.lst", "0x7612", "0x7612", "0x210"),
         ("ic30_ic13_page_service_messages_008656.lst", "0x8656", "0x8656", "0x400"),
         ("ic30_ic13_status_message_selection_008430.lst", "0x8430", "0x8430", "0x200"),

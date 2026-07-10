@@ -13257,7 +13257,7 @@ record.
     cleanup on `0x780ea5`, stale-work cleanup on active `+0x0c < +0x10`,
     throttle yield on `+0x0e > 0x28`, render on capacity `>= 9`, and
     capacity wait below `9`.
-  - direct caller into optional pattern helper `0x247c..0x270c` is not
+  - direct caller into optional pattern helper bodies `0x247c..0x2746` is not
     located. Its accumulator, pattern-pointer cache, and destination writes are
     documented, but ordinary active rendering still reaches copied rows through
     `0x22f4` and rendered page bands through `0x1ef6a`. The caller boundary is

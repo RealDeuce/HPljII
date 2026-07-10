@@ -46,7 +46,7 @@ The current ROM-local stops are exact boundaries, not open-ended blockers:
 downloaded-glyph invalid helper/source cases and payload-count caps stop at the
 addresses named in
 [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
-The optional active-pool pattern helper `0x247c..0x270c` is decoded but stops
+The optional active-pool pattern helper bodies `0x247c..0x2746` are decoded but stop
 at a ROM-local unresolved-caller boundary; ordinary active rendering still
 routes through `0xff1e`, `0x1ed84` / `0x1edc6`, `0x1ef6a`, and `0x22f4`.
 The secondary segment-57 transparent-data path stops at missing
@@ -390,7 +390,7 @@ Expected remaining validation and boundary work:
   the exact helper/source or payload-count stops reached after those upstream
   routes are already documented.
 - ROM-local unresolved helper caller:
-  optional active-pool pattern helper `0x247c..0x270c` has decoded
+  optional active-pool pattern helper bodies `0x247c..0x2746` have decoded
   accumulator, pattern-pointer, and destination writes, but no static caller,
   computed jump target, trap/vector entry, or scheduler entry has been located.
   This is not an ordinary active-render row route until that entry provenance

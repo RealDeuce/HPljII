@@ -1677,7 +1677,7 @@ Field groups:
 - Unknown:
   - physical engine timing behind trap veneers and MMIO/status helpers
     remains board-level work.
-  - direct caller into optional pattern helper `0x247c..0x270c` is not
+  - direct caller into optional pattern helper bodies `0x247c..0x2746` is not
     located. The helper's accumulator `0x7839d4`, pattern-pointer cache
     `0x7839d8..0x7839f7`, and destination writes to `0x78399a` are
     documented in [active-render-scheduler.md](active-render-scheduler.md).

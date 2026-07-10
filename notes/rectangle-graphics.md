@@ -1206,6 +1206,26 @@ A byte-stream reproduction must preserve these behaviors:
   continuation word `+0x0c`.
 - Selector `7` renders through `0x1f596`; every other pinned selector renders
   through `0x1f4e0`.
+- Rule walker `0x1f446` must treat render root `+0x1c` as a band-scoped
+  ordered list: zero root exits, bucket byte `+0x04 > band_word + 4` stops the
+  walk, exhausted continuation word `+0x0c <= 0` skips the node, and selector
+  byte `+0x05 & 0x0f` selects table `0x1f4a0`.
+- Solid helper `0x1f596` consumes packed key `+0x06`, width `+0x08`, and
+  continuation `+0x0c`; it writes full black words plus left/right masks into
+  the destination selected by `0x1f626`, then repeats at fallback
+  `0x7810b4 + A2` when the split count reports fallback rows.
+- Pattern helper `0x1f4e0` consumes the same key, width, and continuation plus
+  selector table `0x2fefe` and mask helper `0x1f6ee`; selectors `0..6` and
+  `8..13` choose the pattern base, then `0x1f51a..0x1f57a` writes
+  left/full/right masked pattern words with stride `0x783a1c`.
+- Bridge flag `+0x05.4` and continuation word `+0x0c` define first-band versus
+  continuation-band behavior: the first band uses original bucket delta and
+  row-low bits, clears the flag, and subtracts rows from `+0x0c`;
+  continuation bands clear upper row bits from the key and resume at y `0`.
+- Current-band/fallback placement is part of pixel output. Destination helper
+  `0x1f626` chooses `0x783a28` for current-band rows or `0x7810b4 + A2` for
+  fallback rows; rectangle pixels cannot be reproduced from selector and
+  object bytes alone without this split state.
 - Continuation word `+0x0c` is mutated across render bands and must be
   carried between bands for pixel-perfect output.
 

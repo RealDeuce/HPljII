@@ -606,6 +606,119 @@ data.
   downloaded-glyph streams are fixture-backed as modeled `0xa904` ring
   streams before they reach parser/object/render boundaries.
 
+### D7 Caller Return Checkpoint
+
+This checkpoint begins after `0xa904` returns a value and before each
+consumer family interprets that value as parser syntax, payload data, replay
+input, or an end/error condition. It composes the owner contract in
+[host-byte-fetch.md](host-byte-fetch.md#d7-caller-return-contract), so the
+central state model does not require a reader to infer caller behavior from
+the raw fetch ledger alone.
+
+Parser wrapper and main loop:
+
+- Consumers: `0xda9a` and parser loop `0x11774`.
+- `D7` bytes become parser syntax, printable text, direct control bytes, or
+  command dispatch input.
+- `D7 = -1` is not owned by the wrapper. The main parser loop clears the
+  no-byte gate at `0x117dc..0x117ee` and waits through `0x10c8(0x780202)`.
+- Field class: parser scratch starts after caller acceptance of `D7`; output
+  starts only when later handlers call text, command, or page-object owners.
+
+Shared payload/control probe:
+
+- Consumer: `0xdace`.
+- Ordinary bytes return unchanged to the caller. Exact local pair
+  `0x1a 0x58` calls `0xd99a` and returns normalized zero.
+- Negative `D7` propagates to the caller. This path is reused by VFC,
+  delayed-drain, raster skip, and downloaded-font readers without ESC parser
+  lookahead.
+
+Display, repeat, and transparent text readers:
+
+- Consumers: `0x12142`, `0x124bc`, `0x12582`, and transparent handler
+  `0x12452`.
+- Text repeat readers stop on `D7 = -1`; their exact `0x1a 0x58` probes call
+  `0xd99a` and substitute byte `0x7f`.
+- Transparent payload bytes route printable bytes to `0xd04a` and filtered
+  control bytes to `0xd0f0`. Its local payload count bounds the input path.
+
+Raster payload readers:
+
+- Consumers: `0x138de..0x1391a` under accepted raster handler `0x105d0`.
+- Returned bytes are stored into encoded raster object payload storage.
+  `D7 = -1` exits through the raster reader status path instead of creating
+  invented object bytes.
+- Downstream pixels come later from encoded raster object dispatch and helper
+  `0x1f88e`, not from `0xa904` itself.
+
+Downloaded-font payload readers:
+
+- Consumers: `0x168dc`, `0x168fe`, `0x16960`, `0x1697a`, `0x169ca`, and
+  `0x169e0`.
+- Returned bytes become descriptor/resource/glyph payload bytes. Exact
+  `0x1a 0x58` calls `0xd99a` and stores zero.
+- Negative `D7` returns failure or continuation status. Visible pixels appear
+  only after installed glyph state is selected, queued as compact objects, and
+  rendered through the downloaded-glyph render path.
+
+Macro and data-chain replay:
+
+- Consumer: active data-chain source selected inside `0xa904`, then whichever
+  parser or payload caller receives the returned byte.
+- Frame kind `2` and `3` replay execute/call macro bytes. Frame kind `4`
+  replays non-macro page-finalization/overlay input. Frame end is handled by
+  `0xe22c` before source selection retries.
+- Replay bytes are source-equivalent to direct host bytes after `D7` returns;
+  their distinct canonical state is the data-chain frame at `0x782d76`.
+
+State classification:
+
+- Canonical state remains the selected `0xa904` byte source and any source
+  pointer/count mutation needed to return `D7`.
+- Parser scratch starts only after a parser caller accepts `D7`.
+- Derived/cache state is produced by downstream consumers: parser records,
+  page objects, raster chunks, installed glyph records, or render bridge
+  fields.
+- Firmware bookkeeping includes no-byte/service gates, handshake shadows,
+  low-water service flags, and data-chain frame teardown.
+- Hardware/external state ends at the direct MMIO branches inside `0xa904`;
+  caller return semantics after `D7` are ROM-local.
+
+Output effect:
+
+- `0xa904` creates no pixels and owns no page image object. Its output effect
+  is the caller-local interpretation of `D7`.
+- Pixel-producing routes begin only after text dispatch, raster object
+  storage, downloaded-glyph installation/selection, rectangle/rule
+  publication, or later render-scheduler consumption.
+
+Evidence:
+
+- Owner note:
+  [host-byte-fetch.md](host-byte-fetch.md#d7-caller-return-contract).
+- Disassembly:
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
+  `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`, and
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`.
+- Owner consumers:
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [downloaded-fonts.md](downloaded-fonts.md).
+
+Unresolved middle edges:
+
+- No ROM-local caller-class routing edge remains for the documented
+  `0xa904` return families. Remaining boundaries are the physical MMIO
+  source identities before direct hardware bytes are returned, and
+  downstream family-specific variants only when a new stream changes a
+  parser field, page object, render-helper input, or exact boundary.
+
 ### Output Effect
 
 `0xa904` has no pixels by itself. Its visible effect is that the same byte

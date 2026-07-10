@@ -632,9 +632,10 @@ output class that a byte-stream reader should follow next.
   routed printable text, alternate/data append, display/status side effect, or
   explicit reader termination.
 - Raster bytes:
-  setup handlers `0x1075a`, `0x107fa`, `0x10808`, `0x10e22`, and `0x10e68`
-  write raster state; delayed `ESC *b#W` restores to transfer reader
-  `0x105d0`. Continue in [raster-graphics.md](raster-graphics.md) and
+  setup handlers `0x10808`, `0x1075a`, and `0x107fa` write raster
+  resolution, origin, active, and end-state fields; delayed `ESC *b#W`
+  restores to transfer reader `0x105d0`. Continue in
+  [raster-graphics.md](raster-graphics.md) and
   [page-raster-imaging.md](page-raster-imaging.md). Output class:
   encoded raster bucket object, then `0x1f88e` render.
 - Rectangle/rule bytes:

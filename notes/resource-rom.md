@@ -1055,6 +1055,43 @@ it. A real-backed `@0`/`@1`/`@2`/`@3` caller stream now routes through
 ROM terminal handler `0x120be` and consumes those table/default-font
 words through the same default-table/copy/default-font subdispatch.
 
+The current-default install boundary is now explicit. `0x1acb0` first calls
+`0x1b250` to resolve the retained current default. When that succeeds,
+`0x1acbe..0x1acfc` copies resolver class byte `0x78289f` to active class
+byte `0x782da3` and calls `0x1b332` twice with the same selected slot
+`0x7828a0` and word `0x7828a4`: once for primary selector `0`, once for
+secondary selector `1`. When no retained default exists, `0x1ad00..0x1ad5a`
+clears `0x782da3`, `0x78289f`, and `0x78289e`, runs synthesized search
+`0x1ad66`, and still installs primary then secondary through `0x1b332`.
+
+`0x1b332(selector, slot, word)` is the concrete current-default writer. It
+writes `word` to active primary word `0x783144` or secondary word
+`0x783146`, writes selector `0x7828de`, writes selected slot pointer
+`0x7828a8`, calls `0x1b2fe` to copy the selected record into current context
+`0x782ee6` or `0x782ef6`, then calls `0x14c64` to rebuild the active
+character map. `0x1b2fe` dispatches by candidate form: `0x1b36e` handles
+bit-30 offset-table records and decodes pitch/height through `0x13b76` /
+`0x13bca`; `0x1b440` handles fixed-form records and copies the fixed pitch,
+height, spacing, and tie-breaker bytes directly. Both branches clear
+side-effect marker `0x78287b` after deciding whether pitch/HMI should be
+preserved.
+
+State classification for this install edge:
+
+- Canonical font state: active words `0x783144` / `0x783146`, selected slot
+  `0x7828de`, selected candidate pointer `0x7828a8`, current contexts
+  `0x782ee6` / `0x782ef6`, and active maps `0x782f32` / `0x783032`.
+- Canonical candidate state: resolved slot pointer `0x7828a0`, resolved word
+  `0x7828a4`, candidate class byte `0x78289f`, synthesized-search selector
+  `0x78289e`, and active class byte `0x782da3`.
+- Derived/cache state: decoded offset-table pitch/height from `0x13b76` and
+  `0x13bca`, plus copied current-context metric bytes.
+- Firmware bookkeeping: side-effect marker `0x78287b`, common map rebuild
+  through `0x14c64`, and reset/default cleanup caller `0x1bbf4`.
+- Output effect: no page object is queued here. The effect is delayed until
+  later printable bytes consume the rebuilt current context and map through
+  `0xd04a -> 0x1393a -> 0x12f2e`.
+
 This makes the current renderer identity
 `(context longword, mapped glyph byte)`. For example, the unnamed
 built-in record at context `0x4008004c` has a base range `0x21..0xfe`,
@@ -1502,6 +1539,7 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`
+- `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`
 - `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
 

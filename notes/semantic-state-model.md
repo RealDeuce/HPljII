@@ -5018,6 +5018,16 @@ and fallback candidate tables, `0x1b250 current-default candidate lookup` and
 `0x1b50e current-default resolver scan and predicates` pin the current-default
 resolver contract, and the real/synthesized default-search fixtures pin the
 built-in candidate fallback sources used by final `@3`.
+The current-default install edge is now pinned as
+`0x1acb0 -> 0x1b332 -> 0x1b2fe -> 0x14c64`: `0x1acb0` resolves retained or
+synthesized defaults, calls `0x1b332` for primary and secondary selectors,
+and `0x1b332` writes active words `0x783144/0x783146`, selected slot
+`0x7828de`, selected pointer `0x7828a8`, current context
+`0x782ee6/0x782ef6`, and rebuilt maps `0x782f32/0x783032`. Offset-table
+contexts use writer `0x1b36e`; fixed-form contexts use writer `0x1b440`.
+This edge still creates no page object by itself; visible output appears only
+when later printable bytes consume the rebuilt context/map through
+`0xd04a -> 0x1393a -> 0x12f2e`.
 
 The final-`X` visible fixture renders a distinct built-in record selected by
 font ID. Host-fetched `ESC (7X!!` selects context `0xc0089fb0`, HMI `30`, glyph
@@ -11688,8 +11698,8 @@ leaves those names unresolved.
   `0x9bee` generic status-bit OR helper.
 - [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
   `generated/analysis/ic30_ic13_active_symbol_set_flow.md`, and
-  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`: current
-  evidence for shared `0x1b04c` refresh behavior in sibling contexts.
+  `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`:
+  current evidence for shared `0x1b04c` refresh behavior in sibling contexts.
 
 ### Unresolved Middle Edges
 

@@ -299,6 +299,111 @@ Evidence and boundaries:
   manual soft-font fields. These do not block the documented installed-glyph
   route from host bytes to page-record and compact render output.
 
+## Downloaded-Glyph Render Decision Checkpoint
+
+This checkpoint composes the installed downloaded-glyph path into the decision
+model a byte-stream renderer needs before consulting the detailed ledger below.
+It starts at `ESC *c#D`, `ESC *c#E`, `ESC )s#W` / `ESC (s#W`, and a later
+printable byte, then ends either at a compact render helper or at an exact
+ROM-local boundary.
+
+Command and parser routing:
+
+- `ESC *c#D` writes current downloaded font id `0x782f2e` through `0x15a56`,
+  and `ESC *c#E` writes current character word `0x782f30` through `0x15a18`.
+- `ESC )s#W` / `ESC (s#W` enter delayed selector `0x11f96`. Zero-count
+  payloads route through `0x121cc -> 0x12218 -> 0x15d0a`, while nonzero
+  payloads route through `0x121cc -> 0x12218 -> 0x16c14 -> 0x16fae
+  -> 0x17026 -> 0x1719c`.
+- Downloaded-character payload bytes enter `0x16498`, choose linear or
+  split-plane copy through `0x16874`, and are copied by `0x168dc` or
+  `0x16942` into the installed glyph record and bitmap.
+- Selection and printable output then cross `0x17708`, `0x14c64`,
+  `0x14e24`, `0x1393a`, `0xd04a`, `0x12f2e`, `0x1387c`, publication
+  at `0xff1e`, render scheduling at `0x1ed84`, bucket walk at `0x1ef6a`,
+  and compact dispatch at `0x1effe`.
+
+Render decision rules:
+
+- Installed glyph commands do not emit pixels immediately. A pixel-producing
+  path begins only when a later printable byte resolves through the active map
+  to an installed downloaded glyph and `0x12f2e` creates a compact page object.
+- Object selector `0x0003` reaches the normal compact path; `0x1003` reaches
+  compact-wide; `0x2003` reaches segmented compact; `0x3003` reaches
+  segmented-wide. `0x1effe` maps those selector bits through table `0x1f024`
+  to `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+- Low-row downloaded glyphs `0x0001..0x00ff` have a documented path to
+  pixels. Short rows use `0x1f034` and helper table `0x1f08e`; segmented
+  rows use `0x1f1f0`; wide rows use `0x1f0d2`; segmented-wide rows use
+  `0x1f264` when the row/span selector chooses a documented segment source.
+- High-row short compact glyphs keep the full installed row word in the
+  `0x16498` object, but `0x12f2e` uses only the low row byte when choosing
+  selector `0x0003`. If `0x1f414` then feeds a fallback row count above the
+  valid `0x1fe76` table range, the exact stop is the unchecked table read at
+  `0x1fe8a + 4 * D3`; row `0x0102` reaches fallback index `200` and target
+  longword `0x329ad3c0`.
+- Wrapped low-width cases that enter `0x1f034 -> 0x1f08e` use the full span
+  word for the helper index. Span `0x0102` reads table entry `0x1f496` and
+  selects invalid target `0x0066cc`; this is a ROM-local invalid-helper
+  boundary, not a printable-pixel rule.
+- Segmented-wide rows below the parser payload cap render only for the
+  documented selected segments that reach `0x1f264` with a valid source
+  offset. The adjacent span-31 high-row cases stop at source offset `+0xb50`;
+  oversized row/span products stop earlier at the restored `ESC )s#W`
+  payload-count cap before `0x16498`.
+- Validation failures, no-install exits, and failed continuation resumes do
+  not create a downloaded-glyph page object. They release or skip
+  downloaded-font state, then leave the following printable byte on the normal
+  default-font path.
+
+State classification for this decision:
+
+- Canonical state: current id `0x782f2e`, current character `0x782f30`,
+  installed current records `0x782640..0x782776`, installed candidate payloads,
+  glyph pointer-table entries, downloaded character record mode byte `+5`,
+  row word `+6`, width word `+8`, bitmap bytes, page-root buckets, and compact
+  selectors `0x0003`, `0x1003`, `0x2003`, and `0x3003`.
+- Derived/cache state: selected-map bytes from `0x14e24`, source objects from
+  `0x1393a`, compact object fields from `0x12f2e`, published bucket arrays
+  from `0xff1e`, render work words from `0x1ed84`, row-copy helper indexes,
+  segment source offsets, and wide-mode caches written by `0x1f0d2` /
+  `0x1f264`.
+- Parser scratch: delayed-payload state `0x782a1a`, saved handler `0x782a1c`,
+  saved records `0x782a20..0x782a25`, payload budget `0x783140`, staged
+  resource/header bytes `0x7827de..0x7827e9`, and bitmap parse fields
+  `0x7827be`, `0x7827c2`, and `0x7827c4`.
+- Firmware bookkeeping: candidate insertion `0x1bc38`, continuation state
+  `0x7827c6..0x7827da`, release helpers `0x1887a`, `0x18b92`, `0x18bf2`,
+  `0x17a24`, and `0x17d7c`, and default-context refresh through `0x1b04c`.
+- Hardware/external state: none for the ROM-local render decisions above.
+  Secondary Segment-57 resource contents remain external resource data, not a
+  CPU or board-state requirement.
+- Unknown: HP manual names for some `0x16fae..0x17016` validation fields,
+  invalid helper targets `0x329ad3c0` and `0x0066cc`, and the source data
+  beyond segmented-wide fallback offset `+0xb50`.
+
+Evidence:
+
+- Parser and install evidence is in
+  `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+  `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
+  `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`,
+  and `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`.
+- Render evidence is in
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`, with the
+  shared composition model in `notes/page-raster-imaging.md`.
+- Fixture anchors in this file include
+  `host-fetched printable byte uses installed downloaded glyph page object`,
+  `downloaded glyph width-span matrix publishes and renders all main helpers`,
+  `downloaded glyph segmented-wide matrix publishes and renders compact chunks`,
+  `downloaded glyph high-row truncation matrix preserves installed rows`,
+  `downloaded segmented-wide high-row span-31 fallback hits source boundary`,
+  and `ESC )s#W validation failures preserve following printable output`.
+
 ## Field Groups
 
 Canonical command selection:

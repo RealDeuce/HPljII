@@ -129,15 +129,17 @@ Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
   slots `+0x2c..+0x68`. Writers are `0x10084`, `0x10110`, `0xc428`,
   `0xc4fc`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2`; publication and
   render consumers are `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
-- Compact text and downloaded glyph objects:
-  printable bytes route through `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`
-  and queue bucket objects under root `+0x1c`. Examples now documented in
-  [pcl-command-map.md](pcl-command-map.md) include primary final-`X`
-  `ESC (7X!!` object prefix
-  `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, secondary
-  `ESC )8X SO !!` prefix
-  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and downloaded printable `!`
-  object `00 00 00 00 00 00 00 01 21 5a 00`.
+- Compact text and downloaded glyph objects: printable bytes route through `0xd04a ->
+  0x1393a -> 0x12f2e -> 0x1387c` and queue bucket objects under root `+0x1c`. Examples
+  now documented in [pcl-command-map.md](pcl-command-map.md) include primary final-`X`
+  `ESC (7X!!` object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, secondary `ESC
+  )8X SO !!` prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and downloaded
+  printable `!` object `00 00 00 00 00 00 00 01 21 5a 00`. The source-object boundary is
+  [Printable Source Capture
+  Checkpoint](font-context-metrics.md#printable-source-capture-checkpoint): it owns how
+  `0x1393a` maps the original host byte through the active map, writes source fields
+  `+0x00/+0x04/+0x0a/+0x0b/+0x10/+0x12/+0x14/+0x16`, and hands the source to `0xd3b2` /
+  `0xd824` and `0x12f2e`.
 - Segment/span objects:
   pending text decoration or span state flushes through `0x12714` into a
   class-`0x40` object. The documented `ESC &d3D ! ESC &d@` path queues span
@@ -171,6 +173,14 @@ resolver `0x1f354` locates glyph bitmap bytes. This is why a byte-stream trace m
 preserve both compact object payload bytes and the copied context-slot values. The owner
 checkpoint is [Context Slot Preservation
 Checkpoint](page-record-storage.md#context-slot-preservation-checkpoint).
+
+Compact-render handoff: after bridge, `0x1efc2 -> 0x1effe` reads compact object selector
+and context-slot bytes from render root `+0x18`, loads `0x783a2c`, and dispatches
+through table `0x1f024` to short, wide, segmented, or segmented-wide helpers. The
+checked-in owner checkpoint is [Compact Render Dispatch Outcome
+Matrix](page-raster-imaging.md#compact-render-dispatch-outcome-matrix); it ties selector
+bits `0x00/0x10/0x20/0x30` to helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`,
+and bounds the invalid computed-jump cases.
 
 State classification for this shared layer is: canonical state is the current
 page root, queued object records, context slots, and published page/control

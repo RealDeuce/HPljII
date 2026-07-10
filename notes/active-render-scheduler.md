@@ -439,6 +439,35 @@ Fixture `0x1ecd6 same-geometry render work reuse reaches render entry` checks
 the sibling branch: it reuses prior geometry, computes destination word `+8`
 through `0x33238`, and still reaches the documented render-entry path.
 
+### Work-Record Selector Branches
+
+`0x1ecd6..0x1ed76` is the bridge-side scheduler gate between the selected
+published source and the active render record. It does not inspect page-object
+classes; it chooses the render-work record and decides whether geometry can be
+reused before `0x1ed84` copies page roots.
+
+Branch effects:
+
+- `0x1ecde..0x1ed0e`: toggle render-work selector `0x7820bc`. If the selector
+  was zero, previous work is `0x7820c4`, new active work is `0x782128`, and
+  `0x7820bc` becomes `1`. If the selector was nonzero, previous work is
+  `0x782128`, new active work is `0x7820c4`, and `0x7820bc` is cleared.
+- `0x1ed0e..0x1ed24`: write active render pointer `0x783a18 = new_work`, then
+  copy source byte `active_source+9` from `0x780eae` into new work word
+  `+0x04`. This source byte is the geometry/class comparison key for the next
+  branch.
+- `0x1ed26..0x1ed34`: compare previous work `+0x04` with new work `+0x04`.
+  A mismatch calls geometry setup `0x1ee9e(new_work)` at `0x1ed6c..0x1ed74`.
+- `0x1ed36..0x1ed6a`: same-geometry reuse branch. It computes a new
+  destination/offset word through `0x33238(previous+0x06,
+  previous+0x10 - previous+0x0a + previous+0x08)`, stores the result in new
+  work `+0x08`, copies previous longword `+0x00`, and copies previous word
+  `+0x06`.
+- `0x1ed74..0x1ed76`: both geometry branches call `0x1ed84(new_work)`.
+  `0x1ed84` then copies the active source page/control roots into the selected
+  render work record, so later `0x1ef6a` sees the same page-object graph with
+  scheduler-selected band geometry.
+
 Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` checks
 the render, capacity-wait, cleanup, and throttle outcomes. In the render case,
 the documented branch calls `0x1ef6a`, increments render work word `+0x10`,

@@ -10936,72 +10936,69 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
 
 ### Output Effect
 
-Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists in
-call order` proves the layer order for bucket, rule, and fixed-list roots.
-Fixture `0x1ef6a page-band walk merges text raster and crossing rule` proves
-a compact text object, mode-0 raster object, and crossing patterned rule
-compose across two bands while rule continuation carries state. Fixture
-`bridged text, rule, and raster layers compose into one page band` proves
-parser-shaped bucket/rule/raster objects merge after `0x1edc6`. Fixture
-`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-proves a host-fetched downloaded glyph, rule, and raster page stream reaches
-the same dispatch layer. Fixtures `0x1f596 carries solid rule remainder across
-render bands`, `0x1f4e0 carries patterned rule remainder across render bands`,
-and `0x1f446 page-band walk assembles patterned rule rows` pin the standalone
-rule-list continuation contract used by the mixed-page fixtures.
+`0x1ef6a` is the shared page-band render entry. It loads the active render
+record from `0x783a18`, calls `0x1ef86` to derive the current band destination
+base and remainder fields, calls `0x1efc2` to walk bucket objects rooted at
+render `+0x18`, calls `0x1f446` to walk rule objects rooted at render `+0x1c`,
+and calls `0x1f756` to walk fixed-list objects rooted at render `+0x20`.
+That call order is the ROM-defined layer order for compact text/raster bucket
+objects, rules, and fixed-width objects in the same band buffer.
 
-The compact row-copy helper fixtures pin the low-level copy side beneath
-compact text rendering. The width-3 and width-16 main helper fixtures record
-source/destination write sequences and final `A1/A2/A3` registers; the
-remainder-width-1 fixture records the byte-tail helper; and the chunk-width-16
-fixture records the shifted full-chunk helper used after the first 16-byte
-span. Resource glyph row-copy fixtures then derive sampled built-in rows by
-applying those ROM helpers to directly decoded bitmap bytes. They are not a
-comparison against physical printer output.
+The bridge at `0x1edc6` decides which page objects reach this layer. It copies
+page-root bucket, rule, and fixed roots into render-record roots `+0x18`,
+`+0x1c`, and `+0x20`; normalizes rule and fixed continuation fields; and
+copies font/context slots. Once objects have crossed that bridge, `0x1ef6a`
+does not re-parse host bytes. It consumes page-object bytes and ROM resource
+data only.
 
-The row-copy tables are concrete ROM dataflow. Table `0x1f08e` indexes compact
-main helpers for byte spans `1..16`; table `0x1f1ac` indexes wide-glyph
-remainders `1..16`; and helper `0x2f27c` uses table `0x2f2ac` after phasing
-`A1` and `A2` by `0x783a46`. Odd byte-width spans copy their trailing byte
-from `A3`, while even byte-width spans are word copies from `A2`. The
-generated row-copy report
+Bucket dispatch at `0x1efc2` indexes the active bucket by render word `+0x10`,
+walks each object, and splits object classes by byte `+0x04 & 0xc0`.
+Compact objects call `0x1effe`; segment-list objects call `0x1f812`; encoded
+raster objects call `0x1f88e`. Compact dispatch `0x1effe` extracts the low
+context selector and the `0x10`/`0x20` span-class bits, then uses table
+`0x1f024` to select short `0x1f034`, wide `0x1f0d2`, segmented `0x1f1f0`,
+or segmented-wide `0x1f264` row construction.
+
+Compact text rows are produced by ROM row-copy helpers, not by a separate
+parser concept. Table `0x1f08e` indexes compact main helpers for byte spans
+`1..16`; table `0x1f1ac` indexes wide-glyph remainders `1..16`; helper
+`0x2f27c` uses table `0x2f2ac` after phasing `A1` and `A2` by `0x783a46`.
+Odd byte-width spans copy their trailing byte from `A3`, while even byte-width
+spans are word copies from `A2`. The generated row-copy report
 `generated/analysis/ic30_ic13_render_row_copy_fixtures.md` records the helper
-addresses, row-count tables, and representative multi-row write traces.
+addresses, row-count tables, and representative multi-row write traces as
+supporting anchors for those ROM tables.
 
-Compact text fixture names in this section identify the visible output edge,
-not a separate parser concept. `compact text bucket object fixture rendered
-rows`, `0xd824-positioned compact text rendered rows`,
-`0xd824-negative-overflow compact text rendered rows`, `single printable byte
-stream renders expected rows`, `two printable byte stream renders advanced
-glyph rows`, and `two printable byte stream with line-printer HMI renders
-subbyte rows` all consume compact bucket objects through `0x1effe` and
-row-copy helper `0x01fa5c`. `0x1f0d2 wide compact text splits current band and
-fallback rows`, `0x1f1f0 segmented compact text splits current band and
-fallback rows`, and `0x1f264 segmented-wide compact text splits current band
-and fallback rows` pin the corresponding non-short compact subdispatch carry
-to fallback rows at the band boundary.
+Rules enter through render root `+0x1c`. `0x1f446` walks only objects whose
+bucket byte falls inside the current five-line band window and whose
+continuation word remains positive. It dispatches selector `7` to solid
+helper `0x1f596` and non-solid selectors `0..6` and `8..13` to pattern helper
+`0x1f4e0`. Both helpers consume the packed key, width, masks, and continuation
+height, write current-band rows, and leave positive continuation height for a
+later band. A selector-2 fill rectangle bridged to rule selector `0` therefore
+uses the same `0x1f446 -> 0x1f4e0` rule path as the rectangle checkpoint:
+pattern base `0x02ff3e`, row pattern words beginning with `0x8080`, and
+continuation mutation are renderer behavior, not parser behavior.
 
-Fixture `0x1f446/0x1f4e0 renders gray selector pattern pixels` pins the rule
-selector side of the same render dispatch. A fill rectangle with selector `2`
-is bridged to rule selector `0`, dispatches through `0x1f446` to patterned
-helper `0x1f4e0`, uses pattern base `0x02ff3e`, writes four rows from pattern
-words starting with `0x8080`, and mutates the continuation height field to
-`0xffb4`.
-
-Encoded raster output is pinned at the same destination layer. Mode `0` copies literal
-payload words through `0x1f8da`; mode `1` expands each payload byte through `0x30914`
-and writes the same word to the current row plus one adjacent current or fallback row;
-mode `2` runs shared loop `0x1f9a0` once for even-indexed payload bytes and again for
-odd-indexed payload bytes, expanding each selected byte through `0x30b14` and writing
-the longword to three current/fallback row destinations; and mode `3` expands through
-two levels of `0x30914` to produce one longword written across four current/fallback row
-destinations. The fixtures named `0x1f88e mode-0 raster object renders queued literal
-row` through `0x1f88e mode-3 raster object expands queued bytes into four rows`, plus
-`generated/analysis/ic30_ic13_render_expansion_fixtures.md`, tie those table semantics
-to rendered rows and compact expansion vectors. The detailed instruction boundary is
-documented in
+Encoded raster output uses the same destination layer as compact text and rules.
+`0x1f88e` selects helpers from object byte `+0x05 & 0x03`. Mode `0` copies literal
+payload words through `0x1f8da`; mode `1` expands each payload byte through table
+`0x30914` and writes the same word to the current row plus one adjacent current or
+fallback row; mode `2` runs shared loop `0x1f9a0` for even-indexed and odd-indexed
+payload bytes, expands through `0x30b14`, and writes the longword to three
+current/fallback row destinations; mode `3` expands through two levels of `0x30914` and
+writes one longword across four current/fallback row destinations. The instruction
+boundary is documented in
 [page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint)
 from disassembly `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
+
+Mixed text/rule/raster streams compose at this exact layer: upstream parser
+and page-record producers create compact, raster, and rule objects; `0x1edc6`
+bridges their roots and context; `0x1ef6a` walks bucket, rule, and fixed roots
+in fixed ROM order; and the subhelpers write rows into the active or fallback
+band destinations. Supporting fixture names in this section identify that
+ROM-local route from page objects to rows. They are not comparisons against
+physical printer output.
 
 ### Confidence
 

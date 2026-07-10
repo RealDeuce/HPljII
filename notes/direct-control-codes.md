@@ -357,7 +357,8 @@ state-only mutation, or explicit no-output parser behavior.
   `0x782ddc`. `ESC &a#L/#M` handlers `0xeb58` / `0xec0c` write left/right
   margins and may move horizontal cursor `0x782c8a`. Output effect is delayed
   placement, unless pending span state is flushed through `0xf34a -> 0x12714`.
-  Evidence: margin fixtures named in `Output Effect` and
+  The concrete writer-to-consumer route is composed in
+  [Margin Route Checkpoint](#margin-route-checkpoint). Evidence:
   [Span Flush Producers](#span-flush-producers).
 - Cursor and dot positioning:
   `ESC &a#C/#H`, `ESC &a#R/#V`, and `ESC *p#X/#Y` reach
@@ -1118,10 +1119,67 @@ path: `0xca8c` writes `0x78315c`, and the following printable consumes the new
 HMI to change compact coordinates without changing the downstream page-record
 contract.
 
-`ESC 9 CR !` has visible effect only through later text. Fixture `ESC 9 clear
-margins feeds CR and page-record output` proves `0xe9ba` clears left margin
-to `0`, copies page width `120` into the right margin, lets CR move x from
-packed `50` to `0`, and queues the printable byte at compact coord `0x0600`.
+### Margin Route Checkpoint
+
+This checkpoint composes `ESC 9`, `ESC &a#L`, and `ESC &a#M` as horizontal
+layout commands. It starts at handlers `0xe9ba`, `0xeb58`, or `0xec0c`, and it
+ends when CR, HT, BS, wrap prechecks, pending-span flush, or a following
+printable byte consumes the rewritten margin state.
+
+Route summary:
+
+- `ESC 9` reaches `0xe9ba`. It clears left margin `0x782dd6`, copies page
+  width `0x782db8` to right margin `0x782dda`, and clears right-margin
+  fraction companion `0x782ddc`. It queues no page object.
+- `ESC &a#L` reaches `0xeb58`. It rewinds parser record cursor `0x78299e`,
+  converts the absolute column count through current HMI `0x78315c`, rejects
+  values beyond `0x782dda - HMI`, and writes accepted values to left margin
+  `0x782dd6`. If the accepted margin is right of current x `0x782c8a`, or
+  pending text is marked, it also moves x and can flush pending spans through
+  `0xf34a -> 0x12714 -> 0x126e2`.
+- `ESC &a#M` reaches `0xec0c`. It converts `abs(parameter) + 1` columns
+  through HMI `0x78315c`, rejects values before `0x782dd6 + HMI`, clamps
+  beyond page width `0x782db8`, writes right margin `0x782dda`, sets
+  right-limit latch `0x782a57`, and can move current x left.
+- CR helper `0xf06e` later copies left margin `0x782dd6` into cursor x
+  `0x782c8a`; HT `0xf1cc` and BS `0xf2a8` use the margins as tab-stop and
+  clamp bounds; printable prechecks `0xd28a` / `0xd6bc` use the right margin
+  and wrap byte to accept, reject, or recover horizontal overflow.
+
+State classification for this route:
+
+- Canonical state: left margin `0x782dd6`, right margin `0x782dda`,
+  right-margin fraction companion `0x782ddc`, horizontal cursor `0x782c8a`,
+  HMI `0x78315c`, page width `0x782db8`, current page root `0x78297a`, and
+  pending span state.
+- Derived/cache state: CR-reset x, HT tab-stop candidate, BS clamp candidate,
+  compact coordinates from the next printable byte, and segment-list span
+  objects materialized before a margin/cursor overwrite.
+- Parser scratch: six-byte `ESC &a#L/#M` records, lowercase `l...M` family
+  chaining state, and parsed integer/fraction words consumed by `0xeb58` or
+  `0xec0c`.
+- Firmware bookkeeping: right-limit latch `0x782a57`, pending cursor/text
+  latch `0x782a6d`, pending-width latch `0x782a58`, span-enable byte
+  `0x783184`, and publication/retry state only if a span flush allocates or
+  publishes through `0x12714`.
+- Unknown: no ROM-local middle edge remains for the documented margin reset,
+  left/right margin writers, following-printable consumers, or pending-span
+  materialization. New work should start only when a byte stream changes a
+  margin rejection branch, span object, page-object coordinate, or render
+  helper input.
+
+Named byte-stream outcomes:
+
+- `ESC 9 CR !` has visible effect only through later text: `0xe9ba` clears
+  left margin to `0`, copies page width `120` into right margin, CR moves x
+  from packed `50` to `0`, and the printable byte queues at compact coordinate
+  `0x0600`.
+- `ESC &a1L!`, `ESC &a1M!`, and `ESC &a6l9M!` route margin handlers
+  `0xeb58` / `0xec0c` into following `0xd04a` output at compact coordinates
+  `0x0801`, `0x0a02`, and `0x0207`.
+- `ESC &a6L!` with pending span state shows the left-margin writer can
+  materialize selector-`0x4000` segment-list output through `0x12714` before
+  the following printable glyph queues.
 
 `ESC = !` advances vertically by half of current VMI. Fixture `ESC = half-line
 feed reaches shifted page-record output` proves `0xf176` advances y from
@@ -1304,19 +1362,14 @@ cursor fields. For text streams, the following printable byte reaches
 through `0x12f2e` / `0x1387c`, and renders through the normal page-record
 bridge.
 
-Margin helper fixtures similarly separate helper semantics from visible
-output. `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`
-and `0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at
-right edge` pin the left/right margin writers. Fixture `margin stream
-ESC &a6l9M selects 0xeb58 then 0xec0c` pins lowercase chaining across the
-margin family; the margin parser traces then prove following printable bytes
-queue through the same compact text path.
+The margin helper fixtures named in the evidence list support the route above:
+they exercise helper admission/rejection, lowercase chaining, following
+printable output, and the `0x12714` span-materialization sibling.
 
-`ESC &a6L!` and `ESC &a1R!` also have pending-span siblings. Fixtures
-`left-margin parser span flush materializes 0x12714 page object` and
-`vertical-cursor parser span flush materializes 0x12714 page object` prove
-those cursor-changing handlers can publish selector-`0x4000` span objects
-through `0x12714` before the following printable glyph is queued.
+`ESC &a1R!` also has a pending-span sibling. Fixture
+`vertical-cursor parser span flush materializes 0x12714 page object` proves
+the vertical cursor handler can publish a selector-`0x4000` span object through
+`0x12714` before the following printable glyph is queued.
 
 ### Span Flush Producers
 

@@ -100,7 +100,8 @@ Use these entry points according to the artifact in hand:
   transparent/display readers, raster/rectangle imaging, VFC, macro replay,
   publication, downloaded fonts, and mixed page-image composition.
 - For completion/risk work, use `Current Residual Edge Index`,
-  `Pixel-Perfect Coverage And Residual Risks`, and `Next Evidence Targets`.
+  `Pixel-Perfect Coverage And Residual Risks`, and
+  `Next Documentation Targets`.
   New ROM tracing should begin only when a stream changes a named parser
   field, command state field, page-object byte, publication/bridge field,
   render helper input, or exact unresolved boundary named there.
@@ -471,7 +472,7 @@ controlling artifact.
 - Explicit unresolved boundaries:
   maintained first in [unresolved-boundaries.md](unresolved-boundaries.md),
   with route-specific context in `Current Residual Edge Index`,
-  `Pixel-Perfect Coverage And Residual Risks`, `Next Evidence Targets`, and
+  `Pixel-Perfect Coverage And Residual Risks`, `Next Documentation Targets`, and
   `Unresolved Boundaries` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Current bounded
   residual classes are secondary segment-57 resource decode

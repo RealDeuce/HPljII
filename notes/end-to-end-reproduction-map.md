@@ -5496,6 +5496,28 @@ Address-level cluster map:
   [pcl-command-map.md](pcl-command-map.md), and `Worked Path: Explicit
   No-Output Parser Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Parser-artifact state classification: canonical parser state is mode byte
+  `0x782999`, normal versus alternate/data selector `0x782c18`, command-record
+  cursor `0x78299e`, active six-byte records, delayed pending byte
+  `0x782a1a`, delayed handler pointer `0x782a1c`, saved record
+  `0x782a20..0x782a25`, and the selected table roots `0x112a4` or `0x116f6`.
+  Canonical page/render state is intentionally absent for the documented
+  normal `0x00` / `0x07` / `0x0b`, `ESC ?`, display-reader `ESC Z`, and
+  `ESC &lT/t` cases: no current page root, page object, publication record,
+  render record, or pixel row is created by these parser decisions. Derived
+  state is limited to later replay potential for alternate/data bytes appended
+  through `0xe002`; those bytes are stored input, not immediate image state.
+  Parser scratch is matched-byte buffer `0x783196..0x783199`, nonnumeric
+  cursor/buffer `0x782a26` / `0x782a2a..`, numeric cursor/buffer
+  `0x782a3e` / `0x782a42..`, tokenizer lookahead, and alternate echo latch
+  `0x782a56`. Firmware bookkeeping is callback pointer `0x78299a`, terminal
+  reset path `0x11912..0x119bc`, delayed restore boundary `0x12218`, generic
+  drain helpers `0x1228a` / `0x12328`, alternate dispatcher `0x12358`, scratch
+  flush helpers `0x123ae` / `0x123de`, append sink `0xe002`, pushback/log
+  helper `0x9ec0`, and payload-control helper `0xd99a`. Hardware/external
+  state is outside this cluster after `0xa904` admits the bytes. Unknown
+  state remains only for future streams that reach a different rejecting
+  predicate, delayed consumer, append path, or status/error side channel.
 - Transparent/display-reader cluster: transparent data uses `0x11f5a -> 0x121cc ->
   0x12218 -> 0x12452`; display functions use normal reader `0x12536` or alternate/data
   reader `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and

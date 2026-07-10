@@ -656,12 +656,13 @@ The allocator has no pixels by itself. It determines which objects are visible,
 their order, and the root fields later consumed by publication and rendering.
 
 Fixture `addressed text/rule/raster field groups reach publication and render
-entry` proves compact text, a selector-7 rule, and a mode-0 raster row share
-one addressed page-record state, publish through `0xff1e`, bridge through
-`0x1ed84` / `0x1edc6`, and render through `0x1ef6a`.
+entry` checks the ROM interpretation that compact text, a selector-7 rule,
+and a mode-0 raster row share one addressed page-record state, publish through
+`0xff1e`, bridge through `0x1ed84` / `0x1edc6`, and render through
+`0x1ef6a`.
 
 Fixture `addressed page-record writers share 0x1381c across chunk rollover`
-proves the shared stream state across producer families. `0x10084` seeds
+checks the shared stream state across producer families. `0x10084` seeds
 `0x782a72 = root + 0x20`; seven compact writers through
 `0x12f2e` / `0x1387c` allocate objects in the stream; `0x133aa` and
 `0x136d2` then allocate rule/fixed objects from the same stream. The root links
@@ -670,20 +671,21 @@ dispatches all compact objects.
 
 The compact-bucket fixtures divide the shared `0x1387c` behavior into object
 shapes and reuse rules. Fixture `0x1387c page-record bucket allocator reuses
-matching short object` proves a matching short object is reused while count
+matching short object` checks that a matching short object is reused while count
 `+6` is below capacity. Fixture `0x1387c page-record unflagged short bucket
 object` pins the unflagged compact object shape. Fixtures `0x1387c page-record
 segmented allocator places tall glyph buckets` and `0x1387c page-record
 segmented allocator reuses tall glyph buckets` pin segmented/tall glyph
 placement and reuse. Fixture `0x1387c page-record queued short object renders
-reused entries` ties the reused short object to rendered rows, proving this is
-canonical page content and not only allocator bookkeeping.
+reused entries` ties the reused short object to rows derived from the render
+helpers, so the object is documented as canonical page content and not only
+allocator bookkeeping.
 
-The no-room fixtures prove negative output behavior: if `0x1381c` returns zero
-inside `0x133aa`, root `+0x24` and existing rule nodes remain unchanged; if
-`0x1381c` returns zero inside `0x136d2`, root `+0x28` and existing fixed nodes
-remain unchanged. Later publication therefore sees the prior visible objects,
-not a partial failed insertion.
+The no-room fixture checks cover negative output behavior: if `0x1381c`
+returns zero inside `0x133aa`, root `+0x24` and existing rule nodes remain
+unchanged; if `0x1381c` returns zero inside `0x136d2`, root `+0x28` and
+existing fixed nodes remain unchanged. Later publication therefore sees the
+prior visible objects, not a partial failed insertion.
 
 The span fixtures split `0x12714` storage by orientation and by producer. The
 portrait fixture queues selector-`0x4000` segment-list objects under bucket
@@ -692,10 +694,10 @@ The landscape fixture queues fixed-width objects through `0x136d2`, copied
 through render root `+0x20` and consumed by `0x1f756`. Direct-control fixtures
 `live CR span flush materializes 0x12714 page object`,
 `left-margin parser span flush materializes 0x12714 page object`, and
-`vertical-cursor parser span flush materializes 0x12714 page object` prove
-parsed CR, left-margin, and vertical-cursor commands can all materialize the
-same portrait selector-`0x4000` segment-list object before following compact
-text is queued.
+`vertical-cursor parser span flush materializes 0x12714 page object` check
+that parsed CR, left-margin, and vertical-cursor commands can all materialize
+the same portrait selector-`0x4000` segment-list object before following
+compact text is queued.
 
 Raster storage also has a per-object capacity split beneath the same root
 `+0x1c` bucket array. `0x132b6` may return only the current chunk tail or a
@@ -706,12 +708,12 @@ one or more encoded-span objects. The detailed dense-row split is documented
 in [raster-graphics.md](raster-graphics.md#allocation-capacity-and-dense-rows).
 
 The bridge fixtures split storage from rendering. `0x1edc6 page-record bridge
-copies compact bucket and context slots` proves the compact bucket root and
+copies compact bucket and context slots` checks the compact bucket root and
 selected-font context slots survive into render-record fields. `0x1ed84 active
-page-record copy seeds render-record header words` proves the active-copy
+page-record copy seeds render-record header words` checks the active-copy
 header words consumed before `0x1ef6a`.
-Fixture `0x1edc6 page-record bridge normalizes rule and fixed lists` proves
-the rule list `+0x24` and fixed list `+0x28` are copied to render-record
+Fixture `0x1edc6 page-record bridge normalizes rule and fixed lists` checks
+that the rule list `+0x24` and fixed list `+0x28` are copied to render-record
 `+0x1c` and `+0x20`, then normalized in place before rule/fixed dispatch.
 Fixture `0x1edc6 bridge records render-record destination offsets` classifies
 the copied destination offsets as derived bridge/cache state, not producer
@@ -917,9 +919,9 @@ High for page-root creation, initializer fields, stream allocator accounting,
 bucket reuse/new-head behavior, rule/fixed insertion order, no-room returns,
 publication root/header fields, and render-record bridge copies because each is
 backed by disassembly and named fixtures. High for allocator provenance at the
-page-record boundary because the addressed page-record fixtures prove the
-`0x1381c` results and bridge state, while the shared `0x170c` / `0x1710` /
-`0x18b4` heap contract is covered by the macro/parser firmware checkpoint.
+page-record boundary because disassembly plus addressed page-record checks pin
+the `0x1381c` results and bridge state, while the shared `0x170c` / `0x1710`
+/ `0x18b4` heap contract is covered by the macro/parser firmware checkpoint.
 This is not a remaining software-visible page-record edge.
 
 ## Remaining Edges

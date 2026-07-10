@@ -9235,7 +9235,9 @@ Priority ROM-local documentation targets:
    matrix](page-record-storage.md#fixed-list-outcome-matrix). Raster streams
    should start only when they change accepted-byte counts, row advancement, object
    bytes, or render inputs beyond the [raster transfer gate outcome
-   matrix](raster-graphics.md#transfer-gate-outcome-matrix), and rectangle streams only
+   matrix](raster-graphics.md#transfer-gate-outcome-matrix) or [encoded raster object
+   outcome matrix](raster-graphics.md#encoded-raster-object-outcome-matrix), and
+   rectangle streams only
    when they change the boundaries named in [Remaining
    Edges](rectangle-graphics.md#remaining-edges): clipping output, `0x1381c`
    rollover/allocation state, retry publication fields, rule object bytes, bridge state,

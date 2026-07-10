@@ -975,6 +975,95 @@ Evidence and confidence:
   split capacity, copy-stop behavior, packed-key advance, bridge bucket root,
   or `0x1f88e` row-construction input.
 
+### Encoded Raster Object Outcome Matrix
+
+This matrix owns the accepted-row object shape after the transfer gate has
+called `0x13070`. It is the checkpoint for streams that keep the same
+parser-to-transfer route but change encoded object fields, allocator split
+state, payload copy outcome, packed-key advance, bridge bucket roots, or
+`0x1f88e` mode inputs.
+
+- Single encoded object:
+  `0x13070` computes bucket index `0x782a7c` and packed key `0x782a7e`, then
+  calls `0x13250` with object size `accepted_count + 0x0a` and mode byte from
+  raster state `+0x08`. `0x13250` links the object at the selected page-root
+  bucket head, writes class byte `+0x04 = 0x80`, and writes mode byte `+0x05`.
+  `0x13146..0x13220` writes count word `+0x06`, key word `+0x08`, and payload
+  bytes at `+0x0a..`.
+- Split encoded objects:
+  when allocator capacity `0x782a80` is smaller than remaining accepted count,
+  `0x13070` emits one capped object, subtracts capacity from raster state
+  `+0x04`, advances the local packed-key row through `0x332ee`, and loops.
+  Each later `0x13250` call inserts at the same bucket head, so the last
+  object in the split becomes the first object seen by bucket walk `0x1efc2`.
+- Allocation failure:
+  if `0x132b6` returns zero through `0x13250`, `0x13070` drains accepted plus
+  overflow count through `0x12328` and returns zero to `0x105d0`. The encoded
+  object format is unchanged; the visible outcome is the transfer-gate
+  publication/retry path, not a partial object claim.
+- Payload copy stop:
+  after object allocation, `0x138de == -1` makes `0x13070` return `-1`.
+  If copy-stop byte `0x782996` is set after a non-`-1` copy, `0x13070` drains
+  accepted plus overflow count through `0x12328` and exits. New traces in
+  this class must name whether object bytes were already allocated and which
+  payload prefix was copied.
+- Mode `0` render:
+  `0x1f88e` masks object byte `+0x05 & 3`, dispatches table `0x1f8ca` entry
+  `0` to `0x1f8da`, and copies payload words directly to the current-band
+  destination. There is no separate odd-byte tail helper in this ROM path.
+- Mode `1` render:
+  table entry `1` reaches `0x1f8e6`. Each payload byte indexes word table
+  `0x30914`; the expanded word is written to the current row and either the
+  adjacent current-band row or fallback row `0x7810b4 + byte_pair_offset`.
+- Mode `2` render:
+  table entry `2` reaches `0x1f920`. Even and odd payload streams are expanded
+  through longword table `0x30b14`; row pointers `A1`, `A4`, and `A5` are
+  selected from current-band or fallback storage according to the split high
+  word returned by `0x1f414`. The second pass rewrites `$a001` for the shifted
+  phase.
+- Mode `3` render:
+  table entry `3` reaches `0x1f9c6`. Each payload byte expands through
+  `0x30914` twice to form one longword written to four row pointers selected
+  from current-band and fallback storage.
+
+Field grouping for this route:
+
+- Canonical state:
+  raster state `0x783170 +0x02/+0x04/+0x06/+0x08`, page-root bucket `+0x1c`,
+  encoded object link `+0x00`, class byte `+0x04`, mode byte `+0x05`, count
+  word `+0x06`, packed key `+0x08`, and payload bytes `+0x0a..`.
+- Derived/cache state:
+  bucket index `0x782a7c`, packed key `0x782a7e`, split capacity
+  `0x782a80`, allocator cursors `0x782a70/0x782a72/0x782a76`, render root
+  `+0x18`, row stride `0x783a1c`, band split from `0x1f414`, byte-pair
+  fallback offset, and expansion tables `0x30914` / `0x30b14`.
+- Parser scratch:
+  restored delayed `ESC *b#W` record, accepted and overflow counts while
+  `0x138de` copies payload bytes or `0x12328` drains them, and any payload
+  bytes not yet admitted into the object.
+- Firmware bookkeeping:
+  copy-stop byte `0x782996`, success/zero/`-1` return in `D7`, root retry
+  flag set by the caller on no-room, and mode-`2` phase rewrite through
+  `$a001`.
+- Unknown:
+  no ROM-local object-layout or mode-dispatch branch remains unknown for the
+  documented accepted-row paths. Remaining raster work starts only when a
+  stream changes accepted count, allocator pre-state, split capacity, copied
+  payload prefix, packed-key advance, bridge bucket root, or mode-specific row
+  construction.
+
+Evidence: producer listing
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
+`0x13070..0x13250`, allocator listing in the same file `0x132b6..0x13382`,
+encoded renderer listing
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`
+`0x1f88e..0x1fa5a`, table examples in
+`generated/analysis/ic30_ic13_render_expansion_fixtures.md`, and fixtures
+`0x13070/0x13250 raster row queues encoded-span object`,
+`0x13070/0x13250 raster row queues non-byte-aligned encoded-span object`,
+mode-`1` through mode-`3` row-object fixtures, and the `0x1f88e mode-0`
+through `0x1f88e mode-3` render fixtures named in the Evidence list.
+
 ## Render Dispatch
 
 Raster transfer does not draw directly into the final bitmap. It creates a page

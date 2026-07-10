@@ -992,6 +992,99 @@ The mode byte `0x782a92 == 2` suppresses values `0`, `1`, `2`, `3`, and
 `0x782782` and marked/current count `0x782786` when the current record exists
 and its bit-6 state actually changes.
 
+### Font-Control Mark/Delete Checkpoint
+
+This checkpoint owns `ESC *c#F` after the parser has selected handler
+`0x16df6`. It is a state-management command family: the command can delete,
+release, mark, unmark, or refresh downloaded-font records, but it does not
+queue a page object by itself.
+
+Dispatch and state effects:
+
+- Selector `0` calls `0x179da(1)` when `0x782a92 != 2`, walking all current
+  records and releasing/deleting matching entries through `0x187fe`.
+- Selector `1` calls `0x179da(0)` under the same mode gate, using the sibling
+  all-record release argument.
+- Selector `2` calls `0x187fe(1)` for current font id `0x782f2e` under the
+  same mode gate.
+- Selector `3` calls `0x17b5c` under the same mode gate, using current font id
+  `0x782f2e` and current character word `0x782f30`.
+- Selector `4` always reaches `0x17150` and clears current-record bit `6`
+  when a matching marked current record exists.
+- Selector `5` always reaches `0x17108` and sets current-record bit `6` when
+  a matching unmarked current record exists.
+- Selector `6` calls `0x18180` and `0x1b04c` under the same mode gate for
+  active/current resource housekeeping.
+- Other selectors return through `0x16eaa` without changing downloaded-font
+  state.
+
+Field classification:
+
+- Canonical state:
+  current font id `0x782f2e`, current character word `0x782f30`,
+  current-record pool `0x782640..0x782776`, current-record flag bit `+0x02.6`,
+  unmarked count `0x782782`, marked count `0x782786`, candidate count
+  `0x78278e`, candidate cursors, installed payload pointers, and continuation
+  fields `0x7827c6..0x7827da`.
+- Derived/cache state:
+  active primary/secondary context maps rebuilt by `0x14c64`, default refresh
+  results from `0x1b04c`, selected-map bytes consumed later by `0x1393a`, and
+  dirty context-stack marks written by release helpers.
+- Parser scratch:
+  the six-byte `ESC *c#F` command record at `0x78299e`, parsed selector word
+  `+2`, and mode gate byte `0x782a92`.
+- Firmware bookkeeping:
+  release helper traversal state in `0x179da` / `0x187fe`, current-character
+  clear path `0x17b5c`, active/current refresh path `0x18180`, and the
+  shared release helpers `0x1887a`, `0x18b92`, `0x18bf2`, and `0x17a24`.
+- Hardware/external state:
+  none for this ROM-local command family.
+- Unknown:
+  no ROM-local mark/unmark field remains unknown for selectors `4` and `5`.
+  Broader delete/release variants are bounded by the release-helper fixtures
+  and remain new work only when they change candidate counters, payload
+  release state, continuation fields, active context refresh, or later
+  printable glyph selection.
+
+Writers, readers, and output effect:
+
+- `0x16df6` reads parsed selector word `+2`, mode gate `0x782a92`, current id
+  `0x782f2e`, and current character `0x782f30`.
+- `0x17108` and `0x17150` read the current-record pool by id, toggle bit
+  `+0x02.6` only when the record exists and the bit needs to change, and move
+  counts between `0x782782` and `0x782786`.
+- Delete/release selectors consume candidate/current-record state and call
+  release helpers that can clear payload pointers, decrement counters, delete
+  candidate slots, clear continuation fields, and mark active context maps for
+  refresh.
+- No selector writes a page root, compact page object, publication record, or
+  render-work row directly. Pixel output changes only when a later printable
+  byte consults the changed downloaded-font candidate/current-record state.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+  `generated/disasm/ic30_ic13_font_resource_find_017026.lst`,
+  `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`,
+  `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`, and
+  `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`.
+- Fixture anchors:
+  `0x11774 ROM dispatch table routes ESC *c font-control chain`,
+  `0x16df6-modeled font-control dispatch mark/unmark and suppression`,
+  `0x17108-modeled current font record mark/count transfer`,
+  `0x17150-modeled current font record unmark/count transfer`,
+  `0x1887a release variant matrix covers cleanup branches`, and
+  `0x16c14 allocation failure releases existing payload through 0x1887a`.
+
+Unresolved boundary:
+
+- No ROM-local middle edge remains for the selector dispatch table, parser
+  mode-`2` suppression, current-record mark/unmark count transfer, or the
+  no-output nature of `ESC *c#F`. Future work in this family must change a
+  concrete release helper effect, current/candidate counter, continuation
+  field, active context refresh, or following printable/rendered glyph.
+
 `0x15d0a` treats zero-count `W` as a descriptor packet, not as an empty skip:
 
 - `0x15d12..0x15d3a`: rewinds `0x78299e`, reads the parsed count, and stores

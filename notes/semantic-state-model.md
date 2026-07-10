@@ -721,27 +721,49 @@ Unresolved middle edges:
 
 ### Output Effect
 
-`0xa904` has no pixels by itself. Its visible effect is that the same byte
-sequence can reach parser handlers from host ring, direct hardware, or
-data-chain replay with the same downstream page-record output. The macro
-mixed-control fixture proves a stored `ESC &k1G!\r!` data-chain payload
-replays through `0xa904`, reaches handlers `0xedf8`, `0xd04a`, `0xf02c`,
-and `0xd04a`, then renders the same rows as direct host bytes. The
-combined downloaded-glyph fixture proves one 2,215-byte `0xa904` ring
-stream can cross font-control, payload, printable, page-record, bridge,
-and render-entry boundaries. The bridge fixture proves `0xa6cc` can place
-byte `0x41` into the ring and the next `0xa904` fetch returns it as
-`D7 = 0x41`; low-water and full-buffer paths affect scheduler/status
-state rather than pixels directly.
+`0xa904` has no pixels by itself. Its output effect is a returned byte or
+negative status in `D7`, plus source bookkeeping. Pixel-producing behavior
+starts only after a caller passes that byte into parser, payload, page-object,
+publication, or render code.
+
+The byte-source priority is ROM-defined before parser syntax exists. Pending
+service work at `0x7821cd` runs first and retries the fetch. The no-byte gate
+`0x780e66 && 0x780e3b` returns `D7 = -1`. The first pushback stack
+`0x783e8c`/`0x783e8e` wins next, then active data-chain frame `0x782d76`, then
+the second pushback stack `0x783e76`/`0x783e78`, then ring-buffer input
+`0x783e54`/`0x783e56`, and finally one of the two direct hardware backends
+selected by `0x780e40`.
+
+Macro/data-chain replay is therefore a byte-source override, not a separate
+parser. Execute/call handlers build frame kinds `2` and `3` through `0xe418`;
+page-finalization/overlay replay builds kind `4` through `0xe4f4`; frame end
+is handled by `0xe22c`. While frame `+4` is active, `0xa904` calls `0x9f6a`
+and returns replay bytes before ring or direct input. Those bytes then enter
+the same `0xda9a`, `0x11774`, command handlers, page-object producers,
+publication, and render paths as live host bytes.
+
+For the stored mixed-control stream `ESC &k1G!\r!`, replay through `0xa904`
+feeds `0xda9a` and parser loop `0x11774`. The command bytes dispatch
+`ESC &k1G` to wrap-mode handler `0xedf8`; the first `!` reaches printable
+handler `0xd04a` and queues compact text through `0x12f2e`/`0x1387c`; `CR`
+reaches control-code handler `0xf02c` and mutates cursor state; the final `!`
+again reaches `0xd04a`. Later `0x1ed84`/`0x1edc6`/`0x1ef6a` consumes the same
+page objects as the equivalent ring-fed stream.
+
+The `0xa6cc` bridge can append software-visible input into the ring source:
+when it places byte `0x41` in the ring buffer, the next eligible `0xa904`
+ring fetch returns `D7 = 0x41`. Low-water and full-buffer paths update
+scheduler/status state; they do not create pixels until returned bytes are
+consumed downstream.
 
 The direct caller classification defines the byte-level reproduction contract
-for consumers below the parser. Parser wrappers may pass `D7 = -1` upward; text
-repeat readers terminate; raster and downloaded-font payload readers treat it
-as end/error. Exact `0x1a 0x58` is not a single global transform: the control
-probe returns zero, text repeat readers substitute `0x7f`, and raster/font
-payload readers store zero. Reproducing downloaded glyphs or raster rows from
-the same byte stream therefore requires modeling the consumer-local probe, not
-pre-normalizing the host byte stream.
+for consumers below the parser. Parser wrappers may pass `D7 = -1` upward;
+text repeat readers terminate; raster and downloaded-font payload readers
+treat it as end/error. Exact `0x1a 0x58` is consumer-local, not a single
+global transform: the control probe returns zero, text repeat readers
+substitute `0x7f`, and raster/font payload readers store zero. Reproducing
+downloaded glyphs or raster rows from the same byte stream therefore requires
+modeling the consumer-local probe, not pre-normalizing the host byte stream.
 
 ### Confidence
 

@@ -2149,8 +2149,9 @@ terminators such as `ESC Z`; they are not anonymous imaging commands.
   [direct-control-codes.md](direct-control-codes.md) documents cursor
   movement, text span flushing, and compact text objects.
 - `ESC E`, FF, page setup, and publication commands:
-  [publication-commands.md](publication-commands.md) documents environment
-  reset, page finalization, and published records.
+  [Publication Outcome
+  Matrix](publication-commands.md#publication-outcome-matrix) documents
+  environment reset, page finalization, and published records.
 - `ESC &p#X` transparent data:
   [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix)

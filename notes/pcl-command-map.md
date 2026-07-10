@@ -546,7 +546,8 @@ output class that a byte-stream reader should follow next.
   reset `0xcc52`, FF `0xf0f0`, page-size and page-length handlers
   `0xfc74` / `0xcb00`, orientation `0xc992`, paper source `0xece2`, and
   copies `0xeef0` update page/control state or publish through `0xff1e`.
-  Continue in [publication-commands.md](publication-commands.md) and
+  Continue in [Publication Outcome
+  Matrix](publication-commands.md#publication-outcome-matrix) and
   [reset-default-environment.md](reset-default-environment.md). Output class:
   environment state, current-root publication, or no-publication reset clear.
 - Transparent and display reader bytes:

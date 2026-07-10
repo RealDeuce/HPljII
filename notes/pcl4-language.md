@@ -164,8 +164,8 @@ owner, and whether visible pixels can result.
 
 - Reset, FF, page size, orientation, paper source, copies:
   handlers `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
-  `0xeef0`; owner [Publication Decision
-  Checkpoint](publication-commands.md#publication-decision-checkpoint).
+  `0xeef0`; owner [Publication Outcome
+  Matrix](publication-commands.md#publication-outcome-matrix).
   These handlers publish any old current root through `0xff1e` when required,
   update page environment fields such as `0x782da2`, `0x782da3`,
   `0x782da4`, and `0x782da6`, and leave later objects to render through

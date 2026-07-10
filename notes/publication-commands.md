@@ -252,6 +252,123 @@ Evidence:
   `host-fetched ESC E clears missing page root without publication`, and
   `published page records feed 0x1ed84 and 0x1ef6a render entry`.
 
+## Publication Outcome Matrix
+
+This matrix is the command-family contract for page-control bytes that can
+freeze, clear, or modify the current page/image state. It starts after parser
+dispatch reaches a publication-adjacent handler and ends at either state-only
+environment change, no-publication clear, or the shared
+`0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` render handoff.
+
+- Reset with active root:
+  `ESC E` dispatches to `0xcc52`; reset helper `0xcc70` flushes pending text
+  through `0xf34a`, calls `0xff1e` while current root `0x78297a` exists and
+  root byte `+0x04` is active, waits through `0x9ac2`, then rebuilds
+  environment state. Writers: `0xff1e` marks root byte `+0x04 = 2`, writes
+  pool head `0x780ea6`, sets publication flag `0x782996`, and clears
+  `0x78297a`. Output effect: queued pre-reset objects remain renderable on the
+  published page; reset defaults affect later bytes.
+
+- Reset with missing root:
+  The same `0xcc52 -> 0xcc70 -> 0xff1e` route reaches the no-root/current-root
+  clear exit when `0x78297a` is absent or inactive. Output effect: no
+  published page/control record is produced, and no bridge or render entry is
+  fed. Evidence: `host-fetched ESC E clears missing page root without
+  publication`.
+
+- FF page eject:
+  FF reaches `0xf0f0`. It consumes line-termination mode `0x78318f`, applies
+  CR-style horizontal reset when bit 5 is set, flushes pending spans through
+  `0xf34a`, ensures or uses the active page root, calls `0xf124 -> 0xff1e`,
+  and writes pending page-eject byte `0x782a6d = 0xff`. Output effect: the
+  current page root is published before the next top-of-form state is used.
+
+- Page-size and orientation changes:
+  Page size `0xfc74` and orientation `0x10220` publish any active current root
+  through `0xf34a -> 0xff1e` before writing the new page code, orientation
+  byte `0x782da3`, and derived geometry fields. Output effect: queued objects
+  are rendered under the old geometry; later objects use the new page geometry.
+
+- Page-length changes:
+  Page length `0xf9e8` has two visible outcomes. Accepted nonzero values
+  refresh page extent, VMI-derived geometry, and cursor limits without
+  immediate publication. Selector zero can publish pending text, mirror
+  paper-source state to `0x780e8f` / `0x780e26`, and restore default page
+  code. Output effect: nonzero values are state-only until later placement or
+  publication; zero/default can be an immediate page boundary.
+
+- Paper-source changes:
+  Paper-source handler `0xef62` publishes any active current root before
+  writing paper-source byte `0x782da6`, pending header byte `0x782998`, and
+  paper-source output/control mirrors `0x780e8f` / `0x780e26`. Output effect:
+  existing objects remain on the old published page, while later pages observe
+  the new source/header state.
+
+- Copies:
+  Copies handler `0xeef0` stores absolute clamped copy count `0x782da4`.
+  It does not publish by itself. A later publication, commonly FF, lets
+  `0xff1e` copy `0x782da4` into published pool-header word `+0x0c`. Output
+  effect: copies are a header effect on the next published page, not a page
+  object or renderer.
+
+- Macro overlay at publication:
+  `0xff1e` tests overlay state `0x782a92` / `0x782a94` and root retry flag
+  word `+0x14`. When enabled, it detours through `0xe0a4` / `0xe4f4` so
+  overlay bytes replay through the ordinary parser before the final root is
+  published. Output effect: overlay pixels come from ordinary command owners
+  that run during the publication detour, not from a separate overlay
+  renderer.
+
+- Shared bridge/render handoff:
+  After `0xff1e` publishes a valid root, scheduler pool fields
+  `0x780ea6`, `0x780eaa`, and `0x780eae` feed `0x1ed84`. Bridge `0x1edc6`
+  copies source roots `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render roots
+  `+0x18/+0x1c/+0x20/+0x24..+0x60`, and render entry `0x1ef6a` dispatches
+  compact, raster, rule, and fixed-list objects. Output effect: publication
+  snapshots page/image state; pixel generation belongs to the render owners.
+
+State grouping:
+
+- Canonical page/image state: current root `0x78297a`, root byte `+0x04`,
+  bucket/list/context roots `+0x1c/+0x24/+0x28/+0x2c..+0x68`, published pool
+  head `0x780ea6`, scheduler cursors `0x780eaa/0x780eae`, and publication
+  flag `0x782996`.
+- Canonical page-control state: line-termination byte `0x78318f`, copy count
+  `0x782da4`, paper-source byte `0x782da6`, orientation byte `0x782da3`,
+  pending header bytes `0x782997` / `0x782998`, status byte `0x780e99`, and
+  paper-source mirrors `0x780e8f` / `0x780e26`.
+- Derived/cache state: refreshed page geometry, HMI/VMI and VFC caches,
+  render-record roots from `0x1edc6`, and render-band caches
+  `0x783a20/0x783a22/0x783a28`.
+- Parser scratch: six-byte command records consumed by `0xcc52`, `0xf0f0`,
+  `0xfc74`, `0xf9e8`, `0x10220`, `0xef62`, and `0xeef0`.
+- Firmware bookkeeping: allocator cursors `0x782a70/0x782a72/0x782a76`,
+  pending byte `0x782a6d`, wait helper `0x9ac2`, root retry and overlay
+  state, and macro overlay helpers `0xe0a4` / `0xe4f4`.
+- Hardware/external state: engine timing after ROM-visible render buffers.
+- Unknown: no ROM-local publication, bridge, or render-entry middle edge is
+  open for the documented reset, FF, page-size, page-length, orientation,
+  paper-source, copies, missing-root, and overlay outcomes.
+
+Evidence:
+
+- Handler listings:
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`, and
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`.
+- Bridge/render listings:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst` and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- Field and object details: the field groups below, plus
+  [page-record-storage.md](page-record-storage.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-owner-summary).
+
 ## Field Groups
 
 Canonical page-record fields:

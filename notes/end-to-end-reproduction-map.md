@@ -123,10 +123,10 @@ Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
 - Canonical page root:
   current root `0x78297a`, stream allocator fields
   `0x782a70/0x782a72/0x782a76`, bucket array root `+0x1c`, rule-list root
-  `+0x24`, fixed-list root `+0x28`, and font/resource context slots
-  `+0x2c..+0x68`. Writers are `0x10084`, `0x10110`, `0x1381c`, `0x1387c`,
-  `0x133aa`, and `0x136d2`; publication and render consumers are `0xff1e`,
-  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+  `+0x24`, fixed-list root `+0x28`, and selected context/resource longword
+  slots `+0x2c..+0x68`. Writers are `0x10084`, `0x10110`, `0xc428`,
+  `0xc4fc`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2`; publication and
+  render consumers are `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
 - Compact text and downloaded glyph objects:
   printable bytes route through `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`
   and queue bucket objects under root `+0x1c`. Examples now documented in
@@ -159,6 +159,16 @@ Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
   band through bucket, rule, fixed-list, compact, segment-list, and raster
   helpers. The checked-in owner summary for that join is
   [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary).
+
+Context-slot handoff: `0x10110` and `0xc428 -> 0xc4fc` copy selected context/resource
+longwords from current-font RAM records into page-root slots `+0x2c..+0x68`. Printable
+queue paths `0xd3b2` and `0xd824` store the selected slot number in the compact
+object/source state, while `0x1edc6` copies the slot longwords into render slots
+`+0x24..+0x60`. Compact dispatch then loads one copied slot into `0x783a2c` before
+resolver `0x1f354` locates glyph bitmap bytes. This is why a byte-stream trace must
+preserve both compact object payload bytes and the copied context-slot values. The owner
+checkpoint is [Context Slot Preservation
+Checkpoint](page-record-storage.md#context-slot-preservation-checkpoint).
 
 State classification for this shared layer is: canonical state is the current
 page root, queued object records, context slots, and published page/control
@@ -423,14 +433,15 @@ controlling artifact.
   bridge from parsed command forms into those command-family ledgers and from
   page producers into publication and renderer owners.
 - Page/image assembly model: covered by [Page Assembly Decision
-  Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
+  Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint), [Context Slot
+  Preservation Checkpoint](page-record-storage.md#context-slot-preservation-checkpoint),
   [page-raster-imaging.md](page-raster-imaging.md), `Worked Path: Shared Page-Record
   Storage And Allocator`, `Page Image Assembly` and `Page Versus Band Model` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and the `Minimal Page
   Assembly Walkthrough`. The canonical model is current root `0x78297a`, stream
   allocator state `0x782a70/0x782a72/0x782a76`, compact and raster buckets under root
-  `+0x1c`, rules under `+0x24`, fixed objects under `+0x28`, context slots
-  `+0x2c..+0x68`, publication `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and
+  `+0x1c`, rules under `+0x24`, fixed objects under `+0x28`, selected context/resource
+  longword slots `+0x2c..+0x68`, publication `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and
   scheduler-selected band rendering rather than a parser-time full-page bitmap.
 - Output/render engine:
   covered by [active-render-scheduler.md](active-render-scheduler.md),
@@ -509,7 +520,10 @@ command-family and page-image structure:
    Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint) and its
    renderer-facing object class map. Identify the page-root field written by the
    producer: compact/segment/raster buckets under root `+0x1c`, rule list under root
-   `+0x24`, fixed list under root `+0x28`, and context slots under root `+0x2c..+0x68`.
+   `+0x24`, fixed list under root `+0x28`, and selected context/resource longword
+   slots under root `+0x2c..+0x68`. For compact text and downloaded glyphs, also record
+   the compact object slot selector and the selected page-root slot `0x78297e`, because
+   those fields determine which copied render context `0x1f354` consumes.
 6. Cross the publication and scheduler boundary:
    use [publication-commands.md](publication-commands.md),
    [page-record-storage.md](page-record-storage.md), and

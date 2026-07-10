@@ -966,8 +966,8 @@ Outcome owners:
   `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`, `0x12046`, `0x1205a`,
   `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, `0x120be`, `0x15a18`, `0x15a56`, and
   `0x16df6` are owned by
-  [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
-  [font-context-metrics.md](font-context-metrics.md#owner-summary), and
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary), [Font Request
+  Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix), and
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary). The compact and fixed output
   checkpoints are [Compact Selector Outcome
   Matrix](downloaded-fonts.md#compact-selector-outcome-matrix), [Downloaded-Glyph Render
@@ -3335,7 +3335,8 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
 - Treat `ESC &k#S/s` pitch-mode as already covered at the producer boundary
   unless it is paired with a stream that changes the selected context or
   row-construction inputs.
-  [font-context-metrics.md](font-context-metrics.md#owner-summary) documents
+  [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix)
+  documents
   `0xc390` selectors `0`, `2`, and `4` rewriting synthetic pitch records and
   rejoining `0xc89c` / `0xc580`; `Worked Path: Pitch Mode To Font Refresh` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md) and
@@ -3345,8 +3346,8 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
 - Treat font metric producer behavior as regression expansion unless it
   exposes a new page-visible selected-font boundary. The metric formulas and
   producer/consumer cross-products are documented in
-  [font-context-metrics.md](font-context-metrics.md#owner-summary) and composed under
-  `Selected-Font Metric Producer/Consumer Contract` in
+  [font-context-metrics.md](font-context-metrics.md#owner-summary) and composed
+  under `Selected-Font Metric Producer/Consumer Contract` in
   [semantic-state-model.md](semantic-state-model.md). The exact remaining risk
   is selected-font state combinations that change a concrete consumed field:
   selected context records `0x782ee6/0x782ef6`, active maps

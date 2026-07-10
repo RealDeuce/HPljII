@@ -4180,8 +4180,10 @@ Status: composed as parsed command-family to visible-output checkpoints for prim
 secondary inline mixed streams, primary/secondary symbol-fallback, primary/secondary
 remembered-symbol recovery, primary/secondary live current-font-RAM handoff, and
 parsed-selection-to-current-font-RAM handoff streams. The low-level font-selection
-ledger remains in [font-context-metrics.md](font-context-metrics.md#owner-summary); this
-section records the renderer-facing semantic contract for the selected state.
+ledger remains in [font-context-metrics.md](font-context-metrics.md#owner-summary); the
+owner-level command outcomes are summarized in the [Font Request Outcome
+Matrix](font-context-metrics.md#font-request-outcome-matrix). This section
+records the renderer-facing semantic contract for the selected state.
 
 Concept: `ESC (s0p10h12v0s0b3T` writes primary font request fields, refreshes
 the active primary built-in context through `0x13eb8`, rebuilds the primary

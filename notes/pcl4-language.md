@@ -175,7 +175,7 @@ owner, and whether visible pixels can result.
   compact objects through `0xd04a`, `0x12f2e`, and `0x1387c`.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
-  [font-context-metrics.md](font-context-metrics.md),
+  [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),
   [symbol-set-selection.md](symbol-set-selection.md), and
   [symbol-map-patching.md](symbol-map-patching.md). Selection commands update
   font contexts, symbol maps, HMI, and map patch state. Printable bytes consume

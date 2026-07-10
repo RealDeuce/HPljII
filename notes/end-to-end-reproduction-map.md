@@ -436,8 +436,9 @@ controlling artifact.
   exact residual boundaries. High-volume families include font selection in
   the [Symbol/Font Designation Outcome
   Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix) and
-  [font-context-metrics.md](font-context-metrics.md), downloaded fonts in
-  [downloaded-fonts.md](downloaded-fonts.md), rectangles in
+  the [Font Request Outcome
+  Matrix](font-context-metrics.md#font-request-outcome-matrix), downloaded
+  fonts in [downloaded-fonts.md](downloaded-fonts.md), rectangles in
   [rectangle-graphics.md](rectangle-graphics.md), raster in
   [raster-graphics.md](raster-graphics.md), publication in
   [publication-commands.md](publication-commands.md), and reset provenance in
@@ -5964,7 +5965,8 @@ Address-level cluster map:
   preserve-output exits through `0x17708`. Owners are
   [Symbol/Font Designation Outcome
   Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
-  [font-context-metrics.md](font-context-metrics.md), and
+  [Font Request Outcome
+  Matrix](font-context-metrics.md#font-request-outcome-matrix), and
   [built-in-resource-scan.md](built-in-resource-scan.md). Pixels appear only
   after later printable bytes consume `0x782ee6` / `0x782ef6` and
   `0x782f32` / `0x783032` through `0xd04a`. Attribute streams
@@ -6015,10 +6017,10 @@ Address-level cluster map:
   primary `ESC (7X!!` can render from prior context `0xc008004c` with prefix
   `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and secondary
   `ESC )8X SO !!` can render from prior context `0xc40ad87a` with prefix
-  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`. Pitch-mode evidence is the
-  `Pitch Mode Command` section of
-  [font-context-metrics.md](font-context-metrics.md) and `Worked Path: Pitch
-  Mode To Font Refresh` in
+  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`. Pitch-mode evidence is
+  [Pitch Mode Command](font-context-metrics.md#pitch-mode-command), the
+  [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),
+  and `Worked Path: Pitch Mode To Font Refresh` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). Evidence is
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
   and the font-selection owner notes cited above.

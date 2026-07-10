@@ -1442,7 +1442,8 @@ Output effect and confidence:
 Evidence and unresolved boundaries:
 
 - Detail owners are [symbol-set-selection.md](symbol-set-selection.md),
-  [font-context-metrics.md](font-context-metrics.md),
+  [Font Request Outcome
+  Matrix](font-context-metrics.md#font-request-outcome-matrix),
   [built-in-resource-scan.md](built-in-resource-scan.md),
   [downloaded-fonts.md](downloaded-fonts.md), and
   [symbol-map-patching.md](symbol-map-patching.md).
@@ -1567,7 +1568,8 @@ Evidence and unresolved edges:
   [Symbol/Font Designation Outcome
   Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
   [symbol-map-patching.md](symbol-map-patching.md),
-  [font-context-metrics.md](font-context-metrics.md),
+  [Font Request Outcome
+  Matrix](font-context-metrics.md#font-request-outcome-matrix),
   `Worked Path: Font Selection To Visible Glyphs`,
   `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
   `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,

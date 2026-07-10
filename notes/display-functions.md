@@ -415,6 +415,97 @@ the guarded status path at `0xcd86..0xcda0`: if active frame byte `+9` is zero,
 bit `0x8` into `0x780e2a` through `0x9b5e`, clears `0x7821cc`, and returns.
 If frame byte `+9` is nonzero, it returns without signaling.
 
+## Display-Functions Outcome Matrix
+
+This matrix is the owner-level routing table for display-functions streams.
+It preserves the low-level handler ledger above while making the semantic
+outcome explicit: each accepted parser route either feeds ordinary page/text
+output, writes macro/data append bytes for later replay, or updates status
+state with no page object.
+
+- Normal `ESC Y` reader, default-filtered controls:
+  parser mode 1 dispatches `ESC Y` to `0x12536`. The loop reads bytes through
+  `0xa904`, normalizes local `0x1a 0x58` to `0x7f` after `0xd99a`, and routes
+  values through `0xd0f0` when they are C0 bytes and
+  `0x782eea + 0x10 * 0x782f06` is zero, or high-control bytes and the local
+  high-control filter word is zero. Output is fixed-space/text-state behavior,
+  not a compact printable entry for those filtered values; later visible
+  placement is owned by the direct-control printable/fixed-space path.
+- Normal `ESC Y` reader, printable values:
+  the same `0x12536` loop routes all non-filtered values through `0xd04a`.
+  This includes ordinary printable bytes, C0 bytes when the selected C0 filter
+  byte is nonzero, high-control bytes when the high-control filter word is
+  nonzero, local `0x1a 0x58` represented as `0x7f`, and the terminating
+  `ESC Z` pair before the local flag exits the loop. The downstream consumer
+  path is `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, then publication and
+  render through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+- Alternate/data `ESC Y` reader:
+  alternate/data mode dispatches `ESC Y` to `0x12120`. The handler writes
+  literal `ESC Y` through `0xe002`, then appends each normalized loop value
+  through `0xe002` until local `ESC Z` or no-byte return. The canonical state
+  is the append sink and macro/data storage, not page-root state; pixels can
+  appear only if later data-chain replay feeds those stored bytes back through
+  `0xa904`.
+- Normal local Control-Z, nested `0x1a`:
+  mode-2 dispatch sends `0x1a 0x1a` to `0x120d2`. The handler reads selected
+  slot `0x782f06`, derives `0x10 * slot` through `0x332ee`, and tests
+  context byte `0x782eeb + 0x10 * slot`. Only byte value `1` calls
+  `0xd04a(0x1a)`; all other values return with no page object.
+- Normal local Control-Z, non-`0x1a` second byte:
+  mode-2 dispatch sends `0x1a X` to `0x1219e`, which calls
+  `0xd04a(0x100)`. This is a synthetic printable-path value; it does not
+  write the append sink.
+- Alternate/data local Control-Z:
+  alternate/data mode-2 dispatch sends nested `0x1a` to `0x1210c`, which
+  appends literal `0x1a` through `0xe002`, and sends `0x1a X` to `0x121b2`,
+  which calls `0xd99a` and appends `0x7f`. Both outcomes are append-only
+  until a later macro/data-chain replay path consumes the stored bytes.
+- `ESC z` display-functions off/status:
+  parser dispatch reaches `0xcd86`, which reads active data-chain frame
+  pointer `0x782d76` and frame byte `+9`. A zero frame kind calls
+  `0x9c2c`; nonzero returns without page output. `0x9c2c` writes status
+  markers `0x7821cc` and `0x7822db`, ORs bit `0x8` into `0x780e2a` through
+  `0x9b5e`, then clears `0x7821cc`. The unresolved part is the external
+  status-consumer name, not parser routing or page rendering.
+
+State grouping for this matrix:
+
+- Canonical reader/input state:
+  local `ESC` flag `D4`, normalized value `D5`, source loop `0xa904`, and
+  termination on normalized `ESC Z` or no-byte return.
+- Canonical text/filter state:
+  selected slot `0x782f06`, C0 filter byte
+  `0x782eea + 0x10 * slot`, Control-Z context byte
+  `0x782eeb + 0x10 * slot`, high-control fallback byte `0x782efa`, and
+  high-character flags `0x783132` / `0x783133`.
+- Canonical append/status state:
+  append sink `0xe002`, macro/data storage such as fixture-visible chunk
+  `0x783988`, active data-chain frame `0x782d76`, status markers
+  `0x7821cc` / `0x7822db`, and warning/status accumulator `0x780e2a.3`.
+- Parser scratch:
+  mode-1 `ESC Y` / `ESC z` dispatch state, mode-2 local Control-Z dispatch
+  state, and per-loop normalized bytes that are discarded after routing or
+  append.
+- Firmware bookkeeping:
+  `0xd99a` normalization/reporting side effect, `0xf054` after routed CR in
+  the normal reader, and `0x9c2c` waiting on service busy bit `0x780e2d.3`.
+- Unknown:
+  no ROM-local handler, consumer, or page-output middle edge is unknown for
+  the documented outcomes. Remaining unknowns are manual-facing names and
+  external consumers for the status bits written by `0xcd86 -> 0x9c2c`.
+
+Evidence for the matrix is the same checked-in ledger: reader listings
+`generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+`0x12120..0x1219c` and `0x12536..0x1261e`, local terminal listing
+`generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`
+`0x120d2..0x121ca`, status listing
+`generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`
+`0x9c2c..0x9c8e`, table rows in
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and fixtures
+`ESC Y display-functions stream reaches page-record output`,
+`ESC Y display-functions filter-on routes controls as printable`, and
+`0x12120 ESC Y alternate append stores normalized display bytes`.
+
 ## Reproduction Contract
 
 A byte-stream renderer must preserve:

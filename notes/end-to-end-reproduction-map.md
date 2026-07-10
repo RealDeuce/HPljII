@@ -6002,13 +6002,14 @@ Address-level cluster map:
   high-control filter byte `0x782efa`, high-character flags
   `0x783132/0x783133`, cursor `0x782c8a`, active context/map state, and
   page-record roots produced by `0xd04a` / `0x12f2e` / `0x1387c`.
-  Canonical display-reader state is the local ESC-before-Z flag and current
-  normalized loop value in `0x12536`, or append sink `0xe002` plus stored
-  macro/data chunks in `0x12120`. Derived/cache state is local filter word
-  `A6-2`, normalized payload value, selected-slot scale from `0x332ee`,
-  source scratch `0x782d7e`, compact coordinates, and segmented bucket/render
-  caches. Parser scratch is the fetched payload stream from `0xa904`, local
-  transparent count, local `0x1a` probe byte, and mode-1/mode-2 dispatch rows.
+  Canonical display-reader output state is append sink `0xe002` plus stored
+  macro/data chunks in `0x12120`, or page-record roots reached through
+  `0x12536` / `0xd04a`. Derived/cache state is local filter word `A6-2`,
+  normalized payload value, selected-slot scale from `0x332ee`, source scratch
+  `0x782d7e`, compact coordinates, and segmented bucket/render caches. Parser
+  scratch is the fetched payload stream from `0xa904`, local transparent
+  count, local `0x1a` probe byte, the `0x12536` ESC-before-Z flag/current
+  loop value, and mode-1/mode-2 dispatch rows.
   Firmware bookkeeping is `0xd99a` reporting/normalization, alternate/data
   restore redirect `0x1226e..0x1227e -> 0x12358(0x1228a)`, `0xf054` after a
   routed CR, and append-only storage through `0xe002`. Hardware/external state

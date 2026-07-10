@@ -60,8 +60,6 @@ Primary route:
 
 Field groups:
 
-- Canonical reader state: local `D4` ESC-before-Z flag, normalized loop value
-  `D5`, and selected termination on local `ESC Z` or `0xa904 == -1`.
 - Canonical filter state: selected font slot `0x782f06`, C0 filter byte
   `0x782eea + 0x10 * slot`, fallback high-control filter byte `0x782efa`,
   and high-character flags `0x783132` / `0x783133`.
@@ -71,10 +69,12 @@ Field groups:
   busy bit `0x780e2d.3`, markers `0x7821cc` and `0x7822db`, and warning bit
   `0x780e2a.3`.
 - Derived/cache: local high-control filter word at `A6-2`, selected-context
-  slot product from `0x332ee`, and normalized `0x7f` value produced from local
-  `0x1a 0x58` pairs after `0xd99a`.
-- Parser scratch: mode-2 local Control-Z dispatch rows and command records
-  that route bytes to `0x120d2`, `0x1210c`, `0x1219e`, or `0x121b2`.
+  slot product from `0x332ee`, normalized loop value `D5`, and normalized
+  `0x7f` value produced from local `0x1a 0x58` pairs after `0xd99a`.
+- Parser/direct-reader scratch: local `D4` ESC-before-Z flag, selected
+  termination on local `ESC Z` or `0xa904 == -1`, mode-2 local Control-Z
+  dispatch rows, and command records that route bytes to `0x120d2`, `0x1210c`,
+  `0x1219e`, or `0x121b2`.
 - Firmware bookkeeping: `0xd99a` reporting/normalization side effect and
   status helper `0x9c2c`.
 - Unknown: manual-facing names for status latches are unknown; their ROM-local

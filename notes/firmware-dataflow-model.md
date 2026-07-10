@@ -5447,12 +5447,13 @@ Direct-reader command-to-output matrix:
 State roles for the direct-reader matrix are shared with transparent print:
 canonical text/page state is selected slot `0x782f06`, cursor `0x782c8a`,
 current page root `0x78297a`, queued page objects, and later published/render
-records; derived/filter state is selected context byte
+records; canonical filter state is selected context byte
 `0x782eea + 0x10 * slot`, fallback filter `0x782efa`, and high-character
-flags `0x783132` / `0x783133`; parser scratch is the delayed transparent
-record, display-functions loop flag/value registers, and resumed parser mode;
-firmware bookkeeping is `0xd99a`, `0xf054`, append sink `0xe002`, status
-helper `0x9c2c`, stream allocators, and publication/scheduler progress.
+flags `0x783132` / `0x783133`; parser/direct-reader scratch is the delayed
+transparent record, display-functions loop flag/value registers, and resumed
+parser mode; firmware bookkeeping is `0xd99a`, `0xf054`, append sink
+`0xe002`, status helper `0x9c2c`, stream allocators, and
+publication/scheduler progress.
 
 Open boundary:
 
@@ -5466,19 +5467,20 @@ Open boundary:
 State classification for this path:
 
 - Canonical state:
-  direct-reader termination flag `D4`, normalized loop value `D5`, selected
-  text/context slot `0x782f06`, current page root `0x78297a`, compact text
-  objects, macro/data append stream for alternate mode, active data-chain frame
-  pointer `0x782d76`, published source record, and render-record
+  selected text/context slot `0x782f06`, selected context byte
+  `0x782eea + 0x10 * slot`, fallback filter byte `0x782efa`,
+  high-character flags `0x783132/0x783133`, current page root `0x78297a`,
+  compact text objects, macro/data append stream for alternate mode, active
+  data-chain frame pointer `0x782d76`, published source record, and render-record
   bucket/context roots.
 - Derived/cache state:
-  selected context byte `0x782eea + 0x10 * slot`, fallback filter byte
-  `0x782efa`, local high-control filter word, compact coordinates, glyph
-  mapping results, status marker `0x7822db`, warning/status bit `0x780e2a.3`,
-  and render-band fields.
+  local high-control filter word, normalized loop value `D5`, compact
+  coordinates, glyph mapping results, status marker `0x7822db`,
+  warning/status bit `0x780e2a.3`, and render-band fields.
 - Parser scratch:
-  initial `ESC Y` parser mode and table dispatch state, plus any parser state
-  resumed after the direct reader returns.
+  initial `ESC Y` parser mode and table dispatch state, direct-reader
+  termination flag `D4`, and any parser state resumed after the direct reader
+  returns.
 - Firmware bookkeeping:
   `0xd99a` local control-report side effect, `0xf054` CR post-handler,
   append sink `0xe002`, stream allocator fields, publication flag

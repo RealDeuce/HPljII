@@ -325,8 +325,11 @@ checked-in ROM model:
 
 ## Emulator-Relevant Boundaries
 
-- The project goal is a LaserJet II-compatible input-stream to PDF
-  converter, not full hardware emulation.
+- The current deliverable is checked-in ROM dataflow documentation for
+  reproducing page output from supported host byte streams. A
+  LaserJet II-compatible input-stream renderer can use that model, but
+  generated fixtures, scripts, and future renderer code are supporting
+  artifacts rather than the controlling documentation.
 - The ROMs on the Interface PCA are expected to be most useful for mode
   interactions, default tables, parser behavior, and built-in font
   raster/metric extraction.

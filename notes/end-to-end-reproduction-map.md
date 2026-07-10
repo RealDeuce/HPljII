@@ -9204,9 +9204,14 @@ Priority ROM-local documentation targets:
 1. Command-family variants that change page-object shape or render input.
    Useful examples are raster gate outcomes through `0x105d0`, rectangle rule
    selector and clipping paths through `0x10898 -> 0x10b80 -> 0x133aa`,
-   publication selectors that change root `+0x1c/+0x24/+0x28`, allocator
-   rollover branches in `0x10084` / `0x10110`, and render-helper choices under
-   `0x1ef6a`. The owner update must name the handler, fields written, later
+   publication selectors that change root `+0x1c/+0x24/+0x28`, and
+   render-helper choices under `0x1ef6a`. The allocator rollover path across
+   `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now owned by
+   [page-record-storage.md](page-record-storage.md#output-effect), including
+   concrete stream chunks, object addresses, final cursors, and downstream
+   render consumers. New allocator work should start only from byte streams
+   that change the root topology, object shape, no-room/retry state, or bridge
+   fields. The owner update must name the handler, fields written, later
    consumers, page-object bytes or no-output outcome, and the first render
    boundary reached.
 2. Parser-to-family routes that currently have only table ownership but lack a

@@ -327,6 +327,91 @@ Unknown:
   high-character flags `0x783132`/`0x783133`. Their ROM-local routing roles are
   documented above.
 
+## High-Character Flag Producer/Consumer Checkpoint
+
+The high-character flags are shared state between font/map activation,
+transparent data, and the ordinary printable path. Their manual-facing names
+remain external, but their ROM-local routing role is bounded by the writer and
+consumer instructions below.
+
+Writers:
+
+- `0x14d28..0x14d64` handles one selected-font/map activation form. It reads
+  selected record byte `+0x0c`; when that byte is zero it writes `0` to
+  `0x783132` for the primary slot or `0x783133` for the secondary slot,
+  depending on selected target word `0x7828de`. When record byte `+0x0c` is
+  nonzero, it writes `1` to the same slot-specific flag. It then rebuilds the
+  selected map through `0x14d9c`.
+- `0x14d6c..0x14d86` handles the sibling selected-record form. It copies
+  selected record byte `+0x0e` directly into primary flag `0x783132` or
+  secondary flag `0x783133`, again selected by `0x7828de`, then rebuilds
+  through `0x14e24`.
+- Both paths finish through `0x14f16` and `0x1440c`, so the flag write is part
+  of the same selected-font/map activation that later printable bytes consume.
+
+Consumers:
+
+- Transparent reader `0x12496..0x124b8` tests both `0x783132` and `0x783133`.
+  If both are clear, it copies fallback high-control filter byte `0x782efa`
+  into local word `A6-2`. If either flag is set, it copies the
+  selected-context filter byte `D3`, derived from
+  `0x782eea + 0x10 * selected_slot`, into `A6-2`.
+- The transparent high-control routing test `0x1250c..0x12528` then uses
+  `A6-2`: zero sends payload bytes `0x80..0x9f` through fixed-space handler
+  `0xd0f0`; nonzero sends them to printable handler `0xd04a`.
+- Printable entry `0xd07c..0xd0a8` uses the same flags for ordinary high
+  bytes. When both flags are clear, high bytes are masked to seven bits and,
+  in primary slot `0`, can switch to the secondary slot through `0xc6b8`
+  before source construction. If either flag is set, the byte reaches
+  `0x1393a` without that seven-bit mask/switch path.
+
+Field classification:
+
+- Canonical: primary/secondary high-character flags `0x783132` and
+  `0x783133`, selected slot `0x782f06`, selected font context/map state, and
+  later compact text objects created by `0xd04a` or fixed-space effects from
+  `0xd0f0`.
+- Derived/cache: selected-context filter byte `D3`, transparent-local
+  high-control filter word `A6-2`, fallback byte `0x782efa`, and compact
+  source-object fields written by `0x1393a`.
+- Parser scratch: transparent payload count and restored command record while
+  `0x12452` is active; ordinary printable high-byte handling has no delayed
+  payload scratch.
+- Firmware bookkeeping: selected-map rebuild state after `0x14d9c` /
+  `0x14e24`, map patching through `0x14f16`, source-object scratch
+  `0x782d7e`, and page-root allocation/publication state if later text objects
+  are queued.
+- Hardware/external: none for this ROM-local routing decision.
+- Unknown: only the manual-facing names of the selected-record bytes and flags
+  remain unknown. Their ROM-local effects on transparent routing and ordinary
+  printable high-byte handling are the branch decisions above.
+
+Output effect:
+
+- The flags do not draw by themselves. They choose whether high-control
+  transparent/display bytes take fixed-space handling or printable handling,
+  and whether ordinary high bytes are masked/switch selected slot before
+  source construction.
+- Visible output appears only after `0xd04a` queues compact text through
+  `0x12f2e -> 0x1387c` or after `0xd0f0` advances/substitutes fixed-space
+  state; publication and rendering still proceed through `0xff1e`,
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+
+Evidence:
+
+- Writer listing:
+  `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst` at
+  `0x14d28..0x14d86`.
+- Transparent consumer listing:
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst` at
+  `0x12496..0x12528`.
+- Printable consumer listing:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst` at
+  `0xd07c..0xd0a8`.
+- Visible-output checks are the transparent high-control fixtures named in
+  the owner summary and the selected-font/high-byte checks named in
+  [font-context-metrics.md](font-context-metrics.md).
+
 ## Payload Reader At 0x12452
 
 `0x12452` is a counted reader. It does not use `0xdace`. It calls `0xa904`

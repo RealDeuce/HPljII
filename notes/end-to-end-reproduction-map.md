@@ -5455,52 +5455,47 @@ Address-level cluster map:
   Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint),
   [display-functions.md](display-functions.md), and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
-- Host/status side-channel cluster:
-  `ESC *r#K` and `ESC *s#^` dispatch through wrapper `0x12034` to
-  `0x122be..0x12326`; host-output FIFO and status workers use
-  `0xb0c0`, `0xb090`, `0xb022`, `0xae2c`, and `0xaece`. Owners are
-  [errors-and-status.md](errors-and-status.md),
-  [io-interfaces.md](io-interfaces.md), and
-  [host-byte-fetch.md](host-byte-fetch.md). This cluster produces host-visible
-  bytes, not page-image objects. `0x12034` calls setup helper `0x11efe` to
-  append a synthetic six-byte record with word `+2 = 1`; `0x122be` rewinds
-  parser record cursor `0x78299e`, fetches the following query byte through
-  `0xda9a`, and emits literal `33440A\r\n` from `0x12280..0x12288` through
-  blocking enqueue `0xb090` only for accepted query byte `0x11`. FIFO state is
-  canonical host-output state at count `0x783ed2`, pointers `0x783ed4` /
-  `0x783ed8`, and storage `0x783e92..0x783ed1`; worker `0xae2c` drains queued
-  bytes according to backend selector `0x780e40`. Sibling status producer
-  `0xaece` consumes pending-status fields `0x780e22`, `0x783e61`,
-  `0x783e60`, `0x780e12`, `0x780e0a`, `0x780e2a`, and `0x780e90` to emit
-  service/status bytes. The neighboring `ESC z` route is owned by
+- Host/status side-channel cluster: `ESC *r#K` and `ESC *s#^` dispatch through wrapper
+  `0x12034` to `0x122be..0x12326`; host-output FIFO and status workers use `0xb0c0`,
+  `0xb090`, `0xb022`, `0xae2c`, and `0xaece`. Owners are [Host/Status Side-Channel
+  Decision
+  Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
+  [io-interfaces.md](io-interfaces.md), and [host-byte-fetch.md](host-byte-fetch.md).
+  This cluster produces host-visible bytes, not page-image objects. `0x12034` calls
+  setup helper `0x11efe` to append a synthetic six-byte record with word `+2 = 1`;
+  `0x122be` rewinds parser record cursor `0x78299e`, fetches the following query byte
+  through `0xda9a`, and emits literal `33440A\r\n` from `0x12280..0x12288` through
+  blocking enqueue `0xb090` only for accepted query byte `0x11`. FIFO state is canonical
+  host-output state at count `0x783ed2`, pointers `0x783ed4` / `0x783ed8`, and storage
+  `0x783e92..0x783ed1`; worker `0xae2c` drains queued bytes according to backend
+  selector `0x780e40`. Sibling status producer `0xaece` consumes pending-status fields
+  `0x780e22`, `0x783e61`, `0x783e60`, `0x780e12`, `0x780e0a`, `0x780e2a`, and `0x780e90`
+  to emit service/status bytes. The neighboring `ESC z` route is owned by
   [display-functions.md](display-functions.md) and
-  [pcl-command-map.md](pcl-command-map.md): handler `0xcd86` tests active
-  data-chain frame byte `0x782d76 + 9`, calls status helper `0x9c2c` only
-  when that byte is zero, and otherwise returns without a signal. Helper
-  `0x9c2c -> 0x9b5e` waits on service/status busy bit `0x780e2d.3`, sets
-  markers `0x7821cc` and `0x7822db`, ORs bit `0x08` into accumulator
-  `0x780e2a`, then clears `0x7821cc`. No FIFO/status consumer feeds
-  `0xd04a`, `0xff1e`, `0x1ed84`, `0x1edc6`, or `0x1ef6a`; the
-  pixel-reproduction residual is only FIFO-induced parser stall, `ESC z`
-  service scheduling, or a modeled bidirectional host reacting with different
-  later bytes, plus external protocol/register naming.
-  Concrete side-channel streams are now part of the route index.
-  `ESC *r1K 0x11` reaches wrapper `0x12034`, setup helper `0x11efe`, and
-  producer `0x122be..0x12326`; the active record word `+2 = 1` and query byte
-  `0x11` make the producer walk literal `33440A\r\n` at `0x12280..0x12288`
-  and enqueue each byte through blocking FIFO helper `0xb090`. The sibling
-  `ESC *s#^ 0x11` reaches the same wrapper from parser mode `6`; both
-  commands reject other query bytes through `0x9ec0` instead of FIFO output.
-  FIFO helper `0xb0c0` appends while count `0x783ed2 < 0x40`, wraps write
-  pointer `0x783ed8` across storage `0x783e92..0x783ed1`, and `0xb090` waits
-  on `0x7801e2` when full. Worker `0xae2c` drains the FIFO through backend
-  selector `0x780e40`: mode `0` writes through `0xaf7c` and can first emit
-  `0xaece` service/status bytes, mode `1` discards queued FIFO bytes, and
-  other nonzero modes send them through `0xafcc -> 0xa1d6`. Status example
-  `0xaece` emits service byte `0x13` when `0x783e61` is set, and otherwise
-  builds base-`0x30` status bytes from `0x780e12`, `0x780e90`, `0x780e2a`,
-  `0x780e0a`, and reason byte `0x783e60`. Evidence is
-  [errors-and-status.md](errors-and-status.md),
+  [pcl-command-map.md](pcl-command-map.md): handler `0xcd86` tests active data-chain
+  frame byte `0x782d76 + 9`, calls status helper `0x9c2c` only when that byte is zero,
+  and otherwise returns without a signal. Helper `0x9c2c -> 0x9b5e` waits on
+  service/status busy bit `0x780e2d.3`, sets markers `0x7821cc` and `0x7822db`, ORs bit
+  `0x08` into accumulator `0x780e2a`, then clears `0x7821cc`. No FIFO/status consumer
+  feeds `0xd04a`, `0xff1e`, `0x1ed84`, `0x1edc6`, or `0x1ef6a`; the pixel-reproduction
+  residual is only FIFO-induced parser stall, `ESC z` service scheduling, or a modeled
+  bidirectional host reacting with different later bytes, plus external
+  protocol/register naming. Concrete side-channel streams are now part of the route
+  index. `ESC *r1K 0x11` reaches wrapper `0x12034`, setup helper `0x11efe`, and producer
+  `0x122be..0x12326`; the active record word `+2 = 1` and query byte `0x11` make the
+  producer walk literal `33440A\r\n` at `0x12280..0x12288` and enqueue each byte through
+  blocking FIFO helper `0xb090`. The sibling `ESC *s#^ 0x11` reaches the same wrapper
+  from parser mode `6`; both commands reject other query bytes through `0x9ec0` instead
+  of FIFO output. FIFO helper `0xb0c0` appends while count `0x783ed2 < 0x40`, wraps
+  write pointer `0x783ed8` across storage `0x783e92..0x783ed1`, and `0xb090` waits on
+  `0x7801e2` when full. Worker `0xae2c` drains the FIFO through backend selector
+  `0x780e40`: mode `0` writes through `0xaf7c` and can first emit `0xaece`
+  service/status bytes, mode `1` discards queued FIFO bytes, and other nonzero modes
+  send them through `0xafcc -> 0xa1d6`. Status example `0xaece` emits service byte
+  `0x13` when `0x783e61` is set, and otherwise builds base-`0x30` status bytes from
+  `0x780e12`, `0x780e90`, `0x780e2a`, `0x780e0a`, and reason byte `0x783e60`. Evidence
+  is [Host/Status Side-Channel Decision
+  Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
   [host-byte-fetch.md](host-byte-fetch.md), and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
 - Font-selection cluster:
@@ -5986,27 +5981,24 @@ Address-level cluster map:
   `0x1a3c2` ignores scheduler `D7`, `0x1a3c8..0x1a3e0` passes
   `0x78219b/0x78219c` plus local `A6-0x02` to `0x1b50e`, and only resolver
   `D7 == 0` reaches `0x6364`.
-- Host/status side channels:
-  ROM evidence is `0x12034`, `0x122be..0x12326`,
-  `0xb022..0xb0c0`, `0xae2c..0xaece`, and `0x2888..0x2c3a`.
-  Checked-in documentation is [errors-and-status.md](errors-and-status.md),
-  [io-interfaces.md](io-interfaces.md), [host-byte-fetch.md](host-byte-fetch.md),
-  and the semantic checkpoints `Host Interface Output FIFO` and
-  `Page Environment Status And Pool Cursor Gate` in
-  [semantic-state-model.md](semantic-state-model.md), surfaced first as
-  `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` and
+- Host/status side channels: ROM evidence is `0x12034`, `0x122be..0x12326`,
+  `0xb022..0xb0c0`, `0xae2c..0xaece`, and `0x2888..0x2c3a`. Checked-in documentation is
+  [Host/Status Side-Channel Decision
+  Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
+  [io-interfaces.md](io-interfaces.md), [host-byte-fetch.md](host-byte-fetch.md), and
+  the semantic checkpoints `Host Interface Output FIFO` and `Page Environment Status And
+  Pool Cursor Gate` in [semantic-state-model.md](semantic-state-model.md), surfaced
+  first as `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` and
   `Worked Path: Page Environment Status Bridge` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md). This cluster has
-  no direct page-object or pixel effect: `ESC *r1K 0x11` and the `ESC *s#^`
-  sibling enqueue literal `33440A\r\n` through host-output FIFO helpers, and
-  status producers such as `0x2888` feed outbound status bytes through
-  `0xaece`. Fixture
-  `0x12034/0x122be model-ID response emits FIFO literal` now pins both command
-  entries, the `0x11efe` synthetic record, accepted query byte `0x11`,
-  reject paths, and FIFO literal bytes. It still belongs in byte-stream
-  reproduction because a full FIFO can stall producer `0xb090`, and a
-  bidirectional host can react to the backchannel bytes by sending different
-  future input.
+  [firmware-dataflow-model.md](firmware-dataflow-model.md). This cluster has no direct
+  page-object or pixel effect: `ESC *r1K 0x11` and the `ESC *s#^` sibling enqueue
+  literal `33440A\r\n` through host-output FIFO helpers, and status producers such as
+  `0x2888` feed outbound status bytes through `0xaece`. Fixture `0x12034/0x122be
+  model-ID response emits FIFO literal` now pins both command entries, the `0x11efe`
+  synthetic record, accepted query byte `0x11`, reject paths, and FIFO literal bytes. It
+  still belongs in byte-stream reproduction because a full FIFO can stall producer
+  `0xb090`, and a bidirectional host can react to the backchannel bytes by sending
+  different future input.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   The checked-in contracts are [pcl-parser-core.md](pcl-parser-core.md) and

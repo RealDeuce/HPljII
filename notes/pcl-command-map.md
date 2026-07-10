@@ -229,10 +229,10 @@ boundaries:
   [raster-graphics.md](raster-graphics.md#owner-summary), with encoded-raster render
   helpers and bitmap row composition in
   [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
-- Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including
-  the `0x12034 -> 0x122be` `33440A\r\n` producer and host-output FIFO:
-  [errors-and-status.md](errors-and-status.md#owner-summary) and
-  [host-byte-fetch.md](host-byte-fetch.md).
+- Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including the `0x12034
+  -> 0x122be` `33440A\r\n` producer and host-output FIFO: [Host/Status Side-Channel
+  Decision Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint)
+  and [host-byte-fetch.md](host-byte-fetch.md).
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary), with rule/span render
   helpers and bitmap composition in
@@ -1738,12 +1738,13 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   Firmware bookkeeping is FIFO enqueue `0xb0c0`, dequeue `0xb022`, blocking
   enqueue `0xb090`, worker `0xae2c`, status byte producer `0xaece`, aggregate
   helper `0x36e4`, and page-environment status producer `0x2888`. The output
-  effect is host-visible bytes only. `0xb090` waits through `0x10c8(0x7801e2)`
-  when the FIFO is full; `0xae2c` drains queued bytes according to interface
-  selector `0x780e40`, and mode `0` can also emit service/status bytes built
-  by `0xaece`. No FIFO consumer feeds `0xda9a`, page roots, page objects,
-  `0xff1e`, `0x1ed84`, or bitmap renderers. Evidence is
-  [errors-and-status.md](errors-and-status.md#owner-summary),
+  effect is host-visible bytes only. `0xb090` waits through
+  `0x10c8(0x7801e2)` when the FIFO is full; `0xae2c` drains queued bytes
+  according to interface selector `0x780e40`, and mode `0` can also emit
+  service/status bytes built by `0xaece`. No FIFO consumer feeds `0xda9a`,
+  page roots, page objects, `0xff1e`, `0x1ed84`, or bitmap renderers.
+  Evidence is [Host/Status Side-Channel Decision
+  Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
   [host-byte-fetch.md](host-byte-fetch.md),
   `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
   `generated/disasm/ic30_ic13_interface_output_worker_00ae2c.lst`,
@@ -1751,15 +1752,14 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   `generated/disasm/ic30_ic13_page_environment_status_002888.lst`, fixtures
   `0x12034/0x122be model-ID response emits FIFO literal`,
   `0xb0c0/0xb022 output FIFO wraps and preserves order`,
-  `0xb090 waits on full FIFO then enqueues after drain`,
-  `0xaece emits service byte and combined status byte`,
-  `0xae2c drains FIFO by configured output mode`, and
-  `0x2888 sets page-environment status consumed by 0xaece`. No ROM object or
-  rendering edge remains in these side-channel paths; unresolved items are
-  physical signal names for MMIO status/data registers, user-facing names for
-  folded status categories, and the external protocol name for query byte
-  `0x11`. Owner note:
-  [errors-and-status.md](errors-and-status.md#owner-summary).
+  `0xb090 waits on full FIFO then enqueues after drain`, `0xaece emits service
+  byte and combined status byte`, `0xae2c drains FIFO by configured output
+  mode`, and `0x2888 sets page-environment status consumed by 0xaece`. No ROM
+  object or rendering edge remains in these side-channel paths; unresolved
+  items are physical signal names for MMIO status/data registers,
+  user-facing names for folded status categories, and the external protocol
+  name for query byte `0x11`. Owner note: [Host/Status Side-Channel Decision
+  Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
 
 ## High-Value Normal-Mode Handlers
 

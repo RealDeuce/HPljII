@@ -353,6 +353,76 @@ Evidence and unresolved boundary:
   outside this page-record checkpoint unless it changes one of the
   ROM-visible fields listed above.
 
+### Page Image Shape And Band Contract
+
+The firmware does not assemble a full-page bitmap while parsing host bytes.
+It assembles a page-root object graph, publishes that graph, then renders it in
+band-sized calls selected by the active scheduler.
+
+Canonical shape:
+
+- Current page root:
+  `0x78297a` points at the active page image container created by
+  `0x10084 -> 0x10110`.
+- Bucket root:
+  source root `+0x1c` is a 256-entry bucket-head array for compact text,
+  downloaded glyphs, portrait text spans, and encoded raster rows. The bridge
+  copies it to render root `+0x18`.
+- Rule root:
+  source root `+0x24` is an ordered rectangle/rule list. The bridge copies it
+  to render root `+0x1c` and normalizes selector/continuation fields.
+- Fixed root:
+  source root `+0x28` is the landscape fixed-list root. The bridge copies it
+  to render root `+0x20`.
+- Context slots:
+  source slots `+0x2c..+0x68` carry selected font/resource longwords. The
+  bridge copies them to render slots `+0x24..+0x60` for compact glyph
+  resolution.
+
+Rendering shape:
+
+- `0xff1e` publishes the active page root into the protected pool and clears
+  the current-root pointer.
+- `0x1ed84 -> 0x1edc6` creates the render-record view from the published
+  source roots; it does not draw pixels.
+- `0x1eba4..0x1ecd2` presents render-work word `+0x10` as the current band
+  selector and calls `0x1ef6a` only on the eligible render branch.
+- `0x1ef86` derives band caches `0x783a20`, `0x783a22`, `0x783a28`, and stride
+  `0x783a1c`; object helpers use those caches to write current-band rows.
+- Rows that cross the current band use ROM state rather than a full-page
+  bitmap: compact glyphs and encoded raster can write fallback rows at
+  `0x7810b4 + byte_pair_offset`, while rule/fixed objects carry continuation
+  words in their bridged object records.
+
+Output effect:
+
+- A reproducer should model page assembly as typed page-root objects plus
+  scheduler-selected bands. It should not expect one parser-owned page bitmap.
+- Object overlap is resolved by renderer order inside each band:
+  `0x1ef6a -> 0x1efc2` for bucket objects, then `0x1f446` for rule objects,
+  then `0x1f756` for fixed-list objects.
+- Pixel sources are the object payloads and ROM render helpers named by the
+  class owners: compact glyph and span helpers, encoded raster modes, rule
+  helpers, and fixed-list helpers.
+
+Evidence:
+
+- Source-root and bridge field evidence:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst` and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+- Publication evidence:
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`.
+- Scheduler/band evidence:
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+  [active-render-scheduler.md](active-render-scheduler.md#active-render-loop-outcome-matrix),
+  and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+- Fixture evidence:
+  `addressed text/rule/raster field groups reach publication and render
+  entry`, `0x1edc6 page-record bridge copies compact bucket and context
+  slots`, `0x1edc6 page-record bridge normalizes rule and fixed lists`, and
+  `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+  order`.
+
 ## Context Slot Preservation Checkpoint
 
 This checkpoint composes the shared state block that binds printable compact

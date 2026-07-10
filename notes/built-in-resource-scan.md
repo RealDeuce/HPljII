@@ -408,20 +408,33 @@ Glyph/render handoff:
 - ROM path:
   `0x144d2 -> 0x14c64 -> 0xc428 -> 0x1393a`.
 - State category:
-  canonical page/text state and derived/cache state.
+  canonical selected-resource state, canonical page/text state, and
+  derived/cache state.
 - Writers:
-  installs selected context longwords and maps printable bytes into
-  compact source objects.
+  `0x144d2` copies the selected candidate longword from slot pointer
+  `0x7828a8` into current-font context record `0x782ee6` or `0x782ef6`.
+  `0x14c64` rebuilds active map `0x782f32` or `0x783032` and selected-font
+  snapshots. `0xc428 -> 0xc4fc` installs the current context under page-root
+  slots `+0x2c..+0x68` and writes selected page-root slot `0x78297e`.
+  `0xd04a -> 0x1393a` writes printable source fields
+  `+0x00/+0x04/+0x0a/+0x10` from the current context, active map, and mapped
+  glyph.
 - Readers / consumers:
-  `0x12f2e`, compact queueing, and compact glyph renderers consume the
-  object and resource glyph payload.
+  `0xd3b2` / `0xd824` copy selected page-root slot `0x78297e` into source
+  `+0x16`, mark live flag `0x78297f + slot`, and call `0x12f2e`.
+  Publication and bridge copy root context slots to render-record
+  `+0x24..+0x60`; compact glyph renderers consume the compact payload glyph
+  byte and copied context slot.
 - Output effect:
-  visible text rows come from the selected resource bitmap rows rendered
-  into output buffers.
+  this is the field bridge from selected resource candidate to compact text
+  page object. Visible text rows later come from the selected resource bitmap
+  rows rendered through `0x1f354`.
 - Evidence:
+  [font-context-metrics.md](font-context-metrics.md#printable-source-capture),
   [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
-  [font-sample-page.md](font-sample-page.md#owner-summary), and
-  generated glyph payload reports.
+  [page-record-storage.md](page-record-storage.md#context-slot-preservation-checkpoint),
+  `generated/analysis/ic30_ic13_font_context_bridge.md`, and
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
 
 Unresolved middle edges:
 
@@ -431,10 +444,11 @@ Unresolved middle edges:
 - `0x1a616` optional cartridge scans over `0x200000..0x5ffffe` are
   decoded at the handler level but lack cartridge image data, so their
   candidate contents remain an external-resource boundary.
-- `0x14398 -> 0x144d2 -> 0x1393a` is the next highest-value middle edge
-  for this path: the selected candidate is known, but the checked-in
-  documentation still needs a tighter field-by-field bridge from selected
-  slot to compact source object fields.
+- `0x14398 -> 0x144d2 -> 0x1393a` is no longer an unresolved middle edge for
+  the documented primary and secondary built-in paths. Remaining variants only
+  matter when they change selected context longword, active map, page-root
+  slot, printable source fields, compact selector class, or downstream render
+  inputs.
 
 ## Field Groups
 
@@ -663,9 +677,9 @@ ROM image evidence has been captured for those ranges.
   matching ROM/cartridge image must choose among the recorded mirror,
   code-pair, and zero-fill fallback-row candidates.
 - `0x14398..0x156de`: many visible output streams are covered, but
-  broader fallback/error combinations should only be added when they
-  produce a different selected context, map, object prefix, or rendered
-  row.
+  broader fallback/error combinations should only be added when they produce a
+  different selected context, active map, page-root slot, printable source
+  field, compact selector class, or rendered row.
 - Resource fields `+0x28/+0x2a` and `+0x2f..+0x31`: decoded roles are
   documented as height inputs and chooser tie-breakers, while precise
   manual terminology remains open in

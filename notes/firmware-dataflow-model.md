@@ -3120,7 +3120,7 @@ Writers and readers:
   mode-zero reset boundaries.
 - `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` are the stateful helpers
   that tokenize multi-record command families and arm delayed payload calls.
-- `0x121cc` writes delayed-payload bookkeeping; `0x12218` restores it and
+- `0x121cc` writes delayed-payload parser state; `0x12218` restores it and
   dispatches the saved handler.
 - Raster transfer `0x105d0`, transparent text `0x12452`, VFC table loader
   `0x12cfe`, font descriptor/download handlers `0x15d0a` and `0x16c14`, and
@@ -6094,21 +6094,21 @@ Validation, no-install, and partial-install exits:
 State classification for this path:
 
 - Canonical state:
-  current downloaded font id `0x782f2e`, current character `0x782f30`,
-  current downloaded-font records `0x782640..0x782776`, current-record flag
-  bit `6`, installed payload pointer, glyph table entry `0x00de`, glyph
-  record bytes, current page root `0x78297a`, bucket objects, published source
-  record, and render-record bucket/context roots.
+  parser record cursor `0x78299e`, delayed-payload fields `0x782a1a` /
+  `0x782a1c` / `0x782a20..0x782a25`, current downloaded font id
+  `0x782f2e`, current character `0x782f30`, current downloaded-font records
+  `0x782640..0x782776`, current-record flag bit `6`, installed payload
+  pointer, glyph table entry `0x00de`, glyph record bytes, current page root
+  `0x78297a`, bucket objects, published source record, and render-record
+  bucket/context roots.
 - Derived/cache state:
   payload byte budget `0x783140`, parsed span `0x7827c2`, parsed row count
   `0x7827c4`, bitmap byte count `0x7827be`, compact selector `0x3003`,
   segment numbers, bucket indices, and render-band fields.
 - Parser scratch:
-  command-record cursor `0x78299e`, delayed-payload fields `0x782a1a`,
-  `0x782a1c`, `0x782a20..0x782a25`, staged descriptor scratch
-  `0x7827de..0x7827e9`, validation payload budget `0x783140`, restored
-  rejected records such as `80 57 00 50 00 00` and `80 57 00 08 00 00`, and
-  continuation fields `0x7827c6..0x7827da`.
+  staged descriptor scratch `0x7827de..0x7827e9`, validation payload budget
+  `0x783140`, restored rejected records such as `80 57 00 50 00 00` and
+  `80 57 00 08 00 00`, and continuation fields `0x7827c6..0x7827da`.
 - Firmware bookkeeping:
   downloaded-record counters `0x782782` and `0x782786`, candidate counters and
   cursors updated by `0x16c14`, heap allocation and release helpers, stream

@@ -511,7 +511,7 @@ command-family and page-image structure:
    for matched command bytes, continue in
    [pcl-parser-core.md](pcl-parser-core.md) to track parser mode `0x782999`,
    parser record cursor `0x78299e`, the six-byte record fields,
-   delayed-payload scratch `0x782a1a/0x782a1c/0x782a20..`, normal table
+   delayed-payload state `0x782a1a/0x782a1c/0x782a20..`, normal table
    `0x112a4`, and alternate/data table `0x116f6`. Then jump from the class
    checkpoint to the owner note named by
    [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
@@ -930,7 +930,7 @@ State classification:
   cache `0x783a2c`.
 - Parser scratch:
   the unmatched printable byte in the parser loop and normal-table lookup
-  state. No parser command record, digit scratch, or delayed-payload scratch
+  state. No parser command record, digit scratch, or delayed-payload state
   survives this printable fallback route.
 - Firmware bookkeeping:
   live-font flags at `0x78297f + slot`, stream allocator cursors
@@ -5263,19 +5263,20 @@ Publication, scheduling, and pixels:
 State classification:
 
 - Canonical:
-  current downloaded-font id `0x782f2e`, current character `0x782f30`,
-  current downloaded-font records `0x782640..0x782776`, current-record flag
-  bit `6`, installed glyph-table entry `0x00de`, glyph record bytes, current
-  page root `0x78297a`, compact bucket objects, published source record, and
+  parser record cursor `0x78299e`, delayed-payload fields `0x782a1a` /
+  `0x782a1c` / `0x782a20..0x782a25`, current downloaded-font id
+  `0x782f2e`, current character `0x782f30`, current downloaded-font records
+  `0x782640..0x782776`, current-record flag bit `6`, installed
+  glyph-table entry `0x00de`, glyph record bytes, current page root
+  `0x78297a`, compact bucket objects, published source record, and
   render-record bucket/context roots.
 - Derived/cache:
   payload byte budget `0x783140`, parsed span `0x7827c2`, parsed row count
   `0x7827c4`, bitmap byte count `0x7827be`, compact selector `0x3003`,
   segment numbers, bucket indices, and render-band fields.
 - Parser scratch:
-  command-record cursor `0x78299e`, delayed-payload fields `0x782a1a`,
-  `0x782a1c`, `0x782a20..0x782a25`, staged descriptor scratch
-  `0x7827de..0x7827e9`, and continuation fields `0x7827c6..0x7827da`.
+  staged descriptor scratch `0x7827de..0x7827e9` and continuation fields
+  `0x7827c6..0x7827da`.
 - Firmware bookkeeping:
   downloaded-record counters `0x782782` and `0x782786`, candidate counters and
   cursors updated by `0x16c14`, heap allocation/release helpers, stream

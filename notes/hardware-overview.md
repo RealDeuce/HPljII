@@ -2,6 +2,83 @@
 
 Sources: `hplaserjetclassicsiiiii.pdf` ch. 1, ch. 5, ch. 6; `5843739.pdf`.
 
+## Owner Summary
+
+This note owns product and engine context for the ROM documentation. It
+separates manual hardware facts that bound the LaserJet II target from
+ROM-visible state that can change byte admission, page-object construction,
+render scheduling, or final row buffers. It is not the owner for parser
+handlers, page records, resource bytes, or formatter/DC register decoding.
+
+Primary route into the ROM model:
+
+- Product identity and PCL level identify the target as HP 33440A /
+  LaserJet Series II, a 300 dpi PCL Level IV printer.
+- Formatter/interface details that affect the disassembly are owned by
+  [formatter-interface-pca.md](formatter-interface-pca.md#owner-summary):
+  68000-family CPU evidence, ROM package pairing, DRAM/NVRAM context,
+  built-in resource decode, and board-level provenance boundaries.
+- Host interface facts that affect byte streams are owned by
+  [io-interfaces.md](io-interfaces.md#owner-summary) and
+  [host-byte-fetch.md](host-byte-fetch.md#owner-summary). Those notes reduce
+  serial, parallel, optional I/O, pushback, ring, and macro/data-chain replay
+  sources to the normalized `0xa904` byte-source contract.
+- Engine facts that affect rendered output timing are owned by
+  [dc-controller-engine.md](dc-controller-engine.md#owner-summary),
+  [active-render-scheduler.md](active-render-scheduler.md#owner-summary), and
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
+  Those notes stop at ROM-visible scheduler fields, wait objects, render work
+  records, band words, and row buffers.
+
+State classification:
+
+- Canonical product context: model `33440A`, PCL Level IV language, 300 x 300
+  dpi resolution, Canon SX-family engine, 512 KB internal RAM, supported memory
+  expansion, built-in fixed-pitch fonts, and standard paper/media limits.
+- Canonical ROM-visible hardware state: only the fields documented in the
+  owner notes above, such as normalized input bytes from `0xa904`, host-output
+  FIFO fields, page/control records, wait-object state, active render pointer
+  `0x783a18`, and scheduler band fields.
+- Derived/cache state: manual timing, paper-path, engine, and sensor facts
+  after they have been reduced to ROM-visible status bits, wait-object events,
+  page-control state, or scheduler decisions by traced firmware.
+- Firmware bookkeeping: none owned here. Formatter bookkeeping fields are
+  classified by the parser, page, scheduler, resource, status, and reset
+  owner notes.
+- Hardware/external state: motors, laser/scanner assembly, beam detect,
+  paper sensors, fuser, cartridge sensitivity switches, DC Controller timing,
+  connector signals, and electrical host-interface details before the ROM
+  observes them through registers or admitted bytes.
+- Unknown: physical register-to-connector mapping, exact MMIO-to-signal
+  decode, optional board/resource contents, and service-manual names for some
+  ROM status categories. These are tracked as exact boundaries in
+  [unresolved-boundaries.md](unresolved-boundaries.md).
+
+Output effect:
+
+- Hardware context does not draw pixels by itself. Pixel-producing behavior in
+  the checked-in model comes from parser-selected command handlers, page-root
+  objects, publication, render scheduling, and bitmap helpers.
+- Hardware facts become pixel-relevant only when they change ROM-visible
+  state: admitted byte order, status/ready branch, wait-object wake order,
+  selected page/control record, render band word, resource byte source, or
+  render input buffer.
+- Physical paper timing, toner transfer, fuser behavior, and service-message
+  wording are correlation targets for hardware emulation or manual mapping,
+  not substitutes for ROM disassembly evidence.
+
+Evidence and boundaries:
+
+- Manual evidence is the service manual and product data sheet cited above.
+- ROM evidence is the owner-note chain linked in this summary, especially
+  `0xa904` byte admission, `0xff1e` publication, `0x1ed84` / `0x1edc6`
+  render bridge, active scheduler ranges `0x1eb2a..0x1ed84`, and render entry
+  `0x1ef6a`.
+- The relevant unresolved hardware boundaries are direct host MMIO banks,
+  ring/status bridge registers, optional resource windows, retained storage,
+  folded status category names, and active render device handoff in
+  [unresolved-boundaries.md](unresolved-boundaries.md#host-and-hardware-boundaries).
+
 ## Identity
 
 - Product: HP LaserJet Series II, HP model 33440A.

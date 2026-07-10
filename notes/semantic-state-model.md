@@ -3256,9 +3256,14 @@ startup-visible typed-record chain that bounds this built-in window.
 - `0x154e4`, `0x1553a`, `0x155b6`, and `0x1562c` read candidate pitch.
   Bit-30 records decode pitch through `0x13b76` from record word `+0x24`
   and byte `+0x26`; bit-30-clear records read word `+0x1a`.
-- `0x14398` consumes active survivors and uses `0x13c06` / `0x1428c`
-  to rank resource window, decoded height, byte `+0x2f`, signed byte
-  `+0x30`, and byte `+0x31`.
+- `0x14398` consumes active survivors and uses `0x13c06` to rank resource
+  class before field-level comparison. For bit-30 offset-table records,
+  `0x1428c` ranks decoded height from `0x13bca(+0x28,+0x2a)`, unsigned byte
+  `+0x2f`, signed byte `+0x30`, and unsigned byte `+0x31`. For fixed-form
+  records, `0x13fc6` ranks word `+0x20`, unsigned byte `+0x26`, signed byte
+  `+0x27`, and unsigned byte `+0x18`. Cross-form helpers `0x140a4` and
+  `0x14198` compare those two tuples by mapping fixed fields onto the same
+  decoded-height / unsigned / signed / unsigned ordering.
 - `0x13a48` compares the selected slot `0x7828a8` against the primary or
   secondary selected-resource snapshot at `0x783148` / `0x783152`. For
   built-in/resource records it rechecks symbol word through `0x15890`,

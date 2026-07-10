@@ -642,6 +642,32 @@ rebuilds the selected character map consumed by later `0xd04a` printable
 bytes. A different `0x7828a8` therefore changes the selected context slot,
 mapped glyph byte, compact object, and rendered text rows.
 
+The same-class tie-breaker is now resolved to helper bodies:
+
+- `0x13c06` masks each candidate longword to a 24-bit record address and
+  assigns a resource class: `0x080000..0x0ffffd`, then
+  `0x200000..0x5ffffd`, then RAM/downloaded range
+  `0x780efa..0x7810b3`. A challenger with a higher class returns `D7 = 1`
+  and replaces the current best; a lower class returns `D7 = -1`.
+- When both records are bit-30 offset-table form, `0x1428c` compares
+  challenger versus best by decoded height from `0x13bca(+0x28,+0x2a)`,
+  then unsigned byte `+0x2f`, signed byte `+0x30`, and unsigned byte
+  `+0x31`.
+- When both records are bit-30-clear fixed form, `0x13fc6` compares word
+  `+0x20`, unsigned byte `+0x26`, signed byte `+0x27`, and unsigned byte
+  `+0x18`.
+- When challenger is fixed form and current best is offset-table form,
+  `0x140a4` maps fixed fields `+0x20/+0x26/+0x27/+0x18` against
+  offset-table fields decoded height, `+0x2f`, `+0x30`, and `+0x31`.
+- When challenger is offset-table form and current best is fixed form,
+  `0x14198` uses the same field mapping in the opposite direction.
+
+All four helpers return `D7 = 1` when the challenger tuple is greater,
+`D7 = -1` when it is smaller, and `D7 = 0` when the tuple is equal. The
+generated evidence window is
+`generated/disasm/ic30_ic13_object_compare_helpers_013fc6.lst`; the checked-in
+generator window is in `tools/generate_rom_artifacts.py`.
+
 `0x14c64` chooses the map-building path from the selected context form:
 
 - bit-30 set / offset-table form: rebuilds a base range through `0x14d9c`,

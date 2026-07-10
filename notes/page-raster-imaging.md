@@ -2166,12 +2166,12 @@ Unresolved middle edges:
   transformed by the same `0x12714` source package, inserted through
   `0x136d2` as fixed-list objects under page-root `+0x28`, bridged to
   render-record `+0x20`, and consumed by `0x1f756` / `0x1f7b0`. The
-  allocation-failure retry edge is explicit at `0x127ae..0x12808`: mark
-  page-root `+0x14`, publish through `0xff1e`, rebuild the local source, and
-  retry `0x13520`. Remaining work starts only from byte streams or selected
-  metric/orientation states that change the `0x12790..0x127a0` page-extent
-  gate, segment-list/fixed-list object fields, bridge roots, or render
-  dispatch.
+  allocation-failure retry edge is explicit at `0x127ae..0x12808`: set bit 0
+  in the page-root flags word at `+0x14` (written at byte `+0x15.0`),
+  publish through `0xff1e`, rebuild the local source, and retry `0x13520`.
+  Remaining work starts only from byte streams or selected metric/orientation
+  states that change the `0x12790..0x127a0` page-extent gate,
+  segment-list/fixed-list object fields, bridge roots, or render dispatch.
 - `0x13070..0x1f88e`: raster mode producers and encoded renderers are
   connected for modes `0..3`; dense split object-chain rules are documented for
   capped-new-chunk and current-tail allocation. Remaining work must change a

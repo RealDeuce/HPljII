@@ -521,6 +521,25 @@ Outcome classes:
   Alternate/data blank C0 rows append through `0xe002` instead. Owners:
   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract) and
   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes).
+- Parser-external service or return:
+  `0x117d2..0x11818` clears no-byte latch `0x780e3b`, services wait object
+  `0x780202` through `0x10c8`, and returns from the parser loop when
+  macro/page state byte `0x782a92 == 0x63`. This consumes a parser-loop turn
+  without routing the current normalized byte to a command-family handler.
+  Owner: [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract).
+- Mode-zero no-match fallback:
+  `0x118b2..0x11900` handles bytes that did not match a normal-table row while
+  parser mode is zero. Context byte `0x782ee6 + 16 * 0x782f06 + 5 == 1`
+  routes the byte to printable handler `0xd04a`; other values ignore the byte
+  and fetch again. Owner:
+  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract).
+- Nonzero-mode callback no-match:
+  `0x11b32..0x11b7e` passes the byte to active callback pointer `0x78299a`
+  when a nonzero parser mode has no matching table row. A callback return to
+  mode zero clears parser cursors and pending delayed-payload byte
+  `0x782a1a`; otherwise the parser remains in the command-family mode and
+  fetches again. Owner:
+  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract).
 - Parameterized command terminal:
   `0xdaf0` / `0xdb74` materialize one or more six-byte records at
   `0x78299e..`; `0x11774` dispatches the terminal handler from normal table
@@ -588,8 +607,9 @@ handler selected by the parser tables, the family payload reader after restore,
 or the page/status/macro owner named above. The output effect at this bridge is
 therefore one of: a page-object-producing handler, a state-only command whose
 later consumers are named by its owner, a counted payload reader, a replay
-source feeding `0xa904`, a host/status response, or an explicit no-output
-parser row.
+source feeding `0xa904`, a host/status response, an explicit no-output parser
+row, a no-match fallback/ignore, a callback continuation, or a parser-external
+service/return.
 
 ## Minimal Host Input Walkthrough
 

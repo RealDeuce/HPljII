@@ -137,6 +137,36 @@ indirectly: a full output FIFO can stall a parser-side response producer, and a
 bidirectional host may react to service/status bytes, changing the later host
 byte stream.
 
+### Reproduction Contract
+
+A byte-stream renderer or emulator must preserve these ROM-visible interface
+effects before parser, command, or page-image code consumes them:
+
+- Treat `0xa904` as the canonical inbound byte boundary. Parser wrappers,
+  transparent/display readers, raster payload readers, downloaded-font payload
+  readers, and macro/data-chain replay all consume the returned `D7` byte or
+  `D7 = -1`.
+- Preserve source priority in `0xa904`: service retry/no-byte gate, first
+  pushback stack, active data-chain frame, second pushback stack, ring input,
+  and then the selected direct-MMIO backend.
+- Preserve the no-byte return when `0x780e66` and `0x780e3b` gate buffered
+  sources. A no-byte result is not a parser byte and cannot create page
+  objects.
+- Preserve data-chain replay as ordinary parser input. Execute/call frames
+  from `0xe418` and non-replay publication frames from `0xe4f4` feed bytes
+  through the same `0xa904` return channel as host input.
+- Preserve direct-input side effects only as ROM-visible state: mode `1`
+  ready/data/acknowledge roles for `0x8e01`, `0x8801`, and `0x8c01`; mode
+  `2` ready/data/status/control roles for `0xfffee005`, `0xfffee001`, and
+  `0xfffee009`; and the shadow/status writes to `0x7828fa`, `0x7828fb`,
+  `0x7828ec`, `0x7821c4`, and `0x780e2e`.
+- Preserve host-output FIFO order, wrap, full-FIFO wait, and output-worker
+  drain through `0xb0c0`, `0xb022`, `0xb090`, `0xaece`, and `0xae2c`.
+  Output bytes do not render pixels, but FIFO backpressure can stall a
+  parser-side response producer before later input is accepted.
+- Treat physical connector names and MMIO timing as hardware boundaries unless
+  they change one of the ROM-visible fields above.
+
 ### Interface Outcome Matrix
 
 This matrix is the ROM-facing contract for host input and host/status output.

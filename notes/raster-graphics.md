@@ -1323,6 +1323,21 @@ A byte-stream reproduction must preserve these behaviors:
 - Object byte `+5` selects raster expansion mode `0..3`.
 - Object word `+8` controls destination x/y packing; object bytes at `+0x0a`
   are the source span payload.
+- `0x1f88e` must parse the encoded object before helper dispatch: it reads
+  mode from `+0x05 & 3`, byte count from word `+0x06`, packed key from
+  word `+0x08`, derives destination position through `0x1f3d4`, and runs
+  split helper `0x1f414` before selecting table `0x1f8ca`.
+- Mode `0` target `0x1f8da` copies payload bytes as literal words. Mode `1`
+  target `0x1f8e6` expands each payload byte through table `0x30914` into
+  two rows. Mode `2` target `0x1f920` expands even/odd payload bytes through
+  table `0x30b14` into three rows, including the `$a001` phase rewrite for
+  odd-indexed bytes. Mode `3` target `0x1f9c6` expands each payload byte
+  through `0x30914` twice and writes four rows.
+- Current-band versus fallback-row placement is part of the pixel contract.
+  `0x1f414` decides whether expanded rows stay under the current destination
+  rooted at `0x783a28` or continue in fallback storage rooted at
+  `0x7810b4 + byte_pair_offset`; reproducing only the encoded object bytes is
+  insufficient without this split state.
 
 ## Remaining Edges
 

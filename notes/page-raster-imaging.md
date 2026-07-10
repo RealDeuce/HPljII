@@ -1341,10 +1341,14 @@ Field groups:
   - none. Parser/page-record producers have already built the published
     source record before this scheduler runs.
 - Unknown:
-  - `0x7839d4`, cleared by `0x1a4c..0x1c00`, remains active-pool
-    copy-window bookkeeping without a stable name.
   - physical engine timing behind trap veneers and MMIO/status helpers
     remains board-level work.
+  - direct caller into optional pattern helper `0x247c..0x270c` is not
+    located. The helper's accumulator `0x7839d4`, pattern-pointer cache
+    `0x7839d8..0x7839f7`, and destination writes to `0x78399a` are
+    documented in [active-render-scheduler.md](active-render-scheduler.md);
+    ordinary active rendering still reaches copied rows through `0x22f4` and
+    page bands through `0x1ef6a`.
 
 Writers:
 

@@ -23,6 +23,7 @@ remains a separate board-facing boundary.
 - `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`
 - `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`
 - `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`
+- `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`
 - `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`
 - `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`
@@ -85,17 +86,21 @@ Field groups:
 - Derived/cache state: band setup outputs `0x783a20`, `0x783a22`,
   `0x783a28`, destination stride `0x783a1c`, candidate-slot array
   `0x780e6e[]`, and status/engine latches such as `0x78399e`,
-  `0x78399f`, `0x78398c`, `0x783990`, `0x7839ac`, `0x7828f9`,
+  `0x78399f`, `0x78398c`, `0x783990`, `0x7839ac`, row-copy accumulator
+  `0x7839d4`, pattern-pointer cache `0x7839d8..0x7839f7`, `0x7828f9`,
   `0x780e32`, `0x780e36`, `0x780e6d`, and `0x780e67`.
 - Firmware bookkeeping: active flags `0x780ea4` / `0x780ea5`, active-pool
-  copy-window fields `0x7839d2` / `0x7839d4`, timer/status divider bytes
+  copy-window ready flag `0x7839d2`, timer/status divider bytes
   `0x78017f..0x780181`, and wait-object records selected by `0x123a`.
 - Parser scratch: none. Parser and command-family state has already become
   page-record storage before this owner runs.
 - Hardware/external state: formatter/DC signal names and physical timing for
   MMIO-backed readiness, copy, and wait predicates.
-- Unknown: stable semantic name for `0x7839d4` beyond active-pool copy-window
-  bookkeeping.
+- Unknown: no ROM-local field-meaning unknown remains for the active-pool
+  row-copy accumulator. Direct call sites for the optional
+  `0x247c..0x270c` pattern helper are not located in the current xrefs, so
+  that helper is documented as a bounded side path, not as an ordinary
+  active-render row source.
 
 Writers and readers:
 
@@ -171,12 +176,20 @@ Derived/cache state:
   `0x7828f9`, `0x780e32`, `0x780e36`, `0x780e6d`, and `0x780e67`:
   status, pending-byte, and engine-shadow latches consumed by the scheduler
   and status wrappers.
+- `0x7839d4`: row-copy longword accumulator for the optional pattern helper.
+  Setup `0x1a4c..0x1c00` clears it, `0x26c4` adds the row-copy body sum
+  accumulated by the `0x24c4..0x26c2` copy table, and `0x26de..0x270a`
+  rotates its nibbles into eight pattern pointers under `0x7839d8..0x7839f7`.
+- `0x7839d8..0x7839f7`: eight pattern-table pointers built from accumulator
+  nibbles by `0x26de..0x270a`; `0x270c..0x2746` writes seven words per
+  pattern column into the destination row base `0x78399a`.
 
 Firmware bookkeeping:
 
 - `0x780ea4` / `0x780ea5`: active render/scheduler flags written around
   `0x1eb32..0x1eb50`.
-- `0x7839d2` and `0x7839d4`: active-pool copy-window bookkeeping.
+- `0x7839d2`: immediate ready flag consumed by `0x21b8` before
+  candidate staging.
 - `0x78017f`, `0x780180`, and `0x780181`: periodic status/timer divider
   bytes for the `$8000`, `$a200`, and `$a400` phases.
 - Wait-object records signaled by `0x1036` and selected by `0x123a`: next
@@ -195,8 +208,9 @@ Unknown:
   latches.
 - Physical engine timing that decides when modeled ready/busy and wait-object
   predicates become true.
-- Stable semantic name for `0x7839d4` beyond active-pool copy-window
-  bookkeeping.
+- Direct caller into the optional `0x247c..0x270c` accumulator-to-pattern
+  helper is not located. The field writes and consumers are documented from
+  disassembly; ordinary active rendering still uses `0x22f4` and `0x1ef6a`.
 
 ## Band Render Model
 

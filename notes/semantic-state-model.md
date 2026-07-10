@@ -12344,10 +12344,18 @@ record.
   - `0x78399a`: destination row base for the eight-row copy helper;
     `0x783992`: current source pointer, first seeded by `0x1a4c..0x1c00`
     and then recomputed by `0x2456` through `0x2038`.
+  - `0x7839d4`: optional row-copy longword accumulator. `0x1a4c..0x1c00`
+    clears it, `0x26c4` adds the longword sum accumulated by the
+    `0x24c4..0x26c2` copy table, and `0x26de..0x270a` rotates accumulator
+    nibbles into eight pattern pointers under `0x7839d8..0x7839f7`.
+  - `0x7839d8..0x7839f7`: optional pattern-pointer cache consumed by
+    `0x270c..0x2746`, which writes seven words per pattern column into
+    destination base `0x78399a`.
   Evidence: `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`
   and fixture destination-work fields in the geometry-change and
   same-geometry scheduler cases, plus
-  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`.
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst` and
+  `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`.
 - Parser scratch:
   - none newly assigned here. The source record has already been built by
     parser/page-record producers before `0xff1e`.
@@ -12468,12 +12476,14 @@ record.
     `0x780176`: active wait-object pointer updated by `0x123a`;
     `0x780174`: active priority word copied from selected object `+8`.
 - Unknown:
-  - `0x7839d4`: cleared by `0x1a4c..0x1c00`; no stable role is assigned
-    yet beyond active-pool copy-window bookkeeping.
   - exact physical engine pacing behind trap veneers `0x10bc`,
     `0x10c4`, `0x10c8`, `0x10d0`, `0x10d8`, `0x10e0`, and `0x10ec`.
   - complete multi-band timing and stop conditions across
     `0x1eba4..0x1ecd2`.
+  - direct caller into optional pattern helper `0x247c..0x270c` is not
+    located. Its accumulator, pattern-pointer cache, and destination writes are
+    documented, but ordinary active rendering still reaches copied rows through
+    `0x22f4` and rendered page bands through `0x1ef6a`.
 
 ### Writers
 

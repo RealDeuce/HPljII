@@ -354,7 +354,7 @@ parser route, field value, object layout, bridge copy, or helper input.
   downloaded-glyph render paths.
 - [font-sample-page.md](font-sample-page.md#owner-summary) - documented
   firmware-generated font sample printout from resource candidates through page-record
-  segments and rendered surfaces.
+  segments, multi-probe continuation preflight, and rendered surfaces.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix) -
   current host-byte fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) -

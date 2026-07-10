@@ -951,6 +951,7 @@ Field groups for this index:
   before the same `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
   Evidence:
   [publication-commands.md](publication-commands.md),
+  [Paper Source Selector Matrix](publication-commands.md#paper-source-selector-matrix),
   [reset-default-environment.md](reset-default-environment.md), and
   `Worked Path: Publication Commands` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).

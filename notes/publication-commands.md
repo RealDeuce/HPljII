@@ -435,6 +435,108 @@ not change the bucket root at `+0x1c`; they change the published page/control
 record that downstream page services and the render bridge receive alongside
 the bucket, fixed-list, rule-list, and context-slot roots.
 
+### Publication Header Copy Checkpoint
+
+This checkpoint composes the header part of `0xff1e`. It starts after a
+current root has survived the active-root test at `0xff26..0xff3e`, and ends
+when `0x10060..0x10080` exposes the source record through published pool head
+`0x780ea6`.
+
+Writers:
+
+- Page-size `0xfc74..0xfd88`, page-length `0xf9e8..0xfb34`, and reset
+  environment helper `0xcda2` write pending page/header byte `0x782997`.
+  The page-size and page-length commits also clear `0x780e99` after setting
+  that pending byte.
+- Reset/status paths can leave `0x780e99` as a pending header/status byte.
+  `0xff1e` consumes it only if the earlier `0x782997` branch did not clear it.
+- Paper-source `0xef62..0xf020` and reset environment helper `0xcda2` write
+  pending paper/layout byte `0x782998`.
+- Copies `0xeef0..0xef38` writes canonical copy count `0x782da4`; reset
+  environment reload can also seed it from default byte `0x78219d`.
+- Paper-source `0xef62..0xf020`, reset environment reload, and page-control
+  default branches write page-environment byte `0x782da6`.
+- The normal publication body at `0xffb0..0x10080` writes the root header:
+  clear `+0x18`, copy `+0x16` to `+0x1a`, update `+0x07`, `+0x08`,
+  `+0x0a`, `+0x0c`, mark `+0x04 = 2`, write `0x780ea6`, set
+  `0x782996 = 1`, and clear current root `0x78297a`.
+
+Readers and consumers:
+
+- `0xffd2..0xfffe` reads `0x782997`. When it is `1`, the helper brackets the
+  update with `0x15a6` / `0x15ac`, sets root byte `+0x0a.0`, clears
+  `0x780e99`, and clears `0x782997`.
+- `0x10000..0x1001e` reads remaining `0x780e99`. When it is `1`, the helper
+  writes root byte `+0x08 = 1` without clearing `0x780e99`.
+- `0x10020..0x1003e` reads `0x782998`. When it is `1`, the helper brackets
+  the update with `0x15a6` / `0x15ac`, sets root byte `+0x0a.1`, and clears
+  `0x782998`.
+- `0x10044..0x1005a` always copies `0x782da6` to root byte `+0x07` and
+  `0x782da4` to root word `+0x0c` before the root is exposed.
+- The scheduler and render bridge consume the published root after
+  `0x10060..0x10080`: scheduler state selects the pool record through
+  `0x780eaa` / `0x780eae`, and `0x1ed84 -> 0x1edc6` copies the source header,
+  bucket roots, rule/fixed roots, and context slots into render-work fields.
+
+Output effect:
+
+- Header publication changes which page/control metadata travels with the page
+  object graph; it does not draw pixels by itself.
+- Copy count affects the published pool header word `+0x0c`, as shown by
+  `! ESC &l2X FF`: `0xeef0` stores `0x782da4 = 2`, and the later FF
+  publication copies `2` to root `+0x0c`.
+- Page-size/page-length/reset pending byte `0x782997` and paper-source/reset
+  pending byte `0x782998` become root byte `+0x0a` bits before render
+  scheduling can see the record.
+- The compact, raster, rule, and fixed-list pixel effects still come from
+  object roots such as `+0x1c`, `+0x24`, and `+0x28`; this checkpoint only
+  records the root-header state carried alongside those roots.
+
+Field classification:
+
+- Canonical page/control state: `0x782997`, `0x780e99`, `0x782998`,
+  `0x782da6`, `0x782da4`, root header bytes `+0x04`, `+0x07`, `+0x08`,
+  `+0x0a`, root words `+0x0c`, `+0x16`, `+0x18`, `+0x1a`,
+  published pool head `0x780ea6`, and publication flag `0x782996`.
+- Derived/cache state: render-work header and root copies made later by
+  `0x1ed84` / `0x1edc6`.
+- Parser scratch: six-byte page-control command records already consumed by
+  `0xfc74`, `0xf9e8`, `0xef62`, `0xeef0`, or reset before `0xff1e` reads the
+  canonical fields.
+- Firmware bookkeeping: `0x15a6` / `0x15ac` protection around root-header
+  writes, transient root-adjacent bytes `0x78297e`, `0x782c72`, `0x782c73`,
+  and current-root pointer `0x78297a`.
+- Unknown: no ROM-local field owner remains unknown for the listed header
+  bytes. New work belongs here only if it finds another writer to these fields
+  or another root-header consumer before `0x1ed84`.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+  `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+- Generated note:
+  `generated/analysis/ic30_ic13_page_root_finalization.md` state-reference
+  scan for `0x782997`, `0x780e99`, `0x782998`, `0x782da6`, `0x782da4`,
+  `0x780ea6`, and `0x782996`.
+- Fixture anchors:
+  `0xff1e-modeled publication copies status and environment header fields`,
+  `host-fetched FF geometry and paper-source publications preserve 0xff1e
+  pool header defaults`, `host-fetched reset publication preserves 0xff1e
+  pool header defaults`, and
+  `host-fetched copies publication preserves 0xeef0 pool header word`.
+
+Unresolved boundary:
+
+- No current ROM-local middle edge remains between the documented page-control
+  field writers and the `0xff1e` header copies. The next useful unresolved
+  work in this family must change an exact writer, root-header bit/word,
+  scheduler-selected pool record, or `0x1ed84` consumer.
+
 ## Command Handler Boundaries
 
 The publication-command handlers call the shared helper before mutating state

@@ -9958,6 +9958,12 @@ direct modeled streams, host-fetched `0xa904` streams, page-length zero/default
 handler state, and addressed reset, FF, page-size, orientation, paper-source,
 and copies records that materialize the compact bucket through
 `0x1387c`/`0x1381c` before publication.
+The root-header part of this boundary is composed in
+[publication-commands.md](publication-commands.md#publication-header-copy-checkpoint):
+it ties page-control writers for `0x782997`, `0x780e99`, `0x782998`,
+`0x782da6`, and `0x782da4` to the exact `0xff1e` copies into root bytes
+`+0x07`, `+0x08`, `+0x0a`, word `+0x0c`, published pool head `0x780ea6`,
+and publication flag `0x782996`.
 
 ### Field Groups
 

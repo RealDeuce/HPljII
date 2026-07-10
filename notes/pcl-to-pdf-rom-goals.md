@@ -1,4 +1,4 @@
-# PCL-to-PDF Renderer and ROM Goals
+# ROM Dataflow Documentation and Renderer Goals
 
 Sources: project discussion;
 `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`;
@@ -6,14 +6,31 @@ Sources: project discussion;
 
 ## Current Goal
 
-Build a LaserJet II-compatible converter:
+Document the LaserJet II formatter ROMs as a coherent byte-stream-to-pixel
+dataflow model:
 
 ```text
-PCL/input byte stream -> rendered pages -> PDF
+host bytes -> parser state -> command dispatch -> command behavior
+  -> page/image objects -> render scheduling -> pixel/output generation
 ```
 
-This is not a full hardware emulator. The formatter board and ROMs are
-references and data sources, not necessarily execution targets.
+The primary deliverable is checked-in explanatory documentation. Generated
+disassembly, table extracts, scripts, and fixtures are supporting evidence for
+those notes, not standalone deliverables and not external pixel or hardware
+oracles.
+
+This documentation is intended to make a future LaserJet II-compatible
+PCL-to-PDF renderer possible, but this repository note should not redefine the
+active work as building that renderer. The renderer target remains useful as a
+design constraint: a reader should be able to start from a supported PCL byte
+stream and follow exactly which ROM fields, page objects, scheduler state, and
+render helpers determine the resulting rows.
+
+This is not a full hardware emulator. The formatter board and ROMs are ROM
+evidence sources; physical devices, connector timing, retained-storage
+identity, optional resource cartridges, and output-engine signals are explicit
+boundaries unless they change ROM-visible state used by the documented
+byte-to-pixel path.
 
 ## What We Should Not Need
 
@@ -57,9 +74,11 @@ specify:
 - Memory accounting and error thresholds, if reproducing `20 ERROR` /
   `21 ERROR` matters.
 
-## Implementation Shape
+## Future Implementation Shape
 
-Suggested renderer components:
+The documentation currently identifies the software components a later
+renderer would need. They are implementation targets, not the present
+deliverable:
 
 - Byte stream reader.
 - PCL parser:

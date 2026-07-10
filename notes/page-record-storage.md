@@ -147,6 +147,84 @@ Evidence:
   publication, bridge copying, and render-entry handoff for text, rule, raster,
   fixed-list, and mixed page-record shapes.
 
+## Page Assembly Decision Checkpoint
+
+This checkpoint composes the page/image assembly decision made after parser
+and command-family handlers have produced page-visible content, but before the
+renderer walks object classes. The ROM-visible model is a page-record object
+graph plus per-band rendering, not a parser-time full-page bitmap.
+
+Decision route:
+
+- Root ensure and reuse: producers call `0x10084`, which either reuses current
+  root pointer `0x78297a` or calls initializer `0x10110`; the root is
+  publishable only while byte `+0x04` remains active state `1`.
+- Stream allocation: variable-size object bodies use `0x1381c`; the shared
+  stream chain is rooted at page root `+0x20`, so compact, raster, rule, and
+  fixed producers can share chunk storage.
+- Bucket-root producers: compact text and downloaded glyphs use
+  `0xd04a -> 0x12f2e -> 0x1387c`; portrait text spans use
+  `0x12714 -> 0x13520/0x1354a/0x135f0 -> 0x1387c`; encoded raster rows use
+  `0x13070 -> 0x13250 -> 0x138de`. These paths write object chains under
+  root `+0x1c`.
+- Ordered-list producers: rectangle/rule paths use
+  `0x10898 -> 0x13386 -> 0x133aa` under root `+0x24`; fixed-width and
+  landscape spans use `0x12714 -> 0x136d2` under root `+0x28`.
+- Context preservation: root `+0x2c..+0x68` carries the selected font/resource
+  context used later by compact and segmented glyph render helpers.
+- Publication: `0xff1e` accepts only active root byte `+0x04 == 1`, writes
+  published state `2`, links the source through protected pool head
+  `0x780ea6`, sets publication flag `0x782996`, and clears `0x78297a`.
+- Render bridge: `0x1ed84 -> 0x1edc6` maps root `+0x1c` to render `+0x18`,
+  root `+0x24` to render `+0x1c`, root `+0x28` to render `+0x20`, and root
+  `+0x2c..+0x68` to render `+0x24..+0x60`.
+- Render consumers: `0x1ef6a` runs bucket dispatcher `0x1efc2`, rule-list
+  dispatcher `0x1f446`, and fixed-list dispatcher `0x1f756` after the bridge.
+  The dispatcher order, not the parser order alone, determines overlap among
+  object classes within the same band.
+
+State classification:
+
+- Canonical page/image state: `0x78297a`, root byte `+0x04`, roots
+  `+0x1c/+0x20/+0x24/+0x28`, and context slots `+0x2c..+0x68`.
+- Canonical object state: bucket links/class bytes/capacities, compact
+  payloads, segment-list payloads, encoded raster payloads, and ordered
+  rule/fixed records.
+- Derived/cache state: allocator cursor fields `0x782a70`, `0x782a72`,
+  `0x782a76`; producer-key fields `0x782a7a..0x782a7e`; render bridge outputs
+  such as `0x783a18`, `0x783a20`, `0x783a22`, and `0x783a28`.
+- Parser scratch: none owned by this checkpoint; parser state has already been
+  consumed by command-family handlers before page records are queued.
+- Firmware bookkeeping: pending-root latches `0x782c72` / `0x782c73`,
+  transient root byte `0x782990`, publication flag `0x782996`, protected pool
+  head `0x780ea6`, and allocator/pool headers.
+- Unknown: manual-facing names for some pool/header fields. No ROM-local
+  unknown remains for the documented source-root to render-root mapping.
+
+Evidence and unresolved boundary:
+
+- Root and allocator decisions are anchored by
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst` and
+  `generated/analysis/ic30_ic13_compact_bucket_allocator.md`.
+- Producer decisions are anchored by
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`, and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
+- Publication and bridge decisions are anchored by
+  `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
+- Fixture `addressed text/rule/raster field groups reach publication and
+  render entry` covers a mixed bucket/rule/raster root through `0xff1e`,
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+- Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists in
+  call order` pins the renderer-side order for roots `+0x1c`, `+0x24`, and
+  `+0x28`.
+- Remaining work must expose a new producer, source-root field, object class,
+  bridge destination, or render helper write rule. Physical paper timing is
+  outside this page-record checkpoint unless it changes one of the
+  ROM-visible fields listed above.
+
 ## Field Groups
 
 Canonical page root:

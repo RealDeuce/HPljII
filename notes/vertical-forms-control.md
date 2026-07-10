@@ -198,10 +198,10 @@ Parser scratch and firmware bookkeeping:
 
 External/manual naming:
 
-- `0x782ede`, `0x782edf`, and `0x782ee0` have line-count roles proven by use
-  and fixtures, but their HP manual names are still inferred. This is not an
-  unresolved ROM-local parser, table-load, channel-jump, page-publication, or
-  render boundary for the documented VFC streams.
+- `0x782ede`, `0x782edf`, and `0x782ee0` have line-count roles established by
+  their writers and consumers, but their HP manual names are still inferred.
+  This is not an unresolved ROM-local parser, table-load, channel-jump,
+  page-publication, or render boundary for the documented VFC streams.
 
 ## Table Definition
 
@@ -250,17 +250,20 @@ bit `0x0002` through line `0x782ee0`, converts the first matching line into a
 cursor limit through helpers `0x332ee`, `0x104d8`, and `0x10518`, copies
 `0x782dc2` to `0x782dd2`, and clears modified-layout flag `0x782ee1`.
 
-Fixture `ESC &l4W 00 00 00 02 !` proves that the four payload bytes are
-consumed before the following printable byte is parsed. It stores table prefix
-`00 00 00 02`, derives text-bottom cache `0x00be0000`, and leaves the
-following `!` queued at compact coord `0x9001`.
+For byte stream `ESC &l4W 00 00 00 02 !`, parser final `0x11f6e` schedules
+the delayed table handler, restore `0x12218` calls `0x12cfe`, and the four
+payload bytes are consumed through `0xdace` before the following printable byte
+is parsed. The ROM-visible state transition is table prefix `00 00 00 02`,
+text-bottom cache `0x00be0000`, and unchanged page output until `!` later
+enters the printable path and queues at compact coord `0x9001`.
 
-The lowercase-delayed fixture `ESC &l4w4W 00 00 00 02 !` proves same-family
-payload preservation. Lowercase `w` records snapshot
-`80 77 00 04 00 00`; the following uppercase `W` reaches `0x11f6e` but does
-not replace the pending delayed record while the pending flag is set. The
-restore then uses the lowercase record and consumes payload bytes after the
-uppercase final.
+For lowercase same-family stream `ESC &l4w4W 00 00 00 02 !`, parser final
+`0x11f6e` first records lowercase `w` snapshot `80 77 00 04 00 00`. The later
+uppercase `W` reaches the same final handler but does not replace the pending
+delayed record while the pending flag is set. Restore therefore calls
+`0x12cfe` with the lowercase record and consumes the payload bytes after the
+uppercase final. The semantic effect is delayed-record preservation, not a
+second table command.
 
 ## Default Table
 
@@ -268,7 +271,8 @@ uppercase final.
 by zero-count/default VFC handling and by page/layout refresh paths such as
 `0xf9e8` and `0xe5e2`.
 
-For `0x782ee0 = 62` and `0x782ede = 63`, the default-table fixture proves:
+For `0x782ee0 = 62` and `0x782ede = 63`, builder `0x12b96` writes this
+default channel convention:
 
 - channel 1 marks line `0`;
 - channel 2 marks lines `61` and `62`;
@@ -283,12 +287,14 @@ For `0x782ee0 = 62` and `0x782ede = 63`, the default-table fixture proves:
 - channel 12 marks line `0`;
 - channels 13, 14, 15, and 16 mark multiples of `7`, `6`, `5`, and `4`.
 
-Fixture `0xe5e2 refreshes page layout, default VFC table, and static font
-context` proves the default builder is part of the shared page-layout refresh,
-not only the explicit VFC command family. For the normal-page case the default
-table prefix is `f8 fd 00 46 01 6e 00 44 00 00 00 00 00 00 00 00`; for the
-short-page case it is `f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00`.
-These bytes are canonical VFC table state consumed later by `0x1280a`.
+Shared page-layout refresh `0xe5e2` reaches the same default builder, so the
+default table is not only an explicit VFC command result. For the normal-page
+case the written table prefix is
+`f8 fd 00 46 01 6e 00 44 00 00 00 00 00 00 00 00`; for the short-page case it
+is `f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00`. These bytes are
+canonical VFC table state consumed later by `0x1280a`. Fixture
+`0xe5e2 refreshes page layout, default VFC table, and static font context`
+supports the shared-refresh route.
 
 The builder algorithm is pinned by
 `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`:
@@ -327,17 +333,19 @@ VMI, current y, top offset, line-bound caches, and channel words from
 `0x782dde`.
 
 The modeled forward in-text path searches from the current line through
-`0x1292a..0x1295c`, then commits the target through `0x12aa6..0x12af8`.
-Fixture `ESC &l2V!` with channel 2 at line `1` moves y from `126` to `176`,
-resets x from `40` to `10`, and queues `!` at compact coord `0xb001`.
+`0x1292a..0x1295c`, then commits the target through `0x12aa6..0x12af8`. For
+`ESC &l2V!` with channel 2 at line `1`, this route moves y from `126` to
+`176`, resets x from `40` to `10`, and leaves the following `!` to queue at
+compact coord `0xb001`.
 
-The before-top path takes `0x128ae..0x128f4`. Fixture `ESC &l2V!` starting at
-y `89` with top offset `90` normalizes the start line to `0`, finds channel 2
-at line `1`, writes y `176`, and queues `!` at compact coord `0xb001`.
+The before-top path takes `0x128ae..0x128f4`. For `ESC &l2V!` starting at
+y `89` with top offset `90`, this route normalizes the start line to `0`,
+finds channel 2 at line `1`, writes y `176`, and leaves the following `!` to
+queue at compact coord `0xb001`.
 
-Selector zero computes the top-of-form target through `0x12966..0x12992`.
-Fixture `ESC &l0V!` with y already `126` exits through `0x1295e` with x/y
-unchanged and queues `!` at compact coord `0x9e02`.
+Selector zero computes the top-of-form target through `0x12966..0x12992`. For
+`ESC &l0V!` with y already `126`, the route exits through `0x1295e` with x/y
+unchanged and leaves the following `!` to queue at compact coord `0x9e02`.
 
 ## Page Boundary Paths
 
@@ -499,7 +507,7 @@ printable`, `mixed VFC wrap-hit publishes old page before fresh printable`,
 `mixed VFC target-after-text recovers near top before fresh printable`, and
 `0x1280a VFC alternate high-start recovery entries`.
 
-The `0x1280a` branch matrix for the fixture-backed paths is:
+The `0x1280a` branch matrix for the documented paths is:
 
 - `0x128ae..0x128f4`: before-top normalization. It rewrites the computed
   start line before the ordinary forward scan. It does not publish the current
@@ -577,19 +585,19 @@ VFC does not draw by itself. Its visible effects are:
 - publishing the current page when selector-zero, wrap, or target-after-text
   paths cross a page boundary.
 
-The covered fixtures prove both non-publishing movement and publishing splits
-where the pre-VFC printable remains renderable on the old page and the
-post-VFC printable is queued on a fresh page.
+The documented byte streams include both non-publishing movement and
+publishing splits. In the split cases, the pre-VFC printable remains
+renderable on the old page because `0xf124 -> 0xff1e` publishes the current
+root before the post-VFC printable allocates or uses a fresh root.
 
-The `0xe5e2` layout-refresh fixture has no immediate page-record output. Its
-output effect is state preparation: normal-page refresh produces top offset
-`pack12(90)`, text bottom `pack12(240)`, margins `0..240`, cursor y
-`pack12(126)`, VFC limit `pack12(240)`, clears modified-layout state, and
-rebuilds the default VFC table prefix listed above. Those fields are then read
-by VFC jumps, vertical overflow handling, printable placement, and macro
-layout replay.
+Layout refresh `0xe5e2` has no immediate page-record output. Its output effect
+is state preparation: normal-page refresh produces top offset `pack12(90)`,
+text bottom `pack12(240)`, margins `0..240`, cursor y `pack12(126)`, VFC limit
+`pack12(240)`, clears modified-layout state, and rebuilds the default VFC
+table prefix listed above. Those fields are then read by VFC jumps, vertical
+overflow handling, printable placement, and macro layout replay.
 
-The canonical output effects are fixture-backed as follows:
+The canonical output effects for the named VFC streams are:
 
 - `ESC &l4W 00 00 00 02 !`: delayed payload bytes are consumed by
   `0x12cfe` / `0xdace` before printable parsing resumes; `!` queues at

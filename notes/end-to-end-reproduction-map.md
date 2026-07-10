@@ -818,10 +818,13 @@ State classification:
   `0xfffee009`. Their ROM-visible ready/data/control roles are documented;
   physical connector signal names remain board-level boundaries.
 - Unknown:
-  board-level names and timing for the direct MMIO banks, data-chain frame
-  byte `+0x09` values outside observed execute `2`, call `3`, and non-replay
-  page-finalization `4`, and user-facing names for host-input quiesce/reset
-  branches `0x4218..0x44d2` and `0x61e4..0x6362`.
+  board-level names and timing for the direct MMIO banks, plus user-facing
+  names for host-input quiesce/reset branches `0x4218..0x44d2` and
+  `0x61e4..0x6362`. Data-chain frame kind byte `+0x09` is no longer an
+  unresolved ROM-local producer edge for the verified image: execute `2` and
+  call `3` come from `0xe418` callers `0xde96` and `0xdebc`, non-replay
+  page-finalization `4` comes from `0xe4f4` caller `0xff8e`, and stale frame
+  kind bytes are cleared to zero by `0xe1e4`.
 
 Evidence:
 

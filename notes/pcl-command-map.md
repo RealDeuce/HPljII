@@ -111,6 +111,87 @@ Evidence:
   `Supported Stream Dispatch Matrix` below assign generated rows to owner notes
   and concrete supported byte-stream routes.
 
+## Dispatch Class Checkpoint
+
+This checkpoint composes the `0x11774` parser loop, normal table `0x112a4`,
+alternate/data table `0x116f6`, and six-byte parser records into the dispatch
+classes a byte-stream reader needs before following a command-family owner.
+It is a routing checkpoint only: it explains which owner receives the parsed
+form. Pixel output begins only after the selected owner writes page, text,
+raster, rectangle, macro, publication, or render state.
+
+Class model:
+
+- Prefix/setup rows are parser bookkeeping. Rows that call `0x11eb6`,
+  `0x11ec8`, `0x11eda`, `0x11ff6`, `0x12008`, or `0x1201e` update parser mode,
+  callback pointer `0x78299a`, matched-byte scratch `0x783196..0x783199`, or
+  command-record cursor `0x78299e`; they do not own page effects. Their
+  consumer is the later terminal row in the same command family.
+- Terminal nonzero-handler rows are semantic handoffs. The table row supplies
+  the handler longword, and that handler consumes the live six-byte record at
+  `0x78299e`. Examples are printable/control owner `0xd04a`, CR handler
+  `0xf02c`, FF handler `0xf0f0`, rectangle fill `0x10898`, raster setup
+  handlers in [raster-graphics.md](raster-graphics.md#owner-summary), and
+  font-control handlers in
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary).
+- Delayed-payload setup rows call `0x121cc` instead of consuming following
+  bytes immediately. The setup handlers `0x11f5a`, `0x11f6e`, `0x11f82`, and
+  `0x11f96` snapshot the current six-byte record into `0x782a20..0x782a25`,
+  set pending byte `0x782a1a`, and store delayed handler pointer `0x782a1c`.
+  Terminal restore `0x12218` later calls payload owners such as `0x12452`,
+  `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`.
+- Zero-handler terminal rows are explicit no-output parser rows, not missing
+  command handlers. Normal rows such as `0x00`, `0x07`, `0x0b`, `ESC Z`,
+  `ESC ?`, and `ESC &lT/t` take the terminal reset path at
+  `0x119a6..0x119f4`, preserve the delayed restore boundary at `0x12218`,
+  reset parser scratch, and create no page object by themselves.
+- Alternate/data append rows preserve bytes without running the normal page
+  owner. Paths through `0x11930..0x11ab8`, `0x11f4c`, `0x1228a`, `0x12328`,
+  `0x12358`, and append sink `0xe002` keep syntax or payload bytes available
+  for macro/data replay while suppressing immediate cursor, font, geometry,
+  raster, or rectangle side effects.
+- Service, callback, and no-match exits are parser outcomes, not command
+  semantics. `0x117d2..0x11818` services parser-external latch state,
+  `0x118b2..0x11900` covers selected unmatched-byte fallback, and
+  `0x11b32..0x11b8a` / callback pointer `0x78299a` continue parser-local
+  state machines before a family owner is reached.
+
+State classification:
+
+- Canonical parser dispatch state: mode byte `0x782999`, alternate/data flag
+  `0x782c18`, table roots `0x112a4` / `0x116f6`, live six-byte command records
+  at `0x78299e`, and delayed snapshot fields
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`.
+- Derived/cache state: none is created by dispatch classification itself.
+  Derived page or render caches begin in the command-family owner reached by a
+  terminal row.
+- Parser scratch: numeric and byte scratch `0x782a3e/0x782a42..` and
+  `0x782a26/0x782a2a..`, plus matched-byte buffer `0x783196..0x783199`.
+- Firmware bookkeeping: setup helpers, lowercase rewind helper `0x11f4c`,
+  terminal reset path `0x119a6..0x119f4`, delayed restore `0x12218`, append
+  sink `0xe002`, and generic drain helpers `0x1228a` / `0x12328`.
+- Canonical page/render state: none for the table row alone. The first page or
+  render writer is the selected command-family handler, delayed payload owner,
+  macro replay owner, publication helper, or printable text path.
+- Unknown: no parser-table row remains unassigned to one of these dispatch
+  classes. Unresolved middle edges are owned at the command-family boundary:
+  the exact downstream side effects begin at the handler entry named by the
+  table row, or at restored delayed owner entry `0x12218 -> saved handler`.
+
+Evidence and unresolved boundaries:
+
+- Row shape and row membership are from
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`; the flattened
+  command forms are from `generated/analysis/ic30_ic13_pcl_command_map.md`.
+- Instruction boundaries are anchored by
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`, and
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+- Owner boundaries are exact at the handler entry points listed in the `Parser
+  Handler Owner Matrix`. This checkpoint intentionally stops at those entries;
+  their RAM writes, readers, output effects, and remaining unknowns are
+  documented in the named owner notes.
+
 ## Parser Tables
 
 - Normal parser pointer table: `0x000112a4`.

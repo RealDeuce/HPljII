@@ -184,6 +184,7 @@ The render helper layer is documented as ROM dataflow from bridged page objects
 to bitmap writes. Its common entry is
 `0x1ef6a -> 0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`, with detailed evidence
 in [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+[Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint),
 [page-raster-imaging.md](page-raster-imaging.md#renderbanding-bridge),
 `Bitmap Render Dispatch Contract` in
 [semantic-state-model.md](semantic-state-model.md), and listings
@@ -418,14 +419,14 @@ command-family and page-image structure:
    `0xff1e`, pool cursors `0x780ea6/0x780eaa/0x780eae`, render-work pointer
    `0x783a18`, active copy `0x1ed84`, and bridge `0x1edc6`. If the stream is
    not published yet, the visible output remains pending page-record state.
-7. Derive pixels from ROM render helpers:
-   use [page-raster-imaging.md](page-raster-imaging.md) and the Bitmap Render
-   Dispatch Contract in [semantic-state-model.md](semantic-state-model.md) to
-   follow `0x1ef6a` into compact text/downloaded glyph helpers, segment-list
-   helper `0x1f812`, rule helpers `0x1f4e0` / `0x1f596`, fixed-list helper
-   `0x1f756`, or encoded raster helper `0x1f88e`. Row vectors are derived
-   from those ROM helpers, object fields, and ROM/resource bitmap bytes, not
-   from an external print comparison.
+7. Derive pixels from ROM render helpers: use [Pixel Composition
+   Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint),
+   [page-raster-imaging.md](page-raster-imaging.md), and the Bitmap Render Dispatch
+   Contract in [semantic-state-model.md](semantic-state-model.md) to follow `0x1ef6a`
+   into compact text/downloaded glyph helpers, segment-list helper `0x1f812`, rule
+   helpers `0x1f4e0` / `0x1f596`, fixed-list helper `0x1f756`, or encoded raster helper
+   `0x1f88e`. Row vectors are derived from those ROM helpers, object fields, and
+   ROM/resource bitmap bytes, not from an external print comparison.
 8. State any unresolved boundary exactly:
    if the trace stops, classify the stop as ROM-local unknown,
    hardware/MMIO boundary, missing external resource data, or optional

@@ -2716,6 +2716,7 @@ State classification at this handoff:
 
 The detailed render contracts live in
 [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+[Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint),
 [page-raster-imaging.md](page-raster-imaging.md), and the renderer sections of
 [semantic-state-model.md](semantic-state-model.md).
 Command-family notes point back here when they reach their page-object

@@ -457,20 +457,28 @@ controlling artifact.
   `0x1f812`, rule helpers `0x1f4e0` / `0x1f596`, fixed-list helper `0x1f756`,
   and raster helper `0x1f88e`.
 - Field/state classification:
+  owned by [semantic-state-model.md](semantic-state-model.md#owner-summary),
   defined by the `State Classification Guide`, summarized in `Canonical State
   Groups`, and repeated in the minimal walkthroughs and owner notes. The
   categories are canonical state, derived/cache state, parser scratch,
   firmware bookkeeping, hardware/external state, and unknown or unresolved
-  state.
+  state. A field classification is counted only when a checked-in note names
+  the writer, reader/consumer, output effect, and boundary that make the field
+  matter to parser, page-object, publication, scheduler, render, status, or
+  no-output behavior.
 - Concrete evidence for semantic claims:
   required by the `Pipeline Contract`, attached to each minimal walkthrough in
   `Checked-in explanations` and `Focused listings` subsections, and indexed by
-  the owner notes. Evidence can be handler addresses, ROM fields, disassembly
-  files under `generated/disasm/`, generated table extracts, ROM resource
-  bytes, or named model-consistency fixtures. Fixture output is never the
-  primary semantic claim.
+  the owner notes. [source-index.md](source-index.md#owner-summary) owns the
+  manual/PDF evidence boundary: manuals can name syntax, units, hardware
+  labels, or user-facing behavior, but ROM behavior still requires dumped ROM
+  bytes, handler addresses, ROM fields, disassembly files under
+  `generated/disasm/`, generated table extracts, resource bytes, static
+  cross-references, or named model-consistency fixtures cited from a checked-in
+  owner note. Fixture output is never the primary semantic claim.
 - Explicit unresolved boundaries:
-  maintained first in [unresolved-boundaries.md](unresolved-boundaries.md),
+  maintained first in
+  [unresolved-boundaries.md](unresolved-boundaries.md#owner-summary),
   with route-specific context in `Current Residual Edge Index`,
   `Pixel-Perfect Coverage And Residual Risks`, `Next Documentation Targets`, and
   `Unresolved Boundaries` in

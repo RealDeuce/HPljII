@@ -434,7 +434,8 @@ controlling artifact.
   section below. Each owner records parsed inputs, RAM writers, consumers,
   side effects, output/page effects, field classification, confidence, and
   exact residual boundaries. High-volume families include font selection in
-  [symbol-set-selection.md](symbol-set-selection.md) and
+  the [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix) and
   [font-context-metrics.md](font-context-metrics.md), downloaded fonts in
   [downloaded-fonts.md](downloaded-fonts.md), rectangles in
   [rectangle-graphics.md](rectangle-graphics.md), raster in
@@ -3649,7 +3650,8 @@ State classification:
 Evidence:
 
 - Checked-in explanations:
-  [symbol-set-selection.md](symbol-set-selection.md),
+  [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
   [symbol-map-patching.md](symbol-map-patching.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
@@ -5960,7 +5962,8 @@ Address-level cluster map:
   designation streams run `0x1201e` / `0x12008 -> 0x120be -> 0x1be22 ->
   0xc580 -> 0x13eb8 -> 0x144d2 -> 0x14c64`, with final-`X` success and
   preserve-output exits through `0x17708`. Owners are
-  [symbol-set-selection.md](symbol-set-selection.md),
+  [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
   [font-context-metrics.md](font-context-metrics.md), and
   [built-in-resource-scan.md](built-in-resource-scan.md). Pixels appear only
   after later printable bytes consume `0x782ee6` / `0x782ef6` and

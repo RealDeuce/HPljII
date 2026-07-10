@@ -5340,7 +5340,9 @@ install events.
   context records `0x782ee6/0x782ef6`, map arrays `0x782f32/0x783032`,
   snapshot keys `0x783148/0x783152`, page-root font slot/context fields,
   source-object fields, HMI/cursor advance, bridge context slots, or rendered
-  rows.
+  rows. The command-family outcome boundary is the
+  [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix).
 - `0xc580..0xc428`: the common-refresh branch cluster is now modeled for
   dirty-1 install/reuse/full/selector-mismatch paths and dirty-2
   selector-match/mismatch paths. The remaining risk is not which branch writes

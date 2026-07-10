@@ -1564,7 +1564,8 @@ Writers, readers, and output effects:
 Evidence and unresolved edges:
 
 - Evidence:
-  [symbol-set-selection.md](symbol-set-selection.md),
+  [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
   [symbol-map-patching.md](symbol-map-patching.md),
   [font-context-metrics.md](font-context-metrics.md),
   `Worked Path: Font Selection To Visible Glyphs`,

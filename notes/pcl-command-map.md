@@ -2821,7 +2821,8 @@ final `@` runs a numeric table where `3@` is the documented default-font
 command and `@0..@2` are firmware-supported table/copy variants. The
 active selected words later consumed by glyph-map patching are `0x783144`
 and `0x783146`; this path is documented in
-[symbol-set-selection.md](symbol-set-selection.md#owner-summary), with
+[Symbol/Font Designation Outcome
+Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix), with
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md` retained as a
 supporting generated table/cross-reference report.
 

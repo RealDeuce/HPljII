@@ -1127,7 +1127,8 @@ Field groups for this index:
   contract remains: track the requested/active symbol words, selected context,
   and `0x782f32` / `0x783032` until later printable bytes reach
   `0xd04a -> 0x1393a`. The owner notes are
-  [symbol-set-selection.md](symbol-set-selection.md) and
+  [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix) and
   [symbol-map-patching.md](symbol-map-patching.md).
   Font-control rows in the `ESC *c` family are state/resource controls:
   `ESC *c#D` reaches `0x15a56` and writes current downloaded-font id

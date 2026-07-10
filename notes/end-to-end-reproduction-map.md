@@ -5378,6 +5378,29 @@ Address-level cluster map:
   at compact coordinate `0x0207`. Evidence is
   [direct-control-codes.md](direct-control-codes.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+  Direct-control state classification: canonical placement state is cursor
+  `0x782c8a/0x782c8e`, margins `0x782dd6/0x782dda`, HMI/VMI
+  `0x78315c/0x783160`, page width/bounds state consumed by cursor clamps, and
+  current page root `0x78297a`. Canonical control/layout modes are
+  line-termination byte `0x78318f`, wrap byte `0x783190`, perforation-skip
+  byte `0x783191`, page-eject pending byte `0x782a6d`, and page-length or
+  top/text-bottom fields consumed by `0xf36c`, VFC, printable placement, and
+  publication. Canonical stack/span state is cursor stack
+  `0x782c96..0x782d36`, stack pointer `0x782d36`, pending span fields
+  `0x783184..0x78318a`, and selector-`0x4000` span objects produced by
+  `0xf34a -> 0x12714`. Derived/cache state is source scratch `0x782d7e`,
+  compact coordinates created by the following printable path, tab-stop and
+  decipoint conversions through `0x104fe` / `0x10518`, and queue/render keys
+  for span objects after `0x12714`. Parser scratch is the admitted direct
+  control byte or six-byte parsed command record at `0x78299e`; direct
+  controls themselves do not become page objects unless a span flush or page
+  publication path consumes their state. Firmware bookkeeping is right-limit
+  latch `0x782a57`, previous-width latch and words `0x782a58..0x782a5c`,
+  text queue precheck/wrap result `0x782a6e`, retry/finalization bit
+  `+0x14.0`, and publication flag `0x782996`. Hardware state is outside this
+  cluster after parser dispatch; physical timing starts only after later
+  publication/render code consumes the page objects created from the mutated
+  cursor, span, or layout state.
 - Page geometry cluster:
   page-size and orientation commands dispatch through
   `0x11774 -> 0xfc74` and `0x11774 -> 0x10220`; page-length/default-page

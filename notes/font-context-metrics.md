@@ -1553,10 +1553,20 @@ Unresolved middle edges:
 - `0xd04a -> 0x1393a -> 0x12f2e` is documented for normal printable bytes,
   high-byte secondary fallback, built-in offset-table contexts, and
   bit-30-clear inline/downloaded contexts.
-- Exact remaining work is downstream of this checkpoint: compact object
-  publication and render helpers for object shapes not yet tied to
-  parser-produced byte streams, especially segmented downloaded glyph shapes
-  listed in [downloaded-fonts.md](downloaded-fonts.md#remaining-edges).
+- Compact object publication and render helpers for segmented downloaded-glyph shapes
+  are no longer an open source-capture gap. They are owned by
+  [downloaded-fonts.md](downloaded-fonts.md#remaining-edges) and summarized by `Page
+  Object Shape Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index):
+  parser-produced `ESC )s#W` payloads now cover normal, wide, segmented, and
+  segmented-wide compact selectors through install, `0x12f2e` object creation, `0xff1e`
+  publication, render dispatch, and the exact compact-helper boundaries for high-row or
+  wrapped-width cases.
+- Exact remaining work downstream of this checkpoint must change the selected
+  map/context consumed by `0x1393a`, the source fields passed to `0x12f2e`, a
+  compact selector/object shape not covered by the downloaded-font owner, or a
+  render-helper input or boundary named in
+  [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
 
 ## Span Metric Consumers
 

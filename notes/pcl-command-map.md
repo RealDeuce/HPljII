@@ -3457,8 +3457,9 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   object/helper data used to derive final rows. Continue raster work only for byte
   streams that change the ROM-visible gate result, encoded-row object fields, allocator
   chain, bridge bucket roots, or `0x1f88e` mode-specific row construction.
-- Treat the downloaded-font install-to-page byte-24 handoff as documented for
-  the covered rule/raster stream.
+- Treat the downloaded-font install-to-page byte-24 handoff and shared
+  return/drain outcomes as documented for the covered rule/raster stream and
+  its publication/fixed-record/no-install siblings.
   `Downloaded Glyph
   Rule/Raster Composition` in [semantic-state-model.md](semantic-state-model.md)
   documents the current exact split: the `ESC )s18W` install fixture emits the
@@ -3469,12 +3470,21 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   next handler `0x10e68`, page object bytes, raster payload offset `28`, and
   the composed-row digest before page handlers `0x10e68`, `0x10e22`,
   `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and delayed `0x105d0` render
-  through `0x1ef6a`. Remaining ROM-semantic work should focus on byte streams
-  that change the `0x16c14` / `0x16498` return state, the byte-24 header,
-  following parser dispatch at `0x11774`, page-object bytes, or ROM-derived
-  row-construction inputs, rather than rediscovering byte-source identity,
-  modeled resource bytes, rule/raster producers, or render-entry rows already
-  documented here.
+  through `0x1ef6a`. The owner note
+  [downloaded-fonts.md](downloaded-fonts.md#downloaded-character-payload-and-rendering)
+  now also groups the return/drain cases as host-byte-stream semantics:
+  zero-drain downloaded-glyph success through
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, fixed-record current success
+  through `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328`, fixed-record
+  continuation success through `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328`,
+  nonzero payload-control drain with `0x783140 = 1`, validation/no-install
+  rejection through `0x16c14..0x16c68 -> 0x12328` or early
+  `0x15dcc -> 0x12328`, and status-`2` partial-install recovery. Remaining
+  ROM-semantic work should focus on byte streams that change the return edge,
+  `0x783140` remainder, drained byte set, byte-24 header, following parser
+  dispatch at `0x11774`, page-object bytes, or ROM-derived row-construction
+  inputs, rather than rediscovering byte-source identity, modeled resource
+  bytes, rule/raster producers, or render-entry rows already documented here.
 - Broaden visible-output compatibility only when a new selected-font state
   boundary is exposed. `Built-In Font Selection To Visible Text` already
   covers primary and secondary built-in selection, primary/secondary

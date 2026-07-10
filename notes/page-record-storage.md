@@ -787,6 +787,109 @@ Evidence and current boundary:
   or helper write rule; physical paper output is not an oracle for this
   checkpoint.
 
+## Page Object Lifetime And Band Boundary
+
+The storage lifetime is page-scoped, while rendering is band-scoped. A
+supported host byte stream therefore does not build independent parser-time
+strips. It builds one current page/control root, publishes that root, and then
+lets the scheduler present band words to the renderer.
+
+Lifecycle:
+
+- Current-page phase:
+  producers call `0x10084`, then write compact/raster bucket objects under
+  root `+0x1c`, stream chunks under root `+0x20`, rule objects under
+  root `+0x24`, fixed-list objects under root `+0x28`, and font/context
+  slots under root `+0x2c..+0x68`.
+- Publication phase:
+  `0xff1e` accepts active root byte `+0x04 == 1`, changes the source record to
+  published state `2`, links it through protected pool head `0x780ea6`, sets
+  publication flag `0x782996`, and clears current root pointer `0x78297a`.
+- Active-copy phase:
+  scheduler-selected source pointer `0x780eae` feeds `0x1ed84`, which seeds
+  render header words and calls `0x1edc6`.
+- Render-root phase:
+  `0x1edc6` copies source root `+0x1c` to render root `+0x18`, source
+  `+0x24` to render `+0x1c`, source `+0x28` to render `+0x20`, and context
+  slots `+0x2c..+0x68` to render slots `+0x24..+0x60`.
+- Band phase:
+  active render work word `+0x10` is the band word consumed by `0x1ef6a`.
+  `0x1ef86` derives band-local caches `0x783a20`, `0x783a22`, `0x783a28`,
+  and `0x783a1c`; those values choose destinations for this band, but they do
+  not create new page objects.
+
+State classification:
+
+- Canonical page state:
+  `0x78297a`, root byte `+0x04`, page roots `+0x1c/+0x20/+0x24/+0x28`,
+  context slots `+0x2c..+0x68`, published pool head `0x780ea6`, and the
+  source page/control record selected through `0x780eae`.
+- Canonical object state:
+  producer-written bucket, rule, fixed-list, stream-chunk, and context-slot
+  records. These records are preserved as page content until bridge and render
+  helpers mutate only documented derived continuation fields.
+- Derived/cache render state:
+  render roots `+0x18/+0x1c/+0x20`, render context slots `+0x24..+0x60`,
+  active render pointer `0x783a18`, band word `+0x10`, render-band caches
+  `0x783a20/0x783a22/0x783a28`, and stride `0x783a1c`.
+- Firmware bookkeeping:
+  publication flag `0x782996`, stream allocator cursors, scheduler cursors,
+  two-work-record alternation, and rule/fixed continuation fields normalized
+  by `0x1edc6`.
+- Hardware/external state:
+  formatter/DC timing begins after the ROM has selected or delayed a band
+  render call. It does not change this storage lifetime unless it changes one
+  of the canonical or derived fields above.
+
+Writers and readers:
+
+- Writers before publication are the command-family producers:
+  `0x12f2e` / `0x1387c`, `0x12714`, `0x13070` / `0x13250`, `0x133aa`,
+  `0x136d2`, and context-slot installers such as `0xc428` / `0xc4fc`.
+- Publication writer `0xff1e` freezes the current root into the page/control
+  pool.
+- Bridge writers `0x1ed84` / `0x1edc6` expose the same page-root graph to the
+  render work record.
+- Render readers are `0x1ef6a`, bucket dispatcher `0x1efc2`, rule dispatcher
+  `0x1f446`, fixed-list dispatcher `0x1f756`, compact dispatcher `0x1effe`,
+  segment-list helper `0x1f812`, encoded-raster helper `0x1f88e`, and the
+  rule/fixed row helpers under `0x1f4e0`, `0x1f596`, and `0x1f7b0`.
+
+Output effect:
+
+The byte-stream-visible distinction is this: command handlers decide which
+objects belong to a page, while the scheduler decides which band of that
+published page is being rendered now. Multi-band behavior is represented by
+derived continuation state, not by re-parsing host bytes or building separate
+page fragments. Rule and fixed-list nodes receive continuation fields during
+`0x1edc6`; compact and raster helpers split rows between current-band and
+fallback destinations under `0x1f414` / `0x1f626`; the next band call resumes
+from those ROM-visible fields.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_page_root_allocate_010084.lst` and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst` anchor the
+  page-root and object-storage writers.
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst` anchors the
+  publication transition from current root to protected pool.
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+  anchors the source-root to render-root copy and rule/fixed continuation
+  normalization.
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` anchors the
+  render consumers after the bridge.
+- Fixture `addressed text/rule/raster field groups reach publication and
+  render entry` carries one mixed page root through publication and bridge.
+- Fixture `0x1ef6a page-band walk merges text raster and crossing rule` shows
+  the same bridged object roots being rendered under band-local state.
+
+Unresolved middle edges:
+
+- No ROM-local page-versus-band ownership edge remains for the fields listed
+  in this checkpoint. New work belongs here only if a byte stream changes the
+  page-root lifetime, source-root fields, render-root copy, band-cache inputs,
+  continuation mutation, or object reader listed above.
+
 ## Reproduction Contract
 
 A byte-stream renderer must preserve:

@@ -2720,11 +2720,12 @@ State classification:
 
 Evidence:
 
-- Checked-in explanations:
-  `Worked Path: Reset And Default Environment`, `Worked Path: FF
-  Publication`, `Worked Path: Publication Commands To ROM-Derived Page Rows`,
-  and `Worked Path: Published Record To Active Bands` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md),
+- Checked-in explanations: `Worked Path: Reset And Default Environment`, `Worked Path:
+  FF Publication`, `Worked Path: Publication Commands To ROM-Derived Page Rows`, and
+  `Worked Path: Published Record To Active Bands` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), [Representative
+  Parsed-Stream Outcomes](publication-commands.md#representative-parsed-stream-outcomes)
+  and `Publication Header Copy Checkpoint` in
   [publication-commands.md](publication-commands.md),
   [reset-default-environment.md](reset-default-environment.md),
   [page-record-storage.md](page-record-storage.md),
@@ -9201,19 +9202,24 @@ reader follow what the ROM does.
 
 Priority ROM-local documentation targets:
 
-1. Command-family variants that change page-object shape or render input.
-   Useful examples are raster gate outcomes through `0x105d0`, rectangle rule
-   selector and clipping paths through `0x10898 -> 0x10b80 -> 0x133aa`,
-   publication selectors that change root `+0x1c/+0x24/+0x28`, and
-   render-helper choices under `0x1ef6a`. The allocator rollover path across
-   `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now owned by
-   [page-record-storage.md](page-record-storage.md#output-effect), including
-   concrete stream chunks, object addresses, final cursors, and downstream
-   render consumers. New allocator work should start only from byte streams
-   that change the root topology, object shape, no-room/retry state, or bridge
-   fields. The owner update must name the handler, fields written, later
-   consumers, page-object bytes or no-output outcome, and the first render
-   boundary reached.
+1. Command-family variants that change page-object shape or render input. Useful
+   remaining examples are rectangle rule selector and clipping paths through `0x10898 ->
+   0x10b80 -> 0x133aa`, render-helper choices under `0x1ef6a`, and new raster streams
+   only when they change accepted-byte counts, row advancement, object bytes, or render
+   inputs beyond the [raster transfer gate outcome
+   matrix](raster-graphics.md#transfer-gate-outcome-matrix). Publication examples for
+   reset, FF, page-size, orientation, paper-source, and copies are now owned by
+   [Representative Parsed-Stream
+   Outcomes](publication-commands.md#representative-parsed-stream-outcomes); new
+   publication work should start only from streams that change pool-header fields,
+   source-record selection, bridge values, or a render helper input. The allocator
+   rollover path across `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now
+   owned by [page-record-storage.md](page-record-storage.md#output-effect), including
+   concrete stream chunks, object addresses, final cursors, and downstream render
+   consumers. New allocator work should start only from byte streams that change the
+   root topology, object shape, no-room/retry state, or bridge fields. The owner update
+   must name the handler, fields written, later consumers, page-object bytes or
+   no-output outcome, and the first render boundary reached.
 2. Parser-to-family routes that currently have only table ownership but lack a
    worked byte-stream path. Start at `0xa904`, keep the parser outcome class
    from `Admitted Byte Outcome Bridge`, jump through

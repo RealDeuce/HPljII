@@ -39,8 +39,12 @@ standalone deliverables.
   alternate/data append, a matched command handler, a zero-handler reset, a
   no-match fallback, callback continuation, or parser-external return.
 - Command dispatch is indexed by
-  [pcl-command-map.md](pcl-command-map.md#owner-summary).
-  Individual command families then move to owner notes such as
+  [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint):
+  parser rows are classified as prefix/setup state, terminal handler
+  handoff, delayed-payload setup/restore, explicit no-output row,
+  alternate/data append, or service/no-match/callback outcome before a
+  command-family owner is selected. Individual command families then move to
+  owner notes such as
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [publication-commands.md](publication-commands.md#owner-summary),
   [display-functions.md](display-functions.md#owner-summary),
@@ -158,21 +162,21 @@ checked-in ROM model:
    LPI, top-margin, text-length, wrap, and perforation commands to later placement,
    overflow, publication, and render effects. For raster and rectangle routes, use
    `Raster And Rectangle Graphics Object Boundary` to connect graphics setup and payload
-   commands to page objects and render helpers.
-   Dispatch handoff should be concrete:
-   [publication-commands.md](publication-commands.md#owner-summary) owns
-   reset, FF, page-size, page-length zero/default, orientation, paper-source,
-   copies, and the `0xff1e` publication boundary;
-   [display-functions.md](display-functions.md#owner-summary) owns
-   `ESC Y`, local Control-Z variants, alternate/data append, and `ESC z`
-   status behavior;
-   [font-context-metrics.md](font-context-metrics.md#owner-summary) owns
-   font request refresh, page-root context slots, glyph maps, printable source
-   fields, and span metrics; and
-   [symbol-set-selection.md](symbol-set-selection.md#owner-summary) plus
-   [symbol-map-patching.md](symbol-map-patching.md#owner-summary) own
-   `ESC (` / `ESC )`, final `X`, final `@`, requested symbol words, and
-   map patching before later printable bytes reach `0xd04a`.
+   commands to page objects and render helpers. Dispatch handoff should be concrete:
+   [publication-commands.md](publication-commands.md#owner-summary) owns reset, FF,
+   page-size, page-length zero/default, orientation, paper-source, copies, and the
+   `0xff1e` publication boundary;
+   [display-functions.md](display-functions.md#owner-summary) owns `ESC Y`, local
+   Control-Z variants, alternate/data append, and `ESC z` status behavior;
+   [font-context-metrics.md](font-context-metrics.md#owner-summary) owns font request
+   refresh, page-root context slots, glyph maps, printable source fields, and span
+   metrics; and [symbol-set-selection.md](symbol-set-selection.md#owner-summary) plus
+   [symbol-map-patching.md](symbol-map-patching.md#owner-summary) own `ESC (` / `ESC )`,
+   final `X`, final `@`, requested symbol words, and map patching before later printable
+   bytes reach `0xd04a`. The checked-in dispatch tables to use at this boundary are
+   [Dispatch Class Checkpoint](pcl-command-map.md#dispatch-class-checkpoint), [Parser
+   Handler Owner Matrix](pcl-command-map.md#parser-handler-owner-matrix), and [Supported
+   Stream Dispatch Matrix](pcl-command-map.md#supported-stream-dispatch-matrix).
 5. When a command creates visible page content, cross into
    [page-record-storage.md](page-record-storage.md#owner-summary): compact/raster
    buckets live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
@@ -314,8 +318,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   segments and rendered surfaces.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md#owner-summary) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
-- [pcl-command-map.md](pcl-command-map.md#owner-summary) - flattened PCL
-  command-to-handler map summary from the firmware parser tables.
+- [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) -
+  firmware parser-table dispatch classes, handler-owner matrix, supported
+  stream dispatch matrix, and flattened command-to-handler map.
 - [page-raster-imaging.md](page-raster-imaging.md#owner-summary) -
   page geometry lookup tables, orientation state, page-record storage,
   active-render, bitmap object-dispatch, compact row-copy checkpoints, and

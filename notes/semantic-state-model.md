@@ -39,6 +39,12 @@ Primary handoff:
 - Publication and render owners consume published pool records, active source
   `0x780eae`, active render pointer `0x783a18`, bridge roots copied by
   `0x1edc6`, scheduler band words, and render helper inputs under `0x1ef6a`.
+- Host/status side-channel owners consume parser or service state without creating page
+  objects. The contract in
+  [errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint)
+  covers model-ID commands `0x12034 -> 0x122be..0x12326`, FIFO helpers `0xb090` /
+  `0xb0c0` / `0xb022`, worker `0xae2c`, status-byte builder `0xaece`, and
+  page-environment status helper `0x2888`.
 - Boundary owners stop only at exact unknowns such as invalid downloaded-glyph
   helper targets, missing resource range `0x0c0000..0x0c0321`, hardware/MMIO
   identity, optional resource contents, or manual-facing names.
@@ -110,6 +116,16 @@ each checkpoint. The required behavior is:
   by itself. Allocator cursors, wait objects, service latches, retry flags,
   continuation counters, and scheduler progress must be preserved when they
   decide whether a documented producer, publication, or render path runs.
+- Host/status protocol state must preserve its own byte order and blocking
+  rules without being folded into page state. The
+  [host/status side-channel contract](errors-and-status.md#reproduction-contract)
+  defines FIFO storage `0x783e92..0x783ed1`, pointers and count
+  `0x783ed2` / `0x783ed4` / `0x783ed8`, wait object `0x7801e2`, model-ID
+  literal `0x12280..0x12288`, status fields `0x780e12`, `0x780e90`,
+  `0x780e2a`, `0x780e0a`, and reason byte `0x783e60`. These paths can
+  affect later pixels only through host backchannel reaction or parser stalls;
+  they do not create page roots, publication records, render work, or calls to
+  `0x1ef6a`.
 - Hardware/external state is a boundary unless the ROM has already copied it
   into a byte, word, page object, resource record, or render input. Physical
   MMIO names, retained-storage identity, formatter/DC signal timing, optional

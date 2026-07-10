@@ -8432,6 +8432,14 @@ Address-level cluster map:
   `0x783196..0x783199`), firmware bookkeeping (`0x78299a`, `0x782a1a`,
   `0x782a1c`, `0x782a20..0x782a25`, `0x782a56`), and derived font-designation
   records from `0x11efe` / `0x11f26`.
+- Canonical macro/replay state: current macro id `0x783164`, macro record
+  pool `0x782a98`, selected record pointer `0x782d7a`, record head/count/id
+  and permanence fields, active data-chain frame pointer `0x782d76`, frame
+  fields `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay mode byte `0x782a92`,
+  saved overlay id `0x782a94`, and page-root retry gate `+0x14.0`. Evidence:
+  [macro-data-chain.md](macro-data-chain.md),
+  [host-byte-fetch.md](host-byte-fetch.md), and `Macro, Data-Chain, And
+  Overlay` in [semantic-state-model.md](semantic-state-model.md).
 - Canonical print environment: cursor words `0x782c8a` and `0x782c8e`,
   HMI/VMI words, margins, page geometry fields under `0x782da2..0x782dc0`,
   line-termination mode, cursor stack, and font slot state. Evidence:

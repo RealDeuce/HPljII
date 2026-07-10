@@ -288,6 +288,44 @@ State classification for these pixel-affecting stops:
   dispatch, page-object publication, bridge roots, and render-helper entry are
   not generic unknowns for these entries.
 
+## Renderer Stop Contract
+
+This checkpoint turns the pixel-affecting boundaries into the rule a byte-stream
+reproducer should apply after the upstream command path is modeled. Each row
+keeps the detailed owner notes as evidence; the contract here is the exact
+handoff from documented ROM state to a bounded non-pixel result.
+
+- Short compact downloaded-glyph high rows:
+  preserve the restored `ESC )s#W` record, installed glyph record from
+  `0x16c14 -> 0x16498`, compact object from
+  `0xd04a -> 0x1393a -> 0x12f2e`, published bucket/root state from `0xff1e`,
+  render bridge state from `0x1ed84 -> 0x1edc6`, and helper entry
+  `0x1ef6a -> 0x1effe -> 0x1fe76`. Stop when fallback count `D3 > 128`
+  would read beyond the valid `0x1fe8a` row-target table. Report the computed
+  table read, for example row `0x0102` fallback count `200` reading target
+  `0x329ad3c0`, rather than inventing fallback pixels.
+- Wrapped downloaded-glyph low widths:
+  preserve the installed full width word, the low-byte compact selector chosen
+  by `0x12f2e`, bucket `0` publication, render-record bridge, and dispatch to
+  compact mode-0 helper `0x1f034`. Stop when `0x1f034` indexes table
+  `0x1f08e` with the full span word rather than legal width `1..16`. Report
+  the computed target, for example span `0x0102` reading
+  `0x1f08e + 0x0408 = 0x1f496` and target `0x0066cc`.
+- Segmented-wide span-31 fallback source:
+  preserve selector `0x3003` compact objects, selected segment `1`, the
+  `0x1f264` segmented-wide dispatch, current-band rows, and neighboring
+  successful fallback rows. Stop at the fallback A2 source read when the
+  segmented-wide span-31 sibling reaches modeled bitmap offset `+0xb50`.
+  Report the source-read boundary instead of deriving bytes beyond the copied
+  glyph payload.
+- Segmented-wide payload-count cap:
+  preserve parser/tokenizer state only: `0xdb74` clamped count `0x7fff`,
+  delayed snapshot `0x121cc`, restored record `0x12218`, and payload budget
+  `0x783140` consumed by `0x16c14`. Stop before glyph install when the needed
+  byte count exceeds the restored budget, such as row `0x0788` at span `17`
+  requiring `0x7ff8` bytes. This case has no glyph object, page-root bucket,
+  publication record, render bridge, or pixel helper entry to model.
+
 ### Secondary Segment-57 Resource Source
 
 - Classification: missing external resource data.

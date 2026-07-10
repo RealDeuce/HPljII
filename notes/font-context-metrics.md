@@ -1069,14 +1069,12 @@ Unresolved boundary:
 
 ## Visible Built-In Selection Boundary
 
-Fixture `parsed primary built-in font selection feeds visible page-record rows`
-now composes the primary font-selection command family into visible compact
-text output. One modeled `0xa904` ring stream contains
-`ESC (s0p10h12v0s0b3T!!`; the lowercase selection phase routes directly
-through writers `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, and `0xc840` while
-parser mode 13 stays active, then final uppercase `T` reaches wrapper
-`0x1205a`, which calls `0xc7e0` and common refresh `0xc580`. The sibling
-uppercase wrappers in
+Primary built-in selection route: stream `ESC (s0p10h12v0s0b3T!!` composes
+the primary font-selection command family into visible compact text output.
+The lowercase selection phase routes directly through writers `0xc930`,
+`0xc89c`, `0xc6ec`, `0xc780`, and `0xc840` while parser mode 13 stays active.
+Final uppercase `T` reaches wrapper `0x1205a`, which calls `0xc7e0` and
+common refresh `0xc580`. The sibling uppercase wrappers in
 `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` have the same
 single-writer-plus-refresh shape: `0x12046` for point size, `0x1206e` for
 style, `0x12082` for spacing, `0x12096` for pitch, and `0x120aa` for stroke
@@ -1098,7 +1096,7 @@ The page-record producer then queues one short compact object in bucket `-1`:
 The two entries use compact coords `0x6a00` and `0x6802`. The `0x1edc6`
 bridge copies render-record context slot `0` as `0xc008004c`; compact render
 dispatch resolves both glyphs through that selected context and renders the
-same 38 row strings pinned by the fixture. The first nonblank row is:
+same 38 ROM-derived row strings. The first nonblank row is:
 
 ```text
 .............###...........................###...
@@ -1106,56 +1104,52 @@ same 38 row strings pinned by the fixture. The first nonblank row is:
 
 This checkpoint closes the semantic path from parsed built-in font-selection
 bytes through `0x13eb8`, `0x144d2`, `0x14c64`, printable `0xd04a`,
-page-record queueing, `0x1edc6`, and compact glyph rendering. Fixture
-`inline primary font selection stream renders visible rows` now runs the same
-host-fetched stream through one mixed-stream state: the font-selection event
-writes current-font RAM `0x782ee6 = 0xc008004c`, installs context slot
-`0xc008004c` in the page record, derives HMI `30`, and the following two
-printable bytes read that context without a separate printable-phase injection.
+page-record queueing, `0x1edc6`, and compact glyph rendering.
 
-Fixture `primary symbol miss falls back before visible page-record rows` adds
-the primary symbol-set fallback leg before that same visible-output path. The
-modeled stream is `ESC (1234U ESC (s0p10h12v0s0b3T!!`. Symbol-set parsing
-routes through `0x11eb6`, `0x1201e`, and `0x120be`, producing requested word
-`0x9a55`. The `0x156de` requested pass finds no class-zero match, so the
-fallback table supplies active word `0x0115`; the prune pass keeps survivor
-slot pointers `0x782354`, `0x782364`, and `0x782374`. The following primary
-font-selection command reuses selected context `0xc008004c`, primary map
-`0x782f32`, and HMI `30`. The two printable `!` bytes then produce the same
-compact object prefix, render-record context slot, and rows as the primary
-fixture above.
+Inline primary stream route: the same host-fetched stream can run through one
+mixed-stream state. The font-selection event writes current-font RAM
+`0x782ee6 = 0xc008004c`, installs context slot `0xc008004c` in the page
+record, derives HMI `30`, and the following two printable bytes read that
+context without a separate printable-phase injection.
 
-Fixture `live primary current-font RAM install feeds SI page-record rows`
-narrows that handoff gap for the primary path. It seeds current-font RAM
-records with primary `0x782ee6 = 0xc008004c` and secondary
-`0x782ef6 = 0xc00ae122`, starts with an existing page root `0x78297a`,
-page-root slot `1` live as the secondary context, and then feeds `SI !!`.
+Primary symbol-miss route: stream `ESC (1234U ESC (s0p10h12v0s0b3T!!` adds
+the symbol-set fallback leg before the same visible-output path. Symbol-set
+parsing routes through `0x11eb6`, `0x1201e`, and `0x120be`, producing
+requested word `0x9a55`. The `0x156de` requested pass finds no class-zero
+match, so the fallback table supplies active word `0x0115`; the prune pass
+keeps survivor slot pointers `0x782354`, `0x782364`, and `0x782374`. The
+following primary font-selection command reuses selected context `0xc008004c`,
+primary map `0x782f32`, and HMI `30`. The two printable `!` bytes then produce
+the same compact object prefix, render-record context slot, and rows as the
+primary route above.
+
+Live primary current-font RAM handoff: seeded current-font RAM records contain
+primary `0x782ee6 = 0xc008004c` and secondary
+`0x782ef6 = 0xc00ae122`. The route starts with an existing page root
+`0x78297a`, page-root slot `1` live as the secondary context, and then feeds
+`SI !!`.
 Handler `0xc68a` calls `0xc428(0)`, which reads `0x782ee6`, calls `0xc4fc`,
 chooses page-root context slot `0` as the first inactive slot, writes
 `0xc008004c`, and sets `0x78297e = 0`. The following `0xd04a` / `0x1393a`
 printable events read context slot `0` from the page-root context slots, map
 host `0x21` to glyph `0x00`, and produce the same primary compact object
-prefix and visible Courier rows. Because the root already exists, this fixture
+prefix and visible Courier rows. Because the root already exists, this route
 has page-root allocation count `0`; it is a current-font-RAM-to-page-root
-handoff fixture, not a first-root-allocation fixture.
+handoff route, not a first-root-allocation route.
 
-Fixture `parsed primary selection current-font RAM feeds SI visible rows`
-composes the parsed primary selection stream with that handoff. The combined
-host-fetched stream is `ESC (s0p10h12v0s0b3T SI !!`: the selection phase uses
-the same handlers and `0x144d2` context update as the primary visible
-selection fixture, producing `0x782ee6 = 0xc008004c` and map `0x782f32`; the
-tail `SI !!` then follows the live primary handoff fixture through
+Parsed-primary plus SI route: stream `ESC (s0p10h12v0s0b3T SI !!` composes
+the parsed primary selection stream with that handoff. The selection phase
+uses the same handlers and `0x144d2` context update as the primary visible
+selection route, producing `0x782ee6 = 0xc008004c` and map `0x782f32`; the
+tail `SI !!` then follows the live primary handoff route through
 `0xc68a`, `0xc428(0)`, `0xc4fc`, page-root slot `0`, and two printable
 `0xd04a` events. It reaches the same documented compact-object fields and
-model-derived visible rows as the pinned parsed primary visible path.
+model-derived visible rows as the parsed primary visible path.
 
-Fixture
-`parsed secondary built-in font selection feeds visible SO page-record rows`
-does the same for the secondary selection and SI/SO bridge. The modeled ring
-stream contains `ESC )s0p16h8v0s0b0T SO !!`; the selection handlers are the
-same lowercase writer family and final uppercase `0x1205a` refresh boundary,
-but `0x13eb8` writes secondary context record `0x782ef6` with selected
-longword `0xc00ae122`.
+Secondary built-in selection route: stream `ESC )s0p16h8v0s0b0T SO !!` uses
+the same lowercase writer family and final uppercase `0x1205a` refresh
+boundary as the primary route, but `0x13eb8` writes secondary context record
+`0x782ef6` with selected longword `0xc00ae122`.
 
 That selected record is the class-one Line Printer offset-table record at
 resource base `0x02e122`. Its HMI source is byte `+0x21 = 0` and long
@@ -1178,40 +1172,37 @@ and `0xcb01`; the first visible row is:
 .........################..################...###
 ```
 
-Fixture `live secondary current-font RAM install feeds SO page-record rows`
-narrows the live handoff gap for that secondary path. It seeds current-font RAM
-records with primary `0x782ee6 = 0xc008004c` and secondary
-`0x782ef6 = 0xc00ae122`, starts with an existing page root `0x78297a`,
-page-root slot `0` live as the primary context, and then feeds `SO !!`.
+Live secondary current-font RAM handoff: seeded current-font RAM records
+contain primary `0x782ee6 = 0xc008004c` and secondary
+`0x782ef6 = 0xc00ae122`. The route starts with an existing page root
+`0x78297a`, page-root slot `0` live as the primary context, and then feeds
+`SO !!`.
 Handler `0xc6b8` calls `0xc428(1)`, which reads `0x782ef6`, calls `0xc4fc`,
 chooses page-root context slot `1` as the first inactive slot, writes
 `0xc00ae122`, and sets `0x78297e = 1`. The following `0xd04a` / `0x1393a`
 printable events read context slot `1` from the page-root context slots, map
 host `0x21` to glyph `0x00`, and produce the same secondary compact object
-prefix and visible rows. Because the root already exists, this fixture has
+prefix and visible rows. Because the root already exists, this route has
 page-root allocation count `0`; it is a current-font-RAM-to-page-root handoff
-fixture, not a first-root-allocation fixture.
+route, not a first-root-allocation route.
 
-Fixture `parsed secondary selection current-font RAM feeds SO visible rows`
-adds the secondary composed contract. The combined host-fetched stream is
-`ESC )s0p16h8v0s0b0T SO !!`: the selection phase writes
+Parsed-secondary plus SO route: stream `ESC )s0p16h8v0s0b0T SO !!` writes
 `0x782ef6 = 0xc00ae122` and map `0x783032`, then the tail `SO !!` follows
 `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and two printable
 `0xd04a` events. It reaches the same documented compact-object fields and
-model-derived visible rows as the pinned parsed secondary visible path.
+model-derived visible rows as the parsed secondary visible path.
 
-Fixture `inline secondary font selection stream renders SO visible rows` runs
-that same secondary stream through one mixed-stream state instead of a split
-selection/page phase: `ESC )s0p16h8v0s0b0T` writes current-font RAM
-`0x782ef6 = 0xc00ae122`, updates page-record context slot `1`, SO selects
-slot `1`, refreshes the active HMI to `18`, and both following printable bytes
+Inline secondary stream route: the same secondary stream can run through one
+mixed-stream state instead of a split selection/page phase.
+`ESC )s0p16h8v0s0b0T` writes current-font RAM
+`0x782ef6 = 0xc00ae122`, updates page-record context slot `1`, SO selects slot
+`1`, refreshes the active HMI to `18`, and both following printable bytes
 queue the same `0xc00ae122` source context, compact object prefix, and rows as
-the pinned secondary fixture.
+the secondary route.
 
-Fixture
-`secondary symbol miss falls back before visible SO page-record rows` adds
-the secondary symbol-set fallback leg before that same visible-output path.
-The modeled stream is `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`.
+Secondary symbol-miss route: stream
+`ESC )1234U ESC )s0p16h8v0s0b0T SO !!` adds the secondary symbol-set fallback
+leg before the same visible-output path.
 Symbol-set parsing routes through `0x11eb6`, `0x12008`, and `0x120be`,
 producing requested word `0x9a55`. The `0x156de` requested pass finds no
 class-one candidate with that word; its last requested probe is slot pointer
@@ -1224,23 +1215,33 @@ prune event matching record `0x02e122`. The following secondary font-selection
 command reuses the same selected context `0xc00ae122`, secondary map
 `0x783032`, and HMI `18`. SO and two printable `!` bytes then produce the same
 compact object prefix, context slots, coords, and first visible row as the
-secondary fixture above.
+secondary route above.
 
-Fixture
-`remembered secondary symbol feeds visible SO page-record rows` covers the
-remembered source before that fallback table. The modeled stream is still
-`ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, but the fixture seeds remembered
-secondary word `0x000e` at `0x782f0a`. The `0x156de` requested pass misses
-word `0x9a55`; the remembered pass first probes slot pointer `0x782324`,
-record `0x019d18`, candidate word `0x0115`, and rejects it, then matches
-slot pointer `0x782330`, record `0x01a984`, candidate word `0x000e`. That
-sets active secondary word `0x000e` at `0x783146`, keeps survivor slot
-pointers `0x782330`, `0x782340`, and `0x782350`, writes selected context
-`0xc00ae122` through `0x144d2`, rebuilds map `0x783032` through `0x14c64`,
-crosses SO handler `0xc6b8`, and renders the same compact object prefix and
-row digest
+Remembered secondary symbol route: the same stream
+`ESC )1234U ESC )s0p16h8v0s0b0T SO !!` can take the remembered source before
+the fallback table when remembered secondary word `0x000e` is present at
+`0x782f0a`. The `0x156de` requested pass misses word `0x9a55`; the remembered
+pass first probes slot pointer `0x782324`, record `0x019d18`, candidate word
+`0x0115`, and rejects it, then matches slot pointer `0x782330`, record
+`0x01a984`, candidate word `0x000e`. That sets active secondary word `0x000e`
+at `0x783146`, keeps survivor slot pointers `0x782330`, `0x782340`, and
+`0x782350`, writes selected context `0xc00ae122` through `0x144d2`, rebuilds
+map `0x783032` through `0x14c64`, crosses SO handler `0xc6b8`, and renders
+the same compact object prefix and row digest
 `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c` as the
-secondary fixture above.
+secondary route above.
+
+Supporting evidence names for this boundary are `parsed primary built-in font
+selection feeds visible page-record rows`, `inline primary font selection
+stream renders visible rows`, `primary symbol miss falls back before visible
+page-record rows`, `live primary current-font RAM install feeds SI page-record
+rows`, `parsed primary selection current-font RAM feeds SI visible rows`,
+`parsed secondary built-in font selection feeds visible SO page-record rows`,
+`live secondary current-font RAM install feeds SO page-record rows`, `parsed
+secondary selection current-font RAM feeds SO visible rows`, `inline secondary
+font selection stream renders SO visible rows`, `secondary symbol miss falls
+back before visible SO page-record rows`, and `remembered secondary symbol
+feeds visible SO page-record rows`.
 
 ## Page-Root Context Install
 

@@ -611,9 +611,12 @@ output class that a byte-stream reader should follow next.
   state-only until later printable text, rectangle/raster placement, span flush, VFC, or
   publication consumes the fields.
 - Page environment and publication commands:
-  reset `0xcc52`, FF `0xf0f0`, page-size and page-length handlers
-  `0xfc74` / `0xcb00`, orientation `0xc992`, paper source `0xece2`, and
-  copies `0xeef0` update page/control state or publish through `0xff1e`.
+  reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
+  orientation `0x10220`, paper source `0xef62`, and copies `0xeef0` update
+  page/control state or publish through `0xff1e`. Neighboring `&l`
+  vertical-layout rows such as VMI `0xcb00`, LPI `0xc992`, and top margin
+  `0xece2` write delayed placement state rather than page-control
+  publication fields.
   Continue in [Publication Outcome
   Matrix](publication-commands.md#publication-outcome-matrix) and
   [Reset Default Outcome

@@ -1244,6 +1244,193 @@ Both `0xd3b2` and `0xd824` store page-root context slot `0x78297e` into
 source `+0x16`, mark live flag `0x78297f + slot`, and queue compact text
 through `0x12f2e`.
 
+### Printable Source Capture Checkpoint
+
+This checkpoint is the byte-to-page-object boundary for ordinary printable
+text. It starts after a host byte has reached `0xd04a` and ends when the
+positioned source object has either queued compact text through `0x12f2e` or
+failed at the same page-record allocation boundary used by other compact
+objects.
+
+Normal printable byte:
+
+- ROM path:
+  `0xd04a -> 0x1393a`.
+- State category:
+  parser-produced byte input, canonical current-font state, and canonical
+  printable source state.
+- Writers:
+  `0xd04a` stores source base `0x782d7e`, passes the host byte to `0x1393a`,
+  and later branches on source byte `+0x10`.
+- Readers / consumers:
+  `0x1393a` reads selected slot `0x782f06`, current context record
+  `0x782ee6` or `0x782ef6`, and active map `0x782f32` or `0x783032`.
+- Output effect:
+  no page object yet; it converts the original host byte into a mapped glyph
+  byte and source record.
+- Evidence:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+  `0xd04a..0xd0e8`; `generated/analysis/ic30_ic13_text_glyph_index_flow.md`
+  steps 5 and 6.
+
+High printable byte with no high-character map:
+
+- ROM path:
+  `0xd072..0xd0a8`.
+- State category:
+  parser-produced byte input and firmware bookkeeping.
+- Writers:
+  if host byte is `0x80..0xff`, both high-character flags
+  `0x783132/0x783133` are clear, and selected slot `0x782f06` is primary,
+  `0xd04a` masks the byte to seven bits, records a temporary SO switch in
+  `D4`, and calls `0xc6b8`.
+- Readers / consumers:
+  `0x1393a` consumes the masked byte after the temporary secondary install.
+  After placement, `0xd04a` calls `0xc68a` when `D4` is set.
+- Output effect:
+  routes the byte through secondary map/context for the source capture, then
+  restores primary selection after queueing.
+- Evidence:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+  `0xd072..0xd0e2`; SI/SO bridge behavior in
+  [direct-control-codes.md](direct-control-codes.md#si-so-outcome-matrix).
+
+Unsupported host byte above `0xff`:
+
+- ROM path:
+  `0xd05e..0xd0a6`.
+- State category:
+  firmware bookkeeping.
+- Writers:
+  `0xd04a` calls `0xd99a`; when that helper returns zero, the byte is
+  replaced with `0x7f` and retried through the normal printable path.
+- Readers / consumers:
+  `0x1393a` consumes the substituted byte.
+- Output effect:
+  queues the substituted glyph rather than the original byte.
+- Evidence:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+  `0xd05e..0xd0a6`.
+
+Source capture fields:
+
+- ROM path:
+  `0x1393a`.
+- State category:
+  canonical printable source state and derived/cache map state.
+- Writers:
+  writes source `+0x00` with the selected context longword, source `+0x0a`
+  with the mapped glyph word, source `+0x10` with the context flag byte, and
+  source `+0x04` with either a resource offset-table glyph entry or fixed
+  record pointer.
+- Readers / consumers:
+  `0xd140` / `0xd550`, `0xd3b2` / `0xd824`, `0xd4ac` / `0xd8fc`, and
+  `0x12f2e` consume the populated source.
+- Output effect:
+  determines both compact payload glyph identity and the resource/fixed
+  record used for metrics.
+- Evidence:
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md` steps 5 through 8;
+  current source field list in `Canonical printable source fields`.
+
+Unflagged placement and queue:
+
+- ROM path:
+  `0xd0ce -> 0xd140 -> 0xd3b2 -> 0x12f2e`.
+- State category:
+  canonical source/page state and derived cursor state.
+- Writers:
+  `0xd3b2` writes source `+0x12/+0x14` positioned coordinates, copies
+  selected page-root context slot `0x78297e` into source `+0x16`, marks live
+  flag `0x78297f + slot`, and calls `0x12f2e`.
+- Readers / consumers:
+  `0x12f2e` reads source `+0x0b`, `+0x10`, `+0x12`, `+0x14`, and `+0x16`
+  before appending compact payload entries through `0x1387c`.
+- Output effect:
+  queues compact text for bit-30-clear/fixed-record contexts and then lets
+  `0xd4ac` update span state from unflagged metric bytes.
+- Evidence:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+  `0xd140..0xd4aa`; `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+  `0x12f2e..0x1306e`.
+
+Flagged placement and queue:
+
+- ROM path:
+  `0xd0c2 -> 0xd550 -> 0xd824 -> 0x12f2e`.
+- State category:
+  canonical source/page state and derived cursor state.
+- Writers:
+  `0xd824` writes source `+0x12/+0x14`, copies `0x78297e` into source
+  `+0x16`, marks live flag `0x78297f + slot`, and calls `0x12f2e`.
+- Readers / consumers:
+  `0x12f2e` consumes the same source fields; `0xd8fc` then updates span state
+  from flagged metric words.
+- Output effect:
+  queues compact text for bit-30 resource/offset-table contexts.
+- Evidence:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+  `0xd824..0xd8fa`; `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+  `0x12f2e..0x1306e`.
+
+Compact payload identity:
+
+- ROM path:
+  `0x12f2e`.
+- State category:
+  canonical page object state and firmware bookkeeping.
+- Writers:
+  creates or reuses compact text bucket objects through `0x1387c`; writes
+  source byte `+0x0b` as the first compact payload byte at `0x1302a` or
+  `0x1304e`; writes compact coordinate bits from source `+0x12/+0x14`;
+  derives selector bits from source `+0x10`, width, row count, and context
+  slot low nibble.
+- Readers / consumers:
+  publication and bridge carry the compact object and context slots to render
+  records; compact dispatch later calls `0x1f354`.
+- Output effect:
+  this is the first checked page-object form for printable text. The renderer
+  glyph identity is the compact payload glyph byte plus the copied render
+  context slot, not the original host byte alone.
+- Evidence:
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+  `0x12f2e..0x1306e`; `generated/analysis/ic30_ic13_text_glyph_index_flow.md`
+  steps 9 through 11.
+
+Field grouping for this checkpoint:
+
+- Canonical state:
+  source record `0x782d7e`, selected slot `0x782f06`, current-font context
+  records `0x782ee6` / `0x782ef6`, active maps `0x782f32` / `0x783032`,
+  page-root slot `0x78297e`, live flags `0x78297f+n`, root compact bucket
+  list `+0x1c`, and source fields
+  `+0x00/+0x04/+0x0a/+0x0b/+0x10/+0x12/+0x14/+0x16`.
+- Derived/cache state:
+  mapped glyph byte, compact coordinate word, selector bits, map high-character
+  flags `0x783132/0x783133`, and temporary high-byte SI/SO switch flag in
+  `D4`.
+- Parser scratch:
+  original host byte passed to `0xd04a`; substituted byte `0x7f` and masked
+  seven-bit byte are local to this path.
+- Firmware bookkeeping:
+  `0xd99a` substitution helper, page-root allocation/publication retry after
+  a zero return from `0x12f2e`, and live-slot flag maintenance.
+- Unknown:
+  no ROM-local source-capture edge remains for the documented built-in and
+  inline/downloaded text forms. Remaining work must change the selected map,
+  context form, source field values, `0x12f2e` selector/object shape, or
+  later render helper inputs.
+
+Unresolved middle edges:
+
+- `0xd04a -> 0x1393a -> 0x12f2e` is documented for normal printable bytes,
+  high-byte secondary fallback, built-in offset-table contexts, and
+  bit-30-clear inline/downloaded contexts.
+- Exact remaining work is downstream of this checkpoint: compact object
+  publication and render helpers for object shapes not yet tied to
+  parser-produced byte streams, especially segmented downloaded glyph shapes
+  listed in [downloaded-fonts.md](downloaded-fonts.md#remaining-edges).
+
 ## Span Metric Consumers
 
 The pending span state is documented in

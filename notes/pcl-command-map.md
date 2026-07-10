@@ -3447,16 +3447,14 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
 - Treat font metric producer behavior as regression expansion unless it
   exposes a new page-visible selected-font boundary. The metric formulas and
   producer/consumer cross-products are documented in
-  [font-context-metrics.md](font-context-metrics.md#owner-summary) and composed
-  under `Selected-Font Metric Producer/Consumer Contract` in
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), narrowed by
+  [Selected-Font Residual Routing
+  Checkpoint](font-context-metrics.md#selected-font-residual-routing-checkpoint),
+  and composed under `Selected-Font Metric Producer/Consumer Contract` in
   [semantic-state-model.md](semantic-state-model.md). The exact remaining risk
-  is selected-font state combinations that change a concrete consumed field:
-  selected context records `0x782ee6/0x782ef6`, active maps
-  `0x782f32/0x783032`, source-object fields
-  `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, unflagged metric bytes
-  `+0x2b/+0x2c/+0x2d`, flagged metric words `+0x16/+0x18/+0x1a`, pending
-  span fields `0x783184..0x78318a`, page-object fields, bridge context slots,
-  or row-construction inputs. Manual-facing names for consumed-but-not-staged
+  is a byte stream that changes one of the checkpoint's selected-context,
+  source-object, copied-metric, pending-span, page-object, bridge-slot, or
+  ROM-helper row-construction inputs. Manual-facing names for consumed-but-not-staged
   validation fields remain external; the rounding, range, offset,
   inline/resource, `d4ac`, and `d8fc` behavior is already pinned.
 - Treat the built-in font sample printout as ROM-local documented through the

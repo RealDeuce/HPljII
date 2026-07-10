@@ -1569,6 +1569,76 @@ Unresolved middle edges:
   render-helper input or boundary named in
   [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
 
+### Selected-Font Residual Routing Checkpoint
+
+This checkpoint narrows the remaining "selected-font state combination" work
+to exact field-changing routes. It is the routing point after font selection
+has rebuilt a current context and before printable text becomes a compact page
+object.
+
+- Map/context producer route:
+  `0x14c64 -> 0x14d9c/0x14e24 -> 0x14f16 -> 0x1440c` writes the active map
+  `0x782f32` or `0x783032`, current context `0x782ee6` or `0x782ef6`, selected
+  slot `0x782f06`, and high-character flags `0x783132/0x783133`. These fields
+  are canonical selected-font state. New work belongs here only when a command
+  changes one of those bytes/longwords before the next printable reaches
+  `0x1393a`.
+- Printable source producer route:
+  `0xd04a -> 0x1393a` converts the original host byte through the active map
+  and writes source `0x782d7e+0x00/+0x04/+0x0a/+0x0b/+0x10`. The source record
+  is canonical printable state; the mapped glyph byte and resolved glyph
+  pointer are derived/cache state. New work belongs here only when the map,
+  context form, high-byte fallback, or substituted-byte path changes one of
+  these source fields.
+- Placement and page-object route:
+  `0xd140 -> 0xd3b2 -> 0x12f2e` and
+  `0xd550 -> 0xd824 -> 0x12f2e` write source
+  `0x782d7e+0x12/+0x14/+0x16`, page-root live flags `0x78297f+n`, and compact
+  bucket objects under root `+0x1c`. These fields are canonical page-object
+  state; compact coordinate and selector bits are derived/cache state. New
+  work belongs here only when positioning, live-slot selection, retry
+  publication, or `0x12f2e` selector/object bytes change.
+- Span-consumer route:
+  `0xd4ac` reads unflagged context bytes `+0x2b/+0x2c/+0x2d`;
+  `0xd8fc` reads flagged context words `+0x16/+0x18/+0x1a`; both update
+  pending span fields `0x783184..0x78318a` and may flush through `0x12714`.
+  The context metric fields are canonical selected-font metric state, while
+  pending span watermarks are firmware bookkeeping until `0x12714` emits a
+  segment-list or fixed-list object. New work belongs here only when selected
+  context metrics change a span flush/no-flush decision or object bytes.
+- Render-consumer route:
+  publication and bridge copy compact bucket objects and context slots to
+  `0x1ed84 -> 0x1edc6`, then compact render dispatch reaches `0x1effe` and
+  glyph resolver `0x1f354`. New work belongs here only when the selected
+  context slot, compact payload byte, selector class, row-copy helper input, or
+  exact boundary in `unresolved-boundaries.md` changes.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and the listed
+  `0xd4ac` / `0xd8fc` call sites in
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`.
+- Generated analysis used as support:
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md` steps 1 through 11
+  and `generated/analysis/ic30_ic13_text_cursor_span_flow.md` source/context
+  field tables.
+- Checked-in owners:
+  `Printable Source Capture Checkpoint` above owns `0xd04a -> 0x1393a ->
+  0x12f2e`; `Span Metric Consumers` below owns `0xd4ac` / `0xd8fc`;
+  [page-record-storage.md](page-record-storage.md) owns the compact bucket
+  storage; and [page-raster-imaging.md](page-raster-imaging.md) owns compact
+  render dispatch and helper boundaries.
+
+Unresolved boundary:
+
+- No ROM-local middle edge is left open by the generic phrase
+  "selected-font state combinations." The actionable boundary is a future
+  byte stream or table state that changes one of the named selected-font,
+  source, page-object, span, bridge, or render-helper fields before the first
+  consumer listed above.
+
 ## Span Metric Consumers
 
 The pending span state is documented in
@@ -2371,12 +2441,12 @@ A byte-stream reproduction must preserve these behaviors:
   capture, and low-water span effects are documented in the checked-in
   checkpoints above:
   `Active Candidate And Map Cache Checkpoint`, `Page-Root Context Install`,
-  `Printable Source Capture`, and `Span Metric Consumers`. Those checkpoints
-  name the parser records, request fields, dirty flags, selected context
-  records, map fields, page-root slot fields, source-object bytes, later
-  consumers, output effects, and exact residual boundaries. Fixtures remain
-  supporting checks for representative streams, not the owner of the semantic
-  route.
+  `Printable Source Capture`, `Selected-Font Residual Routing Checkpoint`, and
+  `Span Metric Consumers`. Those checkpoints name the parser records, request
+  fields, dirty flags, selected context records, map fields, page-root slot
+  fields, source-object bytes, later consumers, output effects, and exact
+  residual boundaries. Fixtures remain supporting checks for representative
+  streams, not the owner of the semantic route.
 - The documented primary built-in selection request
   `ESC (s0p10h12v0s0b3T!!` and secondary request
   `ESC )s0p16h8v0s0b0T SO !!` run from parser bytes through `0xc580`,

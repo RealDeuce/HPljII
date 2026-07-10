@@ -8207,10 +8207,11 @@ ROM-effect names and failure behavior of every `0x16fae` validation-table entry,
 including the host-fetched invalid-type, first-code overflow, zero/high line-count,
 reversed/high range-count, and invalid-class no-install boundaries. Medium for the
 complete soft-font grammar because exact HP manual labels for pass-through descriptor
-fields remain external, and selected-font state combinations still need ROM-local
-byte-stream coverage only when they change selected context records, active maps,
-source-object fields, copied metric fields, pending span fields, page-object fields,
-bridge context slots, or rendered rows.
+fields remain external. The ROM-local selected-font residual is narrowed by
+[font-context-metrics.md](font-context-metrics.md#selected-font-residual-routing-checkpoint)
+to byte streams that change selected context records, active maps, source-object fields,
+copied metric fields, pending span fields, page-object fields, bridge context slots, or
+ROM-helper row-construction inputs.
 
 ### Fixtures
 

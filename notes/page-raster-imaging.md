@@ -3362,15 +3362,15 @@ Confidence:
   object prefixes, bridge context slots, and ROM-helper row-construction
   inputs. Row digests in the fixtures are consistency checks for those
   ROM-derived rows, not independent rendered-output evidence.
-- Medium for exhaustive descriptor/font-width coverage because downloaded
-  spans `1..32`, high-span compact-wide row checks through span `255`,
-  segmented-wide row checks through span `64`, the legal metric matrix, and
-  many downloaded row-count cases are fixture-backed. The span `0x0100..0x020d`
-  printable handoff is now classified as an 8-bit source-record producer
-  boundary whose wrapped cases select non-helper mode-0 row-copy entries.
-  Remaining renderer risk is selected-font state combinations not represented
-  in current visible fixtures and byte streams that change helper dispatch or
-  object shape.
+- Medium for exhaustive descriptor/font-width coverage because downloaded spans `1..32`,
+  high-span compact-wide row checks through span `255`, segmented-wide row checks
+  through span `64`, the legal metric matrix, and many downloaded row-count cases are
+  fixture-backed. The span `0x0100..0x020d` printable handoff is now classified as an
+  8-bit source-record producer boundary whose wrapped cases select non-helper mode-0
+  row-copy entries. Remaining renderer risk starts only when a byte stream changes a
+  named field in [Selected-Font Residual Routing
+  Checkpoint](font-context-metrics.md#selected-font-residual-routing-checkpoint), helper
+  dispatch, or object shape.
 
 Fixture evidence:
 

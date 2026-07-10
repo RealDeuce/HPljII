@@ -125,7 +125,8 @@ Primary route:
 - Pixel route after object creation belongs to
   [page-raster-imaging.md](page-raster-imaging.md#owner-summary),
   [active-render-scheduler.md](active-render-scheduler.md#owner-summary),
-  and [pixel-generation.md](pixel-generation.md#owner-summary).
+  and
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
 
 Field groups:
 
@@ -195,6 +196,95 @@ Evidence and boundaries:
   variants not yet shown to change fields at `0xd04a`, allocation branches,
   compact object bytes, or row-construction inputs should be documented only
   when their disassembly changes one of those named outputs.
+
+## Direct-Control Output Decision Checkpoint
+
+This checkpoint composes the direct-control family as output decisions rather
+than isolated handlers. It starts after parser dispatch has selected a
+terminal handler and ends at one of four outcomes: compact text object,
+segment-list span object, page publication, or state-only mutation consumed by
+a later byte stream.
+
+Decision rules:
+
+- Normal printable bytes reach `0xd04a`, build source scratch through
+  `0x1393a`, choose flagged or unflagged text advance through `0xd550` or
+  `0xd140`, and queue compact objects through `0x12f2e -> 0x1387c`.
+  Publication and pixels then follow `0xff1e -> 0x1ed84 -> 0x1edc6 ->
+  0x1ef6a -> 0x1effe`.
+- `ESC &k#G` writes line-termination mode byte `0x78318f` through `0xedf8`.
+  CR `0xf02c` consumes bit `7`, LF `0xf08c` consumes bit `6`, and FF
+  `0xf0f0` consumes bit `5`; the bits decide whether those controls also run
+  CR-style reset or LF-style vertical advance.
+- CR and LF do not queue compact text by themselves. They reset or advance
+  cursor fields `0x782c8a` / `0x782c8e`, flush pending spans through
+  `0xf34a -> 0x12714` when `0x783184` is set, and make their effect visible
+  when a later printable or graphics handler consumes the new cursor state.
+- FF is both a cursor/layout consumer and a publication command. It optionally
+  runs CR-style reset, flushes spans through `0xf34a`, ensures root
+  `0x78297a`, calls `0xf124 -> 0xff1e`, and marks page-eject latch
+  `0x782a6d = 0xff`.
+- HT `0xf1cc` and BS `0xf2a8` are state-only placement commands. HT advances
+  to the next eight-column stop from left margin `0x782dd6` using HMI
+  `0x78315c`; BS subtracts HMI or previous-width state
+  `0x782a58/0x782a5a/0x782a5c`. The next printable byte is the visible
+  consumer.
+- Cursor, margin, and dot-position handlers `0xeb58`, `0xec0c`, `0xf39e`,
+  `0xf416`, `0xf560`, `0xf60a`, `0xf48c`, and `0xf692` commit placement
+  fields through `0xf4ca` or `0xf6e2`. If pending span state exists, they can
+  materialize it through `0xf34a -> 0x12714` before overwriting the cursor
+  boundary that defines the span.
+- `ESC &d` handler `0x12622` writes underline/text-attribute selector
+  `0x783185` and controls whether later printable span updates are armed.
+  A terminal `&d@`, CR, margin change, or vertical cursor change can flush the
+  pending span as a selector-`0x4000` segment-list object under page-root
+  `+0x1c`.
+- Layout and mode handlers `0xca8c`, `0xcb00`, `0xc992`, `0xece2`,
+  `0xea9e`, `0xee64`, `0xedb0`, and `0xf9e8` write HMI, VMI, top/bottom
+  limits, perforation skip, wrap mode, and page length. They are state-only
+  until printable prechecks, LF/FF/perforation overflow, raster/rectangle
+  placement, VFC, or publication reads the mutated fields.
+
+State classification:
+
+- Canonical state: cursor `0x782c8a/0x782c8e`, margins `0x782dd6/0x782dda`,
+  HMI/VMI `0x78315c/0x783160`, line-termination byte `0x78318f`, wrap byte
+  `0x783190`, perforation skip `0x783191`, page/root state `0x78297a`, and
+  pending span fields `0x783184..0x78318a`.
+- Derived/cache state: source object `0x782d7e`, compact coordinates, queue
+  key `0x782a7c`, previous-width latches, text-bottom/perforation limit
+  `0x782dc2`, and render-band fields created after publication.
+- Parser scratch: admitted control byte or six-byte parsed command record at
+  `0x78299e`; those records are consumed by the terminal handler before
+  page-object creation.
+- Firmware bookkeeping: right-limit latch `0x782a57`, pending-width latch
+  `0x782a58`, pending text/cursor latch `0x782a6d`, modified-layout byte
+  `0x782ee1`, and publication retry/root flags.
+- Hardware/external state: none for ROM-local direct-control decisions,
+  except page-length zero/default can mirror paper-source state to
+  `0x780e8f` / `0x780e26`; physical engine response is outside this
+  checkpoint.
+- Unknown: manual-facing latch names remain external. A new variant belongs
+  here only when it changes one of the named cursor, span, page-object,
+  bridge, or row-construction fields.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`,
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`, and
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`.
+- Fixture anchors include `mixed printable/control page-record bridge renders
+  post-CR glyph rows`, `LF parser trace feeds page-record queue`,
+  `control stream ESC &k2G then FF applies CR+page-eject`,
+  `HT/BS parser trace feeds page-record queue`,
+  `live CR span flush materializes 0x12714 page object`,
+  `left-margin parser span flush materializes 0x12714 page object`,
+  `vertical-cursor parser span flush materializes 0x12714 page object`, and
+  `ESC &d underline selector materializes span output`.
 
 ## Field Groups
 

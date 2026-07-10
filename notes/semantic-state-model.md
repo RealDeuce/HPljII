@@ -457,10 +457,11 @@ data.
   - physical names, connector mapping, and timing for the
     `0x8e01`/`0x8801`/`0x8c01` bank and the
     `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
-  - an unlocated ROM producer for data-chain frame byte `+0x09` values
-    outside observed execute `2`, call `3`, and non-replay
-    page-finalization/overlay `4`, if any. The covered frame kinds are
-    documented as macro/data-chain state, not host-fetch unknowns.
+  - no additional verified ROM producer writes data-chain frame byte `+0x09`
+    values outside reset/clear `0`, execute `2`, call `3`, and non-replay
+    page-finalization/overlay `4`. Static xrefs locate `0xe418` callers only
+    at `0xde96` and `0xdebc`, passing `2` and `3`; `0xe4f4` is called from
+    `0xff8e` and writes `4`; `0xe1e4` clears stale frame kind bytes to zero.
 
 ### Writers
 
@@ -633,8 +634,11 @@ reset `0x3178`, clear `0x780e32`/`0x780e2e`, and mask status bits in
   `$aa01` are not identified.
 - `0x782d76 frame +0x00..+0x0d`: execute/call frames from `0xe418` and the
   non-replay page-finalization frame from `0xe4f4` are documented and tied to
-  `0xa904`, `0x9f6a`, and `0xe22c` consumers. Remaining uncertainty is any
-  producer for frame byte `+0x09` values outside observed `2`, `3`, and `4`.
+  `0xa904`, `0x9f6a`, and `0xe22c` consumers. No unresolved ROM-local
+  frame-kind producer remains for the verified image: `0xe418` is called only
+  from `0xde96` and `0xdebc`, which pass kinds `2` and `3`; `0xe4f4` is called
+  from `0xff8e` and writes kind `4`; `0xe1e4` clears stale frame kind bytes to
+  zero.
 - `0x4218..0x44d2` and `0x61e4..0x6362`: no-byte gate writes, byte-source
   reset, selected pool-record cleanup, and service-needed tail are pinned; the
   exact user-facing/manual labels for the two quiesce/reset branches remain

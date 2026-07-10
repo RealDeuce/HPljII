@@ -49,9 +49,10 @@ Field groups:
   command-family handler.
 - Hardware/external state: physical names and timing for the two direct-MMIO
   input banks and the bridge/output MMIO registers remain external.
-- Unknown: any data-chain frame byte `+0x09` producer outside observed values
-  `2`, `3`, and `4`, plus manual labels for quiesce/reset branches
-  `0x4218..0x44d2` and `0x61e4..0x6362`.
+- Unknown: manual labels for quiesce/reset branches `0x4218..0x44d2` and
+  `0x61e4..0x6362`. No additional verified ROM producer writes data-chain
+  frame byte `+0x09` values outside reset/clear `0`, execute `2`, call `3`,
+  and non-replay page-finalization `4`.
 
 Output effect:
 
@@ -624,8 +625,9 @@ Field groups:
     reaches `0xda9a`, `0x11774`, `0x12218`, or the payload readers.
 - Unknown:
   - board-level names and timing for the direct MMIO banks;
-  - data-chain frame-byte values outside the observed `+0x09 = 2`, `3`, and
-    `4` producers, if any;
+  - no additional verified ROM producer writes data-chain frame byte `+0x09`
+    values outside reset/clear `0`, execute `2`, call `3`, and non-replay
+    page-finalization `4`;
   - exact user-facing/manual labels for quiesce/reset branches
     `0x4218..0x44d2` and `0x61e4..0x6362`.
 
@@ -780,8 +782,11 @@ Unresolved middle edges:
 - `0x782d76 frame +0x00..+0x0d`: execute/call producers `0xe418` and
   non-replay page-finalization producer `0xe4f4` are documented, and their
   frame fields are tied to `0xa904`, `0x9f6a`, and `0xe22c` consumers.
-  Remaining uncertainty is any producer for frame byte `+0x09` values outside
-  observed `2`, `3`, and `4`.
+  Static xrefs locate only two absolute callers to `0xe418`: `0xde96` passes
+  execute kind `2` and `0xdebc` passes call kind `3`. The only absolute caller
+  to `0xe4f4` is `0xff8e`, and `0xe4f4` writes kind `4`; reset/cleanup helper
+  `0xe1e4` clears kind byte `+0x09` to zero. No unresolved ROM-local frame-kind
+  producer remains in the verified firmware image.
 - `0x4218..0x44d2` and `0x61e4..0x6362`: the no-byte gate, byte-source
   reset, selected pool-record cleanup, and service-needed tail are documented;
   the exact user-facing trigger labels for these two quiesce/reset branches

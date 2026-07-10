@@ -5935,9 +5935,12 @@ Address-level cluster map:
   frame `+0x00` payload/chunk pointer, `+0x04` byte count or `-1` end marker,
   byte `+0x08 = 4`, byte `+0x09` as execute `2`, call `3`, or non-replay
   page-finalization `4`, and longword `+0x0a` as snapshot pointer or zero.
-  Remaining host-input risk is physical MMIO naming/timing and any producer
-  for other frame `+0x09` values, not byte-source priority, direct caller
-  classification, or observed macro/data-chain replay.
+  Static xrefs close the ROM-local frame-kind producer set:
+  `0xe418` is called only from `0xde96` / `0xdebc`, passing `2` / `3`;
+  `0xe4f4` is called from `0xff8e` and writes `4`; `0xe1e4` clears stale
+  frame kind bytes to zero. Remaining host-input risk is physical MMIO
+  naming/timing, not byte-source priority, direct caller classification,
+  frame-kind production, or observed macro/data-chain replay.
 - External service/status preemption:
   ROM evidence is `0xba48..0xc36e` in
   `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst` and

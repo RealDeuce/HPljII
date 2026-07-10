@@ -8432,12 +8432,41 @@ Address-level cluster map:
   `0xf692`. Those handlers convert parsed integer dot units to packed
   whole-dot cursor coordinates with `parameter << 16`, then share the
   `0xf4ca` / `0xf6e2` commit helpers before printable output is queued.
+- Canonical font/resource state: selected text slot `0x782f06`,
+  current-font contexts `0x782ee6` / `0x782ef6`, active maps `0x782f32` /
+  `0x783032`, requested and active symbol words, built-in or optional
+  candidate windows under `0x782324` and `0x78278e..0x7827b8`, optional
+  resource-window slots `0x7828b6..0x7828dd`, current downloaded-font id and
+  character `0x782f2e/0x782f30`, current downloaded-font records
+  `0x782640..0x782776`, installed glyph records, and bitmap payload bytes.
+  Evidence: [symbol-set-selection.md](symbol-set-selection.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [built-in-resource-scan.md](built-in-resource-scan.md),
+  [downloaded-fonts.md](downloaded-fonts.md), and
+  [page-font-scheduler.md](page-font-scheduler.md).
 - Canonical page model: current page root `0x78297a`, page-root class byte
   `+4`, bucket array `+0x1c`, rule list `+0x24`, fixed-width list `+0x28`,
   context slots `+0x2c`, and stream allocator fields `0x782a70`,
   `0x782a72`, `0x782a76`. Evidence:
   [page-record-storage.md](page-record-storage.md) and
   `Shared Page-Record Storage And Allocator`.
+- Canonical graphics producer state: rectangle width/height/fill
+  `0x78316a`, `0x783166`, and `0x78316e`; rectangle source record
+  `0x782a88`; raster block `0x783170` with baseline, row, accepted/drain
+  counts, mode, origin, scale, byte limit, and active byte; encoded raster
+  object fields `+0x04/+0x05/+0x06/+0x08/+0x0a..`; and rule-list object
+  fields selector/key/width/height/continuation. Evidence:
+  [rectangle-graphics.md](rectangle-graphics.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Canonical publication/render state: publication flag `0x782996`,
+  published source pointer `0x780ea6`, active source pointer `0x780eae`,
+  render-record roots `+0x18/+0x1c/+0x20`, render context slots, active
+  render pointer `0x783a18`, compact/raster/rule/fixed dispatch roots, and
+  render entry `0x1ef6a`. Evidence:
+  [publication-commands.md](publication-commands.md),
+  [active-render-scheduler.md](active-render-scheduler.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
 - Derived/cache state: bucket/key bytes `0x782a7a..0x782a7e`, render-band
   fields `0x783a20`, `0x783a22`, `0x783a28`, pending span watermarks
   `0x783184..0x78318a`, raster mode/scale caches, delayed raster row

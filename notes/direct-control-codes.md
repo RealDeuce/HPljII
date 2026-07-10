@@ -1109,17 +1109,60 @@ HT/BS instruction boundaries:
   span metrics through `0xd8fc` or `0xd4ac`. Neither HT nor BS queues a compact
   object; the following printable byte consumes the committed x in `0xd04a`.
 
-`ESC &s#C` has no immediate page object, but it changes the acceptance boundary
-for later printable text. Disassembly `0xedb0..0xedf6` rewinds the parsed
-record, normalizes the absolute selector, and writes only selectors `0` and
-`1` into wrap byte `0x783190`. The downstream consumers are printable precheck
-helpers `0xd28a` and `0xd6bc`: horizontal overflow with `0x783190` clear
-returns precheck result `1`, while the same overflow with `0x783190` set calls
-`0xf054`, retries from recovered x `0`, and returns `0` when the retried
-placement fits. Vertical extent failure still returns `1`, so the wrap byte
-changes only the horizontal overflow acceptance path. Supporting fixture
-anchors: `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
-and `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
+### Wrap Mode Route Checkpoint
+
+`ESC &s#C` is a state-only command whose visible effect is delayed until
+printable text reaches the prequeue overflow checks. It creates no page object,
+publishes no page root, and writes no pixels at handler time.
+
+Writer:
+
+- `0xedb0..0xedf6` rewinds parser record cursor `0x78299e`, reads the parsed
+  word at record `+2`, takes its absolute value, writes wrap byte
+  `0x783190 = 1` for selector `0`, clears `0x783190` for selector `1`, and
+  leaves `0x783190` unchanged for every other selector.
+
+Readers and consumers:
+
+- Unflagged printable precheck `0xd28a` reads `0x783190` at `0xd300` and
+  `0xd33c`.
+- Flagged printable precheck `0xd6bc` reads `0x783190` at `0xd770` and
+  `0xd7ac`.
+- With wrap clear, a horizontal overflow returns precheck result `1` before
+  compact object queueing, so the current printable source does not reach
+  `0x12f2e`.
+- With wrap set, the same horizontal overflow calls recovery helper `0xf054`,
+  retries from recovered x `0`, and can return precheck result `0` when the
+  retried placement fits. The following path is then the ordinary compact text
+  route through `0x12f2e -> 0x1387c`.
+- Vertical extent failure remains a rejection path; the wrap byte changes
+  horizontal overflow acceptance, not page-height acceptance.
+
+State classification:
+
+- Canonical control state: wrap byte `0x783190`.
+- Canonical downstream state: printable source object `0x782d7e`, current
+  cursor `0x782c8a/0x782c8e`, compact bucket object state, and current page
+  root only if a later printable precheck accepts and continues to queueing.
+- Derived/cache state: precheck result, recovered x from `0xf054`, compact
+  coordinate words, and bucket/key fields produced after acceptance.
+- Parser scratch: the six-byte `ESC &s#C` parser record consumed by
+  `0xedb0`.
+- Firmware bookkeeping: no page-root or renderer bookkeeping is created by
+  `0xedb0`; later queueing uses the normal printable allocator and publication
+  bookkeeping.
+- Hardware/external state: none for the ROM-local wrap route.
+- Unknown: no ROM-local writer-to-consumer edge remains for the documented
+  wrap byte. New work belongs here only if a stream changes the precheck
+  return, compact object bytes, publication state, or row-construction input.
+
+Evidence: writer listing
+`generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, printable consumer
+listing `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, generated
+flow report `generated/analysis/ic30_ic13_direct_control_code_flow.md`, and
+fixture anchors `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and
+1 only` and `0xd28a and 0xd6bc prechecks share continue reject and wrap
+decisions`.
 
 The plain and HMI parser streams share the baseline consumer path. A printable
 byte reaches `0xd04a`, queues a compact text object through `0x1387c`, and

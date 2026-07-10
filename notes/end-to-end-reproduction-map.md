@@ -5763,10 +5763,16 @@ Address-level cluster map:
   top-margin state through `0xece2` before the following printable also
   queues at `0x9001`; and `ESC &l1L !` writes perforation byte `0x783191`
   through `0xee64` before the ordinary printable path queues the visible
-  object. Span-flush stream `ESC &a6L!` materializes selector-`0x4000`
-  segment-list object `00 00 00 00 40 00 00 01 32 00 03 00 00 10` through
-  `0xf34a -> 0x12714`, then re-arms span state for the following printable
-  at compact coordinate `0x0207`. Evidence is
+  object. Wrap streams `ESC &s0C ...` and `ESC &s1C ...` write or clear wrap
+  byte `0x783190` through `0xedb0`; the visible effect is deferred until
+  printable prechecks `0xd28a` / `0xd6bc` see horizontal overflow. With wrap
+  clear, the precheck returns rejection before `0x12f2e`; with wrap set, it
+  calls recovery helper `0xf054` and can continue into ordinary compact-object
+  queueing when the recovered placement fits. Span-flush stream `ESC &a6L!`
+  materializes selector-`0x4000` segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10` through
+  `0xf34a -> 0x12714`, then re-arms span state for the following printable at
+  compact coordinate `0x0207`. Evidence is
   [direct-control-codes.md](direct-control-codes.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
   Direct-control state classification: canonical placement state is cursor

@@ -366,8 +366,10 @@ state-only mutation, or explicit no-output parser behavior.
   through horizontal helper `0xf4ca` or vertical helper `0xf6e2`. Canonical
   output is cursor state `0x782c8a/0x782c8e`; visible pixels appear only when
   later printable, raster start, rectangle clipping, VFC, or publication reads
-  those fields. Evidence: shared coordinate helper boundaries and cursor
-  position fixtures in `Output Effect`.
+  those fields. The concrete parser-to-consumer route is composed in
+  [Cursor And Dot Position Route Checkpoint](#cursor-and-dot-position-route-checkpoint).
+  Evidence: shared coordinate helper boundaries and cursor position fixtures
+  in `Output Effect`.
 - Cursor stack:
   `ESC &f#S` reaches `0xf75e`. Selector `0` pushes cursor plus vertical offset
   into stack `0x782c96..0x782d36`; selector `1` pops and clamps restored
@@ -1366,10 +1368,83 @@ The margin helper fixtures named in the evidence list support the route above:
 they exercise helper admission/rejection, lowercase chaining, following
 printable output, and the `0x12714` span-materialization sibling.
 
-`ESC &a1R!` also has a pending-span sibling. Fixture
-`vertical-cursor parser span flush materializes 0x12714 page object` proves
-the vertical cursor handler can publish a selector-`0x4000` span object through
-`0x12714` before the following printable glyph is queued.
+### Cursor And Dot Position Route Checkpoint
+
+This checkpoint composes `ESC &a#C/#H/#R/#V` and `ESC *p#X/#Y` as cursor
+placement commands. It starts at parser terminal handlers `0xf39e`, `0xf416`,
+`0xf560`, `0xf60a`, `0xf48c`, or `0xf692`, and it ends when a later printable,
+raster-start, rectangle/rule, VFC, or publication path consumes the committed
+cursor fields.
+
+Route summary:
+
+- Horizontal column command `ESC &a#C` reaches `0xf39e`, converts the parsed
+  integer and fraction through current HMI `0x78315c`, uses parsed-record bit
+  `0` as the relative flag, and commits through `0xf4ca`.
+- Horizontal decipoint command `ESC &a#H` reaches `0xf416`, converts through
+  the five-subunit decipoint scale, uses the same relative flag, and commits
+  through `0xf4ca`.
+- Horizontal dot command `ESC *p#X` reaches `0xf48c`, sign-extends the parsed
+  word, shifts it into whole-dot packed coordinate form, uses the relative
+  flag, and commits through `0xf4ca`.
+- Vertical row command `ESC &a#R` reaches `0xf560`, ensures a page root, adds
+  the ROM absolute-row bias when the relative flag is clear, converts through
+  VMI `0x783160`, and commits through `0xf6e2` before relative overflow
+  recovery or absolute upper clamp.
+- Vertical decipoint command `ESC &a#V` reaches `0xf60a`, converts through the
+  five-subunit decipoint scale, commits through `0xf6e2`, and clamps to
+  vertical bound `0x782dc6`.
+- Vertical dot command `ESC *p#Y` reaches `0xf692`, sign-extends the parsed
+  word, shifts it into whole-dot packed coordinate form, commits through
+  `0xf6e2`, and clamps to `0x782dc6`.
+- Horizontal commit `0xf4ca` writes canonical x cursor `0x782c8a`, updates
+  right-limit latch `0x782a57`, clears pending latch `0x782a6d`, and refreshes
+  span metrics through `0xd8fc` or `0xd4ac`.
+- Vertical commit `0xf6e2` ensures a page root, clears pending latch
+  `0x782a6d`, flushes pending spans through `0xf34a`, writes canonical y
+  cursor `0x782c8e`, and can materialize selector-`0x4000` segment-list
+  output through `0x12714 -> 0x126e2` before the cursor move takes effect.
+
+State classification for this route:
+
+- Canonical state: x/y cursors `0x782c8a` / `0x782c8e`, HMI `0x78315c`, VMI
+  `0x783160`, top offset `0x782dce`, vertical bounds `0x782dc6` /
+  `0x782dca`, page width `0x782db8`, right margin `0x782dda`, current page
+  root `0x78297a`, and pending span fields `0x783184..0x78318a`.
+- Derived/cache state: packed coordinate candidates, relative-add results,
+  decipoint and whole-dot conversions, compact coordinates from later
+  printable output, raster origin words, rectangle/rule source coordinates,
+  and render-record copies after publication.
+- Parser scratch: mode `12` lowercase chaining state, six-byte command records
+  at `0x78299e`, parsed numeric parameters, and parsed-record bit `0` used as
+  the relative flag.
+- Firmware bookkeeping: latches `0x782a57`, `0x782a58`, and `0x782a6d`,
+  selected-context refresh through `0xd8fc` / `0xd4ac`, span re-arm state from
+  `0x126e2`, allocation cursors if `0x12714` materializes a span, and later
+  publication flag `0x782996`.
+- Unknown: no ROM-local middle edge remains for the documented cursor/dot
+  writer, commit helper, following-printable consumer, raster-origin consumer,
+  rectangle-origin consumer, or span-flush sibling. New work should start only
+  when a stream changes a clamp/recovery branch, page-object bytes, span object
+  shape, or render-helper input.
+
+Named byte-stream outcomes:
+
+- `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, and
+  `ESC &a2c+1R!` commit cursor state and leave the following printable byte to
+  queue compact coordinates `0x0a02`, `0x0402`, `0x1001`, `0x9001`, and
+  `0x1a02`.
+- `ESC *p30x30Y!` routes dot-position handlers `0xf48c` and `0xf692`, commits
+  whole-dot packed coordinates, and leaves the following printable byte to
+  queue compact coordinate `0x9402`.
+- `ESC &a1R!` with pending span state shows the vertical cursor handler can
+  materialize selector-`0x4000` segment-list output through `0x12714` before
+  the following printable glyph is queued.
+
+The cursor-position helper fixtures named in the evidence list support this
+route by exercising unit conversion, relative flags, clamps, lowercase
+chaining, dot-position commits, following printable output, and the
+`0x12714` span-materialization sibling.
 
 ### Span Flush Producers
 

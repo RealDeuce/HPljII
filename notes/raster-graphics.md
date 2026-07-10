@@ -112,6 +112,23 @@ The route for accepted raster rows is:
 - `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e` publishes,
   bridges, dispatches, and renders the encoded objects.
 
+Concrete route for the primary supported stream:
+
+- `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` enters parser loop `0x11774`,
+  calls `0x10808`, `0x1075a`, and delayed setup handler `0x11f82`, then
+  restores transfer record `80 57 00 04 00 00` through `0x12218`.
+- `0x10808` stores scale `1` and encoded mode `0`; `0x1075a` starts raster
+  state and seeds the origin from the active cursor axis; `0x105d0` accepts
+  four row bytes and calls `0x13070`.
+- `0x13070 -> 0x13250 -> 0x138de` writes encoded object
+  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` under page-root `+0x1c`.
+  Class byte `+0x04 = 0x80` selects encoded-raster dispatch, mode byte
+  `+0x05 = 0` selects literal mode, count `+0x06 = 4` records the copied
+  payload capacity, and key `+0x08 = 0x0001` supplies the packed destination.
+- Publication and bridge copy the bucket root to render-record `+0x18`; render
+  entry `0x1ef6a -> 0x1efc2 -> 0x1f88e` consumes object byte `+0x05 & 3` and
+  dispatches literal mode through helper `0x1f8da`.
+
 Writers:
 
 - `0x10808` writes raster block `+0x08`, `+0x0e`, and `+0x10` from the parsed
@@ -303,7 +320,7 @@ Evidence:
   `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
   `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
-- Fixture anchors include `0x10808 ESC *t#R selects raster mode and scale
+- Evidence streams include `0x10808 ESC *t#R selects raster mode and scale
   thresholds`, `0x1075a ESC *r#A seeds raster baseline from cursor or left
   edge`, `0x107fa ESC *r#B clears raster active flag only`,
   `raster parser trace feeds capped and drained transfer gates`,
@@ -341,8 +358,8 @@ The parser loop `0x11774` routes it through:
 ```
 
 When parser mode returns to zero, `0x12218` restores the saved record and calls
-`0x105d0`. The raw payload begins at byte offset `17` in the fixture stream.
-Fixtures `modeled raster command stream parses ESC *t300R / ESC *r1A /
+`0x105d0`. The raw payload begins at byte offset `17` in the evidence stream.
+Evidence streams `modeled raster command stream parses ESC *t300R / ESC *r1A /
 ESC *b4W payload boundary`, `modeled raster command stream queues and renders
 ESC *b4W payload`, and `raster stream ties parser dispatch to queued page
 object` bind this boundary to the queued object and rendered row for the same
@@ -350,8 +367,8 @@ byte stream. `host-fetched raster stream preserves 0x1edc6 bridge contract`
 then checks that the object still crosses the page-record-to-render-record
 copy before `0x1ef6a` dispatch.
 
-The delayed handoff is now pinned at the instruction level rather than only by
-fixture bytes:
+The delayed handoff is instruction-level ROM behavior, not a fixture-only
+assertion:
 
 - `0x121cc` rewinds `0x78299e` by six, sets pending byte `0x782a1a = 1`,
   stores the handler longword at `0x782a1c`, and copies the six-byte parsed
@@ -433,8 +450,9 @@ Instruction boundary:
   from page extent `0x782db4`, baseline word `+0x00`, and `scale * 8`, then
   writes encoded mode byte `+0x08 = scale - 1`.
 
-Fixture `0x10808 ESC *t#R selects raster mode and scale thresholds` pins the
-threshold table at the handler boundary. The lower-resolution parser fixtures
+Evidence stream `0x10808 ESC *t#R selects raster mode and scale thresholds`
+records the threshold table at the handler boundary. The lower-resolution
+parser evidence streams
 `modeled raster command stream selects 150-dpi mode-1 state`, `modeled raster
 command stream selects 100-dpi mode-2 state`, and `modeled raster command
 stream selects 75-dpi mode-3 state` check those same handler writes as the
@@ -458,9 +476,9 @@ The active cursor axis depends on orientation:
 
 After origin selection, `0x1075a` copies the origin word to `+0x00` and
 computes byte limit `+0x10`.
-Fixtures `0x1075a ESC *r#A seeds raster baseline from cursor or left edge` and
-`0x1075a raster origin source follows orientation` pin both origin sources and
-the left-edge fallback.
+Evidence streams `0x1075a ESC *r#A seeds raster baseline from cursor or left
+edge` and `0x1075a raster origin source follows orientation` record both
+origin sources and the left-edge fallback.
 
 Instruction boundary:
 
@@ -490,9 +508,9 @@ can reopen those start/resolution writes.
 (`state+0x12`). It leaves origin, mode, scale, limit, and row state intact.
 That is why a following `ESC *t150R` can update resolution after `ESC *rB`,
 while an in-raster `ESC *t75R` is ignored.
-Fixtures `0x107fa ESC *r#B clears raster active flag only` and `modeled raster
-command stream parses ESC *rB and re-enables resolution changes` cover the
-clear-and-reenable case.
+Evidence streams `0x107fa ESC *r#B clears raster active flag only` and
+`modeled raster command stream parses ESC *rB and re-enables resolution
+changes` cover the clear-and-reenable case.
 
 ## Transfer Gate At 0x105d0
 

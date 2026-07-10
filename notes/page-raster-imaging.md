@@ -542,6 +542,130 @@ Evidence:
   below provide concrete object fields, helper addresses, row-write behavior,
   and exact unresolved computed-jump boundaries.
 
+## Render Helper Boundary Index
+
+This index is the renderer-owner lookup from a bridged page object to the
+first helper that can write pixels or stop at an exact ROM-local boundary. It
+starts after `0x1edc6` has copied source roots into render roots and after
+`0x1ef86` has derived the current-band destination caches. It is not a parser
+or command-family index; parser records, payload counts, and command scratch
+have already become page objects or selected font/resource state.
+
+Helper routes:
+
+- Compact text and downloaded glyph objects:
+  render root `+0x18` contains bucket objects with class byte `+0x04` in
+  `0x00..0x3f`. Dispatcher `0x1efc2 -> 0x1effe` loads the selected copied
+  context slot into `0x783a2c`, resolves glyph/source rows through `0x1f354`,
+  and selects compact helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+  Row writes then use `0x1f3d4`, `0x1f414`, row-copy tables rooted at
+  `0x1fa5c..0x207ac`, and wide helper `0x2f27c`.
+- Segment-list span objects:
+  render root `+0x18` also carries class `0x40..0x7f` bucket objects from
+  `0x12714 -> 0x13520/0x135f0`. Dispatcher `0x1efc2` selects
+  `0x1f812 -> 0x1f862`, which consumes six-byte segment entries and writes
+  full words plus a trailing mask from table `0x308f2`.
+- Encoded raster objects:
+  render root `+0x18` carries class `0x80..0xff` bucket objects from
+  `0x105d0 -> 0x13070 -> 0x13250`. Dispatcher `0x1efc2` selects
+  `0x1f88e`; object byte `+0x05 & 3` selects literal helper `0x1f8da`,
+  two-row expansion `0x1f8e6`, three-row expansion `0x1f920`, or four-row
+  expansion `0x1f9c6`.
+- Rectangle/rule objects:
+  render root `+0x1c` carries the bridged rule list from source root `+0x24`.
+  `0x1edc6` has already set selector bit `+0x05.4` and copied height word
+  `+0x0a` into continuation word `+0x0c`. Rule dispatcher `0x1f446` sends
+  selector `7` to solid helper `0x1f596`; other documented selector lows route
+  through pattern helper `0x1f4e0`.
+- Fixed-list and landscape span objects:
+  render root `+0x20` carries the bridged fixed-list from source root `+0x28`.
+  `0x1edc6` has already normalized its continuation fields. Dispatcher
+  `0x1f756` runs on the fixed-list cadence and writes rows through
+  `0x1f7b0` / `0x1f626`.
+
+Field grouping:
+
+- Canonical render inputs:
+  render roots `+0x18/+0x1c/+0x20`, render context slots `+0x24..+0x60`,
+  bucket class/selector/count/key fields `+0x04/+0x05/+0x06/+0x08`, bucket
+  payload bytes from `+0x0a..`, rule fields `+0x05/+0x06/+0x08/+0x0a/+0x0c`,
+  fixed-list fields `+0x04..+0x0d`, selected context longword `0x783a2c`,
+  glyph/source records, and raster payload bytes.
+- Derived/cache state:
+  current-band row count `0x783a20`, remainder `0x783a22`, destination base
+  `0x783a28`, stride `0x783a1c`, offset table `0x7839f8..`, phase byte
+  `$a001`, fallback base `0x7810b4 + byte_pair_offset`, wide-copy caches
+  `0x783a40..0x783a48`, and split counts from `0x1f414` / `0x1f626`.
+- Parser scratch:
+  none in this index. Delayed payload records and six-byte command records are
+  consumed before the page-object producers run.
+- Firmware bookkeeping:
+  object links, segment counters, rule/fixed continuation mutation, row-copy
+  table targets, and invalid computed targets when compact helper indexes move
+  outside valid row-copy tables.
+- Hardware/external state:
+  physical formatter/DC consumption after ROM row-buffer writes. It is not a
+  helper input for the ROM-local pixel rows.
+- Unknown:
+  only the exact residual boundaries named below: compact invalid target or
+  source-read stops, missing resource-window bytes, or hardware consumption
+  after row buffers already exist.
+
+Writers and readers:
+
+- Writers upstream of this index are page-object producers `0x12f2e`,
+  `0x12714`, `0x13070`, `0x13386`, `0x133aa`, `0x136d2`, and bridge
+  `0x1edc6`.
+- Readers are `0x1efc2`, `0x1effe`, `0x1f812`, `0x1f88e`, `0x1f446`,
+  `0x1f756`, destination helpers `0x1f3d4` / `0x1f626`, split helper
+  `0x1f414`, and row-copy or expansion helpers selected by each class.
+- Output effect is direct ROM row stores to the current-band buffer rooted at
+  `0x783a28` or fallback storage rooted at `0x7810b4 + byte_pair_offset`.
+  These helpers do not read destination words to perform an implicit
+  OR/XOR/AND blend with earlier object classes; overlap is resolved by the
+  `0x1ef6a` call order and linked-list order.
+
+Exact residual helper boundaries:
+
+- `0x1f034 -> 0x1f08e`:
+  wrapped-width compact mode-0 objects can use an out-of-range span word as a
+  row-copy table index; documented examples reach invalid target `0x0066cc`.
+- `0x1fe76..0x1fe8a`:
+  short compact high-row fallback counts above valid index `128` read code
+  bytes as target longwords; documented row `0x0102` reaches target
+  `0x329ad3c0`.
+- `0x1f264`:
+  segmented-wide span-31 high-row fallback can select a source offset beyond
+  the modeled payload at `+0xb50`.
+- Transparent secondary segment-57 rows:
+  the compact renderer route is documented through `0x1f354 -> 0x1f1f0`, but
+  rows needing firmware address `0x0c0000..0x0c0321` stop at the missing
+  external resource-window boundary.
+
+Evidence:
+
+- Render entry and bridge:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- Helper listings:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`,
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`,
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`, and
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`.
+- Owner checkpoints:
+  [Page Object Storage Outcome
+  Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
+  [Raster Transfer Decision
+  Checkpoint](raster-graphics.md#raster-transfer-decision-checkpoint),
+  [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix),
+  [Downloaded Glyph Boundary Decision
+  Rules](firmware-dataflow-model.md#downloaded-glyph-boundary-decision-rules),
+  and [Unresolved Boundary Outcome
+  Matrix](unresolved-boundaries.md#unresolved-boundary-outcome-matrix).
+
 ## Pixel Composition Checkpoint
 
 This checkpoint composes the shared pixel path from an active render record to

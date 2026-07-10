@@ -142,6 +142,99 @@ Evidence strength:
   `0x03fe22`, firmware source `0x0bfe22`, and required read window
   `0x0bfe22..0x0c0321`.
 
+## Transparent Payload Decision Checkpoint
+
+This checkpoint composes the `ESC &p#X` command family from parsed command to
+visible output. It starts when the parser table selects arming handler
+`0x11f5a` and ends with either fixed-space state, compact text page objects,
+or the explicit secondary segment-57 resource boundary reached by compact
+rendering.
+
+Decision route:
+
+- Parser dispatch: normal table mode `9` maps `ESC &p#X` / `x` to `0x11f5a`.
+  The handler does not consume payload bytes; it stores delayed handler
+  `0x12452` through `0x121cc`.
+- Payload restore: terminal parser boundary `0x12218` restores saved command
+  record `0x782a20..0x782a25` into the live record cursor `0x78299e` and calls
+  `0x12452` when alternate/data flag `0x782c18` is clear.
+- Alternate/data restore: if `0x782c18` is set at restore time,
+  `0x1226e..0x1227e` redirects the saved count through `0x12358(0x1228a)`
+  instead of calling `0x12452`; this is a stored/drained payload outcome, not
+  immediate page output.
+- Payload reader: `0x12452` reads absolute record word `+2`, then consumes
+  that many bytes through `0xa904`. Local pair `0x1a 0x58` contributes
+  `0x7f`; `0x1a xx` with `xx != 0x58` contributes the probe byte `xx`.
+- Printable branch: payload values outside the filtered control ranges, or
+  filtered controls with nonzero filter state, call `0xd04a`; text then flows
+  through `0x1393a -> 0x12f2e -> 0x1387c` under page-root `+0x1c`.
+- Fixed-space branch: default-filtered C0 or `0x80..0x9f` values call
+  `0xd0f0`. In flagged built-in contexts this advances spacing without a
+  compact object; in unflagged fixed-record contexts the substituted host-space
+  source can continue through `0xd140` / `0xd3b2` and queue a compact object.
+- Render branch: any queued compact object publishes through `0xff1e`, bridges
+  through `0x1ed84 -> 0x1edc6`, and renders through `0x1ef6a -> 0x1efc2 ->
+  0x1effe` using the same compact renderer contracts as ordinary printable
+  bytes.
+
+State classification:
+
+- Canonical parser state: restored six-byte command record at `0x78299e`,
+  delayed pending flag `0x782a1a`, handler pointer `0x782a1c`, and saved
+  record `0x782a20..0x782a25`.
+- Canonical text/page state: selected context slot `0x782f06`, filter bytes
+  `0x782eea + 0x10 * slot` and `0x782efa`, high-character flags `0x783132` /
+  `0x783133`, text cursor `0x782c8a`, page root `0x78297a`, and page-root
+  bucket `+0x1c`.
+- Derived/cache state: local selected filter word, normalized payload value,
+  source object scratch `0x782d7e`, compact keys `0x782a7a..0x782a7e`, copied
+  render bucket root `+0x18`, and compact render segment/bucket caches.
+- Parser scratch: the fetched payload byte stream and the local `0x1a` probe
+  state while `0x12452` is consuming the counted payload.
+- Firmware bookkeeping: delayed-restore redirect through `0x1226e..0x1227e`,
+  generic drain helpers `0x1228a` / `0x12328`, and local normalization helper
+  `0xd99a`.
+- Hardware/external state: firmware source range `0x0c0000..0x0c0321` for the
+  documented secondary segment-57 fallback rows after compact rendering reaches
+  beyond the verified resource suffix.
+- Unknown: manual-facing names for the filter/high-character state fields and
+  physical resource-window decode for `0x0c0000..0x0c0321`.
+
+Writers, readers, and output effect:
+
+- Writers are `0x11f5a` / `0x121cc` for delayed handler state, `0x12218` for
+  restored parser records, `0x12452` for local payload normalization and
+  routing, `0xd04a` / `0xd0f0` for text or fixed-space source state, and
+  `0x12f2e` / `0x1387c` for compact page objects.
+- Readers and consumers are `0xa904` for payload bytes, `0x12452` for the
+  restored count and filter fields, `0xd04a` / `0xd0f0` for text-state
+  consumers, `0xff1e` / `0x1ed84` / `0x1edc6` for page publication and bridge,
+  and `0x1ef6a` / `0x1effe` for compact rendering.
+- The visible output is either no page object for drained alternate/data
+  payloads, spacing-only motion for filtered built-in controls, compact text
+  objects for printable or unflagged substituted-space paths, or the exact
+  secondary segment-57 resource boundary when compact rendering requires bytes
+  past `0x0bffff`.
+
+Evidence and unresolved boundary:
+
+- Parser and delayed-restore evidence is
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst` and
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+- Payload reader evidence is `0x12452..0x12534` in
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+- Output-path evidence is the downstream text/page/render listings cited in
+  this note plus fixtures `transparent data parser trace feeds page-record
+  queue`, `transparent data control payloads advance through fixed-space
+  path`, `transparent nonzero filters route controls through printable path`,
+  and `transparent secondary high-control byte enters segmented page-record
+  path`.
+- No ROM-local middle edge remains for `0x11f5a -> 0x12452`, payload
+  normalization, filter polarity, fixed-space versus printable routing,
+  compact object queueing, or bridge/render dispatch. The remaining pixel
+  boundary is only the physical/resource-window data for
+  `0x0c0000..0x0c0321`.
+
 ## Command Boundary
 
 `ESC &p#X` reaches handler `0x11f5a`. The handler is only an arming stub:

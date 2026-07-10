@@ -204,30 +204,59 @@ Evidence and unresolved boundaries:
 byte_to_match, next_mode, handler_long
 ```
 
-The alternate/data table keeps the same state transitions but suppresses many final
-handlers. That is consistent with a mode that must still parse or collect PCL syntax
-while deferring normal side effects. For matched mode-zero C0 rows with blank handlers,
-alternate/data mode does not treat the byte as a normal control command; it appends the
-byte through `0xe002` after the shared scratch-flush helpers and then rejoins the
-terminal parser reset path. Normal mode-zero blank C0 rows instead reset/finalize
-without page-record output or alternate append. Lowercase finals that keep the parser in
-the same command family are reported as chaining forms of the matching uppercase PCL
-command. Rows labeled as parser prefixes are setup/scaffolding entries, not terminal
-imaging commands: the handler records the family transition and leaves the final command
-byte to a later mode. Examples are `ESC`, `ESC &`, `ESC &l`, `ESC *c`, and the
-primary/secondary font family prefixes. Rows labeled as font-designation terminals are
-the `ESC (#A..^` / `ESC )#A..^` family handled by `0x120be`; their command-specific
-effects are documented in
-[symbol-set-selection.md](symbol-set-selection.md#owner-summary), with selected-font
-context and metric consumers in
-[font-context-metrics.md](font-context-metrics.md#owner-summary). Map mutation after a
-selected context is rebuilt is owned by
-[symbol-map-patching.md](symbol-map-patching.md#owner-summary): `0x14f16` only runs
-after `0x14c64` has produced the primary or secondary base map, and its output is only
-visible when later printable bytes consume `0x782f32` or `0x783032` through `0xd04a ->
-0x1393a`. The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
-uppercase `T` has no terminal handler, while lowercase `t` only reaches the generic
-`0x11f4c` rewind used by lowercase chaining rows.
+### Parser Table Row Decision Matrix
+
+The dispatch tables encode syntax state first and command semantics second.
+Use the row class before assigning a byte to a command-family owner:
+
+- Prefix/setup rows:
+  handlers such as `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11ff6`,
+  `0x12008`, and `0x1201e` update parser mode, callback pointer
+  `0x78299a`, matched-byte scratch, or command-record cursor state. They do
+  not own page output. Their consumer is a later terminal row in the same PCL
+  family, for example `ESC`, `ESC &`, `ESC &l`, `ESC *c`, and the primary or
+  secondary font-family prefixes.
+- Normal terminal handler rows:
+  a nonzero handler longword is the semantic handoff. The selected owner reads
+  the live six-byte record at `0x78299e` and writes cursor, font, page,
+  raster, rectangle, macro, status, or publication state. The command map
+  stops at that handler entry and the owner note documents fields, consumers,
+  output effect, and residual boundaries.
+- Delayed-payload rows:
+  setup handlers such as `0x11f5a`, `0x11f6e`, `0x11f82`, and `0x11f96`
+  snapshot the current record through `0x121cc`; restore `0x12218` later calls
+  payload owners such as `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, and
+  `0x16c14`. Payload bytes are no longer parser-table bytes after this
+  boundary.
+- Lowercase chaining rows:
+  helper `0x11f4c` rewinds the six-byte parser record so the current command
+  family can continue. These rows are chaining forms of the matching uppercase
+  command only when the later terminal row reaches the same owner.
+- Font-designation terminal rows:
+  `ESC (#A..^` and `ESC )#A..^` route through `0x120be`. Their command-family
+  effects are owned by
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary), with
+  selected-font context and metric consumers in
+  [font-context-metrics.md](font-context-metrics.md#owner-summary). Map
+  mutation after a selected context is rebuilt is owned by
+  [symbol-map-patching.md](symbol-map-patching.md#owner-summary): `0x14f16`
+  runs only after `0x14c64` has produced the primary or secondary base map, and
+  its output is visible only when later printable bytes consume `0x782f32` or
+  `0x783032` through `0xd04a -> 0x1393a`.
+- Explicit zero-handler rows:
+  normal mode-zero blank rows reset/finalize parser state without page-record
+  output or alternate append. They may still trigger delayed restore
+  `0x12218` if a pending payload owner is armed.
+- Alternate/data blank rows:
+  alternate/data mode keeps state transitions but suppresses many final
+  handlers. Matched mode-zero C0 rows with blank alternate handlers append the
+  byte through `0xe002` after shared scratch-flush helpers, then rejoin the
+  terminal parser reset path. They do not run the normal control-code owners
+  for BS, HT, LF, FF, CR, SO, or SI.
+- Unimplemented command rows:
+  `ESC &lT/t` is intentionally a parser-table terminal with no imaging owner.
+  Normal uppercase `T` has no terminal handler; lowercase `t` reaches only
+  generic rewind helper `0x11f4c`.
 
 Two normal-table rows with blank handlers are parser artifacts rather than
 undocumented imaging commands:

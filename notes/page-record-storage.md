@@ -1193,55 +1193,40 @@ Evidence: `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
 The allocator has no pixels by itself. It determines which objects are visible,
 their order, and the root fields later consumed by publication and rendering.
 
-Fixture `addressed text/rule/raster field groups reach publication and render
-entry` checks the ROM interpretation that compact text, a selector-7 rule,
-and a mode-0 raster row share one addressed page-record state, publish through
-`0xff1e`, bridge through `0x1ed84` / `0x1edc6`, and render through
-`0x1ef6a`.
+Mixed page-record route: compact text, selector-7 rule, and mode-0 raster
+objects can share one addressed page-record state. The shared root publishes
+through `0xff1e`, bridges through `0x1ed84` / `0x1edc6`, and renders through
+`0x1ef6a`; the producers do not create independent page images.
 
-Fixture `addressed page-record writers share 0x1381c across chunk rollover`
-checks the shared stream state across producer families. `0x10084` seeds
-`0x782a72 = root + 0x20`; seven compact writers through
-`0x12f2e` / `0x1387c` allocate objects at `0x00d05004`,
-`0x00d0502a`, `0x00d05050`, `0x00d05076`, `0x00d0509c`,
-`0x00d050c2`, and `0x00d05104`; `0x133aa` and `0x136d2` then allocate
-rule/fixed objects at `0x00d0512a` and `0x00d05138` from the same stream.
-The root links two chunks as
-`root + 0x20 -> 0x00d05000 -> 0x00d05100`. Final stream bookkeeping is
+Shared stream route: `0x10084` seeds `0x782a72 = root + 0x20`; seven compact
+writers through `0x12f2e` / `0x1387c` allocate objects at `0x00d05004`,
+`0x00d0502a`, `0x00d05050`, `0x00d05076`, `0x00d0509c`, `0x00d050c2`, and
+`0x00d05104`; `0x133aa` and `0x136d2` then allocate rule/fixed objects at
+`0x00d0512a` and `0x00d05138` from the same stream. The root links two chunks
+as `root + 0x20 -> 0x00d05000 -> 0x00d05100`. Final stream bookkeeping is
 `0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
 `0x782a76 = 0x00d05146`, so the second chunk is the current tail after all
 compact, rule, and fixed producers have written. Publication preserves the
 bucket root before render entry dispatches all compact objects.
 
-The compact-bucket fixtures divide the shared `0x1387c` behavior into object
-shapes and reuse rules. Fixture `0x1387c page-record bucket allocator reuses
-matching short object` checks that a matching short object is reused while count
-`+6` is below capacity. Fixture `0x1387c page-record unflagged short bucket
-object` pins the unflagged compact object shape. Fixtures `0x1387c page-record
-segmented allocator places tall glyph buckets` and `0x1387c page-record
-segmented allocator reuses tall glyph buckets` pin segmented/tall glyph
-placement and reuse. Fixture `0x1387c page-record queued short object renders
-reused entries` ties the reused short object to rows derived from the render
-helpers, so the object is documented as canonical page content and not only
-allocator bookkeeping.
+Compact-bucket route: shared helper `0x1387c` either reuses a matching short
+object while count `+6` is below capacity, writes the unflagged short compact
+object shape, or places/reuses segmented tall-glyph bucket objects. Reused
+short objects are canonical page content because render helpers later derive
+rows from their accumulated entries; they are not only allocator bookkeeping.
 
-The no-room fixture checks cover negative output behavior: if `0x1381c`
-returns zero inside `0x133aa`, root `+0x24` and existing rule nodes remain
-unchanged; if `0x1381c` returns zero inside `0x136d2`, root `+0x28` and
-existing fixed nodes remain unchanged. Later publication therefore sees the
-prior visible objects, not a partial failed insertion.
+No-room route: if `0x1381c` returns zero inside `0x133aa`, root `+0x24` and
+existing rule nodes remain unchanged. If it returns zero inside `0x136d2`,
+root `+0x28` and existing fixed nodes remain unchanged. Later publication
+therefore sees the prior visible objects, not a partial failed insertion.
 
-The span fixtures split `0x12714` storage by orientation and by producer. The
-portrait fixture queues selector-`0x4000` segment-list objects under bucket
-class `0x40`, copied through render root `+0x18` and consumed by `0x1f812`.
-The landscape fixture queues fixed-width objects through `0x136d2`, copied
-through render root `+0x20` and consumed by `0x1f756`. Direct-control fixtures
-`live CR span flush materializes 0x12714 page object`,
-`left-margin parser span flush materializes 0x12714 page object`, and
-`vertical-cursor parser span flush materializes 0x12714 page object` check
-that parsed CR, left-margin, and vertical-cursor commands can all materialize
-the same portrait selector-`0x4000` segment-list object before following
-compact text is queued.
+Span storage route: `0x12714` splits storage by orientation and producer.
+Portrait spans queue selector-`0x4000` segment-list objects under bucket class
+`0x40`, copied through render root `+0x18` and consumed by `0x1f812`.
+Landscape spans queue fixed-width objects through `0x136d2`, copied through
+render root `+0x20` and consumed by `0x1f756`. Parsed CR, left-margin, and
+vertical-cursor commands can all materialize the same portrait
+selector-`0x4000` segment-list object before following compact text is queued.
 
 Raster storage also has a per-object capacity split beneath the same root
 `+0x1c` bucket array. `0x132b6` may return only the current chunk tail or a
@@ -1251,17 +1236,26 @@ the packed key, and loops until the accepted transfer bytes are represented by
 one or more encoded-span objects. The detailed dense-row split is documented
 in [raster-graphics.md](raster-graphics.md#allocation-capacity-and-dense-rows).
 
-The bridge fixtures split storage from rendering. `0x1edc6 page-record bridge
-copies compact bucket and context slots` checks the compact bucket root and
-selected-font context slots survive into render-record fields. `0x1ed84 active
-page-record copy seeds render-record header words` checks the active-copy
-header words consumed before `0x1ef6a`.
-Fixture `0x1edc6 page-record bridge normalizes rule and fixed lists` checks
-that the rule list `+0x24` and fixed list `+0x28` are copied to render-record
-`+0x1c` and `+0x20`, then normalized in place before rule/fixed dispatch.
-Fixture `0x1edc6 bridge records render-record destination offsets` classifies
-the copied destination offsets as derived bridge/cache state, not producer
-state.
+Bridge route: storage and rendering split at `0x1ed84` / `0x1edc6`. The bridge
+copies compact bucket root and selected-font context slots into render-record
+fields, seeds active-copy header words consumed before `0x1ef6a`, copies rule
+list `+0x24` and fixed list `+0x28` to render-record `+0x1c` and `+0x20`, and
+normalizes those lists in place before rule/fixed dispatch. Copied destination
+offsets are derived bridge/cache state, not producer state.
+
+Supporting evidence names for this route group are `addressed text/rule/raster
+field groups reach publication and render entry`, `addressed page-record
+writers share 0x1381c across chunk rollover`, `0x1387c page-record bucket
+allocator reuses matching short object`, `0x1387c page-record unflagged short
+bucket object`, `0x1387c page-record segmented allocator places tall glyph
+buckets`, `0x1387c page-record segmented allocator reuses tall glyph buckets`,
+`0x1387c page-record queued short object renders reused entries`,
+`live CR span flush materializes 0x12714 page object`, `left-margin parser span
+flush materializes 0x12714 page object`, `vertical-cursor parser span flush
+materializes 0x12714 page object`, `0x1edc6 page-record bridge copies compact
+bucket and context slots`, `0x1ed84 active page-record copy seeds
+render-record header words`, `0x1edc6 page-record bridge normalizes rule and
+fixed lists`, and `0x1edc6 bridge records render-record destination offsets`.
 
 ## Mixed Page Composition Checkpoint
 

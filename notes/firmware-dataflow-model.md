@@ -2679,6 +2679,100 @@ Reproduction rule:
   coordinates choose buckets, segments, and fallback splits rather than causing
   a parser-time full-page bitmap allocation.
 
+### Command-Family To Page-Object Crosswalk
+
+This checkpoint connects parsed command families to the object classes in the
+route index above. It does not replace the detailed owner notes, but it names
+the first ROM field where each byte-stream family becomes page-image state.
+
+- Ordinary printable bytes, transparent printable bytes, and macro-replayed
+  printable bytes:
+  parser-visible bytes reach `0xd04a`, then `0x1393a` and `0x12f2e`. The first
+  page-image state is a compact bucket object under current root `+0x1c` with
+  object fields `+0x04/+0x05/+0x06/+0x08` and payload bytes at `+0x0a`. The
+  first render consumer is `0x1ef6a -> 0x1efc2 -> 0x1effe`, then the compact
+  helper selected by object selector bits.
+- SI/SO, font selection, and downloaded-font selection before printable bytes:
+  `0xc68a` / `0xc6b8`, `0x17708`, `0x14c64`, and `0xc428` / `0xc4fc` update the
+  selected context before later printable bytes reach `0xd04a`. The first
+  page-image state is page-root context slots `+0x2c..+0x68`, followed by later
+  compact objects under root `+0x1c`. The compact renderer resolves glyph
+  resources through render context slots `+0x24..+0x60`.
+- Downloaded character and descriptor payloads used by later printable bytes:
+  `0x11f96 -> 0x121cc -> 0x12218` dispatches either downloaded characters
+  through `0x16498` or descriptor/resource payloads through
+  `0x16c14 -> 0x16fae -> 0x1719c`. The first persistent image input is installed
+  font resource/candidate state; later printable bytes create compact bucket
+  objects under root `+0x1c`. Renderer `0x1effe` dispatches downloaded compact
+  helpers `0x1f0d2`, `0x1f1f0`, or `0x1f264` according to object selector bits.
+- Pending span flush from CR, cursor/margin movement, or printable low-water
+  branches:
+  `0xf02c`, `0xeb58`, `0xf560`, `0xd4ac`, or `0xd8fc` reach `0xf34a` /
+  `0x12714`. The first page-image state is either portrait segment-list bucket
+  objects under root `+0x1c` or landscape fixed-list objects under root `+0x28`.
+  The first render consumers are portrait `0x1f812` and landscape
+  `0x1f756 -> 0x1f7b0`.
+- Raster transfer rows:
+  delayed `ESC *b#W` dispatch uses
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`, then `0x13070` / `0x13250`. The
+  first page-image state is an encoded raster bucket object under root `+0x1c`
+  with class byte `+0x04` in `0x80..0xff`, mode byte `+0x05`, count `+0x06`,
+  key `+0x08`, and payload `+0x0a`. The first render consumer is
+  `0x1efc2 -> 0x1f88e`, with expansion mode from object byte `+0x05 & 3`.
+- Rectangle/rule fill:
+  chained `ESC *c` parser records reach size/fill handlers `0x10e68`,
+  `0x10e22`, `0x10a40`, `0x10ae0`, and `0x10dce`; fill reaches
+  `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`. The first page-image state is an
+  ordered rule-list node under root `+0x24` with selector `+0x05`, key `+0x06`,
+  width `+0x08`, height `+0x0a`, and continuation `+0x0c`. The first render
+  consumer is `0x1f446`, then solid helper `0x1f596` for selector `7` or pattern
+  helper `0x1f4e0` for documented non-solid selectors.
+- Page publication commands such as FF, reset, page-size, orientation,
+  paper-source, and copies:
+  command-family handlers flush pending state, call publication helper `0xff1e`,
+  and may rebuild default/page state afterward. The first page-image state is a
+  page/control pool record, protected head `0x780ea6`, publication flag
+  `0x782996`, and cleared current root `0x78297a`. The first render consumer is
+  scheduler source selection and bridge `0x1ed84 -> 0x1edc6` before the next
+  `0x1ef6a` render call.
+
+State classification:
+
+- Canonical state:
+  parser-visible command handlers, selected font/context slots, current page root
+  `0x78297a`, root `+0x1c/+0x24/+0x28`, and published page/control records.
+- Derived/cache state:
+  selected-map rebuild products, `0x12f2e` source fields, bucket/key fields
+  `0x782a7a..0x782a7e`, bridge render roots, and render context slots.
+- Parser scratch:
+  six-byte command records, delayed payload snapshots, transparent/macro replay
+  bytes, and payload budgets before the producing handler writes page-image
+  state.
+- Firmware bookkeeping:
+  allocation cursors, retry bits, publication flag `0x782996`, installed-resource
+  candidate bookkeeping, and scheduler source/work-record selection.
+- Unknown:
+  no crosswalk row is an unresolved middle edge by itself. Remaining work starts
+  from byte streams that change a named handler route, object field, bridge
+  field, first render consumer, or exact boundary in the owner notes.
+
+Evidence:
+
+- Parser and dispatch ownership:
+  [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-command-map.md](pcl-command-map.md), and
+  [pcl-parser-firmware.md](pcl-parser-firmware.md).
+- Object-owner notes:
+  [direct-control-codes.md](direct-control-codes.md),
+  [font-context-metrics.md](font-context-metrics.md),
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md), and
+  [publication-commands.md](publication-commands.md).
+- Page and render owners:
+  [page-record-storage.md](page-record-storage.md) and
+  [page-raster-imaging.md](page-raster-imaging.md).
+
 ### Band Scheduling Route Index
 
 This checkpoint is the compact reader path from a published page/control

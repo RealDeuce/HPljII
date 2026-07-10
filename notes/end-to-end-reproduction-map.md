@@ -9385,9 +9385,10 @@ reader follow what the ROM does.
 Priority ROM-local documentation targets:
 
 1. Command-family variants that change page-object shape or render input. Useful
-   remaining examples are new streams that change the concrete render-helper fields
-   named in [Render Helper Boundary
-   Index](page-raster-imaging.md#render-helper-boundary-index) and the
+   remaining examples should start from `Command-Family To Page-Object Crosswalk` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md#command-family-to-page-object-crosswalk)
+   and then change one of the concrete render-helper fields named in [Render Helper
+   Boundary Index](page-raster-imaging.md#render-helper-boundary-index) and the
    producer/root/object/bridge fields summarized by `Page Object Shape Route Index` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index):
    scheduler-only variants should use `Band Scheduling Route Index` in

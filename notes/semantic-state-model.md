@@ -6493,31 +6493,53 @@ Unresolved middle edges:
 
 ### Writers
 
-- `0x15a56` and `0x15a18` write current id and character state. Fixture
-  `0x15a56-modeled assign font ID normalization` proves zero remains zero,
-  negative ids become positive, and values outside the signed range clamp to
-  `0x7fff`.
-- `0x11f96` consumes the parsed `W` count and snapshots the delayed handler.
-  Fixture `0x15a18/0x11f96-modeled font payload command edge` proves that
-  `ESC *c#E` stores current character/code word `0x7fff`, zero-count
-  `ESC )s0W` selects handler `0x15d0a`, and nonzero `ESC )s#W` selects
-  handler `0x16c14` with byte budget `0x0891`. Fixture
-  `0x11774 ROM dispatch table routes font W streams to delayed handlers`
-  pins the parser modes, delayed snapshot bytes, restored records, descriptor
-  offset, and payload offset for `ESC )s0W` and `ESC )s4W`.
-- `0x16df6` dispatches font-control values; `0x17108` and `0x17150` toggle
-  current-record bit `6` and transfer counts. Fixture
-  `0x16df6-modeled font-control dispatch mark/unmark and suppression`
-  proves the mark-current, unmark-current, parser-mode-suppressed, and
-  out-of-range no-op branches. Fixture
-  `0x17108-modeled current font record mark/count transfer` pins the mark
-  branch, already-marked no-op, and missing-record no-op. Fixture
-  `0x17150-modeled current font record unmark/count transfer` pins the inverse
-  unmark branch and already-unmarked no-op.
-  The decoded jump table at `0x16db6` maps values `0`, `1`, `2`, `3`, `4`,
-  `5`, and `6` to all-record delete/release, current-record release,
-  current-character clear, unmark, mark, and active/current-resource refresh
-  families; all other values fall through to `0x16eaa`.
+- `0x15a56` is the `ESC *c#D` current downloaded-font-id writer. It rewinds
+  parser-record cursor `0x78299e` by one six-byte record, reads the parsed
+  signed word from the active record, converts negative values to their
+  absolute value, maps the signed overflow case `0x8000` to `0x7fff`, and
+  writes the resulting word to `0x782f2e`. Zero therefore remains the
+  selectable zero id, while negative ids select their positive counterpart.
+  Evidence: `generated/disasm/ic30_ic13_assign_font_id_015a56.lst` and
+  fixture `0x15a56-modeled assign font ID normalization`.
+- `0x15a18` is the `ESC *c#E` current character/code writer for later
+  downloaded-character installs. It uses the same `*c` parser family record
+  and writes the normalized word to `0x782f30`; downstream
+  downloaded-character handler `0x16498` consumes that word when choosing the
+  glyph/table entry to install. Evidence:
+  `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst` and
+  fixture `0x15a18/0x11f96-modeled font payload command edge`.
+- `0x11f96` is the delayed selector for `ESC (s#W` and `ESC )s#W`. It reads
+  the parsed `W` count from the restored command record: count zero schedules
+  descriptor handler `0x15d0a`, while nonzero counts schedule resource or
+  downloaded-character payload handler `0x16c14`. In both cases it uses
+  `0x121cc`, so the parser stores the six-byte `W` record in
+  `0x782a20..0x782a25` and later `0x12218` restores that record before the
+  selected handler consumes descriptor or payload bytes. Evidence:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`, fixtures
+  `0x15a18/0x11f96-modeled font payload command edge` and `0x11774 ROM
+  dispatch table routes font W streams to delayed handlers`.
+- `0x16df6` is the `ESC *c#F` font-control dispatcher. The decoded jump table
+  at `0x16db6` maps selector values `0`, `1`, `2`, `3`, `4`, `5`, and `6` to
+  all-record delete/release, current-record release, current-character clear,
+  unmark, mark, and active/current-resource refresh families; other values
+  fall through to no-op exit `0x16eaa`. Selectors `0`, `1`, `2`, `3`, and
+  `6` first test parser/device mode byte `0x782a92` and suppress their
+  destructive or refresh helper when it is `2`. Evidence:
+  `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst` and fixture
+  `0x16df6-modeled font-control dispatch mark/unmark and suppression`.
+- `0x17108` and `0x17150` are the current-record mark/unmark count-transfer
+  helpers reached by `0x16df6` selectors `5` and `4`. Both resolve the current
+  id through the `0x172c0` current-record scan. `0x17108` sets current-record
+  flag bit `6` only when a matching record exists, has a payload, and is not
+  already marked; that transition decrements unmarked count `0x782782` and
+  increments marked count `0x782786`. `0x17150` performs the inverse transfer
+  for an already-marked record and leaves already-unmarked or missing records
+  unchanged. Evidence:
+  `generated/disasm/ic30_ic13_font_resource_payload_record_lookup_0170be.lst`
+  for `0x170be`/`0x17108`, checked-in note `notes/downloaded-fonts.md`, and
+  fixtures
+  `0x17108-modeled current font record mark/count transfer` and
+  `0x17150-modeled current font record unmark/count transfer`.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Fixture
   `0x15d0a-modeled font descriptor route` pins the current-record and
@@ -6552,15 +6574,20 @@ Unresolved middle edges:
 - `0x16fae`, `0x17362`, `0x17026`, and `0x1719c` validate, stage, allocate,
   and initialize font-resource payload headers.
 - `0x16c14` installs the staged font-resource payload into the current
-  downloaded-font record table. Fixture
-  `0x16c14-modeled downloaded font replacement bookkeeping` proves the
-  replacement path releases the old payload, clears matching continuation
-  state, updates candidate flags, and moves marked/unmarked counters. Fixture
-  `0x16c14-modeled downloaded font free-slot bookkeeping` proves a free slot
-  receives the new id/payload and increments the byte-`+0x20` class counters.
-  Fixture `0x16c14-modeled downloaded font no-slot budget skip` proves the
-  full-pool miss leaves records and counters unchanged and reports the
-  skip-no-record-slot budget action.
+  downloaded-font record table after the delayed `W` record has been restored.
+  It stores the absolute byte budget in `0x783140`, resolves the current id
+  with `0x172c0`, drains the budget through `0x12328` when the parser mode is
+  suppressed or no current-record slot is available, releases an existing
+  payload through `0x1887a` before replacing it, and then calls `0x17026` /
+  `0x1719c` to allocate and initialize the new payload. Successful install
+  writes current-record id `+0`, clears flag bits `5..7` at `+2`, stores the
+  payload pointer at `+6`, inserts the candidate through `0x1bc38`, updates
+  candidate flags, and increments the class counters selected by payload byte
+  `+0x20`. Evidence:
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst` and
+  fixtures `0x16c14-modeled downloaded font replacement bookkeeping`,
+  `0x16c14-modeled downloaded font free-slot bookkeeping`, and
+  `0x16c14-modeled downloaded font no-slot budget skip`.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
   continuation state. Fixtures
   `0x168dc-modeled font payload linear copy handles 0x1a58` and
@@ -6633,11 +6660,13 @@ Unresolved middle edges:
 
 - `0x11f96` reads the parsed `W` count and schedules delayed font handlers.
 - `0x172c0` scans the current-record pool by `0x782f2e`.
-- `0x170be` scans the same current-record pool by masked payload pointer.
-  Fixture `0x170be-modeled font payload record lookup` proves that a longword
-  such as `0x99123456` is masked to payload `0x123456`, returns current id
-  `0x1234`, and stores the record pointer, while a missing masked payload
-  returns `-1`.
+- `0x170be` scans the same current-record pool by masked payload pointer. It
+  strips the candidate/resource longword down to its 24-bit payload address,
+  compares that value against each current-record payload pointer at `+6`,
+  stores the matching record pointer for callers, and returns the signed
+  current id word; a missing payload returns `-1`. Evidence:
+  `generated/disasm/ic30_ic13_font_resource_payload_record_lookup_0170be.lst`
+  and fixture `0x170be-modeled font payload record lookup`.
 - `0x1b4c0` resolves payload pointers for descriptor routes.
 - `0x15b9a` reads saved payload `0x7827da`, saved glyph/table index
   `0x7827c8`, saved destination `0x7827ca`, saved trailing-plane destination
@@ -6667,11 +6696,11 @@ Unresolved middle edges:
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
-- `0x17708` can select a bit-30-clear inline/downloaded candidate by font id;
-  fixture `0x17708 font-ID selects inline/downloaded candidate` proves that
-  the selected path reaches `0x14c64`. Fixture
-  `0x14c64 dispatches selected inline/downloaded font` proves the selected
-  context rebuilds its map through `0x14e24` / `0x14eb6`.
+- `0x17708` selects bit-30-clear inline/downloaded candidates by font id and
+  feeds the selected candidate to `0x14c64`; the selected context rebuilds its
+  map through `0x14e24` / `0x14eb6`. Evidence: fixtures `0x17708 font-ID
+  selects inline/downloaded candidate` and `0x14c64 dispatches selected
+  inline/downloaded font`.
 - `0x1393a`, `0x12f2e`, `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`
   consume the installed glyph path until visible compact text rows exist.
 

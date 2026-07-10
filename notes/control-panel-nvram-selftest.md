@@ -532,6 +532,98 @@ Evidence:
 
 ## Reset Types
 
+### ROM Reset-Type Boundary
+
+The manual reset names below are not all equivalent to the host `ESC E`
+software-reset handler. The ROM-visible reset/default routes split into three
+documented entry classes:
+
+- Host `ESC E` is parser-dispatched to `0xcc52`. Its checked-in owner is
+  [reset-default-environment.md](reset-default-environment.md), which covers
+  publication, environment rebuild, parser/data-chain reset, and the canonical
+  default fields consumed by `0xcda2`.
+- Startup cold reset is visible at `0x2c84`: after retained-record bulk read
+  `0x5a16`, it samples the debounced panel/service byte through `0xa3ca`;
+  byte `0xdf` calls `0x5a62`, displays string `0xb1a3` (`08 COLD RESET`)
+  through `0x9182`, then validates/loads defaults through `0x5f96`.
+- Panel/menu default changes enter through service dispatcher `0x3dae`.
+  The default-store family includes `0xef -> 0x3ef8`, `0xfd -> 0x3f6a`,
+  and `0xbf -> 0x4922`; `0x4922` reaches `0x4fb0` and update handlers
+  `0x5060`, `0x50be`, and `0x52ba`.
+
+Field classification for these reset-type routes:
+
+- Canonical:
+  selected default bank `0x7822d5`, retained backing records `0x780eda..`,
+  reset-consumed defaults `0x78219d`, `0x78219e`, and `0x7821a2`.
+- Derived/cache:
+  staged menu values `0x782280..0x782298`, selected candidate `0x78227c`,
+  selector index `0x782278`, and maintenance counter `0x780ef0`.
+- Parser/service scratch:
+  panel byte latch `0x7821aa`, progress byte `0x782272`, temporary commit
+  flags `0x7822d4` / `0x7822dc`, and handler-table pointer `0x782274`.
+- Firmware bookkeeping:
+  dirty/read-mask words `0x780eba..0x780ed8`, auxiliary flags `0x780eb8`,
+  retained serial shadow `0x7828f6`, and status bytes `0x780e36..0x780e39`.
+- Hardware/external:
+  `$8000.w` panel/service byte source, `$a400` retained-storage control, and
+  `$8c01` retained-storage input/status.
+- Unknown:
+  physical key protocol behind manual labels, physical retained-storage device
+  identity, and the exact panel-service byte sequence that distinguishes every
+  displayed manual reset label outside the ROM paths listed here.
+
+Writers:
+
+- `0x5a16` marks all 16 retained-record flags, calls readback helper `0x97e4`,
+  then clears the flags before startup/default processing continues.
+- `0x5a62` samples another debounced byte. For byte `0xde`, it clears all
+  16 backing words under `0x780eda` and marks all dirty flags; otherwise it
+  rebuilds records from ROM fallback tables `0xba3e` and `0xba44`, then calls
+  `0x571e`.
+- `0x5e80` loads the selected backing record into canonical defaults:
+  record byte `+0 -> 0x78219d`, record word `+2 -> 0x78219e`, and record
+  byte `+5` bit 2 -> `0x7821a2`.
+- `0x5060`, `0x50be`, and `0x52ba` mirror menu/default writes into both the
+  selected backing record and the canonical default fields.
+
+Readers / consumers:
+
+- `0xcda2` consumes `0x78219d`, `0x78219e`, and `0x7821a2` during software
+  reset and rebuilds page/control records, VMI/HMI, parser scratch pointers,
+  and reset bookkeeping.
+- Paper-source fallback `0xef62` can consume `0x7821a2` after defaults are
+  loaded.
+- Later page-layout, text, and raster paths consume the page environment and
+  derived VMI/HMI values produced by reset/default consumers; the panel/NVRAM
+  handlers do not queue page objects or render rows directly.
+
+Output effect:
+
+- These reset-type routes affect pixels only by changing default state that a
+  later software reset, paper-source command, page-layout command, or startup
+  path consumes. The documented host-visible pixel path remains
+  `0xcc52 -> 0xff1e -> 0x1ed84 -> 0x1ef6a` for a valid current page before
+  reset rebuilds the environment.
+- Manual claims such as "discards formatted pages not yet printed" are
+  considered unresolved until tied to a specific ROM path that reaches the
+  page-root publication/clear helpers or queue-clearing helpers.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_service_default_reset_entry_002c84.lst`
+- `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`
+- `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`
+- `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`
+- `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`
+- `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`
+- `generated/disasm/ic30_ic13_default_env_load_005e80.lst`
+- `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`
+- `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`
+- `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`
+- [reset-default-environment.md](reset-default-environment.md)
+- [firmware-startup.md](firmware-startup.md)
+
 ### Software Reset: `ESC E`
 
 - Restores the user default environment.

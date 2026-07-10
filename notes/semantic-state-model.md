@@ -1856,8 +1856,24 @@ VMI state before object queueing, then cross the same `0x1387c`,
   to produce a whole-dot packed coordinate, and pass record flag bit 0 as
   the relative/absolute selector to the same commit helpers used by the
   `ESC &a` cursor commands.
-- `0xcb00`, `0xc992`, `0xece2`, `0xea9e`, `0xee64`, and `0xf9e8` write
-  VMI, vertical layout, perforation skip, and page-length state.
+- `0xcb00` writes VMI `0x783160` from accepted `ESC &l#C` 1/48-inch values;
+  `0xc992` writes the same field from the ROM LPI set for `ESC &l#D`. Both
+  can refresh pending cursor y `0x782c8e` when pending text byte `0x782a6d`
+  is set. Later LF/FF, `ESC &a#R`, `ESC =`, VFC, page-length, and printable
+  placement consume that line advance.
+- `0xece2` writes top offset `0x782dce` for `ESC &l#E`, then refreshes
+  default text length and VFC cache; `0xea9e` writes bottom/text-length state
+  `0x782dd2` for `ESC &l#F` or restores the default bottom for selector zero.
+  Later vertical movement, VFC, overflow, and printable placement consume
+  these fields through derived limit `0x782dc2`.
+- `0xee64` writes perforation-skip byte `0x783191` for `ESC &l#L` selectors
+  `0` and `1`. It has no immediate page-object effect; overflow helper
+  `0xf36c` consumes it with cursor y `0x782c8e` and limit `0x782dc2` before
+  deciding whether to call page-eject helper `0xf124`.
+- `0xf9e8` writes page length/extent `0x782dba`, page code `0x782da2`, and
+  pending layout byte `0x782997` for nonzero `ESC &l#P`; its selector-zero
+  branch can publish through `0xff1e`, mirror paper-source state to
+  `0x780e8f`, and signal `0x780e26` before restoring the default page code.
 - `0xfc74` writes the internal page code and reloads page-size table outputs
   through `0x9d16` / `0x9d4e`; `0x10220` writes orientation and reuses the
   same geometry/margin refresh family. Coordinate helpers

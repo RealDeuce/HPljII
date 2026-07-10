@@ -7771,9 +7771,15 @@ State classification for this path:
   ROM-local proof.
 - Unknown:
   no unresolved ROM-local parser-to-publication or publication-to-render
-  middle edge remains for these streams. Remaining uncertainty is limited to
-  page-environment variants that produce different pool-header fields,
-  geometry, bucket roots, bridge state, or row-construction inputs.
+  middle edge remains for these streams. New ROM-local page-environment work
+  must change one of the exact handoff fields already named by
+  [publication-commands.md](publication-commands.md#publication-header-copy-checkpoint):
+  pool-header bytes/words `+0x04`, `+0x07`, `+0x08`, `+0x0a`, `+0x0c`,
+  `+0x18`, or `+0x1a`; publication pointer `0x780ea6`; source selection
+  through `0x780eaa` / `0x780eae`; bridge roots `+0x1c`, `+0x24`, `+0x28`,
+  and context slots `+0x2c..+0x68` before `0x1edc6`; render roots `+0x18`,
+  `+0x1c`, `+0x20`, and `+0x24..+0x60` after `0x1edc6`; or row-construction
+  inputs consumed below `0x1ef6a`.
 
 Evidence for this path is in
 [publication-commands.md](publication-commands.md),

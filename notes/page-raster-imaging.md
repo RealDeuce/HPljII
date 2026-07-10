@@ -54,9 +54,11 @@ Sources: `generated/analysis/ic30_ic13_page_geometry_tables.md`;
 `generated/disasm/ic30_ic13_font_update_common_00c580.lst`;
 `notes/pcl-command-map.md`; `notes/resource-rom.md`.
 
-These notes track firmware behavior that directly affects page pixels.
-Names are provisional where the ROM state variables are not fully
-cross-referenced yet.
+These notes track firmware behavior that directly affects page pixels. Field
+roles in this file are address-level ROM contracts: writer/reader addresses,
+object offsets, render roots, and row-helper inputs are the authoritative
+model. Manual-facing names are provisional only where an HP term has not been
+correlated to an already documented field.
 
 ## Owner Summary
 

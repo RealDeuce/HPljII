@@ -271,7 +271,8 @@ parser route, field value, object layout, bridge copy, or helper input.
   optional-resource page/font scheduler handoff, refresh helpers, return paths,
   and caller contracts.
 - [rom-dump-manifest.md](rom-dump-manifest.md) - verified ROM dump
-  hashes, package markings, interleave order, and rejected order probes.
+  hashes, package markings, interleave order, and rejected order probes. Start
+  with `ROM Dump Outcome Matrix` for provenance boundaries.
 - [firmware-startup.md](firmware-startup.md#owner-summary) - first annotated 68000
   reset/startup findings from the executable ROM pair.
 - [host-byte-fetch.md](host-byte-fetch.md#owner-summary) - documented

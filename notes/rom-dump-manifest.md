@@ -58,6 +58,160 @@ Output effect:
   stop at the documented external-resource boundary unless new board or
   resource evidence supplies those bytes.
 
+## ROM Dump Outcome Matrix
+
+This matrix records which local-only dump artifacts are allowed to support
+checked-in semantic claims. The raw ROM bytes stay out of Git; the checked-in
+contract is the provenance, hashes, valid interleaves, negative probes, and
+exact unresolved byte ranges.
+
+Verified raw mask-ROM reads:
+
+- ROM path:
+  `IC13`, `IC15`, `IC30`, and `IC32` as individual `TC531000P` 128K x 8
+  devices read with the `LQ500_4C_A16_PIN22@DIP28` profile.
+- State class:
+  canonical ROM provenance.
+- Writers:
+  none in firmware. The reader procedure produced local-only dump files; this
+  checked-in note and `data/rom_manifest.json` record the hashes and chip
+  markings.
+- Readers / consumers:
+  interleave generation, firmware/resource analysis, and any future raw-byte
+  verification scripts.
+- Output effect:
+  evidentiary only. Individual byte-wide dumps do not describe parser
+  behavior until paired into a valid firmware or resource image.
+- Evidence:
+  verified SHA-256 hashes and tail markers in this note and
+  `data/rom_manifest.json`.
+
+Executable firmware interleave:
+
+- ROM path:
+  `IC30,IC13 -> generated/roms/ic30_ic13.bin -> SP 0x00800000 ->
+  PC 0x00000110`.
+- State class:
+  canonical firmware/resource evidence and derived/cache evidence.
+- Writers:
+  no runtime writer. The interleave defines immutable executable firmware
+  bytes for the disassembler and checked-in notes.
+- Readers / consumers:
+  focused disassembly listings, parser/core documentation, command-family
+  owners, page-object owners, render scheduler, and pixel-generation notes.
+- Output effect:
+  defines the executable address space for all handler addresses, ROM fields,
+  command tables, and render helpers cited in the documentation.
+- Evidence:
+  `data/rom_manifest.json`, `generated/analysis/ic30_ic13_vectors.txt`, and
+  coherent 68000 startup disassembly at reset PC `0x00000110`.
+
+Built-in resource interleave:
+
+- ROM path:
+  `IC32,IC15 -> generated/roms/ic32_ic15.bin -> firmware resource
+  0x080000..0x0bffff`.
+- State class:
+  canonical firmware/resource evidence and canonical resource data.
+- Writers:
+  no runtime writer. The interleave defines immutable verified built-in
+  resource bytes.
+- Readers / consumers:
+  startup `HEAD` scanner, font/resource scan, built-in candidate windows,
+  font selection, glyph resolver, and compact text renderers.
+- Output effect:
+  supplies built-in font records, glyph tables, and bitmap payloads that later
+  become pixels after parser-selected font context and page objects reach the
+  render path.
+- Evidence:
+  `data/rom_manifest.json`,
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
+  [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+  `generated/analysis/ic32_ic15_header.txt`, and
+  `generated/analysis/ic32_ic15_resource_markers.txt`.
+
+Rejected interleave orders:
+
+- ROM path:
+  `IC13,IC30` and `IC15,IC32`.
+- State class:
+  derived/cache evidence and firmware bookkeeping.
+- Writers:
+  local analysis tools produced rejected-order probes.
+- Readers / consumers:
+  this manifest, formatter boundary documentation, and future provenance
+  audits.
+- Output effect:
+  negative evidence only. These byte orders must not be cited for semantic
+  firmware, parser, resource, or pixel claims.
+- Evidence:
+  `IC13,IC30` lacks sane 68000 startup vectors; `IC15,IC32` garbles the
+  resource header strings. Hashes and rejection reasons are recorded in
+  `data/rom_manifest.json`.
+
+Generated analysis artifacts:
+
+- ROM path:
+  `tools/generate_rom_artifacts.py`, `tools/analyze_roms.py`, and focused
+  disassembly/report generation from the valid interleaves.
+- State class:
+  derived/cache evidence.
+- Writers:
+  local tools create ignored `generated/` outputs from the verified local ROM
+  inputs.
+- Readers / consumers:
+  checked-in owner notes cite generated listings, table extracts, fixture
+  reports, and resource analyses as supporting evidence.
+- Output effect:
+  supports documentation claims, but does not create a new ROM source. If a
+  generated report disagrees with this manifest, the raw verified hashes and
+  interleave contract are authoritative.
+- Evidence:
+  generated file references throughout the owner notes and the regeneration
+  commands in this manifest.
+
+Resource continuation boundary:
+
+- ROM path:
+  verified suffix `0x0bfe22..0x0bffff`, then unresolved firmware range
+  `0x0c0000..0x0c0321`.
+- State class:
+  hardware/external state and unknown resource data.
+- Writers:
+  no checked-in writer. A future board, emulator, gate-array, or external
+  resource source must supply these bytes before claims can continue past the
+  verified suffix.
+- Readers / consumers:
+  transparent segment-57 paths and any resource-render path that reads beyond
+  the verified `IC32,IC15` suffix.
+- Output effect:
+  exact unresolved pixel boundary. Rows requiring bytes in
+  `0x0c0000..0x0c0321` must remain unresolved unless new evidence supplies the
+  physical byte source.
+- Evidence: [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
+  [unresolved-boundaries.md](unresolved-boundaries.md#secondary-segment-57-resource-source),
+  and `tools/probe_resource_window.py`.
+
+State grouping for this matrix:
+
+- Canonical:
+  board locations, package markings, raw SHA-256 hashes, verified interleave
+  hashes, reset vector fields, and verified resource header identity.
+- Derived/cache:
+  generated interleaves, focused disassembly, string/resource reports, probe
+  hashes, and rejected-order probes.
+- Parser scratch:
+  none. Parser state is downstream of the executable firmware image.
+- Firmware bookkeeping:
+  `data/rom_manifest.json`, regeneration commands, read-method notes, and
+  rejected-order records.
+- Hardware/external:
+  local-only raw ROM files, board address decode after the verified resource
+  pair, optional cartridge/resource windows, and gate-array mapping.
+- Unknown:
+  physical decode and byte source for `0x0c0000..0x0c0321`, plus any resource
+  bytes outside the verified local images.
+
 Evidence and unresolved boundaries:
 
 - Evidence for the valid firmware pair is the vector table and MAME 68000

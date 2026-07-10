@@ -340,7 +340,10 @@ parser route, field value, object layout, bridge copy, or helper input.
   ROM-local, resource-data, hardware/MMIO, optional-data, and physical/manual
   correlation boundaries.
 - [reverse-engineering-ledger.md](reverse-engineering-ledger.md) -
-  current host-interface-to-imaging tracking map and next ROM targets.
+  supporting low-level tracking ledger. Use it as evidence breadcrumbs; the
+  current reader-facing route and remaining exact boundaries are the checked-in
+  owner notes, [firmware-dataflow-model.md](firmware-dataflow-model.md), and
+  [unresolved-boundaries.md](unresolved-boundaries.md).
 
 ## Emulator-Relevant Boundaries
 

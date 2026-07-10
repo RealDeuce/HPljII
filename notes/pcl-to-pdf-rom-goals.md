@@ -32,6 +32,36 @@ identity, optional resource cartridges, and output-engine signals are explicit
 boundaries unless they change ROM-visible state used by the documented
 byte-to-pixel path.
 
+## Current Work Gate
+
+Nothing external is currently blocking ROM-local documentation work. The
+remaining work should start from a byte stream, command family, state block, or
+render helper only when the trace changes a named ROM-visible field, page/image
+object, scheduler input, helper input, or documented boundary in the checked-in
+notes. CPU clock source, live printer output, physical paper timing, and
+connector signal names are not prerequisites for documenting parser behavior,
+page-object construction, render dispatch, or ROM-derived row construction.
+
+The current ROM-local stops are exact boundaries, not open-ended blockers:
+downloaded-glyph invalid helper/source cases and payload-count caps stop at the
+addresses named in
+[unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
+The secondary segment-57 transparent-data path stops at missing resource-window
+bytes after firmware address `0x0bffff`; the parser, page-record, bridge, and
+compact-render path before that source boundary is already documented.
+
+New tracing should therefore be accepted into the main docs only if it supplies
+one of these deliverables:
+
+- a new command-family owner route from parsed input to fields, readers,
+  consumers, output effect, and exact residual boundary;
+- a new state-block classification with canonical, derived/cache, parser
+  scratch, firmware-bookkeeping, hardware/external, and unknown groups;
+- a new page/image object or render-helper input that changes pixel derivation;
+  or
+- a replacement for an exact unresolved boundary with stronger ROM, resource,
+  or board decode evidence.
+
 ## What We Should Not Need
 
 For PDF output, we should not need accurate modeling of:
@@ -256,7 +286,12 @@ The strongest current byte-stream fixtures include:
   records`, and
   `0x1eba4 scheduler band words render published downloaded glyph`.
 
-## ROM Analysis Milestones
+## Historical ROM Analysis Milestones
+
+This checklist records the original discovery plan. It is not the active
+blocker list. Hardware reconnaissance items such as CPU clock, board markings,
+and connector identity remain useful provenance, but the active goal is the
+checked-in ROM dataflow documentation above.
 
 1. Photograph/record formatter board markings.
 2. Identify CPU, clock, ROM packages, RAM, NVRAM, gate arrays, and

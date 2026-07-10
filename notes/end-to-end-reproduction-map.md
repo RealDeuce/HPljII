@@ -522,8 +522,13 @@ command-family and page-image structure:
    parser record cursor `0x78299e`, the six-byte record fields,
    delayed-payload state `0x782a1a/0x782a1c/0x782a20..`, normal table
    `0x112a4`, and alternate/data table `0x116f6`. Then jump from the class
-   checkpoint to the owner note named by
+   checkpoint through
+   [Parser-To-Owner Outcome Handoff](pcl-command-map.md#parser-to-owner-outcome-handoff)
+   to the owner note named by
    [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
+   The handoff section classifies the shared parser fields and names the
+   checked-in outcome checkpoint that owns command effects, page objects, or
+   explicit no-output/status behavior.
 4. Record command state effects:
    in the owner note, capture the canonical fields written by the handler,
    parser scratch consumed, derived/cache fields, firmware bookkeeping,

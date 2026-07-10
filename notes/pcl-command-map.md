@@ -460,6 +460,43 @@ bus timing, external memory decode, and formatter/DC signal naming are only
 part of the command map when they change a ROM-visible byte, parser state,
 page object, scheduler field, or render input.
 
+## Reproduction Contract
+
+For byte-stream-to-pixel reproduction, this command map is the mandatory
+parser-routing layer. It does not define pixels directly. It defines which
+semantic owner receives each admitted byte, parsed command, or restored binary
+payload before page/image state can be followed.
+
+A reproducer must preserve these ROM-visible parser outcomes:
+
+- Source-normalized bytes from `0xa904` enter tokenizer and parser state
+  through `0xda9a`, `0xdaf0`, and `0xdb74` before any command-family handler
+  can run.
+- Parser mode `0x782999`, alternate/data flag `0x782c18`, live command record
+  `0x78299e..0x7829a3`, normal table `0x112a4`, alternate/data table
+  `0x116f6`, and callback pointer `0x78299a` select the dispatch class.
+- Prefix/setup handlers such as `0x11eb6`, `0x11ec8`, `0x11eda`,
+  `0x11ff6`, `0x12008`, and `0x1201e` change parser state only. Page effects
+  begin at a later terminal handler, no-match fallback, delayed-payload
+  restore, macro replay, or append/storage replay.
+- Delayed payload setup through `0x121cc` must preserve pending byte
+  `0x782a1a`, saved handler `0x782a1c`, and saved record
+  `0x782a20..0x782a25`; restore `0x12218` is the handoff to payload owners
+  `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`.
+- Zero-handler rows, wrapper-handled `ESC ?`, display-reader `ESC Z`,
+  unimplemented `ESC &lT/t`, no-match ignore, host/status query producers,
+  and alternate/data append rows must remain explicit no-page-output parser
+  outcomes unless later replay feeds stored bytes back through `0xa904`.
+
+After a row selects a command-family owner, reproduction follows that owner
+note for RAM fields, page objects, publication, render scheduling, and pixels.
+The common object-to-render join is documented in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) and
+[page-raster-imaging.md](page-raster-imaging.md#reproduction-contract).
+No parser-table handler is currently unassigned to a checked-in semantic
+owner; residuals are the exact owner-specific boundaries indexed in
+[unresolved-boundaries.md](unresolved-boundaries.md).
+
 ## Inbound Byte Outcome Classes
 
 Every admitted byte from `0xa904` lands in one of these ROM-visible outcome

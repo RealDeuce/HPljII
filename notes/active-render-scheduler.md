@@ -377,6 +377,114 @@ Unresolved middle edges:
   page-object class unless they mutate one of the ROM-visible fields listed
   above.
 
+## Scheduler Outcome Matrix
+
+This matrix composes the branch ledger above into the states a reproducer must
+carry between page publication and bitmap dispatch. Each outcome is grounded in
+`generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst` unless a bridge
+or renderer file is named.
+
+- Published-source promotion:
+  `0xff1e`, `0x7ec6..0x7f90`, `0x7722..0x779a`, and `0x1eb32..0x1eb50`
+  move a published page/control record from protected pool head `0x780ea6` to
+  scheduler cursor `0x780eaa`, then active source `0x780eae`. Canonical state
+  is the selected source record and pool cursors; derived state is the
+  candidate-slot choice under `0x780e6e[]`; firmware bookkeeping is the
+  protected-pool lock and release cursor `0x780eb2`. No page objects are
+  interpreted and no pixels are produced in this outcome. Evidence is
+  `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor` and
+  `0x1eb2a/0x1ecd6 selects published record for render entry`.
+- New-geometry work selection:
+  `0x1ecde..0x1ed34` toggles selector `0x7820bc`, chooses `0x7820c4` or
+  `0x782128`, writes active render pointer `0x783a18`, copies source byte
+  `active_source+9` into work word `+0x04`, and branches to geometry setup
+  `0x1ee9e` when previous work `+0x04` differs. Canonical state is the chosen
+  work record plus `0x783a18`; derived/cache state is the geometry written by
+  `0x1ee9e`; parser scratch is absent. The output effect is a render work
+  record ready for the `0x1ed84` bridge, not pixel output. Evidence is
+  `0x1eb2a/0x1ecd6 selects published record for render entry` and
+  `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`.
+- Same-geometry work reuse:
+  `0x1ed36..0x1ed6a` reuses previous geometry when work words `+0x04` match.
+  It computes new work `+0x08` through `0x33238(previous+0x06,
+  previous+0x10 - previous+0x0a + previous+0x08)`, copies previous longword
+  `+0x00`, and copies previous word `+0x06`. Canonical state remains the
+  selected work record and active source; derived/cache state is the reused
+  destination/offset. The output effect is the same bridge input as the
+  new-geometry branch. Evidence is
+  `0x1ecd6 same-geometry render work reuse reaches render entry`.
+- Root and context bridge:
+  `0x1ed74..0x1ed76` calls `0x1ed84(new_work)`, then
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+  documents `0x1ed84 -> 0x1edc6`. Canonical render state written here is
+  render roots `+0x18`, `+0x1c`, `+0x20`, context slots `+0x24..+0x60`,
+  header words `+0x0a/+0x0c`, active band word `+0x10`, start word `+0x16`,
+  and cleared throttle word `+0x0e`. Readers are `0x1ef6a`, `0x1efc2`,
+  `0x1f446`, `0x1f756`, and the compact/segment renderers documented in
+  [page-raster-imaging.md](page-raster-imaging.md). This bridge creates the
+  renderer-visible object roots, but it still does not interpret object
+  classes or write pixels.
+- Cleanup flag outcome:
+  `0x1eba4..0x1ebd2` handles `0x780ea5 == 1`. It calls `0x1ef38`, clears
+  active flag `0x780ea4`, signals wait object `0x780182` through `0x10c8`,
+  and calls `0x10c4`. Firmware bookkeeping changes; canonical page/render
+  roots are unchanged; `0x1ef6a` is not called. Evidence is
+  `0x1eba4/0x1ef6a active render loop advances or yields bands`.
+- Stale-work cleanup:
+  `0x1ebd8..0x1ec06` compares active work word `+0x0c` with active band word
+  `+0x10`. If the work is stale, it clears `0x780ea4` and signals
+  `0x780182` through the same cleanup path. The output effect is no pixel
+  output for that iteration, and no render root is consumed.
+- Throttle yield:
+  `0x1ec0c..0x1ec30` clears throttle word `+0x0e`, signals `0x780182`, and
+  yields through `0x10d8(2)` when `+0x0e > 0x28`. This is firmware
+  scheduling state only. It does not call `0x1ef6a` and does not change the
+  page-object graph.
+- Capacity-approved render:
+  `0x1ec34..0x1ec8e` computes available capacity from active work `+0x06`,
+  active remaining rows `(+0x10 - +0x16)`, and paired remaining rows when
+  `0x7820bc != 0x7820c0`. `0x1ec8e..0x1ecac` releases the scheduler lock
+  through `0x15ac`, calls `0x1ef6a`, increments active band word `+0x10`,
+  and increments throttle word `+0x0e` when capacity is at least `9`. This is
+  the only scheduler outcome in this matrix that produces renderer input for
+  pixels. Renderer interpretation after the call is owned by
+  [page-raster-imaging.md](page-raster-imaging.md) and anchored by
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- Capacity wait:
+  `0x1ecb0..0x1ecd2` clears `+0x0e`, releases the lock, signals wait object
+  `0x780182`, and waits through `0x10d0(2)` when computed capacity is less
+  than `9`. Canonical roots and the active band word are preserved for a later
+  iteration; no object dispatcher runs.
+
+State classification for these outcomes:
+
+- Canonical state:
+  pool cursors `0x780ea6/0x780eaa/0x780eae/0x780eb2`, selector bytes
+  `0x7820bc/0x7820c0`, work records `0x7820c4/0x782128`, active render
+  pointer `0x783a18`, render roots `+0x18/+0x1c/+0x20`, context slots
+  `+0x24..+0x60`, active band word `+0x10`, and start word `+0x16`.
+- Derived/cache state:
+  candidate slots `0x780e6e[]`, geometry setup outputs, reused destination
+  word `+0x08`, band caches produced after `0x1ef6a` enters `0x1ef86`, and
+  destination stride/base fields such as `0x783a1c`, `0x783a20`,
+  `0x783a22`, and `0x783a28`.
+- Parser scratch:
+  none in this matrix. Host bytes, escape parameters, and payload state have
+  already been converted into page records before `0xff1e`.
+- Firmware bookkeeping:
+  active flags `0x780ea4/0x780ea5`, throttle word `+0x0e`, protected-lock
+  calls, wait object `0x780182`, and wait/yield calls `0x10c4`, `0x10d0`,
+  and `0x10d8`.
+- Hardware/external state:
+  only the MMIO and physical engine events that decide when wait objects wake
+  or capacity changes. The ROM-visible branches above define what happens once
+  those predicates are observed.
+- Unknown:
+  no ROM-local software edge remains from published record selection through a
+  capacity-approved `0x1ef6a` call. Unknowns are limited to the hardware timing
+  boundary and any renderer-local invalid helper/source boundaries listed in
+  [unresolved-boundaries.md](unresolved-boundaries.md).
+
 ## Writers
 
 - `0xff1e` publishes state byte `+4 = 2`, writes source root longword to

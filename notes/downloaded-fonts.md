@@ -1873,8 +1873,8 @@ segmented renderer `0x1f1f0`, and produces row digest
 ## Downloaded Character Payload And Rendering
 
 The character-object path uses `0x16498` after a descriptor/current-record
-route or after a nonzero character payload. The current complete page-visible
-fixture is `ESC )s2193W`:
+route or after a nonzero character payload. A complete page-visible
+segmented-wide route is `ESC )s2193W`:
 
 - parser record `80 57 08 91 00 00`.
 - delayed handler `0x16c14`.
@@ -1910,50 +1910,42 @@ selects:
 - full chunk helper `0x2f27c`.
 - one full 16-byte chunk and one remainder byte.
 
-The sibling linear payload fixture
-`host-fetched linear downloaded character stream renders through 0x168dc`
-drives a complete `ESC )s6W` command through the same parser-delayed
-`0x16c14` boundary with glyph `0x26`, rows `3`, width `0x10`, and six bitmap
-bytes `f0 0f aa 55 3c c3`. `0x16498` selects the linear `0x168dc` reader
-because the span is even (`2`), installs table entry `0x00e2`, record delta
-`0x0500`, record `00 00 00 00 0c 01 00 03 00 10 00 00`, and bitmap offset
-`0x050c`. The queued page object uses normal compact selector `0x0003`
-because the source width seen by `0x12f2e` is span byte count `2`; the
-`0x1edc6` bridge preserves that object, and `0x1ed84` / `0x1ef6a` render it
-through compact target `0x1effe` and mode-0 helper `0x1fe76` as three visible
-rows beginning at x `22`.
+Linear payload route: a complete `ESC )s6W` command crosses the same
+parser-delayed `0x16c14` boundary with glyph `0x26`, rows `3`, width `0x10`,
+and six bitmap bytes `f0 0f aa 55 3c c3`. `0x16498` selects linear reader
+`0x168dc` because the span is even (`2`), installs table entry `0x00e2`,
+record delta `0x0500`, record `00 00 00 00 0c 01 00 03 00 10 00 00`, and
+bitmap offset `0x050c`. The queued page object uses normal compact selector
+`0x0003` because the source width seen by `0x12f2e` is span byte count `2`;
+the `0x1edc6` bridge preserves that object, and `0x1ed84` / `0x1ef6a` render
+it through compact target `0x1effe` and mode-0 helper `0x1fe76` as three
+visible rows beginning at x `22`.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
-Fixture `host-fetched downloaded character object preserves 0x1edc6 bridge
-contract` isolates the bridge side of the same installed-character path. It
-pins the bucket-root object bytes, context-slot prefix, empty rule/fixed
-lists, and render dispatch inputs before `0x1ed84` / `0x1ef6a` consume the
-object. Fixture `host-fetched downloaded character object feeds 0x1ed84 and
-0x1ef6a` then proves the bridged object reaches the compact renderer with the
-same visible rows as the direct installed-glyph fixture.
+Bridge route: the same installed-character object carries bucket-root object
+bytes, context-slot prefix, and empty rule/fixed lists through `0x1edc6`
+before `0x1ed84` / `0x1ef6a` consume it. The bridged object reaches the
+compact renderer with the same visible rows as the direct installed-glyph
+route.
 
-Fixture `downloaded normal row-0x80 and segmented glyph FF publications
-render page records` adds the publication siblings for the normal and
-row-threshold short selectors. The host-fetched `ESC )s6W` stream plus
-printable `&` and FF restores record `80 57 00 06 00 00`, starts the payload
-at offset `5`, routes tail handlers `0xd04a` and `0xf0f0`, publishes bucket
-`1` object `00 00 00 00 00 03 00 01 26 66 01`, leaves rule/fixed lists empty,
-copies context slots `(0, 0, 0, 0)`, clears the current root, and renders the
-copied record through bucket word `1`, compact target `0x1effe`, object byte
-`0x00`, context slot `3`, and mode-0 helper `0x1fe76`. The row-`0x80`
-sibling uses host-fetched `ESC )s256W`, printable `*`, and FF, restores record
-`80 57 01 00 00 00`, starts payload at offset `7`, publishes the bucket-1
-object `00 00 00 00 00 03 00 01 2a 66 01`, and renders the copied record
-through the same bucket word `1`, compact target `0x1effe`, object byte
-`0x00`, context slot `3`, and mode-0 helper `0x1fe76`.
+FF publication route: `ESC )s6W` plus printable `&` and FF restores record
+`80 57 00 06 00 00`, starts the payload at offset `5`, routes tail handlers
+`0xd04a` and `0xf0f0`, publishes bucket `1` object
+`00 00 00 00 00 03 00 01 26 66 01`, leaves rule/fixed lists empty, copies
+context slots `(0, 0, 0, 0)`, clears the current root, and renders the copied
+record through bucket word `1`, compact target `0x1effe`, object byte `0x00`,
+context slot `3`, and mode-0 helper `0x1fe76`. The row-`0x80` sibling uses
+`ESC )s256W`, printable `*`, and FF, restores record `80 57 01 00 00 00`,
+starts payload at offset `7`, publishes bucket-1 object
+`00 00 00 00 00 03 00 01 2a 66 01`, and renders the copied record through the
+same bucket word `1`, compact target `0x1effe`, object byte `0x00`, context
+slot `3`, and mode-0 helper `0x1fe76`.
 
-Fixture
-`host-fetched even-span wide downloaded character renders through 0x1f0d2`
-covers the clean wide sibling without payload-control normalization. The
-host-fetched `ESC )s18W` stream drains through `0xa904`, parser dispatch walks
-`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, and delayed restore reaches
-record `80 57 00 12 00 00` at payload offset `6`. `0x16498` installs glyph
-`0x29` at table entry `0x00ee`, record delta `0x0780`, record
+Even-span wide route: clean `ESC )s18W` without payload-control normalization
+drains through `0xa904`; parser dispatch walks `0x11eb6`, `0x12008`,
+`0x11ff6`, and `0x11f96`; delayed restore reaches record
+`80 57 00 12 00 00` at payload offset `6`. `0x16498` installs glyph `0x29` at
+table entry `0x00ee`, record delta `0x0780`, record
 `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset `0x078c`, span `18`,
 and split-plane flag `false`. `0x168dc` copies the 18 payload bytes
 `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99` linearly, consumes
@@ -1965,8 +1957,7 @@ dispatch compact target `0x1effe` to `0x1f0d2`. The renderer sees one full
 16-byte chunk, a 2-byte remainder, full-row skip `2`, linear source layout,
 and renders the single row at x `22`.
 
-Fixture `host-fetched downloaded glyph composes with rule and raster through
-0x1ef6a` reuses that same host-fetched `ESC )s18W` install, then carries the
+Rule/raster composition route: the same `ESC )s18W` install can carry the
 installed glyph into a heterogeneous active page record. `0x12f2e` queues glyph
 `0x29` at x `22`, y `80` as bucket `5` object
 `00 00 00 00 10 03 00 01 29 06 01` plus allocator padding. The same page
@@ -1976,24 +1967,19 @@ record also contains selector-7 rule object
 `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry `0x1ed84`/`0x1ef6a` runs
 call order `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`, dispatches the raster
 object to `0x1f88e`, dispatches the downloaded glyph object to `0x1effe` /
-`0x1f0d2`, renders the rule through selector helper `0x1f596`, and compares the
-three composed output rows. This closes the downloaded-glyph plus rule/raster
-composition fixture gap for the even-span wide downloaded glyph path.
+`0x1f0d2`, and renders the rule through selector helper `0x1f596`. The
+composed rows are ROM-derived from those three dispatched objects.
 
-Fixture `host-fetched downloaded payload-control object feeds 0x1ed84 and
-0x1ef6a` covers the sibling wide path where payload-control normalization is
-part of the downloaded character stream. The companion fixture
-`host-fetched downloaded payload-control object preserves 0x1edc6 bridge
-contract` pins the same bridge invariant: page-record object bytes,
-bucket-root preservation, context-slot prefix, and empty side lists are stable
-before the render entry consumes the object. The FF publication sibling is
-`host-fetched payload-control downloaded glyph FF publishes page record`,
-which proves the published record keeps that wide downloaded object through
+Payload-control wide route: the sibling wide path includes payload-control
+normalization in the downloaded character stream. The same bridge invariant
+applies: page-record object bytes, bucket-root preservation, context-slot
+prefix, and empty side lists are stable before render entry consumes the
+object. The FF publication sibling keeps that wide downloaded object through
 `0xff1e`.
 
-Fixture `segmented downloaded glyph composes with raster through 0x1ef6a`
-extends the same composition contract to the segmented selector family. It
-reuses the host-fetched `ESC )s258W` install for glyph `0x27`: table entry
+Segmented composition route: the same composition contract extends to the
+segmented selector family. It reuses the host-fetched `ESC )s258W` install for
+glyph `0x27`: table entry
 `0x00e6`, record delta `0x0580`, bitmap offset `0x058c`, and bitmap size
 `0x0102`. `0x12f2e` queues selector `0x2003` segment objects in bucket `9`
 (`00 00 00 00 20 03 00 01 27 01 66 01...`) and bucket `1`
@@ -2001,29 +1987,28 @@ reuses the host-fetched `ESC )s258W` install for glyph `0x27`: table entry
 mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c` in bucket `9`.
 Render entry `0x1ed84`/`0x1ef6a` for bucket word `9` dispatches the raster
 object to `0x1f88e`, then dispatches the segment-1 downloaded glyph object to
-`0x1effe` / `0x1f1f0`, and records the seven ROM-derived composed rows with digest
-`0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`. This
-closes the segmented-glyph plus raster composition edge; selector-7 rule
-composition remains covered by the even-span wide fixture and by separate
-rectangle/rule render fixtures.
+`0x1effe` / `0x1f1f0`, and records the seven ROM-derived composed rows with
+digest `0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`.
+This closes the segmented-glyph plus raster composition edge; selector-7 rule
+composition is the sibling even-span wide route above plus the separate
+rectangle/rule render routes.
 
-Fixture `split-plane segmented downloaded glyph composes with raster through
-0x1ef6a` proves the same composition for the split-plane reader. It reuses the
-host-fetched `ESC )s387W` install for glyph `0x28`: table entry `0x00ea`,
-record delta `0x0700`, bitmap offset `0x070c`, bitmap size `0x0183`, span `3`,
-and split-plane copy layout with prefix bytes ending `f0 0f` plus trailing
-byte `aa`. `0x12f2e` queues selector `0x2003` segment objects in bucket `9`
-(`00 00 00 00 20 03 00 01 28 01 66 01...`) and bucket `1`
-(`00 00 00 00 20 03 00 01 28 00 66 01...`). The same page record also carries
-mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c` in bucket `9`.
-Render entry `0x1ed84`/`0x1ef6a` for bucket word `9` dispatches the raster
-object to `0x1f88e`, then dispatches the split-plane segment-1 glyph object to
-`0x1effe` / `0x1f1f0`, and records the seven ROM-derived composed rows with digest
+Split-plane segmented composition route: the split-plane reader uses the same
+composition shape after a host-fetched `ESC )s387W` install for glyph `0x28`:
+table entry `0x00ea`, record delta `0x0700`, bitmap offset `0x070c`, bitmap
+size `0x0183`, span `3`, and split-plane copy layout with prefix bytes ending
+`f0 0f` plus trailing byte `aa`. `0x12f2e` queues selector `0x2003` segment
+objects in bucket `9` (`00 00 00 00 20 03 00 01 28 01 66 01...`) and bucket
+`1` (`00 00 00 00 20 03 00 01 28 00 66 01...`). The same page record also
+carries mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c` in bucket
+`9`. Render entry `0x1ed84`/`0x1ef6a` for bucket word `9` dispatches the
+raster object to `0x1f88e`, then dispatches the split-plane segment-1 glyph
+object to `0x1effe` / `0x1f1f0`, and records the seven ROM-derived composed
+rows with digest
 `a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
 
-Fixture `segmented downloaded glyph raster FF publications render page records`
-then carries both segmented+raster page records through `0xff1e`. For the
-linear case, `0xff1e` publishes bucket `9` with raster object
+Segmented FF publication route: both segmented+raster page records pass through
+`0xff1e`. For the linear case, `0xff1e` publishes bucket `9` with raster object
 `00 00 00 00 80 00 00 02 00 00 c3 3c` followed by segment-1 object
 `00 00 00 00 20 03 00 01 27 01 66 01...`, preserves bucket `1` segment-0
 object `00 00 00 00 20 03 00 01 27 00 66 01...`, and renders the published
@@ -2034,47 +2019,43 @@ segment-1 object `00 00 00 00 20 03 00 01 28 01 66 01...`, preserves bucket
 `1` segment-0 object `00 00 00 00 20 03 00 01 28 00 66 01...`, and renders
 digest `a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
 
-Fixture `parser-driven downloaded glyph rule raster stream composes through
-0x1ef6a` then makes the rule and raster producers parser-driven in the same
-page stream. The fetched stream is 54 bytes: font bytes `0..24` are the
-`ESC )s18W` command and payload above, and page bytes `24..54` are
-`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`. The whole 54-byte stream
-is fetched through one `0xa904` ring source, with source set `["ring"]` and no
-remaining ring bytes, so the byte-source side is continuous across the font/page
-boundary. The page parser routes through `0x10e68`, `0x10e22`, `0x10898`,
-`0xd04a`, `0x10808`, `0x1075a`, and delayed raster handler `0x11f82` /
-`0x105d0`. It queues the same bucket-5 downloaded glyph object
-`00 00 00 00 10 03 00 01 29 06 01...`, the same bridged selector-7 rule
-`00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and the same mode-0 raster object
-`00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry `0x1ed84`/`0x1ef6a`
-dispatches the raster object to `0x1f88e`, the glyph object to
-`0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three
-composed rows. The font-install memory boundary is explicit for this stream:
-the fixture uses the font-command helper's `final_header` as the parser-driven
-page memory image and asserts that it matches the install event header before
-resolving the printable downloaded glyph. Remaining variant work starts only
-where a byte stream changes that header, installed record, post-install drain,
-following parser handler, page-object bytes, bucket assignment, dispatch, or
-rows.
+Parser-driven rule/raster route: the rule and raster producers can be driven by
+the same page stream as the downloaded font install. The fetched stream is 54
+bytes: font bytes `0..24` are the `ESC )s18W` command and payload above, and
+page bytes `24..54` are `ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3
+3c`. The whole 54-byte stream is fetched through one `0xa904` ring source,
+with source set `["ring"]` and no remaining ring bytes, so the byte-source side
+is continuous across the font/page boundary. The page parser routes through
+`0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and delayed
+raster handler `0x11f82` / `0x105d0`. It queues the same bucket-5 downloaded
+glyph object `00 00 00 00 10 03 00 01 29 06 01...`, the same bridged
+selector-7 rule `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and the same
+mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry
+`0x1ed84`/`0x1ef6a` dispatches the raster object to `0x1f88e`, the glyph object
+to `0x1effe`/`0x1f0d2`, and the rule to `0x1f596`, producing the same
+ROM-derived three-row composition as the direct route. The font-install memory
+boundary is explicit for this stream: the parser-driven page memory image is
+the font-command helper's `final_header`, and that header must match the
+install event header before printable byte `)` can resolve the downloaded
+glyph. Remaining variant work starts only where a byte stream changes that
+header, installed record, post-install drain, following parser handler,
+page-object bytes, bucket assignment, dispatch, or rows.
 
-The modeled install-to-page handoff is now documented as a concrete resource
-image contract rather than a vague fixture split. In fixture
-`host-fetched even-span wide downloaded character renders through 0x1f0d2`,
-the host-fetched `ESC )s18W` bytes enter delayed handler `0x16c14` through
-parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`. Handler
-`0x16498` installs glyph `0x29` by writing table entry `0x00ee`, record delta
-`0x0780`, record bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset
-`0x078c`, bitmap size `18`, and the 18 linear bitmap bytes
-`f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. Fixture
-`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-then uses `font_command_final_header` from that same host-fetched font-command
-helper as its resource image. The fixture asserts that `final_header` matches
-the install event header and contains pointer bytes `00 00 07 80` at table entry
-`0x00ee`, the installed record at `0x0780`, and the bitmap bytes at `0x078c`.
-With that image, printable byte `0x29` resolves to glyph entry `0x0780`, bitmap
-`0x078c`, width `0x0090`, rows `1`, source kind `downloaded-pointer`, inline
-record `12 01 00`, and context slot `3` before `0x12f2e` queues selector
-`0x1003`.
+The install-to-page handoff is a concrete resource image contract. Host-fetched
+`ESC )s18W` bytes enter delayed handler `0x16c14` through parser handlers
+`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`. Handler `0x16498` installs
+glyph `0x29` by writing table entry `0x00ee`, record delta `0x0780`, record
+bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset `0x078c`, bitmap
+size `18`, and the 18 linear bitmap bytes
+`f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. The resource image
+used by the following page stream must contain pointer bytes `00 00 07 80` at
+table entry `0x00ee`, the installed record at `0x0780`, and the bitmap bytes
+at `0x078c`; with that image, printable byte `0x29` resolves to glyph entry
+`0x0780`, bitmap `0x078c`, width `0x0090`, rows `1`, source kind
+`downloaded-pointer`, inline record `12 01 00`, and context slot `3` before
+`0x12f2e` queues selector `0x1003`. Fixture evidence:
+`host-fetched even-span wide downloaded character renders through 0x1f0d2` and
+`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`.
 
 That handoff divides canonical state from parser scratch. Canonical resource
 state is the installed glyph table entry, record, bitmap, and copied bitmap
@@ -2083,35 +2064,31 @@ bytes above. Parser scratch is the restored font payload record
 the later page parser range `24..54` and raster scratch record
 `80 57 00 02 00 00` at payload offset `28`. Derived/cache state is the page
 bucket chain, normalized rule object, `0x1ed84` active copy, and `0x1ef6a`
-dispatch fields. The return boundary is now fixture-pinned for this even-span
-path: fixture `parser-driven downloaded glyph rule raster stream composes
-through 0x1ef6a` records call edge `0x15dc6 -> 0x16498`, return edge
-`0x16498 -> 0x15dcc`, drain edge `0x15dcc -> 0x12328`, font end byte `24`,
-copy status `1`, copy stream position `18`, remaining `0x783140 = 0`, a
-zero-byte `0x12328` drain, next stream prefix `ESC *c12a`, and the next parser
-handler `0x10e68`.
+dispatch fields. The even-span return boundary is exact: call edge
+`0x15dc6 -> 0x16498`, return edge `0x16498 -> 0x15dcc`, drain edge
+`0x15dcc -> 0x12328`, font end byte `24`, copy status `1`, copy stream
+position `18`, remaining `0x783140 = 0`, zero-byte `0x12328` drain, next
+stream prefix `ESC *c12a`, and next parser handler `0x10e68`.
 
-Fixture `host-fetched row-0x80 downloaded character remains short compact`
-pins the row-count threshold just below the segmented path. The host-fetched
-`ESC )s256W` stream restores record `80 57 01 00 00 00`, starts payload at
-offset `7`, and copies `256` linear bytes through `0x168dc`. `0x16498`
-installs glyph `0x2a` at table entry `0x00f2`, record delta `0x0800`, record
-`00 00 00 00 0c 01 00 80 00 10 00 00`, bitmap offset `0x080c`, rows
-`0x0080`, width `0x0010`, span `2`, and split-plane flag `false`. Because
-`0x12f2e` tests `rows > 0x80`, not `rows >= 0x80`, the copied glyph stays on
-short page-record selector `0x0003` instead of segmented selector `0x2003`.
-The queued object is
-`00 00 00 00 00 03 00 01 2a 66 01` plus allocator padding, `0x1ef6a`
-dispatches compact target `0x1effe`, and mode-0 helper `0x1fe76` renders the
+Row-threshold route: `ESC )s256W` restores record `80 57 01 00 00 00`, starts
+payload at offset `7`, and copies `256` linear bytes through `0x168dc`.
+`0x16498` installs glyph `0x2a` at table entry `0x00f2`, record delta
+`0x0800`, record `00 00 00 00 0c 01 00 80 00 10 00 00`, bitmap offset
+`0x080c`, rows `0x0080`, width `0x0010`, span `2`, and split-plane flag
+`false`. Because `0x12f2e` tests `rows > 0x80`, not `rows >= 0x80`, the copied
+glyph stays on short page-record selector `0x0003` instead of segmented
+selector `0x2003`. The queued object is
+`00 00 00 00 00 03 00 01 2a 66 01` plus allocator padding; `0x1ef6a`
+dispatches compact target `0x1effe`; mode-0 helper `0x1fe76` renders the
 bucket-1 band with digest
 `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
+Fixture evidence:
+`host-fetched row-0x80 downloaded character remains short compact`.
 
-Fixture `0x16498 replacement allocation failure partial and rejected
-downloaded character exits preserve state` pins the downloaded-character
-replacement, allocator-failure, partial-copy, and reject branches. The linear
-status-`2` case parses a mode-byte-`1` bitmap descriptor through `0x16336`,
-copies four of six bitmap bytes through `0x168dc`, stores
-table entry `0x00f6 -> 0x0840`, writes record
+Replacement, allocator-failure, partial-copy, and reject routes all branch out
+of `0x16498`. The linear status-`2` case parses a mode-byte-`1` bitmap
+descriptor through `0x16336`, copies four of six bitmap bytes through
+`0x168dc`, stores table entry `0x00f6 -> 0x0840`, writes record
 `00 00 00 00 0c 01 00 03 00 10 00 00`, leaves bitmap bytes
 `f0 0f aa 55 00 00`, and saves continuation fields equivalent to
 `0x7827c6 = 1`, `0x7827da = 0`, `0x7827c8 = 0x2b`,
@@ -2121,20 +2098,22 @@ split-plane status-`2` case parses a mode-byte-`2` descriptor for odd span
 stores table entry `0x00fa -> 0x0880`, writes record
 `00 00 00 00 0c 02 00 02 00 18 00 00`, leaves bitmap layout
 `a0 a1 00 00 b0 00`, and saves `0x7827ca = 0x088e`,
-`0x7827ce = 0x0891`, `0x7827d6 = 1`, and `0x7827d8 = 0`. The replacement
-case starts with table entry `0x0102` holding old record `00 00 02 00`;
-`0x1652a..0x1653e` calls `0x17a24`, which validates range
-`0x0020..0x007f`, clears the old record, clears the matching continuation,
-refreshes the active primary context, and returns before `0x16498` stores the
-new table pointer `0x0900` and bitmap `11 22 33 44 55 66`. The allocation
-failure case reaches the allocator branch after object-size computation:
-`0x1656e` asks `0x170c` for one 64-byte unit aligned to `0x40`, receives
-zero, reports `0x9b5e(0x780e2e, 4)`, calls `0x1887a` on current payload
-`0x123456`, copies no bitmap bytes, and leaves table entry `0x0106` at zero.
-That payload release clears the current-record id/payload, removes candidate
-slot `0x782328`, clears the matching continuation, marks primary/secondary
-context-stack bytes, refreshes the active secondary context, and leaves no new
-downloaded-character object.
+`0x7827ce = 0x0891`, `0x7827d6 = 1`, and `0x7827d8 = 0`. The replacement case
+starts with table entry `0x0102` holding old record `00 00 02 00`;
+`0x1652a..0x1653e` calls `0x17a24`, which validates range `0x0020..0x007f`,
+clears the old record, clears the matching continuation, refreshes the active
+primary context, and returns before `0x16498` stores the new table pointer
+`0x0900` and bitmap `11 22 33 44 55 66`. The allocation-failure case reaches
+the allocator branch after object-size computation: `0x1656e` asks `0x170c`
+for one 64-byte unit aligned to `0x40`, receives zero, reports
+`0x9b5e(0x780e2e, 4)`, calls `0x1887a` on current payload `0x123456`, copies
+no bitmap bytes, and leaves table entry `0x0106` at zero. That payload release
+clears the current-record id/payload, removes candidate slot `0x782328`, clears
+the matching continuation, marks primary/secondary context-stack bytes,
+refreshes the active secondary context, and leaves no new downloaded-character
+object. Fixture evidence:
+`0x16498 replacement allocation failure partial and rejected downloaded
+character exits preserve state`.
 
 The no-install rejects split into two different field families. A synthetic
 descriptor/object mode byte outside the parser-produced `1`/`2` set is
@@ -2149,39 +2128,39 @@ reject families return before `0x1658e..0x16602` stores the allocated-object
 pointer, so they are parser scratch/firmware bookkeeping exits rather than
 canonical renderer-state changes.
 
-Fixture `0x16498 no-install exits preserve following printable output` carries
-the three no-install branches above to visible output. Each case starts from a
-host-fetched `ESC )s6W` command plus six payload bytes, restores record
-`80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, appends printable
-`!`, and now appends trailing FF. The allocation-failure case returns reason
-`allocation-failed`, the mode-0 case returns `unsupported-record-shape`, and
-the `0xa0`/header-type case returns `char-outside-header-type`. In all three
-cases the following printable byte routes through `0xd04a`, queues the same
-default-font compact object as baseline `!`, and renders identical rows. The
-return boundary is also pinned for all three cases: the path records
-`0x15dc6 -> 0x16498`, `0x16498 -> 0x15dcc`, and `0x15dcc -> 0x12328`,
-leaves `0x783140 = 6`, drains the rejected payload bytes through `0x12328`
-(`de ad be ef ca fe` for allocation failure and `f0 0f aa 55 3c c3` for
-mode/range reject), then resumes at printable handler `0xd04a` for `!`. The
-trailing FF routes through `0xf0f0`, publishes the default-font bucket through
-`0xff1e`, clears the current page root, and renders the published record
-through `0x1ed84`/`0x1ef6a` with the same rows. This classifies the failed
+No-install visible-output route: the three no-install branches above still
+resume ordinary printable processing. Each case starts from host-fetched
+`ESC )s6W` plus six payload bytes, restores record `80 57 00 06 00 00`,
+dispatches delayed handler `0x16c14`, appends printable `!`, and appends
+trailing FF. The allocation-failure case returns reason `allocation-failed`,
+the mode-0 case returns `unsupported-record-shape`, and the `0xa0`/header-type
+case returns `char-outside-header-type`. In all three cases the following
+printable byte routes through `0xd04a`, queues the same default-font compact
+object as baseline `!`, and renders identical rows. The return boundary is
+also exact for all three cases: `0x15dc6 -> 0x16498`,
+`0x16498 -> 0x15dcc`, and `0x15dcc -> 0x12328`, with `0x783140 = 6`; the
+rejected payload bytes drain through `0x12328` (`de ad be ef ca fe` for
+allocation failure and `f0 0f aa 55 3c c3` for mode/range reject), then the
+stream resumes at printable handler `0xd04a` for `!`. The trailing FF routes
+through `0xf0f0`, publishes the default-font bucket through `0xff1e`, clears
+the current page root, and renders the published record through
+`0x1ed84`/`0x1ef6a` with the same rows. This classifies the failed
 downloaded-character command as firmware bookkeeping and parser scratch, not
 canonical renderer state; the published page-record bucket is derived output
-state from the unchanged default-font printable path.
+state from the unchanged default-font printable path. Fixture evidence:
+`0x16498 no-install exits preserve following printable output`.
 
-Fixture `0x16498 status-2 partial installs remain printable` covers the
-opposite non-success branch: status `2` is a partial install, not a no-install.
-The linear case starts from host-fetched `ESC )s4W f0 0f aa 55`, restores
-record `80 57 00 04 00 00`, stores table entry `0x00f6 -> 0x0840`, leaves
-bitmap bytes `f0 0f aa 55 00 00`, and saves continuation state with
+Status-2 partial-install route: status `2` is a partial install, not a
+no-install. The linear case starts from host-fetched `ESC )s4W f0 0f aa 55`,
+restores record `80 57 00 04 00 00`, stores table entry `0x00f6 -> 0x0840`,
+leaves bitmap bytes `f0 0f aa 55 00 00`, and saves continuation state with
 destination `0x0850` and remaining count `2`. A following printable `+`
-resumes after `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with
-`0x783140 = 0`, a zero-byte drain, and handler `0xd04a`; it resolves glyph
-`0x2b`, queues short selector `0x0003`, and renders rows from the copied bytes
-plus the zero-filled missing row. The same page-record object
-now finalizes through `0xff1e` on a trailing FF: publication keeps bucket `1`,
-copies compact object `00 00 00 00 00 03 00 01 2b 66 01`, clears the current
+resumes after `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with `0x783140 = 0`,
+a zero-byte drain, and handler `0xd04a`; it resolves glyph `0x2b`, queues
+short selector `0x0003`, and renders rows from the copied bytes plus the
+zero-filled missing row. The same page-record object now finalizes through
+`0xff1e` on a trailing FF: publication keeps bucket `1`, copies compact object
+`00 00 00 00 00 03 00 01 2b 66 01`, clears the current
 page root, and renders the published record through `0x1ed84`/`0x1ef6a` with
 the same rows.
 
@@ -2195,11 +2174,12 @@ from prefix bytes `a0 a1` plus trailing byte `b0`. Its trailing-FF publication
 also keeps bucket `1`, copies compact
 object `00 00 00 00 00 03 00 01 2c 66 01`, clears the current page root, and
 renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.
+Fixture evidence: `0x16498 status-2 partial installs remain printable`.
 
-Fixture `0x15b9a resumes downloaded-character continuation objects` covers the
-descriptor-selected continuation success sibling. The linear case starts from
-the previous `0x16498` status-`2` object at table entry `0x00f6 -> 0x0840`:
-`0x15b9a` reloads saved glyph `0x2b`, reads record
+Continuation success route: `0x15b9a` handles descriptor-selected continuation
+objects after the prior `0x16498` status-`2` exit. The linear case starts from
+table entry `0x00f6 -> 0x0840`: `0x15b9a` reloads saved glyph `0x2b`, reads
+record
 `00 00 00 00 0c 01 00 03 00 10 00 00`, derives span `2` from width `0x0010`,
 copies resume bytes `c3 3c` through `0x168dc` into destination `0x0850`, and
 clears continuation state after completing bitmap `f0 0f aa 55 c3 3c`.
@@ -2211,21 +2191,21 @@ reloads saved glyph `0x2c`, reads record
 D4/D3 counters `1/0`, copies prefix bytes `c0 c1` plus trailing byte `d0`, and
 clears continuation state after completing layout `a0 a1 c0 c1 b0 d0`.
 
-The same fixture now pins the successful return boundary for both resume shapes.
-Disassembly `0x15e22..0x15e28` calls `0x15b9a` and then branches to the
-common `0x15dcc` payload drain. The linear case returns copy status `1`, stream
-position `2`, and remaining budget `0`; the split-plane case returns copy
-status `1`, stream position `3`, and remaining budget `0`. In both cases the
-fixture's `0x15dcc -> 0x12328` drain consumes no bytes and leaves the following
-`!` byte on the normal parser path as printable handler `0xd04a`.
-Disassembly evidence is `0x15b9a..0x15bdc` for table/object lookup and scratch
-span/row writes, `0x15bdc..0x15bec` for the resume-mode `0x16874` call,
-`0x15bee..0x15c18` for status dispatch, and `0x15c18..0x15c4a` for
-continuation clearing.
+The successful return boundary is the same for both resume shapes. Disassembly
+`0x15e22..0x15e28` calls `0x15b9a` and then branches to the common `0x15dcc`
+payload drain. The linear case returns copy status `1`, stream position `2`,
+and remaining budget `0`; the split-plane case returns copy status `1`, stream
+position `3`, and remaining budget `0`. In both cases the `0x15dcc -> 0x12328`
+drain consumes no bytes and leaves the following `!` byte on the normal parser
+path as printable handler `0xd04a`. Disassembly evidence is `0x15b9a..0x15bdc`
+for table/object lookup and scratch span/row writes, `0x15bdc..0x15bec` for the
+resume-mode `0x16874` call, `0x15bee..0x15c18` for status dispatch, and
+`0x15c18..0x15c4a` for continuation clearing. Fixture evidence:
+`0x15b9a resumes downloaded-character continuation objects`.
 
-Fixture `0x15b9a partial and failed resumes update continuation or release
-object` covers the other copy-status exits from the same handler. A second
-linear partial copies only resume byte `c3`, leaves bitmap
+Continuation partial/failure route: the other `0x15b9a` copy-status exits keep
+or release continuation state. A second linear partial copies only resume byte
+`c3`, leaves bitmap
 `f0 0f aa 55 c3 00`, advances destination from `0x0850` to `0x0851`, and
 resaves remaining count `1`. A split-plane partial copies only prefix byte
 `c0`, leaves layout `a0 a1 c0 00 b0 00`, advances prefix destination from
@@ -2238,13 +2218,13 @@ the status-`0` release path. `0x17a24` clears offset-table entry `0x00f6`
 from old record `00 00 08 40` to `00 00 00 00`, records an active-primary
 refresh through `0x1b4c0`/`0x14c64`, and clears the matching continuation
 fields. That makes the partially rewritten object body unreachable from the
-font table.
+font table. Fixture evidence:
+`0x15b9a partial and failed resumes update continuation or release object`.
 
-Fixture `host-fetched segmented downloaded character renders through
-0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
-uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
-offset `7`, and byte budget `0x0102`. `0x16498` installs glyph `0x27` at
-table entry `0x00e6`, record delta `0x0580`, record
+Even-span tall segmented route: `ESC )s258W` uses parser record
+`80 57 01 02 00 00`, delayed handler `0x16c14`, payload offset `7`, and byte
+budget `0x0102`. `0x16498` installs glyph `0x27` at table entry `0x00e6`,
+record delta `0x0580`, record
 `00 00 00 00 0c 01 00 81 00 10 00 00`, bitmap offset `0x058c`, and span `2`.
 Because the copied glyph has rows `0x81` and width byte count `2`, `0x12f2e`
 queues selector `0x2003` with segment objects for buckets `9` and `1`. The
@@ -2264,9 +2244,11 @@ printable `'`. Tail handlers `0xd04a` and `0xf0f0` publish bucket `9` object
 `0x1effe`, object byte `0x20`, context slot `3`, and renderer `0x1f1f0`, which
 reads the segment-1 source row from offset `0x0100`.
 
-Fixture `host-fetched rows-0x82 segmented downloaded glyph FF publication
-renders page record` covers an interior segmented row count in the same
-selector family, not just the `0x80`/`0x81` threshold. The stream is
+Fixture evidence:
+`host-fetched segmented downloaded character renders through 0x1f1f0`.
+
+Rows-`0x82` segmented publication route covers an interior segmented row count
+in the same selector family, not just the `0x80`/`0x81` threshold. The stream is
 `ESC )s260W` plus printable `0` and FF. The font phase restores record
 `80 57 01 04 00 00`, installs glyph `0x30` at table entry `0x010a`, writes
 record `00 00 00 00 0c 01 00 82 00 10 00 00`, copies `0x0104` linear bytes,

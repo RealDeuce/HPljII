@@ -27,9 +27,13 @@ For a concrete host byte stream, the checked-in owner notes are the controlling
 artifact. Generated listings and fixture logs support those notes; they are not
 standalone deliverables.
 
-- Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md#owner-summary), which
-  documents `0xa904` source priority, data-chain replay, direct host paths, and
-  the normalized byte passed to parser wrapper `0xda9a`.
+- Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md#owner-summary),
+  which documents `0xa904` source priority, data-chain replay, direct host
+  paths, and the normalized byte returned in `D7`. Its
+  [D7 Caller Return Contract](host-byte-fetch.md#d7-caller-return-contract)
+  is the handoff from byte admission to parser wrappers, direct payload
+  readers, display/transparent readers, raster data, downloaded-font payloads,
+  and macro/data-chain replay.
 - Parser state is owned by
   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): parser mode
   `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
@@ -137,7 +141,11 @@ checked-in ROM model:
    End-To-End Example` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
 2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md#owner-summary):
    classify each byte source at `0xa904` as live/ring input, pushback,
-   macro/data-chain replay, or a payload reader's direct fetch.
+   macro/data-chain replay, or a payload reader's direct fetch. Then use its
+   [D7 Caller Return Contract](host-byte-fetch.md#d7-caller-return-contract)
+   to decide whether the returned byte is parser syntax, counted payload data,
+   a direct display/transparent byte, raster data, downloaded-glyph bitmap
+   data, or replayed input.
 3. Classify the parser outcome in `Admitted Byte Outcome Bridge` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#admitted-byte-outcome-bridge),
    then [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` /

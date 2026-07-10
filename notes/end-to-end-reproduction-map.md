@@ -517,7 +517,10 @@ command-family and page-image structure:
    which `0xa904` source produces each parser byte: live/ring/direct host
    input, pushback stack, data-chain replay, or macro replay. If the stream
    includes delayed payload bytes, keep the payload reader's direct `0xa904`
-   calls separate from parser-wrapper bytes.
+   calls separate from parser-wrapper bytes. Then use the caller-return
+   contract in [host-byte-fetch.md](host-byte-fetch.md#d7-caller-return-contract)
+   to identify the consumer class for the returned byte before applying
+   parser, payload, display, raster, downloaded-font, or replay semantics.
 2. Classify each admitted byte:
    first use `Admitted Byte Outcome Bridge` in this file, then
    [Parser Core Outcome

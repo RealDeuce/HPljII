@@ -396,9 +396,10 @@ these ROM-defined boundaries before jumping to command-family notes:
 1. `0xa904..0xab8a` chooses the next normalized byte source. Live host input,
    ring-buffer input, data-chain replay, and direct hardware modes all reduce
    to the same `D7` byte contract before the parser sees the byte. Source
-   priority and replay ownership are documented in
-   [host-byte-fetch.md](host-byte-fetch.md) and
-   [macro-data-chain.md](macro-data-chain.md#owner-summary).
+   priority, caller-side `D7` consumption, and replay ownership are documented
+   in [host-byte-fetch.md](host-byte-fetch.md), its
+   [D7 Caller Return Contract](host-byte-fetch.md#d7-caller-return-contract),
+   and [macro-data-chain.md](macro-data-chain.md#owner-summary).
 2. `0xda9a` / `0xdaf0` / `0xdb74` maintain parser state byte `0x782999`,
    six-byte parser record `0x78299e..0x7829a3`, parser cursor
    `0x78299a`, parsed numeric value fields, and delayed-payload restore

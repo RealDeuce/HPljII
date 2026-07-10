@@ -300,21 +300,44 @@ State classification for these pixel-affecting stops:
   queues compact text buckets, publishes through `0xff1e`, bridges through
   `0x1ed84 -> 0x1edc6`, and resolves compact glyph rows through
   `0x1ef6a -> 0x1effe -> 0x1f354`.
+- Triggering stream family:
+  the documented page-visible stream is secondary transparent data such as
+  `SO ESC &p3X ! 80 !`. `SO` selects secondary context slot `1` through
+  `0xc6b8`; `ESC &p3X` installs a delayed transparent-data record; payload byte
+  `0x80` enters the high-control printable route and maps through the secondary
+  `LINE_PRINTER` context to glyph `0x5f`.
+- Writers:
+  `0x12452` restores the transparent-data payload record and returns normalized
+  bytes to the ordinary printable path; `0xd04a` / `0x1393a` resolve the selected
+  context and glyph; `0x12f2e` writes compact bucket objects under page-root
+  `+0x1c`; `0xff1e` publishes that page root; and `0x1ed84 -> 0x1edc6` copies
+  the published bucket root and context slots into render state.
+- Readers/consumers:
+  `0x1ef6a -> 0x1effe -> 0x1f354` consumes the bridged compact object and
+  secondary context. `0x1f354` accepts the zero offset-table entry for glyph
+  `0x5f` as a record header at file offset `0x02e122`; segmented helper
+  `0x1f1f0` then advances to segment `0x39` and source file offset `0x03fe22`.
 - Exact stopped state:
   secondary high-control glyph `0x5f`, segment `0x39`, and firmware source
   address `0x0bfe22` are documented through the verified suffix. Bucket `448`
   is covered. Bucket `456` needs bytes beyond `0x0bffff`, so row bytes depend
   on the physical decode for `0x0c0000..0x0c0321`.
+- Output effect:
+  a reproducer should render or otherwise derive only the rows backed by verified
+  bytes `0x0bfe22..0x0bffff`. Fallback rows that require bytes
+  `0x0c0000..0x0c0321` must stop at this boundary unless external board,
+  emulator, gate-array, or recovered-resource evidence supplies the byte source.
 - What is not unresolved:
   parser dispatch, transparent count handling, `0x1a 0x58` normalization,
   selected-context filtering, page-record allocation, bridge fields, compact
   dispatch, segment skip arithmetic, and zero-offset glyph-entry
   interpretation.
 - Local probe evidence:
-  `tools/probe_resource_window.py --quiet` verifies the committed ROM images
-  and the byte-side choices for this stop. The segment-57 read is
-  `0x0bfe22..0x0c0321` inclusive (`1280` bytes). Only the first `478` bytes
-  are inside the verified IC32/IC15 resource image, with suffix hash
+  `tools/probe_resource_window.py --quiet` verifies the local ROM images selected
+  by `data/rom_manifest.json` and the byte-side choices for this stop. The
+  segment-57 read is `0x0bfe22..0x0c0321` inclusive (`1280` bytes). Only the
+  first `478` bytes are inside the verified IC32/IC15 resource image, with
+  suffix hash
   `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`; the
   continuation need is `802` bytes. The three modeled continuations are:
   simple resource mirror, first longword `0x48454144`, hash

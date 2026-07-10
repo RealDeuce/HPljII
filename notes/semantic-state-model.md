@@ -7982,20 +7982,24 @@ releases fixed-record object`. The ROM control-flow evidence is
 Canonical state in this cluster is the current character word `0x782f30`, the
 selected bit-30-clear payload pointer from `0x78285e`, the fixed-record table
 entry at payload `+0x48`, and the object bitmap bytes at payload `+0x0200`.
-The one-piece fixture writes record `02 03 04 00 00 00 02 00` and bitmap
-`aa 55 f0 0f c3 3c`; the split-plane continuation fixture writes record
-`03 02 04 00 00 00 02 00` and completed bitmap layout
-`a0 a1 c0 c1 b0 d0`. These payload bytes are canonical because `0x14e24`,
-`0x1393a`, `0x12f2e`, `0x1edc6`, and `0x1ef6a` consume them after the parser
-has returned.
+In the one-piece path, `0x16606` writes record
+`02 03 04 00 00 00 02 00` and bitmap `aa 55 f0 0f c3 3c`; in the split-plane
+continuation path, `0x15c4c` completes record `03 02 04 00 00 00 02 00` and
+bitmap layout `a0 a1 c0 c1 b0 d0`. These payload bytes are canonical because
+`0x14e24`, `0x1393a`, `0x12f2e`, `0x1edc6`, and `0x1ef6a` consume them after
+the parser has returned. Evidence anchors:
+`host-fetched 0x15d0a current-record resource object feeds fixed-record render`
+and `host-fetched 0x15d0a split-plane continuation resource object resumes
+fixed-record render`.
 
 Derived/cache state is the active map rebuilt by `0x14c64` / `0x14e24`, the
 source object emitted by `0x1393a`, the compact bucket object emitted by
-`0x12f2e`, and the bridged page context emitted by `0x1edc6`. The
-current-record fixture proves the map resolves printable `!` to glyph `1`,
-source width `2`, rows `3`, context slot `3`, page object prefix
-`00 00 00 00 00 03 00 01 01 66 01`, and selector `0x0003`. The split-plane
-fixture proves the same derived path with width `3`, rows `2`, object prefix
+`0x12f2e`, and the bridged page context emitted by `0x1edc6`. After the
+one-piece install, map refresh resolves printable `!` to glyph `1`; `0x1393a`
+emits source width `2`, rows `3`, and context slot `3`; `0x12f2e` queues
+selector `0x0003` with page object prefix
+`00 00 00 00 00 03 00 01 01 66 01`. The split-plane continuation path uses
+the same derived route with width `3`, rows `2`, object prefix
 `00 00 00 00 00 03 00 01 01 76 01`, and rows reconstructed from source bytes
 `a0 a1 b0` and `c0 c1 d0`.
 
@@ -8022,23 +8026,24 @@ remaining byte count, and split-plane counters, then clears or resaves the
 same block based on copy status.
 
 Firmware bookkeeping is the route edge, copy status, stream position, reject
-reason, and active-context refresh marker. The success fixtures pin copy status
-`1`, remaining `0x783140 = 0`, zero drained bytes at `0x12328`, and next parser
-handler `0xd04a`. The partial fixture pins status `2` resaves for both the
-linear byte `f0` case and the split-plane byte `c1` case. The failure fixture
-pins status `0`: `0x15c4c` takes `0x15cb8..0x15ccc`, calls `0x17d7c`, rewrites
-payload `+0x48` to `01 02 00 fa 00 00 00 00`, writes side-table bytes `fa 00`
-at payload `+0x340`, records active-primary refresh `0x7828de = 0`, and clears
-the continuation fields at `0x15cd6..0x15d08`.
+reason, and active-context refresh marker. Successful copies return status
+`1`, leave remaining `0x783140 = 0`, drain zero bytes at `0x12328`, and return
+the parser to next handler `0xd04a`. Partial copies return status `2` and
+resave continuation state for both the linear byte `f0` case and the
+split-plane byte `c1` case. Failed resumes return status `0`: `0x15c4c` takes
+`0x15cb8..0x15ccc`, calls `0x17d7c`, rewrites payload `+0x48` to
+`01 02 00 fa 00 00 00 00`, writes side-table bytes `fa 00` at payload
+`+0x340`, records active-primary refresh `0x7828de = 0`, and clears the
+continuation fields at `0x15cd6..0x15d08`.
 
 The visible output effect is page text, not an immediate draw by the font
-command. After the current-record fixture installs glyph `0x21`, printable `!`
-queues selector `0x0003` and renders three mode-0 rows beginning at x `22`.
-The linear continuation fixture renders the same three rows after the bitmap is
-split across two descriptor packets. The split-plane continuation fixture
-renders two rows beginning at x `22`, y `7`, proving that saved prefix/trailing
-destinations and D4/D3 counters are sufficient for the later compact renderer
-to recover the odd-width bitmap layout.
+command. After `0x16606` installs glyph `0x21`, printable `!` queues selector
+`0x0003` and renders three mode-0 rows beginning at x `22`. The linear
+continuation route renders the same three rows after the bitmap is split across
+two descriptor packets. The split-plane continuation route renders two rows
+beginning at x `22`, y `7`; its saved prefix/trailing destinations and D4/D3
+counters are the state that lets the later compact renderer recover the
+odd-width bitmap layout.
 
 Unresolved middle edges after this checkpoint are exact variant cross-products,
 not the documented bit-30-clear current-record/continuation path itself.

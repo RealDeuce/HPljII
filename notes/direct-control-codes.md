@@ -388,7 +388,9 @@ state-only mutation, or explicit no-output parser behavior.
   top/text limits, perforation skip `0x783191`, and wrap byte `0x783190`.
   They are delayed state until printable prechecks `0xd28a` / `0xd6bc`,
   overflow helper `0xf36c`, VFC, raster/rectangle placement, FF, or following
-  printable bytes consume the fields. Evidence:
+  printable bytes consume the fields. The HMI writer-to-consumer route is
+  composed in
+  [HMI Route Checkpoint](#hmi-route-checkpoint). Evidence:
   [Layout State To Output Checkpoint](#layout-state-to-output-checkpoint).
 - Parser-only and no-handler rows: explicit zero-handler rows and lowercase chaining
   helpers keep parser state or report ignored bytes without page output. They belong to
@@ -971,6 +973,56 @@ Named byte-stream outcomes:
 Fixture names for these streams are listed in the evidence sections below;
 they support the route above rather than defining it.
 
+### HMI Route Checkpoint
+
+This checkpoint composes `ESC &k#H` as a state-only horizontal-motion command.
+It starts when parser dispatch reaches handler `0xca8c`, and it ends when a
+later printable, HT, BS, margin, or cursor-position command consumes the stored
+HMI.
+
+Route summary:
+
+- `ESC &k#H` and lowercase chaining form `ESC &k#h` reach terminal handler
+  `0xca8c` through the normal parser table.
+- `0xca8c..0xcaf2` rewinds parser record cursor `0x78299e`, reads integer
+  word `+2` and fractional word `+4`, treats a negative integer as a signed
+  integer/fraction pair by negating both words, and rejects integer values
+  above `0x348`.
+- Accepted values are scaled as HMI units: integer contribution
+  `word(+2) * 30`, fractional contribution `word(+4) * 30 / 10000`, then
+  helper `0x104d8` converts the sum before `0xcae4` stores packed HMI
+  `0x78315c`.
+- The command queues no page object. Its visible effect is delayed until
+  consumers use `0x78315c`: printable source capture and placement in
+  `0xd04a`, HT `0xf1cc`, BS `0xf2a8`, left/right margin writers
+  `0xeb58` / `0xec0c`, and column-position handlers such as `0xf39e`.
+
+State classification for this route:
+
+- Canonical state: HMI/default horizontal motion word `0x78315c`, current
+  horizontal cursor `0x782c8a`, margins `0x782dd6` / `0x782dda`, selected font
+  context, and current page root `0x78297a` consumed later by printable text.
+- Derived/cache state: compact coordinates produced by the next printable
+  `0xd04a`, tab-stop candidates from `0xf1cc`, BS candidate x from `0xf2a8`,
+  margin/cursor candidates from `0xeb58`, `0xec0c`, and `0xf39e`, and
+  render-record copies after publication.
+- Parser scratch: the six-byte `ESC &k#H/h` record and the parsed integer and
+  fraction words consumed by `0xca8c`.
+- Firmware bookkeeping: pending-width latches `0x782a58..0x782a5c`,
+  alternate metric byte `0x78318e`, right-limit latch `0x782a57`, and pending
+  text/cursor latch `0x782a6d`.
+- Unknown: no ROM-local parser, HMI writer, delayed consumer, compact-object,
+  or render-entry middle edge remains for the documented `ESC &k6H!!` route.
+  New work should start only when a byte stream changes an HMI rejection case,
+  consumer branch, page-object field, or row-construction input.
+
+Named byte-stream outcome:
+
+- `ESC &k6H!!` routes `0xca8c -> 0xd04a -> 0xd04a`. The accepted HMI value
+  stores packed advance `15` in `0x78315c`; the second printable consumes that
+  HMI and queues at compact coordinate `0x0501` through the ordinary compact
+  text path.
+
 `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`. HT
 advances x to `21`, BS backs it up to `20`, and the printable glyph queues at
 compact coord `0x0a01` / pixel x `26`.
@@ -1048,10 +1100,6 @@ HT/BS instruction boundaries:
   span metrics through `0xd8fc` or `0xd4ac`. Neither HT nor BS queues a compact
   object; the following printable byte consumes the committed x in `0xd04a`.
 
-`ESC &k6H!!` routes `0xca8c` before two printable bytes. The accepted HMI
-value stores packed advance `15` in `0x78315c`, moving the second glyph to
-compact coord `0x0501`.
-
 `ESC &s#C` has no immediate page object, but it changes the acceptance boundary
 for later printable text. Disassembly `0xedb0..0xedf6` rewinds the parsed
 record, normalizes the absolute selector, and writes only selectors `0` and
@@ -1063,12 +1111,12 @@ overflow with `0x783190` set calls `0xf054`, retries from recovered x `0`, and
 returns `0` when the retried placement fits. Vertical extent failure still
 returns `1`.
 
-The plain and HMI parser fixtures pin the baseline consumer path. Fixture
-`plain printable parser trace feeds page-record queue` proves a printable
+The plain and HMI parser streams share the baseline consumer path. A printable
 byte reaches `0xd04a`, queues a compact text object through `0x1387c`, and
-survives bridge/render entry. Fixture `HMI parser trace feeds page-record
-queue` proves the `0xca8c` HMI writer changes the following compact
-coordinates without changing the downstream page-record contract.
+survives bridge/render entry. The HMI stream differs only before that shared
+path: `0xca8c` writes `0x78315c`, and the following printable consumes the new
+HMI to change compact coordinates without changing the downstream page-record
+contract.
 
 `ESC 9 CR !` has visible effect only through later text. Fixture `ESC 9 clear
 margins feeds CR and page-record output` proves `0xe9ba` clears left margin

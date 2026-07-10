@@ -273,6 +273,101 @@ Decision rules:
   until printable prechecks, LF/FF/perforation overflow, raster/rectangle
   placement, VFC, or publication reads the mutated fields.
 
+### Selected Context Switch Checkpoint
+
+SI and SO are state-only direct controls whose visible effect is delayed until
+a later text consumer. The parser admits the C0 byte in the direct-control
+route, then reaches SI handler `0xc68a..0xc6b6` or SO handler
+`0xc6b8..0xc6e2`; neither handler queues a page object or calls publication.
+
+SI `0xc68a` sets dirty-map byte `0x782f2d = 1`, tests selected slot
+`0x782f06`, and returns immediately when the slot is already primary. On a
+secondary-to-primary switch it calls `0xc428(0)`, and only a nonzero return
+clears selected slot `0x782f06`. SO `0xc6b8` mirrors that path for slot `1`:
+it sets `0x782f2d = 1`, skips work when `0x782f06` is already nonzero, calls
+`0xc428(1)` on a primary-to-secondary switch, and writes `0x782f06 = 1` only
+after `0xc428` succeeds.
+
+The common install helper is `0xc428..0xc4fa`, with the page-root slot scan in
+`0xc4fc..0xc57e`. Slot `0` reads current-font record longword `0x782ee6`;
+slot `1` reads `0x782ef6`. When current page root `0x78297a` is present,
+`0xc4fc` searches context longword slots at root `+0x2c + 4*n`, first
+accepting a low-24-bit match, otherwise accepting the first slot whose live
+flag `0x78297f+n` is not `1`. It returns `0x11` only when all 16 slots are
+live and none match. On success, `0xc428` writes the selected page-root slot
+byte `0x78297e`, refreshes metric/cache state from the selected context, and
+may update HMI `0x78315c` when `0x782f2d` requested a metric refresh.
+
+The visible consumer is the next printable route, not SI or SO itself.
+`0xd04a..0xd0e8` calls `0x1393a(host_byte, 0x782d7e)`, and `0x1393a` selects
+the active map/context pair from `0x782f06`: primary map `0x782f32` with
+context longword `0x782ee6`, or secondary map `0x783032` with context longword
+`0x782ef6`. The text queue paths `0xd3b2` and `0xd824` mark the selected
+page-root font slot live before `0x12f2e -> 0x1387c` appends the compact text
+object under current root `+0x1c`. Publication and render then carry both the
+compact object and root context slots through `0xff1e`, `0x1ed84`, `0x1edc6`,
+and compact render dispatch `0x1ef6a -> 0x1effe`.
+
+Field grouping for this checkpoint:
+
+- Canonical state: selected text slot `0x782f06`, current-font context
+  records `0x782ee6` / `0x782ef6`, current page root `0x78297a`, selected
+  page-root context slot `0x78297e`, page-root context live flags
+  `0x78297f+n`, root context longword slots `+0x2c..+0x68`, primary map
+  `0x782f32`, and secondary map `0x783032`.
+- Derived/cache state: selected metric byte `0x78318e`, HMI `0x78315c`,
+  printable source scratch `0x782d7e`, compact coordinates/object bytes, and
+  render context cache populated after `0x1edc6`.
+- Parser scratch: the admitted SI/SO byte and direct-control dispatch state;
+  there is no delayed payload record for these controls.
+- Firmware bookkeeping: dirty-map byte `0x782f2d`, page-root slot scan return
+  `0x11`, and allocator/page-root ensure effects owned by downstream text
+  queueing.
+- Hardware/external and unknown: no hardware edge is involved in this
+  ROM-local state switch. Manual-facing names for the HP primary/secondary
+  context controls remain external labels, but the ROM field effects are
+  named above.
+
+Documented consumers and effects:
+
+- `SI !!` with a seeded primary current-font record reaches
+  `0xc68a -> 0xc428(0) -> 0xc4fc`, selects page-root slot `0`, and the two
+  following printable bytes queue a primary compact object with prefix
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`.
+- `SO !!` with a seeded secondary current-font record reaches
+  `0xc6b8 -> 0xc428(1) -> 0xc4fc`, selects page-root slot `1`, and the two
+  following printable bytes queue a secondary compact object with prefix
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`.
+- Parsed selection streams `ESC (s0p10h12v0s0b3T SI !!` and
+  `ESC )s0p16h8v0s0b0T SO !!` compose the same state switch with upstream
+  font-selection handlers. Those streams prove the direct-control byte is a
+  context selector between parsed current-font state and later printable text,
+  not a page-object producer.
+
+Evidence: SI/SO handler bytes are in
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`; page-root context
+install is in
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`; the printable
+consumer is in `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`;
+compact queueing is in
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`; the render bridge is
+covered by `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+The detailed owner ledger and fixture claims are in
+[font-context-metrics.md](font-context-metrics.md), especially the
+`Page-Root Context Install`, `Printable Source Capture`, and
+`Reproduction Contract` sections plus fixture anchors
+`live primary current-font RAM install feeds SI page-record rows`,
+`parsed primary selection current-font RAM feeds SI visible rows`,
+`live secondary current-font RAM install feeds SO page-record rows`, and
+`parsed secondary selection current-font RAM feeds SO visible rows`.
+
+Unresolved boundary: no ROM-local SI/SO state-to-text edge remains open for
+the documented primary/secondary paths. Future work belongs here only if a new
+stream changes one of these exact boundaries: selected slot `0x782f06`,
+current-font records `0x782ee6` / `0x782ef6`, page-root slot selection
+`0xc428..0xc57e`, source capture `0x1393a`, compact queueing
+`0xd3b2` / `0xd824`, or render bridge slot copy `0x1edc6`.
+
 State classification:
 
 - Canonical state: cursor `0x782c8a/0x782c8e`, margins `0x782dd6/0x782dda`,

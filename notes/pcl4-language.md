@@ -1305,7 +1305,7 @@ Field groups for this index:
   rather than blending against previous destination contents.
   Physical engine consumption of those rendered buffers is the formatter/DC
   boundary, not another parser command effect. Evidence:
-  [page-raster-imaging.md](page-raster-imaging.md),
+  [Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix),
   [active-render-scheduler.md](active-render-scheduler.md), and
   [page-record-storage.md](page-record-storage.md).
 

@@ -161,8 +161,8 @@ Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
   record, `0x1edc6` copies source `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render
   record `+0x18/+0x1c/+0x20/+0x24..+0x60`, and `0x1ef6a` dispatches the active
   band through bucket, rule, fixed-list, compact, segment-list, and raster
-  helpers. The checked-in owner summary for that join is
-  [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary).
+  helpers. The checked-in outcome contract for that join is
+  [Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
 
 Context-slot handoff: `0x10110` and `0xc428 -> 0xc4fc` copy selected context/resource
 longwords from current-font RAM records into page-root slots `+0x2c..+0x68`. Printable

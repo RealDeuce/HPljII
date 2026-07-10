@@ -499,7 +499,8 @@ classes before any page pixels can be derived:
   `0x105d0`, text-span flush `0x12714`, downloaded glyph output, and macro
   replay can allocate page-root records or bucket/list objects. The downstream
   object classes are documented in [page-record-storage.md](page-record-storage.md)
-  and [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
+  and [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
 - Publication or render boundary:
   FF `0xf0f0`, reset `0xcc52`, selected page-layout changes, allocation retry,
   VFC jumps, and macro overlay paths can publish page roots through `0xff1e`.
@@ -967,9 +968,10 @@ Outcome owners:
   Decision Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
   [Segment-List Outcome Matrix](page-record-storage.md#segment-list-outcome-matrix),
   [Fixed-List Outcome Matrix](page-record-storage.md#fixed-list-outcome-matrix), and
-  [page-raster-imaging.md](page-raster-imaging.md#render-entry-owner-summary). This is
-  the common owner for the object-to-pixel hop after a command-family note has created
-  page content.
+  [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix). This is the common
+  owner for the object-to-pixel hop after a command-family note has created page
+  content.
 - Font selection, symbol selection, and downloaded font output: handlers `0xc390`,
   `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`, `0x12046`, `0x1205a`,
   `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, `0x120be`, `0x15a18`, `0x15a56`, and

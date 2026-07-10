@@ -2543,7 +2543,7 @@ Rule and fixed-width lists are not simple pass-through roots. Bridge helper
 Compact bucket roots and context slots are mostly pass-through. The bridge
 contract is documented in
 [page-record-storage.md](page-record-storage.md),
-[Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
+[Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix),
 and
 `generated/analysis/ic30_ic13_page_record_bridge.md`.
 

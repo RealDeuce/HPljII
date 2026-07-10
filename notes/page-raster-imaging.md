@@ -326,6 +326,129 @@ middle edge between copied render roots and class dispatch for the object
 classes named here. Remaining unresolved edges are object-class-specific and
 are listed under those sections with their address boundaries.
 
+## Render Entry Outcome Matrix
+
+This matrix is the page/image-to-pixel contract after publication and active
+scheduling have selected a render work record. It starts at the published
+record bridge and ends at the ROM-local row helpers or exact object-specific
+boundaries.
+
+- Published record copy:
+  `0x1ed84` consumes scheduler-selected source record `0x780eae`, copies
+  header words into the active render work record, and calls `0x1edc6`.
+  Output effect: no rows are written yet; this is the selected published
+  page/control record becoming render state.
+
+- Render-root bridge:
+  `0x1edc6` copies source compact/raster bucket root `+0x1c` to render root
+  `+0x18`, rule root `+0x24` to render root `+0x1c`, fixed-list root
+  `+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to render
+  slots `+0x24..+0x60`. It also normalizes copied rule and fixed-list nodes
+  for render-time continuation. Output effect: parser/page-object state is now
+  frozen as render roots; later pixels come only from these copied roots and
+  derived band caches.
+
+- Band setup:
+  Active scheduler `0x1eba4` calls render entry `0x1ef6a` only after capacity
+  predicates allow it. `0x1ef6a` calls `0x1ef86`, which derives current-band
+  row count `0x783a20`, remainder `0x783a22`, destination base `0x783a28`,
+  destination stride `0x783a1c`, and render work copy fields. Output effect:
+  destination caches are derived/cache state for this band, not canonical page
+  storage.
+
+- Bucket-chain render:
+  `0x1ef6a -> 0x1efc2` consumes render root `+0x18` in linked-list order.
+  Object byte `+4` selects compact/text objects in `0x00..0x3f`, segment-list
+  objects in `0x40..0x7f`, or encoded-raster objects in `0x80..0xff`. Output
+  effect: bucket-chain stores run before rule-list and fixed-list stores, so
+  later object classes can overwrite overlapping rows.
+
+- Compact text and downloaded glyphs:
+  Compact objects dispatch through `0x1effe` to `0x1f034`, `0x1f0d2`,
+  `0x1f1f0`, or `0x1f264`, then use glyph/row-copy helpers such as
+  `0x1fa5c..0x207ac` and `0x2f27c`. Readers are compact object fields
+  `+5/+6/+8/+0x0a`, copied context slots, selected map/font records, and
+  compact context cache `0x783a2c`. Output effect: glyph rows are written to
+  the selected current-band or fallback destination. Exact unresolved edges
+  remain only for invalid computed helper targets and resource-window bytes
+  named in downloaded-font/resource notes.
+
+- Segment-list objects:
+  Segment objects dispatch through `0x1f812` and row helper `0x1f862`,
+  consuming bridged segment-list fields and the same destination split helpers
+  as compact/raster bucket objects. Output effect: segment rows are written
+  from queued object fields; the documented secondary segment-57 path stops
+  only at missing external resource bytes `0x0c0000..0x0c0321`.
+
+- Encoded raster objects:
+  Raster objects dispatch through `0x1f88e`, with mode helpers `0x1f8da`,
+  `0x1f8e6`, `0x1f920`, and `0x1f9c6` selected by object byte `+5 & 3`.
+  Readers are encoded object mode, coordinate/key, count/capacity, and copied
+  payload bytes. Output effect: raster rows are decoded and written into the
+  current-band or fallback destination after any earlier compact bucket stores
+  in the same chain order.
+
+- Rule-list render:
+  `0x1ef6a -> 0x1f446` consumes render rule root `+0x1c` on the documented
+  five-band boundary pattern. Object byte `+5 & 0x0f` selects solid helper
+  `0x1f596` or patterned helper `0x1f4e0`; destination helper `0x1f626`
+  applies displacement and current-band/fallback clipping. Output effect:
+  rule rows are written after bucket-chain rows and before fixed-list rows.
+
+- Fixed-list render:
+  `0x1ef6a -> 0x1f756` consumes render fixed-list root `+0x20` on the same
+  boundary pattern and writes pattern rows through `0x1f7b0`. Output effect:
+  fixed-list stores are last in the top-level render-entry order.
+
+- Pixel composition order:
+  The ROM uses direct stores in this render path. It does not apply a hidden
+  destination read/modify/write blend at the shared dispatch layer. Overlap is
+  resolved by call order: bucket chain first, rule list second, fixed list
+  third, with linked-list order inside each class.
+
+State grouping:
+
+- Canonical render state: active source record `0x780eae`, active render
+  pointer `0x783a18`, render roots `+0x18/+0x1c/+0x20`, render context slots
+  `+0x24..+0x60`, and render work band word `+0x10`.
+- Canonical object state: bucket object `+0/+4/+5/+6/+8/+0x0a`, rule/fixed
+  selector and continuation fields, and copied page-root object links.
+- Derived/cache state: band rows `0x783a20`, remainder `0x783a22`,
+  destination base `0x783a28`, stride `0x783a1c`, offset tables, compact
+  context cache `0x783a2c`, phase byte `0xa001`, and fallback buffer base
+  `0x7810b4 + byte_pair_offset`.
+- Parser scratch: none. Parser records and delayed payloads have already
+  become page objects, state-only effects, or no-output parser outcomes.
+- Firmware bookkeeping: scheduler capacity/throttle fields, work-record
+  alternation, rule/fixed continuation fields initialized by `0x1edc6`, and
+  invalid computed-jump boundaries for compact helper out-of-range cases.
+- Hardware/external state: physical formatter/DC consumption after ROM row
+  buffers are written.
+- Unknown: object-class-specific invalid targets, missing resource-window
+  bytes, and hardware/MMIO mapping after ROM row writes. No unresolved
+  ROM-local middle edge remains for selecting copied render roots, dispatch
+  order, or shared destination cache derivation.
+
+Evidence:
+
+- Bridge and entry listings:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
+- Object render listings:
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`,
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`,
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`, and
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`.
+- Checked-in owner notes:
+  [page-record-storage.md](page-record-storage.md),
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+  [raster-graphics.md](raster-graphics.md),
+  [rectangle-graphics.md](rectangle-graphics.md),
+  [downloaded-fonts.md](downloaded-fonts.md), and
+  [resource-rom.md](resource-rom.md).
+
 ## Pixel Generation Owner Summary
 
 Concept: this note owns the ROM-local pixel-generation layer after active

@@ -367,7 +367,8 @@ Evidence:
 - Field and object details: the field groups below, plus
   [page-record-storage.md](page-record-storage.md),
   [active-render-scheduler.md](active-render-scheduler.md), and
-  [page-raster-imaging.md](page-raster-imaging.md#render-entry-owner-summary).
+  [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
 
 ## Field Groups
 

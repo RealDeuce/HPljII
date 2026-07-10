@@ -6128,6 +6128,95 @@ handlers; `0x16df6` dispatches `ESC *c#F` values through a ROM jump table with
 mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
 `0x782a92 == 2`.
 
+### Downloaded Character Route Checkpoint
+
+Status: composed from
+[downloaded-fonts.md](downloaded-fonts.md#downloaded-character-payload-and-rendering)
+as the downloaded-character path from `ESC )s#W` parser restore through
+`0x16498` install, `0x15b9a` continuation, `0x12f2e` page-object queueing,
+`0xff1e` publication, `0x1ed84` / `0x1ef6a` render dispatch, and compact
+downloaded-glyph helpers. The low-level ledger remains in that note; this block
+is the canonical semantic model for the covered route family.
+
+Concept: nonzero `ESC )s#W` payloads restore a six-byte parser record and enter
+delayed handler `0x16c14`. Handler `0x15dc6` calls `0x16498`; successful copies
+return through `0x15dcc -> 0x12328`, then the next parser byte resumes at the
+handler selected by the remaining stream. `0x16498` installs downloaded
+character records by writing the font table entry, object record, bitmap
+offset, bitmap bytes, and, for partial status `2`, continuation fields consumed
+by `0x15b9a`. Printable bytes then resolve the installed glyph and call
+`0x12f2e`, which queues compact selector `0x0003`, wide selector `0x1003`, or
+segmented selectors `0x2003`/`0x3003` before publication and render dispatch.
+
+State groups:
+
+- Canonical downloaded-glyph state:
+  installed table entries such as `0x00e2 -> 0x0500`, `0x00ee -> 0x0780`,
+  `0x00f2 -> 0x0800`, and continuation entries `0x00f6 -> 0x0840` /
+  `0x00fa -> 0x0880`; object records such as
+  `00 00 00 00 0c 01 00 03 00 10 00 00`; bitmap offsets such as `0x050c`,
+  `0x078c`, and `0x080c`; and copied bitmap bytes.
+- Parser scratch:
+  restored records such as `80 57 00 06 00 00`, `80 57 00 12 00 00`, and
+  `80 57 01 00 00 00`; payload offsets `5`, `6`, and `7`; byte ranges such as
+  font bytes `0..24`, page bytes `24..54`, and raster payload offset `28`; and
+  `0x783140` budgets consumed by `0x12328`.
+- Firmware bookkeeping:
+  `0x7827c6`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,
+  `0x7827d6`, `0x7827d8`, and `0x7827da` continuation fields; replacement
+  release through `0x17a24`; allocation-failure release through `0x1887a`; and
+  active-context refresh through `0x1b4c0` / `0x14c64`.
+- Derived/cache page state:
+  page-record bucket objects queued by `0x12f2e` / `0x1387c`, bucket arrays
+  published by `0xff1e`, bridge copies through `0x1edc6` / `0x1ed84`, and
+  render-dispatch fields consumed by `0x1ef6a`.
+
+Writer/reader model:
+
+- Writers:
+  `0x16498` writes installed character records, table pointers, bitmap bytes,
+  status-`2` continuation state, and no-install cleanup state; `0x15b9a`
+  resumes or releases continuation state; `0x12f2e` writes page-record objects;
+  `0xff1e` publishes bucket/root records.
+- Readers/consumers:
+  printable handler `0xd04a` resolves glyph entries and queues page objects;
+  `0x1edc6` / `0x1ed84` bridge active or published roots; `0x1ef6a` dispatches
+  compact objects to `0x1effe`; helpers `0x1fe76`, `0x1f0d2`, and `0x1f1f0`
+  consume the installed bitmap layout to generate rows.
+- Output effect:
+  successful installs produce visible compact downloaded-glyph rows from the
+  installed bitmap bytes; no-install exits leave the following printable byte on
+  the unchanged default-font path; status-`2` exits can produce visible rows
+  from partial bitmap bytes plus zero-filled missing bytes and can later be
+  completed by `0x15b9a`.
+
+Confidence and evidence:
+
+- High for the covered parser-to-render routes because the checked-in
+  low-level note cites concrete parser handlers, RAM fields, object bytes,
+  publication buckets, render-dispatch targets, row digests, and disassembly
+  boundaries.
+- Fixture anchors are supporting evidence, not the semantic claim itself:
+  `host-fetched linear downloaded character stream renders through 0x168dc`,
+  `host-fetched row-0x80 downloaded character remains short compact`,
+  `0x16498 no-install exits preserve following printable output`,
+  `0x16498 status-2 partial installs remain printable`,
+  `0x15b9a resumes downloaded-character continuation objects`,
+  `host-fetched segmented downloaded character renders through 0x1f1f0`, and
+  `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`.
+
+Unresolved middle edges:
+
+- No unresolved ROM-local edge remains inside the covered normal, wide,
+  row-`0x80`, segmented, no-install, status-`2`, continuation-success, and
+  continuation-failure route family.
+- Exact remaining stops stay outside this checkpoint: compact high-row invalid
+  helper/source boundaries at `0x1fe76..0x1fe88`, `0x1f034 -> 0x1f08e`, and `0x1f264`
+  are owned by
+  [unresolved-boundaries.md](unresolved-boundaries.md#unresolved-boundary-outcome-matrix);
+  parser byte-count cap stops before `0x16498` are owned by
+  [downloaded-fonts.md](downloaded-fonts.md#segmented-wide-payload-count-cap-checkpoint).
+
 ### Field Groups
 
 - Canonical:

@@ -149,12 +149,14 @@ boundary outside these owners, the relevant owner note must be extended.
   downloaded fonts, macros, VFC, host/status side channels, and resource ROM
   paths.
 - Page/image assembly model:
-  [page-record-storage.md](page-record-storage.md#owner-summary) owns
-  current page root `0x78297a`, compact/raster bucket root `+0x1c`, rule-list
-  root `+0x24`, fixed-list root `+0x28`, context slots `+0x2c..+0x68`,
-  stream allocation through `0x1381c` / `0x1387c`, and publication
-  `0xff1e`. Shared object shape and render bridge context are summarized in
-  `Shared Page-Object Contract` below.
+  [page-record-storage.md](page-record-storage.md#owner-summary) owns current page root
+  `0x78297a`, compact/raster bucket root `+0x1c`, rule-list root `+0x24`, fixed-list
+  root `+0x28`, context slots `+0x2c..+0x68`, stream allocation through `0x1381c` /
+  `0x1387c`, and publication `0xff1e`. Shared object shape and render bridge context are
+  summarized in `Shared Page-Object Contract` below, with the
+  producer/root/object/bridge route grouped by class in `Page Object Shape Route Index`
+  in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index).
 - Output/render engine:
   [active-render-scheduler.md](active-render-scheduler.md#owner-summary) owns active
   render scheduling and wait-object handoff.
@@ -5595,7 +5597,11 @@ or from a byte stream that changes a named field in the family sections.
   field or branch boundary: selected font/context fields, transparent/display
   filtering, downloaded-glyph install state, macro replay frame state, raster
   gate/object fields, rectangle clipping/allocation, publication roots,
-  bridge roots, render dispatch, or helper row construction.
+  bridge roots, render dispatch, or helper row construction. For page-object
+  variants, compare the stream against `Page Object Shape Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index)
+  and name the changed producer, root field, canonical object bytes, bridge
+  field, first render consumer, or exact residual boundary.
 - Checked-in documentation requirement:
   generated reports and fixtures can support the items above, but completion
   for any new edge means updating the relevant checked-in note with writers,
@@ -9365,23 +9371,25 @@ Priority ROM-local documentation targets:
 1. Command-family variants that change page-object shape or render input. Useful
    remaining examples are new streams that change the concrete render-helper fields
    named in [Render Helper Boundary
-   Index](page-raster-imaging.md#render-helper-boundary-index): compact selector class,
-   segment/fixed-list object bytes, raster encoded object fields, rule/fixed roots,
-   continuation mutation, fallback split, or row-copy helper inputs. Compact-selector
-   streams should start only when they change source bytes consumed by `0x12f2e`,
-   selector bits, segment payload entries, helper target, fallback split, row-copy
-   index, or an exact boundary beyond the [compact selector outcome
-   matrix](downloaded-fonts.md#compact-selector-outcome-matrix). Segment-list
+   Index](page-raster-imaging.md#render-helper-boundary-index) and the
+   producer/root/object/bridge fields summarized by `Page Object Shape Route Index` in
+   [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index):
+   compact selector class, segment/fixed-list object bytes, raster encoded object
+   fields, rule/fixed roots, continuation mutation, fallback split, or row-copy helper
+   inputs. Compact-selector streams should start only when they change source bytes
+   consumed by `0x12f2e`, selector bits, segment payload entries, helper target,
+   fallback split, row-copy index, or an exact boundary beyond the [compact selector
+   outcome matrix](downloaded-fonts.md#compact-selector-outcome-matrix). Segment-list
    portrait-span streams should start only when they change key derivation, split
-   buckets, entry bytes, bucket bridge state, a new allocation-failure
-   publication/retry outcome, or row construction beyond the [segment-list outcome
+   buckets, entry bytes, bucket bridge state, a new allocation-failure publication/retry
+   outcome, or row construction beyond the [segment-list outcome
    matrix](page-record-storage.md#segment-list-outcome-matrix). Fixed-list
    landscape-span streams should start only when they change key derivation, insertion
    order, object bytes, bridge continuation fields, five-band gating, or row
    construction beyond the [fixed-list outcome
-   matrix](page-record-storage.md#fixed-list-outcome-matrix). Raster streams
-   should start only when they change accepted-byte counts, row advancement, object
-   bytes, or render inputs beyond the [raster transfer gate outcome
+   matrix](page-record-storage.md#fixed-list-outcome-matrix). Raster streams should
+   start only when they change accepted-byte counts, row advancement, object bytes, or
+   render inputs beyond the [raster transfer gate outcome
    matrix](raster-graphics.md#transfer-gate-outcome-matrix) or [encoded raster object
    outcome matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Rule-list
    streams should start only when they change clipped source fields, ordered insertion,
@@ -9392,10 +9400,9 @@ Priority ROM-local documentation targets:
    Edges](rectangle-graphics.md#remaining-edges): clipping output, `0x1381c`
    rollover/allocation state, retry publication fields, rule object bytes, bridge state,
    render dispatch, continuation mutation, or row construction. Publication examples for
-   reset, FF, page-size, orientation, paper-source, and copies are now owned by
-   [Page Environment Outcome
-   Matrix](publication-commands.md#page-environment-outcome-matrix); new
-   publication work should start only from streams that change pool-header fields,
+   reset, FF, page-size, orientation, paper-source, and copies are now owned by [Page
+   Environment Outcome Matrix](publication-commands.md#page-environment-outcome-matrix);
+   new publication work should start only from streams that change pool-header fields,
    source-record selection, bridge values, or a render helper input. The allocator
    rollover path across `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now
    owned by [page-record-storage.md](page-record-storage.md#output-effect), including

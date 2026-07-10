@@ -1340,6 +1340,109 @@ output` writes `0x783185 = 1`, lets the printable update the flagged text
 span through alternate offset fields, and flushes a selector-`0x4000` span
 object beside the compact glyph.
 
+### Underline And Span Outcome Matrix
+
+This matrix is the direct-control owner checkpoint for `ESC &d` and the shared
+pending-span flush path. It starts at parser dispatch to `0x12622`, includes
+the printable span consumers that update pending bounds, and ends at
+segment-list or fixed-list page objects consumed by render entry.
+
+- Selector write:
+  `ESC &d#D` reaches `0x12622`. The handler tokenizes with `0xdaf0`, fetches
+  the lookahead byte through `0xda9a`, rewinds `0x78299e` for non-`W/w`
+  lookahead, restores pending delayed payload state through `0x12218`, and
+  writes selector byte `0x783185`. Parameter `3` with final byte `D` writes
+  `0x783185 = 1`; other accepted selector terminals write `0`. It then calls
+  `0x126e2`, which arms pending span byte `0x783184`, seeds low/high x words
+  `0x783186` / `0x783188` from cursor x `0x782c8a`, and clears high-y word
+  `0x78318a`.
+- Generic payload boundary:
+  `0x12638..0x12654` treats `W/w` lookahead as a counted payload command by
+  scheduling generic drain handler `0x1228a` through `0x121cc`. This is
+  parser bookkeeping for the `&d` family; the normal underline streams covered
+  here do not image a binary payload.
+- Printable span update:
+  After the selector is armed, a printable byte reaches
+  `0xd04a -> 0x1393a`. The flagged source path uses
+  `0xd550 -> 0xd824`, queues the compact glyph through `0x12f2e`, and then
+  calls span consumer `0xd8fc` when `0x783184` is set. With selector
+  `0x783185 = 1`, `0xd8fc` uses selected-context offset word `+0x1a` while
+  updating pending span bounds `0x783186..0x78318a`.
+- Terminal flush:
+  Accepted final bytes whose bit 2 is clear take `0x1268e..0x126a0`; after
+  `0x12218`, `0x12622` calls `0x12714`. The covered `ESC &d@` stream uses
+  this path to convert pending bounds into a page object.
+- Cursor/control flush:
+  CR `0xf02c`, left margin `0xeb58`, and vertical cursor handler `0xf560`
+  can flush the same pending span through `0xf34a -> 0x12714 -> 0x126e2`
+  before changing the cursor boundary that defines the span. The output object
+  is therefore tied to the pre-move span bounds, while `0x126e2` re-arms
+  bounds for following text at the post-move cursor.
+- Portrait page object:
+  In portrait orientation, `0x12714 -> 0x13520 -> 0x135f0` stores
+  selector-`0x4000` segment-list objects under page-root bucket `+0x1c`. The
+  covered underline stream flushes object bytes
+  `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`: class byte `0x40`, one entry,
+  packed key `0x3a00`, y `3`, and extent `18`.
+- Landscape/fixed-list page object:
+  In landscape orientation, the same pending source reaches `0x136d2` and is
+  stored under page-root fixed-list root `+0x28`. Bridge `0x1edc6` exposes it
+  at render root `+0x20`, copies source word `+8` to continuation word
+  `+0x0a`, and initializes bytes `+0x0c = 1` and `+0x0d = 8`.
+- Allocation retry:
+  If fixed-list allocation fails, `0x12714` marks page-root flag word
+  `+0x14`, publishes the old root through `0xff1e`, rebuilds the same local
+  span source under a fresh root from `0x10084`, and retries insertion. The
+  span is not silently dropped at the first no-room return.
+- Render effect:
+  Segment-list objects bridge through render root `+0x18` and dispatch via
+  `0x1efc2 -> 0x1f812 -> 0x1f862`, where six-byte entries become counted mask
+  spans using mask table `0x308f2`. Landscape fixed-list objects bridge
+  through render root `+0x20` and dispatch via `0x1f756 -> 0x1f7b0`.
+
+State grouping for this matrix:
+
+- Canonical:
+  selector byte `0x783185`, pending span byte `0x783184`, span bounds
+  `0x783186` / `0x783188` / `0x78318a`, cursor x/y, current page root, compact
+  glyph object, portrait segment-list object, and landscape fixed-list object.
+- Derived/cache:
+  packed span keys such as `0x3a00`, producer bucket/key fields
+  `0x782a7c..0x782a7e`, selected-context metric words, render roots copied by
+  `0x1edc6`, and render-band caches from `0x1ef86`.
+- Parser scratch:
+  six-byte `ESC &d` records, lookahead byte from `0xda9a`, lowercase family
+  continuation state, and any generic `W/w` drain record.
+- Firmware bookkeeping:
+  delayed-restore call `0x12218`, span re-arm helper `0x126e2`, allocation
+  cursors, retry publication flag, publication flag `0x782996`, and bridge
+  continuation fields.
+- Hardware/external:
+  none for the ROM-local underline/span path after bytes are admitted.
+- Unknown:
+  no ROM-local middle edge remains for the documented selector write,
+  printable span update, terminal/control flush, portrait segment-list,
+  landscape fixed-list, retry, bridge, or render dispatch. New work belongs
+  here only if a stream changes one of those fields, object bytes, bridge
+  roots, or row-construction inputs.
+
+Evidence:
+
+- Handler and re-arm disassembly:
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+  `0x12622..0x12712`.
+- Span producer disassembly:
+  `generated/disasm/ic30_ic13_text_span_flush_012714.lst` and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.
+- Render disassembly:
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+  `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`.
+- Checked-in path:
+  `Worked Path: Text Span Flush And Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) and
+  [page-record-storage.md](page-record-storage.md#segment-list-outcome-matrix).
+
 Vertical-layout helper fixtures pin the shared VMI/text-boundary state that
 feeds both direct controls and later printable placement. `0xc992 ESC &l#D
 accepts ROM LPI set and refreshes pending vertical cursor` and

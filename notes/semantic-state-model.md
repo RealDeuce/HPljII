@@ -7244,18 +7244,16 @@ default-font output. The low-level ledger remains in
 `notes/downloaded-fonts.md` under `Descriptor Validation And Payload Header`.
 
 Concept: `0x16fae` walks the 32-entry descriptor-validation table at
-`0x16eae`. When a predicate returns failure, `0x17026` receives validation
-status `0`, returns allocation status `0`, and `0x16c14` leaves the current
-downloaded-font records and candidate list unchanged. Fixture
-`ESC )s#W validation failures preserve following printable output` then
-appends printable `!` and proves the parser resumes at `0xd04a`, queues the
-baseline default-font compact object, and renders the same rows as a stream
-without the failed font payload. The local setup fixtures
+`0x16eae`. Each table entry calls a reader helper and then a predicate/writer
+helper; any helper return other than `1` makes `0x16fae` return validation
+status `0`. `0x17026` consumes that status, returns allocation status `0`, and
+`0x16c14` leaves the current downloaded-font records and candidate list
+unchanged before draining the payload budget. The following printable byte then
+resumes at `0xd04a` on the unchanged default-font path. Evidence anchors:
+`ESC )s#W validation failures preserve following printable output`,
 `0x16fae-modeled font resource validation and symbol-byte staging`,
 `0x17362-modeled font resource setup type`, and
-`0x17026/0x1719c-modeled font resource allocation and header initialization`
-pin the successful validation, setup, allocation, and sparse header-copy
-contracts consumed by both the no-install and install paths.
+`0x17026/0x1719c-modeled font resource allocation and header initialization`.
 
 Field groups:
 
@@ -7263,8 +7261,8 @@ Field groups:
   `0x782640..0x782776`, candidate count/cursors `0x78278e`,
   `0x782790`, `0x782796`, `0x782798`, `0x78279e`, `0x7827a0`,
   `0x7827ac`, `0x7827b0`, and `0x7827b4`, and selected installed
-  candidate longword. Writers on success are `0x16c14` and `0x1bc38`; the
-  eight validation-failure fixtures assert no install for this state.
+  candidate longword. Writers on success are `0x16c14` and `0x1bc38`;
+  validation-failure exits leave this state unchanged.
 - Parser scratch: restored records `80 57 00 50 00 00` and short-budget
   `80 57 00 08 00 00`, payload byte budget `0x783140`, parser record cursor
   `0x78299e`, host ring source `0xa904`, and parser handlers `0x11eb6`,
@@ -7286,19 +7284,20 @@ Field groups:
 - Derived/cache state: `+0x18` is derived by validation entry `6` helper
   `0x17430..0x1749c` as range/count minus first code minus one. Rounded
   unflagged word `+0x2c` is derived by entry `12` helper `0x1757a..0x175b8`
-  as `min((value + 2) >> 2, word(+0x14)) << 2`; the boundary,
-  range-endpoint, and low-nibble metric fixtures prove the cap,
-  derived-height endpoints, and rounding behavior in page-visible `0xd4ac` /
-  `0xd8fc` output. Optional symbol bytes `0x782842..0x782851` and count
+  as `min((value + 2) >> 2, word(+0x14)) << 2`. These derived words later
+  drive the page-visible metric consumers: unflagged `0xd4ac` reads
+  `+0x2b/+0x2c/+0x2d`, while flagged `0xd8fc` reads
+  `+0x16/+0x18/+0x1a`. Optional symbol bytes `0x782842..0x782851` and count
   `0x782856` remain empty on the covered failure exits because validation
   fails before `0x16fe4`.
 - Firmware bookkeeping: allocation status `0`, install state `None`, and the
   fully drained host source are failure bookkeeping. They are not printable
   page state, but they gate whether the subsequent `!` uses a downloaded font
-  or the unchanged default font. The successful sibling fixture
-  `0x17026/0x1719c-modeled font resource allocation and header initialization`
-  pins the allocation size calculation, staged type/size words, sparse header
-  copy, and optional symbol-byte append used when validation does not fail.
+  or the unchanged default font. On the successful sibling route, `0x17026`
+  calculates allocation size from staged type/size words and `0x1719c` copies
+  the sparse header plus optional symbol bytes when validation does not fail.
+  Evidence anchor:
+  `0x17026/0x1719c-modeled font resource allocation and header initialization`.
 - Unknown for this checkpoint: external HP manual names for descriptor fields
   that the table consumes but does not stage. The ROM-internal rejecting
   predicate helpers are all in entries `2`, `4`, `5`, `6`, and `7`; the other
@@ -7316,8 +7315,8 @@ Writers and readers:
   `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst` shows type
   `0` writing staged byte `+0x0c = 0` and `0x7827ba = 0x80`, types `1`/`2`
   writing staged byte `1`/`2` and `0x7827ba = 0x100`, and other values
-  returning failure. Fixture `0x17362-modeled font resource setup type`
-  pins those type-0, type-2, and invalid-type outcomes.
+  returning failure. Evidence anchor: `0x17362-modeled font resource setup
+  type`.
 - `0x173d0` is the entry-4 first-code predicate. Word `0x1068` fails after
   eight consumed bytes before writing payload word `+0x16`.
 - `0x173fe` is the entry-5 line/count predicate. Zero and `0x1069` both
@@ -7327,19 +7326,26 @@ Writers and readers:
   zero and validation fails after eight descriptor bytes.
 - `0x17430` is the entry-6 range/count predicate. Reversed range
   `+0x16 = 10`, value `5`, and high value `0x1069` fail at the
-  twelve-byte boundary; the reversed-range fixture leaves `+0x14 = 5` and
-  derived `+0x18 = 0`.
+  twelve-byte boundary; the reversed-range route leaves `+0x14 = 5` and
+  derived `+0x18 = 0`. Evidence anchor:
+  `ESC )s80W reversed resource range fails validation before allocation`.
 - `0x1757a` is the entry-12 rounded-metric transform for unflagged
-  `0xd4ac` fields. It rounds `(value + 2) >> 2`, caps that result to
-  canonical range/count `+0x14`, shifts back left by two, and writes the word
-  to `+0x2c`; fixtures prove `0x0013 -> 0x0014`,
-  `0x1500/0x1508/0x15ff -> 0x0060`, and
-  `0x0001/0x0003/0x0004/0x0005/0x000f ->
-  0x0000/0x0004/0x0004/0x0004/0x0010`.
+  `0xd4ac` fields. It adds two to the reader value, shifts right by two,
+  caps the result to canonical range/count `+0x14`, shifts left by two, and
+  writes the word to `+0x2c`. The resulting ROM formula maps
+  `0x0013 -> 0x0014`, maps `0x1500`, `0x1508`, and `0x15ff` to `0x0060`
+  when `+0x14 = 0x0018`, and maps low-nibble inputs
+  `0x0001/0x0003/0x0004/0x0005/0x000f` to
+  `0x0000/0x0004/0x0004/0x0004/0x0010`. Evidence anchors:
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`,
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`,
+  and `legal descriptor metric low-nibble rounding drives d4ac and d8fc
+  consumers`.
 - `0x1762a` is the entry-21 signed-offset writer for flagged `0xd8fc`.
-  It stores the signed-byte reader result as word `+0x1a`; fixtures prove
-  offset bytes `0x7f`, `0xfe`, and `0xff` become copied words
-  `0x007f`, `0xfffe`, and `0xffff`, which `0xd8fc` consumes directly.
+  It stores the signed-byte reader result as word `+0x1a`; offset bytes such
+  as `0x7f`, `0xfe`, and `0xff` therefore copy as words `0x007f`,
+  `0xfffe`, and `0xffff`, which `0xd8fc` consumes directly. Evidence anchor:
+  `legal descriptor metric mixed values drive d4ac and d8fc consumers`.
 - `0x1749e` is the entry-7 class predicate. Class byte `2` fails after
   thirteen consumed bytes, after staging `+0x16 = 4`, `+0x12 = 6`,
   `+0x14 = 9`, and `+0x18 = 4`, but before writing `+0x20`.
@@ -7357,9 +7363,8 @@ and the final rendered rows are derived from the baseline default-font path.
 
 Confidence is high for the parser boundary, failed validation entries, last
 staged fields, allocation skip, no-install result, resumed printable handler,
-default compact object, and rendered rows because fixture
-`ESC )s#W validation failures preserve following printable output` asserts
-the seven bounded `ESC )s80W` no-install streams and short-budget
+default compact object, and rendered rows because the documented route covers
+the seven bounded `ESC )s80W` no-install streams and the short-budget
 `ESC )s8W` stream. Confidence is high for ROM-internal rejecting validation
 coverage because disassembly shows only predicate helpers `0x17362`,
 `0x173d0`, `0x173fe`, `0x17430`, and `0x1749e` can return failure; the

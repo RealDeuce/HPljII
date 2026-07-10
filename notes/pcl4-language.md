@@ -638,9 +638,17 @@ decimal value.
 | Make macro temporary | `ESC &f9X` |
 | Make macro permanent | `ESC &f10X` |
 | Display functions on | `ESC Y` |
-| Display functions off | `ESC Z` |
-| Display-functions status/reset edge | `ESC z` |
+| Display-functions local terminator / blank parser row | `ESC Z` |
+| Display-functions off/status edge | `ESC z` |
 | Transparent print data | `ESC &p#X` followed by data |
+
+ROM routing note: the generated flat table preserves the manual-style
+`Display functions off` label for `ESC Z`, but the checked-in ROM route treats
+standalone `ESC Z` as a blank parser-table terminal with no page effect. Inside
+`ESC Y ... ESC Z`, normal reader `0x12536` and alternate/data reader `0x12120`
+consume the `ESC Z` pair locally through their direct `0xa904` loops. Lowercase
+`ESC z` is the guarded status/off edge at `0xcd86`; it can write status markers
+through `0x9c2c` and creates no page object.
 
 ### Status Queries
 

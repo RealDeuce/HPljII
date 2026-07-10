@@ -291,11 +291,11 @@ The symbol-specific consumer chain is:
 7. `0x14f16` applies active-symbol patch rules before printable bytes are
    mapped by `0x1393a`.
 
-The `0x14f16` patch algorithm is documented in
-[symbol-map-patching.md](symbol-map-patching.md#owner-summary). It only table-patches
-maps when the selected font normalizes to Roman-8 (`0x0115`), then uses active symbol
-words `0x783144` / `0x783146` to select hard-coded `0E` / `0U` behavior or a `0x14fce`
-patch table.
+The `0x14f16` patch algorithm and consumer boundary are documented in
+[Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix).
+It only table-patches maps when the selected font normalizes to Roman-8
+(`0x0115`), then uses active symbol words `0x783144` / `0x783146` to select
+hard-coded `0E` / `0U` behavior or a `0x14fce` patch table.
 
 The printable path then consumes this derived map:
 
@@ -561,8 +561,9 @@ Readers and consumers:
   window.
 - `0x156de` consumes requested/remembered/fallback words.
 - `0x14f16` consumes active words while patching maps.
-- [symbol-map-patching.md](symbol-map-patching.md#owner-summary) documents the patcher
-  branches and table index.
+- [Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix)
+  documents the patcher branches, table index, and printable consumer
+  boundary.
 - `0xd04a` / `0x1393a` consume the selected slot, current context, and map for
   later printable bytes.
 - `0xc68a` and `0xc6b8` switch `0x782f06` for SI/SO; they select which map a

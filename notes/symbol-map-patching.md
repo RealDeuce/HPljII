@@ -146,6 +146,70 @@ Whenever the hard-patch or table-patch path reaches the common clear tail,
 `0x783132 + 0x7828de`. That byte is the selected-slot font/map flag updated by
 the surrounding `0x14c64` activation path.
 
+## Map Patch Outcome Matrix
+
+This matrix is the command-family checkpoint for Roman-8-compatible symbol
+requests after selected-font activation has already rebuilt a base map. It
+starts at `0x14f16` and ends at the map bytes consumed by the next printable
+path. It does not include parser dispatch or page-object allocation.
+
+- Non-Roman selected-font symbol:
+  `0x14f16..0x14f38` reads selected candidate `0x7828a8`, chooses symbol
+  reader `0x15890` or `0x158be` from candidate byte bit 6, and returns when
+  the normalized selected-font symbol is not `0x0115`. The rebuilt base map
+  from `0x14d9c`, `0x14e24`, or `0x14eb6` remains canonical.
+- Active word `0x0005`:
+  `0x14f5e..0x14f72` copies the selected map's upper 128 bytes over the
+  lower 128 bytes with a 32-longword loop, then enters the common clear tail
+  at `0x14fb2`. This is the HP Roman Extension outcome.
+- Active word `0x0015`:
+  `0x14f74..0x14f7e` advances the selected map pointer to the upper half and
+  enters the same clear tail without changing lower-half bytes. This is the
+  ISO 6 ASCII outcome.
+- Table hit at `0x14fce`:
+  `0x14f80..0x14fae` scans 18 `(symbol word, patch pointer)` entries, reads
+  the selected target's pair count, then applies each `(dst, src)` pair as
+  `map[dst] = map[src]` before clearing the upper half. The extracted pair
+  table is
+  `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`.
+- Table miss:
+  `0x14f80..0x14f92` scans all 18 entries and returns at `0x14fcc` without
+  entering the clear tail. The base map remains canonical and
+  `0x783132 + 0x7828de` is not cleared by `0x14f16`.
+
+State classification for this outcome boundary:
+
+- Canonical state:
+  selected candidate `0x7828a8`, selected slot `0x7828de`, active symbol words
+  `0x783144` / `0x783146`, and the selected map `0x782f32` or `0x783032`.
+- Derived/cache state:
+  slot flag byte `0x783132 + 0x7828de`, cleared only on hard-patch and
+  table-patch outcomes that reach `0x14fb2..0x14fc8`.
+- Parser scratch:
+  none. The parser and symbol-selection handlers have already reduced the host
+  command to the active symbol word consumed here.
+- Firmware bookkeeping:
+  local `A0` map pointer, `A1` ROM table pointer, `D0` active word, pair
+  registers `D7` / `D1`, and the 18-entry table scan counter.
+- Unknown:
+  no ROM-local branch target or table target is unknown. Remaining variation
+  is only the selected candidate data, active word, or ROM table bytes.
+
+The downstream consumer boundary is printable source construction, not the
+renderer. `0x1393a` selects primary map `0x782f32` with context `0x782ee6` or
+secondary map `0x783032` with context `0x782ef6` from selected slot
+`0x782f06`, reads `map[original_host_char]`, stores the mapped byte in source
+word `+0x0a`, and leaves the low byte visible as source byte `+0x0b`. Queue
+helpers `0xd3b2` / `0xd824` then pass that source to `0x12f2e`, whose compact
+payload entry begins with the mapped glyph byte. Render helpers later resolve
+pixels from the captured `(context longword, mapped glyph byte)` pair; they do
+not re-run `0x14f16`.
+
+Evidence: `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`
+`0x14f16..0x14fcc`; `generated/analysis/ic30_ic13_text_glyph_index_flow.md`
+steps 1 through 11; and
+`generated/analysis/ic30_ic13_symbol_set_patch_tables.md`.
+
 ## Patch Table Index
 
 `0x14fce` is an 18-entry table of `(symbol word, patch pointer)` pairs. Each

@@ -5769,6 +5769,33 @@ Address-level cluster map:
   same `0x1ed84 -> 0x1edc6 -> 0x1ef6a` path. Evidence is
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
   and [downloaded-fonts.md](downloaded-fonts.md).
+  Downloaded-font state classification: canonical command state is current
+  downloaded-font id `0x782f2e`, current character word `0x782f30`,
+  parser/device mode byte `0x782a92`, the current-record pool
+  `0x782640..0x782776`, current-record counts `0x782782/0x782786`, record id
+  `+0x00`, flags `+0x02`, and payload pointer `+0x06`. Canonical
+  resource/glyph state is candidate count `0x78278e`, candidate windows
+  `0x782790..0x7827b4`, installed payload headers, glyph pointer tables,
+  downloaded character records, bitmap payload bytes, active glyph maps,
+  continuation words `0x7827c6..0x7827da`, compact bucket objects from
+  `0x12f2e`, page-root bucket chains, published bucket arrays from `0xff1e`,
+  and compact selector families `0x0003`, `0x1003`, `0x2003`, and `0x3003`.
+  Derived/cache state is selected-map bytes built by `0x14e24`, source
+  objects from `0x1393a`, compact coordinates and segment bytes from
+  `0x12f2e`, active render work words from `0x1ed84`, row chunks selected by
+  compact helpers, and row/span products that feed the documented helper
+  boundaries. Parser scratch is delayed-payload state `0x782a1a`, saved
+  handler `0x782a1c`, saved records `0x782a20..0x782a25`, payload byte budget
+  `0x783140`, staged descriptor/header storage `0x7827de..0x7827e9`,
+  staging pointer `0x782862`, optional symbol bytes `0x782842..0x782856`,
+  and bitmap parse fields `0x7827be/0x7827c2/0x7827c4`. Firmware bookkeeping
+  is candidate insertion `0x1bc38`, release helpers `0x1887a`, `0x18b92`,
+  `0x18bf2`, `0x17a24`, and `0x17d7c`, dirty context refresh, default
+  refresh `0x1b04c`, allocator state, and continuation cleanup on no-install
+  or failed-resume exits. Hardware/external state is limited to the host byte
+  source and later formatter timing; the named residual downloaded-glyph
+  boundaries below are ROM-local helper, source-read, or payload-count stops,
+  not missing parser or publication routes.
   Exact residuals are the named compact-helper table/source/count boundaries
   in `Minimal Downloaded Glyph Boundary Walkthrough`: unchecked short-compact
   `0x1fe76` table reads above valid index `128`, wrapped width low bytes

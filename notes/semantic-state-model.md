@@ -5717,9 +5717,13 @@ queues a fixed-width span through `0x136d2`.
     forms, copied-field endpoints, and consumer branches. The pinned legal
     matrix, boundary, extent-fence, range-endpoint, mixed-value, tight-range,
     low-nibble, and byte-boundary fixtures make descriptor metric values a
-    composed producer/consumer cross-product. Remaining gaps are broader
-    selected-font state combinations that feed these consumers, plus
-    external/manual naming for consumed-but-not-staged validation fields.
+    composed producer/consumer cross-product. Remaining ROM-local work starts
+    only from fields named in
+    [font-context-metrics.md](font-context-metrics.md#selected-font-residual-routing-checkpoint):
+    selected context records, active maps, source-object fields, copied metric
+    fields, pending span fields, page-object fields, bridge context slots, or
+    ROM-helper row-construction inputs. External/manual naming for
+    consumed-but-not-staged validation fields remains separate.
 
 ### Writers
 

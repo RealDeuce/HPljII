@@ -3451,46 +3451,42 @@ Unresolved middle edges:
   `0x13eb8` no-dispatch exits are page-visible through compact rendering.
   Remaining ROM-internal work is broader command combinations only where they
   expose new selected-context, map, or page-root slot states.
-- `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
-  partial, no-install, row-count boundary, main width-span, and compact-wide
-  remainder cases are documented; the segmented-wide matrix now covers spans
-  `17..32` at rows `0x81`. High-span probes now carry compact-wide spans
-  `33`, `48`, `49`, `64`, and `255` plus segmented-wide spans `33`, `48`,
-  `49`, and `64` through parser/install/publication/dispatch metadata and
-  documented row-construction inputs. Fixture `downloaded segmented-wide row-span
-  cross-products render selected segment` covers segmented-wide rows `0x0082`
-  and `0x0083` crossed with spans `17`, `18`, `31`, and `32` through selected
-  segment rows. Fixture `downloaded glyph width-byte boundary
-  truncates page-record span` now classifies descriptor-accepted spans
-  `0x00ff`, every wrapped low-byte span `0x0100..0x0111`, and high siblings
-  through `0x020d` at the current printable handoff: canonical installed width
-  words survive, but `0x12f2e` consumes only the low source byte. Source width
-  bytes `0x00..0x10` queue selector `0x0003` and read compact mode-0 helper
-  entries outside decoded row-copy helper heads, with exact target classes now
-  recorded by the fixture; source width bytes `0x11..0xff` queue selector
-  `0x1003` and stay on compact-wide `0x1f0d2`.
-  Fixture
-  `downloaded segmented-wide row-byte boundary truncates page-record segments`
-  now classifies the sampled row side: row words `0x0100`, `0x0101`, and
-  `0x0181` survive in the installed glyph, but the current source row byte
-  causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
-  `0`; the first render splits for those sampled rows are also documented. The
-  high-row fallback fixtures now extend that selected-segment render evidence
-  across installed row words `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
-  `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`,
-  `0x0581`, `0x0582`, `0x05ff`, `0x0681`, `0x0682`, `0x06ff`, `0x0781`,
-  `0x0782`, and `0x0787`: spans `17`, `18`, and `32` through `0x03ff`,
-  spans `17`, `18`, and `24` for `0x04xx`, spans `17`, `18`, and `23` for
-  `0x0581`/`0x0582`, spans `17`, `18`, and `21` for `0x05ff`, spans `17`,
-  `18`, and `19` for `0x0681`/`0x0682`, spans `17` and `18` for `0x06ff`,
-  and span `17` for `0x0781`, `0x0782`, and `0x0787` render bucket-8 segment
-  `1` as `32` current rows and `96` fallback rows derived from the installed
-  bitmap. The span-31 siblings through `0x03ff` are explicit A2 source
-  boundaries at `+0xb50`; higher oversized siblings stop at the parser
-  payload-count cap before renderer entry, including `0x0788*17`.
-  Remaining gaps are byte-stream variants that change boundary object fields,
-  helper dispatch, or selected-font state combinations not represented in
-  current visible fixtures.
+- `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide, partial,
+  no-install, row-count boundary, main width-span, and compact-wide remainder cases are
+  documented; the segmented-wide matrix now covers spans `17..32` at rows `0x81`.
+  High-span probes now carry compact-wide spans `33`, `48`, `49`, `64`, and `255` plus
+  segmented-wide spans `33`, `48`, `49`, and `64` through
+  parser/install/publication/dispatch metadata and documented row-construction inputs.
+  Fixture `downloaded segmented-wide row-span cross-products render selected segment`
+  covers segmented-wide rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`,
+  and `32` through selected segment rows. Fixture `downloaded glyph width-byte boundary
+  truncates page-record span` now classifies descriptor-accepted spans `0x00ff`, every
+  wrapped low-byte span `0x0100..0x0111`, and high siblings through `0x020d` at the
+  current printable handoff: canonical installed width words survive, but `0x12f2e`
+  consumes only the low source byte. Source width bytes `0x00..0x10` queue selector
+  `0x0003` and read compact mode-0 helper entries outside decoded row-copy helper heads,
+  with exact target classes now recorded by the fixture; source width bytes `0x11..0xff`
+  queue selector `0x1003` and stay on compact-wide `0x1f0d2`. Fixture `downloaded
+  segmented-wide row-byte boundary truncates page-record segments` now classifies the
+  sampled row side: row words `0x0100`, `0x0101`, and `0x0181` survive in the installed
+  glyph, but the current source row byte causes selector `0x1003`, `0x1003`, and
+  `0x3003` with only segments `1` and `0`; the first render splits for those sampled
+  rows are also documented. The high-row fallback fixtures now extend that
+  selected-segment render evidence across installed row words `0x0181`, `0x0182`,
+  `0x01ff`, `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`,
+  `0x0482`, `0x04ff`, `0x0581`, `0x0582`, `0x05ff`, `0x0681`, `0x0682`, `0x06ff`,
+  `0x0781`, `0x0782`, and `0x0787`: spans `17`, `18`, and `32` through `0x03ff`, spans
+  `17`, `18`, and `24` for `0x04xx`, spans `17`, `18`, and `23` for `0x0581`/`0x0582`,
+  spans `17`, `18`, and `21` for `0x05ff`, spans `17`, `18`, and `19` for
+  `0x0681`/`0x0682`, spans `17` and `18` for `0x06ff`, and span `17` for `0x0781`,
+  `0x0782`, and `0x0787` render bucket-8 segment `1` as `32` current rows and `96`
+  fallback rows derived from the installed bitmap. The span-31 siblings through `0x03ff`
+  are explicit A2 source boundaries at `+0xb50`; higher oversized siblings stop at the
+  parser payload-count cap before renderer entry, including `0x0788*17`. Remaining
+  renderer work starts only when byte streams change boundary object fields, helper
+  dispatch, or a selected-font/source/page/render field named in [Selected-Font Residual
+  Routing
+  Checkpoint](font-context-metrics.md#selected-font-residual-routing-checkpoint).
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
   plus segmented-wide spans `17..32` now cover selectors `0x1003` and

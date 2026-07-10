@@ -428,9 +428,9 @@ Unknown:
   `0xd4ac`, resource/flagged feeds `0xd8fc`, and the swapped forms fail at
   concrete map/render boundaries. Broader legal metric values are documented
   as cross-products of those producer formulas and consumer gates; remaining
-  work is regression breadth for additional selected-font state combinations
-  and validation/error forms beyond the bounded predicate and short-budget
-  no-install cases.
+  selected-font work is regression breadth unless it changes a field named in
+  `Selected-Font Residual Routing Checkpoint`. Validation/error work starts
+  beyond the bounded predicate and short-budget no-install cases.
 
 ## Writers
 
@@ -2187,7 +2187,8 @@ only `d8fc` through descriptor-owned upper-bound fields while preserving
 the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
 inline/flagged are invalid cross-forms. The remaining producer-side work is
-selected-font state combinations that change selected context records
+field-changing selected-font state named in
+`Selected-Font Residual Routing Checkpoint`: selected context records
 `0x782ee6/0x782ef6`, active maps `0x782f32/0x783032`, source-object fields
 `0x782d7e+0x00/+0x04/+0x0b/+0x10/+0x16`, unflagged metric bytes
 `+0x2b/+0x2c/+0x2d`, flagged metric words `+0x16/+0x18/+0x1a`, pending span
@@ -2509,8 +2510,10 @@ A byte-stream reproduction must preserve these behaviors:
   every ROM-internal rejecting predicate family. Additional legal metric values
   inside the inline/unflagged and resource/flagged forms are cross-products of
   the pinned matrix, boundary, extent-fence, range-endpoint, mixed-value,
-  tight-range, low-nibble, and byte-boundary fixtures. The remaining gap is
-  selected-font state combinations that change selected context records,
+  tight-range, low-nibble, and byte-boundary fixtures. Additional
+  selected-font work starts only at the concrete boundaries named in
+  `Selected-Font Residual Routing Checkpoint`: selected context records,
   active maps, source-object fields, copied metric fields, pending span
   fields, page-object fields, bridge context slots, or row-construction helper
-  inputs, plus external/manual naming for consumed-but-not-staged fields.
+  inputs. External/manual naming for consumed-but-not-staged fields remains
+  separate.

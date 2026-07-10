@@ -655,6 +655,78 @@ geometry words, top offset `0x782dce`, text-bottom state, margins, and cursor
 state through the same helpers consumed by later printable, raster, rectangle,
 VFC, and publication paths.
 
+### Page-Length Nonzero Placement Checkpoint
+
+This checkpoint isolates the nonzero `ESC &l#P` path because it affects pixels
+without drawing or necessarily publishing at the command boundary. It starts
+with parser dispatch to `0xf9e8` and ends when the next printable byte consumes
+the refreshed geometry and queues a compact page object.
+
+Dataflow:
+
+- Parser dispatch selects handler `0xf9e8` for `ESC &l#P`. The handler rewinds
+  `0x78299e` by six bytes at `0xf9f6..0xf9fe`, reads record word `+2`, and
+  uses the absolute value as the line count.
+- `0xfa14..0xfa24` exits if VMI `0x783160` is zero. This is a no-state-change,
+  no-publication boundary for nonzero parameters.
+- `0xfa2a..0xfa46` multiplies current VMI by the line count, runs the packed
+  result through `0x104fe`, `0x332ee`, and `0x104d8`, and shifts the result
+  down to a whole-dot extent in `D4`.
+- `0xfa48..0xfb18` selects the internal page code from orientation-specific
+  thresholds. Portrait checks `0x782daa`, `0x782dae`, `0x782dac`, and
+  `0x782db0`, yielding codes `6`, `2`, `1`, or `5`. Landscape checks
+  `0x782daa`, `0x782dac`, and `0x782dae`, yielding codes `6`, `1`, or `2`.
+  Values above all accepted thresholds return without changing page geometry.
+- Accepted nonzero values flush pending span state and publish any current
+  root at `0xfb0a..0xfb16` before committing the new layout. This preserves
+  already-queued objects under the old page geometry.
+- `0xfb20..0xfb5a` sets pending-layout byte `0x782997`, clears status/header
+  byte `0x780e99` inside the `0x15a6` / `0x15ac` bracket, writes page code
+  `0x782da2`, and writes computed page extent `0x782dba = D4`.
+- `0xfb60..0xfc52` refreshes geometry for later consumers: table-derived
+  words `0x782db2` / `0x782db4`, raster row-byte state under `0x783170`,
+  phase word `0x782dc0`, active extents through `0xf87e`, top offset
+  `0x782dce`, default text-bottom cache through `0xea16`, margins through
+  `0xe9ba`, cursor placement through `0xf8fc`, VFC caches through `0xfe54`,
+  and the default VFC table through `0x12b96`.
+
+Consumers and output effect:
+
+- The command itself creates no compact object. Its visible effect is deferred
+  until a later printable, raster, rectangle, VFC, or publication path reads
+  the refreshed fields.
+- The direct next-printable path is
+  `0xf9e8 -> 0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`. Fixture
+  `0xf9e8 ESC &l#P stream reaches page-length handler` pins stream
+  `ESC &l66P!`: page extent `0x782dba = 3300`, internal page code `2`,
+  refreshed vertical placement, and following `!` queued at compact coordinate
+  `0x9001`.
+- Once that compact object exists, pixels follow the ordinary publication and
+  render route: `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
+  The page-length command has already done its work by changing the fields
+  that determined the queued object coordinate.
+
+State classification:
+
+- Canonical state: VMI `0x783160`, orientation `0x782da3`, selected page code
+  `0x782da2`, page extent `0x782dba`, active extents
+  `0x782db6/0x782db8`, top offset `0x782dce`, margins
+  `0x782dd6/0x782dda`, and cursor `0x782c8a/0x782c8e`.
+- Derived/cache state: threshold words `0x782daa/0x782dac/0x782dae/0x782db0`,
+  table words `0x782db2/0x782db4`, raster row-byte state rooted at
+  `0x783170`, phase word `0x782dc0`, text-bottom cache `0x782dd2`, VFC caches
+  `0x782ede/0x782edf/0x782ee0`, and compact coordinate `0x9001` derived for
+  the following printable fixture.
+- Parser scratch: the rewound six-byte `ESC &l#P` command record at
+  `0x78299e` and local registers `D4/D5` while selecting the extent and page
+  code.
+- Firmware bookkeeping: pending-layout byte `0x782997`, status/header byte
+  `0x780e99`, update bracket `0x15a6` / `0x15ac`, macro/page state
+  `0x782a92`, and any old-root publication caused by `0xfb0a..0xfb16`.
+- Unknown: no ROM-local middle edge remains for the documented
+  `ESC &l66P!` path. New work must change the VMI-zero exit, threshold return,
+  old-root publication, refreshed field set, or later object coordinate.
+
 ### Orientation Handler Details
 
 `ESC &l#O` enters `0x10220`. `0x10228..0x10244` rewinds the parser record by

@@ -2171,9 +2171,11 @@ Parser and command dispatch:
 
 Layout command behavior:
 
-- `ESC &l66P` converts the parsed line count through current VMI `0x783160`,
-  writes page extent `0x782dba`, selects the internal page code, recomputes
-  page/text-bottom geometry, and refreshes the following printable cursor.
+- `ESC &l66P` converts the parsed line count through current VMI `0x783160`, writes page
+  extent `0x782dba`, selects the internal page code, recomputes page/text-bottom
+  geometry, and refreshes the following printable cursor. The field-level route is
+  documented in [Page-Length Nonzero Placement
+  Checkpoint](publication-commands.md#page-length-nonzero-placement-checkpoint).
 - `ESC &l0P` takes the default-page branch in the same handler. It can flush
   pending text, publish an existing root through `0xff1e`, mirror paper-source
   state to `0x780e8f`, signal `0x780e26`, and restore the default page code.

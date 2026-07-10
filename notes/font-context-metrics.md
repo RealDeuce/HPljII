@@ -819,6 +819,127 @@ that build new `A2` signature tuples can expose additional compatibility
 cases, but the predicate body itself is bounded by
 `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`.
 
+## Active Candidate And Map Cache Checkpoint
+
+This checkpoint composes the selected-font state block that sits between parsed
+font requests and later printable bytes. It starts when common refresh has
+reached candidate selection and ends when `0x14c64` either preserves the
+current glyph map through a cache hit or rebuilds the selected primary or
+secondary map for later `0xd04a -> 0x1393a` printable consumption.
+
+Writers:
+
+- Candidate filters reached through `0x13eb8` build the active candidate list
+  and call chooser `0x14398`. The chooser walks active list
+  `0x78287c` / count `0x7827b8`, skips nonnegative entries, compares active
+  negative entries through `0x13c06`, and writes selected slot pointer
+  `0x7828a8`.
+- `0x144d2` reads selected slot `0x7828a8`, copies the selected candidate
+  longword into primary context record `0x782ee6` or secondary context record
+  `0x782ef6`, and writes adjacent flag bytes from selected-longword bits 30
+  and 26.
+- `0x14c64` first calls `0x13a48`. A nonzero return means the snapshot still
+  matches the selected record and active symbol word, so the selected map is
+  preserved. A zero return rebuilds either primary map `0x782f32` or secondary
+  map `0x783032`.
+- Bit-30 resource records take `0x14c8c..0x14d64`: the helper derives active
+  range words in `0x783134` or `0x78313a`, writes high-character flag
+  `0x783132` or `0x783133`, and calls `0x14d9c`.
+- Bit-30-clear inline/downloaded records take `0x14d6c..0x14d86`: the helper
+  copies record byte `+0x0e` to `0x783132` or `0x783133`, then calls
+  `0x14e24`.
+- Both map rebuild paths call symbol patcher `0x14f16` and snapshot writer
+  `0x1440c`.
+
+Readers and consumers:
+
+- `0x13a48` reads selected slot `0x7828a8`, active symbol word `0x783144` or
+  `0x783146`, and snapshot record `0x783148` or `0x783152` to decide whether
+  `0x14c64` can keep the existing map.
+- `0x14d9c` reads selected resource range words `+0x0e/+0x10` and fills
+  contiguous map bytes so host code `first_char+n` maps to glyph index `n`.
+- `0x14e24` / `0x14eb6` rebuild the selected map by probing fixed-record
+  entries; accepted entries store the candidate index, and rejected entries
+  store zero.
+- `0x14f16` reads active symbol words and mutates only the rebuilt selected
+  map for Roman-8-compatible symbol behavior.
+- `0xc428` / `0xc4fc` later copy the selected context longword from
+  `0x782ee6` or `0x782ef6` into page-root context slot `+0x2c + 4*n`.
+  The slot value is the selected context/resource longword, not the address of
+  the RAM context record.
+- `0x1393a` later reads selected slot `0x782f06`, current context record
+  `0x782ee6` or `0x782ef6`, and selected map `0x782f32` or `0x783032` to
+  build printable source object `0x782d7e`. The compact object created after
+  that source capture carries a slot selector byte that render dispatch later
+  uses against the page-root/render context slots.
+
+Output effect:
+
+- This checkpoint creates no pixels and queues no page object by itself.
+- Its visible effect is delayed until a later printable byte maps the original
+  host byte through `0x782f32` or `0x783032`, captures the selected context
+  longword, queues a compact object through `0x12f2e`, and renders through
+  `0x1effe -> 0x1f354`.
+- Cache-hit and cache-miss paths are both pixel-affecting because they decide
+  whether the active map bytes consumed by later printable text are preserved
+  or rebuilt from the selected record and symbol word.
+
+Field classification:
+
+- Canonical selection state:
+  active candidate list `0x78287c`, active count `0x7827b8`, selected slot
+  `0x7828a8`, selected target `0x7828de`, and current context records
+  `0x782ee6` / `0x782ef6`.
+- Canonical map/symbol state:
+  primary map `0x782f32`, secondary map `0x783032`, active symbol words
+  `0x783144` / `0x783146`, range words `0x783134` / `0x78313a`, and
+  high-character flags `0x783132` / `0x783133`.
+- Derived/cache state:
+  selected-font snapshots `0x783148` / `0x783152`, map bytes rebuilt by
+  `0x14d9c` or `0x14e24`, and Roman-8 patch results from `0x14f16`.
+- Parser scratch:
+  parsed font-selection request records and dirty flags that have already
+  driven `0xc580` before this checkpoint runs.
+- Firmware bookkeeping:
+  active-object comparator locals, `0x14ba4` signature tuple cursor `A2`, and
+  the `D7` cache/compatibility return values.
+- Unknown:
+  no ROM-local writer or reader inside `0x14398 -> 0x144d2 -> 0x14c64` is
+  unknown for the documented built-in, inline/downloaded, final-`X`, and
+  current-RAM handoff streams. Remaining work must change selected candidate
+  filters, cache predicate input, map rebuild form, symbol patch, page-root
+  context slot, printable source fields, or rendered rows.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_active_object_scan_014398.lst`,
+  `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`,
+  `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`,
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`, and
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+- Generated analyses:
+  `generated/analysis/ic30_ic13_font_context_bridge.md`,
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
+  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+- Fixture anchors:
+  `0x13eb8 refresh carries parsed primary font selection to dispatch`,
+  `0x13eb8 refresh carries parsed secondary font selection to dispatch`,
+  `parsed primary built-in font selection feeds visible page-record rows`,
+  `parsed secondary built-in font selection feeds visible SO page-record rows`,
+  `font-ID primary inline/downloaded selection feeds visible page-record rows`,
+  `font-ID inline/downloaded selection feeds visible page-record rows`,
+  `0x13eb8 no-dispatch exits keep prior visible rows`,
+  `live primary current-font RAM install feeds SI page-record rows`, and
+  `live secondary current-font RAM install feeds SO page-record rows`.
+
+Unresolved boundary:
+
+- The next useful work here is not another cache-hit replay. It must expose a
+  different selected candidate, selected symbol word, map-rebuild branch,
+  `0x14ba4` compatibility tuple, page-root context slot value, or printable
+  source object field.
+
 ## Visible Built-In Selection Boundary
 
 Fixture `parsed primary built-in font selection feeds visible page-record rows`

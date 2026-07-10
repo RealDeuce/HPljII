@@ -4413,13 +4413,22 @@ selector mismatch only copies the remembered word and installs no context.
     writes `0xc008004c`, and sets `0x78297e = 0`.
   - SO install result: `0xc428(1)` / `0xc4fc` selects page-root slot `1`,
     writes `0xc00ae122`, and sets `0x78297e = 1`.
-  - context slots store pointers to current-font context records, not raw glyph
-    bitmap pointers. `0xc428` scales the selected slot by `0x10` into the
-    `0x782ee6`/`0x782ef6` record family, `0xc4fc` scans 16 page-root slots by
-    masked low-24-bit context plus live flags `0x78297f+n`, `0x1edc6` copies
-    those page-root slots into render-record `+0x24..+0x60`, `0x1f008` caches
-    the selected render slot in `0x783a2c`, and `0x1f354` interprets bit 30
-    plus the low 24 bits to resolve the glyph entry.
+  - context slots store selected context/resource longwords, not raw glyph
+    bitmap pointers and not addresses of `0x782ee6` / `0x782ef6` RAM records.
+    `0xc428` scales the selected slot by `0x10` into the
+    `0x782ee6`/`0x782ef6` record family, passes the selected longword at
+    context record `+0x00` to `0xc4fc`, and `0xc4fc` scans 16 page-root slots
+    by masked low-24-bit context plus live flags `0x78297f+n`. `0x1edc6`
+    copies those page-root slots into render-record `+0x24..+0x60`; `0x1f008`
+    caches the selected render slot in `0x783a2c`; and `0x1f354` interprets
+    bit 30 plus the low 24 bits to resolve the glyph entry.
+  - `Active Candidate And Map Cache Checkpoint` in
+    [font-context-metrics.md](font-context-metrics.md#active-candidate-and-map-cache-checkpoint)
+    ties selected candidate `0x7828a8`, current contexts
+    `0x782ee6` / `0x782ef6`, map caches `0x782f32` / `0x783032`, snapshots
+    `0x783148` / `0x783152`, high-character flags `0x783132` / `0x783133`,
+    page-root context slots, and printable source fields into one
+    disassembly-backed writer/consumer chain.
   - `0x196c4` is the matching-resource scan over those same page-root context
     slots. It masks the caller resource/context longword to 24 bits, walks
     root `+0x2c + 4*n` for `n = 0..15`, requires live flag

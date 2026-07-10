@@ -2517,6 +2517,13 @@ object collections:
 - font/context slots `+0x2c..+0x68` copied with the page so compact renderers
   can resolve glyph resources later.
 
+The storage-owner version of this contract is
+[Page Image Shape And Band
+Contract](page-record-storage.md#page-image-shape-and-band-contract). It is
+the canonical short answer for current root shape, source roots, render roots,
+band caches, fallback rows, and renderer order; this section expands that
+model into the full host-byte-to-render spine.
+
 `0xff1e` publishes a valid current root into the page/control pool, writes the
 published state, sets `0x782996`, and clears `0x78297a`. Publication separates
 parser-time object assembly from render-time consumption.

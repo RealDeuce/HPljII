@@ -1513,6 +1513,20 @@ blank alternate/data rows suppress immediate page-state changes, `0x11f4c`
 preserves lowercase family continuation by rewinding `0x78299e`, and the
 storage/payload exceptions above keep macro/data-chain contents reproducible
 without drawing pixels at parse time.
+For imaging command families this now has explicit owner-level consequences:
+alternate/data `ESC *c` records leave rectangle fields `0x78316a`,
+`0x783166`, `0x78316e`, clipped source record `0x782a88`, and rule-list root
+`+0x24` unchanged; alternate/data `ESC *t` / `ESC *r` records leave raster
+block `0x783170` unchanged; and alternate/data `ESC *b#W/w` preserves the
+counted payload boundary through `0x11f82 -> 0x121cc -> 0x12218 -> 0x12358`
+without calling `0x105d0`, `0x13070`, `0x13250`, or `0x138de`. Those paths are
+therefore no-output parser/storage outcomes until the stored bytes replay
+through normal parser mode. Evidence is
+[raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint),
+[rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix),
+`generated/analysis/ic30_ic13_pcl_command_map.md`,
+`generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`, and
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
 
 Fixture `0x11774 ROM dispatch table routes raster stream to delayed transfer`
 proves the parser reaches `0x11f82` and stores the delayed raster transfer
@@ -9359,6 +9373,12 @@ does not render directly. `0x11f82` stores a delayed transfer handler
 `0x105d0` gates the row, drains skipped payload through `0xdace`, ensures a
 page root for queued rows, and passes the state block to `0x13070` /
 `0x13250`, which builds encoded-span objects consumed later by `0x1f88e`.
+In alternate/data parser mode, the same syntax does not mean the same imaging
+state mutation: `ESC *t#R`, `ESC *r#A`, and `ESC *r#B` are blank or
+`0x11f4c` parser outcomes, and `ESC *b#W/w` is restored only to the
+alternate payload dispatcher `0x12358`. The raster block and page objects
+therefore remain unchanged until those stored bytes replay through normal
+parser mode.
 
 ### Field Groups
 
@@ -9409,6 +9429,11 @@ page root for queued rows, and passes the state block to `0x13070` /
     parser-record slot at `0x78299e`, advances `0x78299e` by six, and directly
     dispatches the saved `0x782a1c` handler when wrapper byte `0x782c18` is
     clear.
+  - Alternate/data records for `ESC *t` and `ESC *r` are scratch-only blank or
+    `0x11f4c` terminal outcomes. Alternate/data `ESC *b` records are restored
+    only far enough for `0x12358`, `0xdace`, `0xe002`, or
+    `0x1228a -> 0x12328` to drain/append bytes; they do not become canonical
+    raster transfer state.
   Evidence: fixture
   `0x11774 ROM dispatch table routes raster stream to delayed transfer`,
   `raster mode streams tie ROM parser dispatch to modeled queued objects`,
@@ -9483,6 +9508,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   `0x121cc` writes `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`; `0x12218`
   copies the record back into the parser-record buffer and calls the saved
   handler through `jsr (A2)`.
+- Alternate/data `0x12218` dispatch tests `0x782c18` before the saved-handler
+  call. When set, it calls `0x12358`; non-wrapper raster payloads drain or
+  append through `0xdace` / `0xe002`, and saved wrapper `0x1228a` drains
+  through `0x12328`. This path does not call the raster writer `0x105d0`.
 - `0x105d0` writes active byte `+0x12`, current row `+0x02`, accepted count
   `+0x04`, overflow count `+0x06`, and post-transfer cursor state. It calls
   `0x10084` for rows that pass the beyond-extent gate; negative rows therefore
@@ -9823,6 +9852,11 @@ current cursor-sized rectangle against page extents, and `0x13386` /
 `0x133aa` inserts a 14-byte rule object under page-root `+0x24`. Rendering is
 deferred until `0x1edc6` normalizes the rule list and `0x1f446` dispatches
 selector `7` to `0x1f596` or non-solid selectors to `0x1f4e0`.
+In alternate/data parser mode, `ESC *c` syntax is preserved without running
+the rectangle writers: uppercase terminals are blank rows in table `0x116f6`,
+and lowercase finals route only to `0x11f4c`. The rectangle state block,
+source record, rule list, bridge state, and render inputs remain unchanged
+until stored bytes replay through normal parser mode.
 
 ### Field Groups
 
@@ -9837,6 +9871,9 @@ selector `7` to `0x1f596` or non-solid selectors to `0x1f4e0`.
   `0x10e68/0x10e22/0x10a40/0x10ae0 rectangle size commands update packed
   dimensions` and `0x10898 ESC *c#P maps fill selectors and queues rule
   object`.
+  Alternate/data `ESC *c` terminal records are parser scratch only: they end
+  at blank table rows or `0x11f4c` and do not write `0x78316a`, `0x783166`,
+  `0x78316e`, or page source record `0x782a88`.
 - Canonical page/cursor inputs:
   - `0x782c8a` and `0x782c8e`: current x/y cursor used as rectangle origin.
   - `0x782da3`: orientation flag selecting portrait or landscape coordinate
@@ -9895,6 +9932,10 @@ selector `7` to `0x1f596` or non-solid selectors to `0x1f4e0`.
 - `0x10898` maps `ESC *c#P` to fill selectors: `0`/missing to selector `7`,
   gray percentages to selectors `0..7`, and pattern ids to selectors `8..13`
   with the documented landscape remaps.
+- Alternate/data `ESC *c` rows do not call `0x10e68`, `0x10e22`, `0x10a40`,
+  `0x10ae0`, `0x10dce`, or `0x10898`: uppercase `A/B/G/H/P/V` rows are blank
+  and lowercase `a/b/g/h/p/v` rows call only `0x11f4c`, which rewinds
+  `0x78299e` by one six-byte record and returns.
 - `0x10b80` writes the clipped source record at `0x782a88`, ensures a page
   root through `0x10084`, and calls `0x13386`.
 - `0x13386` calls `0x134d6`, and `0x133aa` allocates/links the rule object

@@ -1568,21 +1568,37 @@ active exceptions are `ESC E` reset through `0xcc52` and VFC payload
 `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`, and
 `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
 
-Fixture `0x11774 ROM dispatch table routes raster stream to delayed transfer`
-proves the parser reaches `0x11f82` and stores the delayed raster transfer
-record before payload bytes are consumed. Fixture `modeled raster command
-stream parses ESC *t300R / ESC *r1A / ESC *b4W payload boundary` proves
-`0x12218` restores that saved `W` record before the payload reader consumes the
-following bytes. Fixture `raster chained transfer parser trace preserves
-lowercase delayed record` proves a lowercase `w` record remains pending until
-the uppercase terminator restores it.
+Delayed payload records share one ROM-owned snapshot/restore contract. Handler
+stubs such as raster transfer `0x11f82`, transparent data `0x11f5a`, generic
+payload wrappers, and downloaded-font payload dispatch call `0x121cc` with the
+consumer handler address. `0x121cc` rewinds `0x78299e` by one six-byte command
+record, stores pending flag `0x782a1a = 1`, stores handler pointer
+`0x782a1c`, and copies the command record bytes into `0x782a20..0x782a25`.
 
-Fixture `transparent data parser trace feeds page-record queue` proves delayed
-transparent text restores through `0x12452` before routing payload bytes into
-text/fixed-space output. Fixtures `resource payload stream ties ROM parser
-dispatch to 0x16c14 install` and `downloaded character stream ties ROM parser
-dispatch to rendered object` prove the same delayed-record contract feeds
-downloaded-font payload handlers before visible glyph output.
+When payload consumption is due, `0x12218` restores those six bytes at the
+live parser cursor, advances `0x78299e`, clears the pending flag, and either
+calls the saved handler from `0x782a1c` or, in alternate/data mode
+`0x782c18 != 0`, redirects through `0x12358(0x1228a)`. This is why a
+lowercase delayed record can remain pending until the uppercase terminator
+restores it, and why payload readers see the original byte count/final byte
+instead of whatever command record the tokenizer has parsed since then.
+
+The downstream consumer decides the output class after restore. Raster delayed
+transfer restores to `0x105d0` before raster object storage; transparent data
+restores to `0x12452` before text/fixed-space routing; downloaded-font payloads
+restore to `0x16c14` or related font payload handlers before installed glyph
+records can later affect printable output. The delayed snapshot itself creates
+no page object and no pixels.
+
+Supporting delayed-payload anchors:
+
+- `0x11774 ROM dispatch table routes raster stream to delayed transfer`
+- `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
+  payload boundary`
+- `raster chained transfer parser trace preserves lowercase delayed record`
+- `transparent data parser trace feeds page-record queue`
+- `resource payload stream ties ROM parser dispatch to 0x16c14 install`
+- `downloaded character stream ties ROM parser dispatch to rendered object`
 
 If a reimplementation does not preserve the `0x78299e` rewind and `0x121cc` /
 `0x12218` delayed snapshot behavior, streams such as `ESC *b4W`, `ESC &p#X`,

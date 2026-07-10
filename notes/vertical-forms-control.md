@@ -129,12 +129,12 @@ Evidence and boundaries:
   `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst` and the
   direct-control/page-publication listings named above.
 - Fixture evidence is named in the Primary fixtures list above; those streams
-  pin delayed table load, default-table construction, channel convention,
+  anchor delayed table load, default-table construction, channel convention,
   cursor-only moves, recovery, wrap, and page-publication splits.
 - No unresolved ROM-local middle edge remains for the documented `ESC &l#W`
   table-definition or `ESC &l#V` channel-jump contract. Remaining boundaries
-  are manual naming of line-count fields and external physical correlation,
-  not parser, table, page-record, or render-dispatch behavior.
+  are manual-facing names for the line-count fields, not parser, table,
+  page-record, or render-dispatch behavior.
 
 ## Field Groups
 
@@ -145,7 +145,7 @@ Canonical VFC table:
   it for `ESC &l#V`.
 - Channel selectors are one-based. `0x1280a` maps selector `n` to mask
   `1 << (n - 1)`, so selector `2` searches for bit `0x0002`.
-- The default-table fixture pins example words for Letter at 6 LPI:
+- The default-table evidence stream records example words for Letter at 6 LPI:
   line `0 = f8fd`, line `32 = 806c`, line `48 = a05c`, line `61 = 0006`,
   line `62 = 010e`, line `63 = 0004`, and line `64 = 0000`.
 
@@ -175,10 +175,10 @@ Layout-refresh fields:
   resets left/right margins `0x782dd6` / `0x782dda`, clears right-margin
   fraction `0x782ddc`, refreshes cursor y `0x782c8e`, recomputes text bottom
   `0x782dd2`, and rebuilds the default VFC table through `0x12b96`.
-- The same fixture pins the normal-page line caches as
+- The same evidence stream records the normal-page line caches as
   `0x782edf = 2`, `0x782ee0 = 2`, `0x782ede = 3`, and
-  `0x782dc2 = pack12(240)`. The short-page case pins negative top/text-bottom
-  outputs, `0x782edf = 0`, and `0x782ede = 2`.
+  `0x782dc2 = pack12(240)`. The short-page case records negative
+  top/text-bottom outputs, `0x782edf = 0`, and `0x782ede = 2`.
 - The static-font side of this helper refreshes remembered secondary symbol
   `0x782f0a = 5`, dirties and clears `0x782f2d`, clears the static context,
   and calls the context helpers represented by fixture events `call-13eb8`,
@@ -292,11 +292,11 @@ default table is not only an explicit VFC command result. For the normal-page
 case the written table prefix is
 `f8 fd 00 46 01 6e 00 44 00 00 00 00 00 00 00 00`; for the short-page case it
 is `f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00`. These bytes are
-canonical VFC table state consumed later by `0x1280a`. Fixture
+canonical VFC table state consumed later by `0x1280a`. Evidence stream
 `0xe5e2 refreshes page layout, default VFC table, and static font context`
-supports the shared-refresh route.
+anchors the shared-refresh route.
 
-The builder algorithm is pinned by
+The builder algorithm is documented by
 `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`:
 
 - `0x12b9e..0x12c32` iterates line index `D5` from `0` through
@@ -382,11 +382,11 @@ VFC can also recover or wrap without publication:
   `0x1299c..0x12b92`, enters `0x12b5e..0x12b92`, writes top-of-form y `126`,
   and queues `!` at compact coord `0x9001`.
 
-The direct high-start fixture uses start line `80` with `0x782ee0 = 62` and
-`0x782ede = 100`, proving the same branch predicates away from the normal
-Letter page bottom. Empty-table selector 2 writes recovered y `1104`; wrapped
-selector 2 at line `70` writes recovered y `1604`; selector zero writes
-top-of-form y `126`.
+The direct high-start evidence stream uses start line `80` with
+`0x782ee0 = 62` and `0x782ede = 100`, showing the same branch predicates away
+from the normal Letter page bottom. Empty-table selector 2 writes recovered
+y `1104`; wrapped selector 2 at line `70` writes recovered y `1604`;
+selector zero writes top-of-form y `126`.
 
 ## VFC Outcome Matrix
 
@@ -490,8 +490,7 @@ State grouping for this matrix:
   no ROM-local table-load, channel-jump, cursor-consumer, or
   page-publication edge is unknown for the documented outcomes. Remaining
   unknowns are manual-facing names for `0x782ede`, `0x782edf`, and
-  `0x782ee0`, plus optional physical-output correlation after the ROM-derived
-  page objects render.
+  `0x782ee0`.
 
 Evidence for this matrix is
 `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`,
@@ -621,7 +620,7 @@ The canonical output effects for the named VFC streams are:
 - target-after-text `!\x1b&l2V!`: `0x129ee..0x12b5a` publishes the old page
   from bucket `198`, recovers y to `104`, and queues the next `!` at compact
   coord `0x3001`.
-- non-publishing recovery fixtures cover before-top target-after-text,
+- non-publishing recovery evidence covers before-top target-after-text,
   empty-table start-after-text, default-table wrap, line-63 recovery,
   selector-zero start-after-text, and the alternate high-start entries without
   adding a new page-root publication edge.
@@ -633,7 +632,7 @@ same-family preservation, table bytes, text-bottom cache effect, default-table
 channel convention, forward in-text hits, before-top normalization,
 selector-zero early exit, selector-zero page eject, wrap hit, wrap no-hit,
 target-after-text publication, and start-after-text recovery paths. Each claim
-is backed by named fixtures and disassembly ranges above.
+cites handler ranges, RAM fields, and named evidence streams above.
 
 Medium for the manual-facing names of the derived line-count fields
 `0x782ede`, `0x782edf`, and `0x782ee0`.
@@ -663,7 +662,7 @@ A byte-stream renderer must preserve:
 
 - None remaining for the documented VFC table-definition and channel-jump
   command-family contract.
-- Broader physical-output correlation is outside this ROM-local VFC contract.
-  It can correlate the documented model with a device if physical samples ever
-  exist, but it is not a parser, table, page-record, or render-dispatch
-  dependency.
+- Manual-facing names for `0x782ede`, `0x782edf`, and `0x782ee0` remain
+  inferred from ROM writers and readers. This does not block byte-stream
+  reproduction because their storage, update points, and consumers are
+  documented above.

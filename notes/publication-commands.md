@@ -634,6 +634,123 @@ Unresolved boundary:
   changes a different root header byte/word, root list, context slot, scheduler
   selection, or render helper input.
 
+### Page Environment Outcome Matrix
+
+This matrix is the publication owner for parser-dispatched page-environment
+commands that either publish the current root, change geometry for later
+objects, or stage header state for a later publication. It composes the
+`ESC &l` page-size, page-length, orientation, paper-source, and copies family
+with reset/FF publication timing and the shared `0xff1e` root finalizer.
+
+- Missing-root publication:
+  `0xff1e` exits at `0xff26..0xff2c` when current root `0x78297a` is zero.
+  Reset `0xcc52` can still clear current-root state, but no pool record,
+  render record, or compact bucket dispatch is created.
+- Current-root publication:
+  reset `0xcc52`, FF `0xf0f0`, page-size accepted/default paths, page-length
+  zero/default or accepted nonzero paths, orientation changes, and
+  paper-source `0xef62` all reach `0xf34a -> 0xff1e` before their post-command
+  state belongs to the next page. `0xff1e` requires root byte `+0x04 == 1`,
+  then writes root byte `+0x04 = 2`, updates pool head `0x780ea6`, sets
+  publication flag `0x782996`, and clears current root `0x78297a`.
+- Page-size no-op:
+  invalid explicit selectors in `0xfce8..0xfd68` return through
+  `0xfe4c..0xfe52` without geometry writes or publication. Accepted selectors
+  first publish any old root at `0xfd68..0xfd6e`, then set pending layout byte
+  `0x782997`, clear status/header byte `0x780e99`, write page code
+  `0x782da2`, and refresh geometry for later consumers.
+- Page-length no-op:
+  `0xf9e8..0xfa24` exits without publication or geometry writes when VMI
+  `0x783160` is zero. Nonzero extents that miss the orientation threshold
+  ladder at `0xfa48..0xfb18` also return without changing the page model.
+- Page-length geometry change:
+  accepted nonzero `ESC &l#P` publishes any old root at `0xfb0a..0xfb16`,
+  writes page code `0x782da2`, page extent `0x782dba`, pending layout byte
+  `0x782997`, and refreshed cursor/margin/VFC state. The visible effect is
+  delayed until a later printable, raster, rectangle, VFC, or publication path
+  consumes the refreshed fields.
+- Page-length default branch:
+  zero `ESC &l0P` publishes pending text at `0xfa62..0xfaa6`, may mirror
+  paper-source state to `0x780e8f` and signal `0x780e26`, then restores the
+  default page code from `0x780e97` or fallback code `2`.
+- Orientation no-op:
+  `0x10246..0x1025a` rejects selectors `>= 2` and unchanged orientation
+  without publishing or rewriting geometry. Accepted changes publish the old
+  root at `0x1025c..0x10266`, write orientation byte `0x782da3`, refresh
+  geometry, VMI/HMI, VFC tables, and selected font metrics for later objects.
+- Paper-source state:
+  `0xef62` publishes any current root before table dispatch. Selector `0`
+  then only services status; selectors `1`, `2`, `3`, and default write or
+  derive canonical paper-source byte `0x782da6`, set pending flag
+  `0x782998`, and may mirror output/control bytes `0x780e8f` / `0x780e26`.
+- Copies state:
+  `0xeef0` clamps nonzero counts to `1..99` and writes copy count
+  `0x782da4` without publishing. A later `0xff1e` copies that count into
+  published root word `+0x0c`; count zero returns without changing the field.
+- Bridge/render consumer:
+  `0x1ed84` selects the published source record, `0x1edc6` copies bucket roots
+  and context slots into render-work fields, and `0x1ef6a` dispatches compact,
+  rule, fixed, and raster roots. Page-environment commands do not draw pixels
+  directly; they either publish already queued objects or mutate state that
+  later object producers consume.
+
+Field grouping for this route:
+
+- Canonical state:
+  current root `0x78297a`, root state byte `+0x04`, published pool head
+  `0x780ea6`, publication flag `0x782996`, page code `0x782da2`,
+  orientation `0x782da3`, copy count `0x782da4`, paper-source byte
+  `0x782da6`, page extent `0x782dba`, active extents
+  `0x782db6/0x782db8`, margins `0x782dd6/0x782dda`, cursor
+  `0x782c8a/0x782c8e`, VMI/HMI `0x783160/0x78315c`, and bucket/context roots
+  copied by the bridge.
+- Derived/cache state:
+  pending header flags `0x782997/0x782998`, status/header byte `0x780e99`,
+  table words `0x782db2/0x782db4`, phase word `0x782dc0`, text-bottom cache
+  `0x782dd2`, VFC caches `0x782ede/0x782edf/0x782ee0`, orientation threshold
+  words `0x782daa/0x782dac/0x782dae/0x782db0`, and render-work copies from
+  `0x1ed84` / `0x1edc6`.
+- Parser scratch:
+  rewound six-byte command records consumed by `0xfc74`, `0xf9e8`,
+  `0x10220`, `0xef62`, and `0xeef0`; normal reset and FF records are consumed
+  before `0xff1e`.
+- Firmware bookkeeping:
+  protected write brackets `0x15a6` / `0x15ac`, macro/page state
+  `0x782a92`, pending page-eject byte `0x782a6d`, allocator state behind
+  page-root buckets, and publication/active-pool cursors.
+- Hardware/external state:
+  `0x780e8f` and `0x780e26` are ROM-visible paper-source output/control bytes;
+  their physical engine meaning is outside this ROM-local route.
+- Unknown:
+  no ROM-local middle edge remains for the documented missing-root, reset, FF,
+  page-size, page-length, orientation, paper-source, copies, publication,
+  bridge, and render-entry outcomes. Future publication work starts only from
+  a stream that changes a field above, a root topology, a bridge copy, or a
+  render-helper input.
+
+Evidence:
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`
+`0xff1e..0x10080`,
+`generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`
+`0xfc74..0xfe52`,
+`generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`
+`0xf9e8..0xfc52`,
+`generated/disasm/ic30_ic13_orientation_handler_010220.lst`
+`0x10220..0x103e6`,
+`generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`
+`0xef62..0xf02a`,
+`generated/disasm/ic30_ic13_copies_handler_00eef0.lst`
+`0xeef0..0xef38`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+`0x1ed84..0x1ee0e`, fixtures
+`host-fetched ESC E clears missing page root without publication`,
+`host-fetched FF geometry and paper-source publications preserve 0xff1e pool
+header defaults`, `host-fetched copies publication preserves 0xeef0 pool
+header word`, `0xf9e8 ESC &l#P stream reaches page-length handler`,
+`mixed page-length stream refreshes cursor before printable page-record
+queue`, and `addressed paper-source and copies publications render page
+records`.
+
 ## Command Handler Boundaries
 
 The publication-command handlers call the shared helper before mutating state
@@ -1155,5 +1272,7 @@ timing remain outside this ROM-internal publication contract.
   the covered reset, FF, page-size, page-length zero/default branch,
   orientation, paper-source, and copies streams. No parser-to-placement middle
   edge remains for the covered nonzero page-length stream. Additional ROM work
-  should target streams that change page-record fields, command-specific
-  pool-header words, bridge state, placement state, or row-construction inputs.
+  should target streams that change a field or boundary named in the
+  [Page Environment Outcome Matrix](#page-environment-outcome-matrix),
+  page-record fields, command-specific pool-header words, bridge state,
+  placement state, or row-construction inputs.

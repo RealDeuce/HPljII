@@ -9246,8 +9246,8 @@ Priority ROM-local documentation targets:
    rollover/allocation state, retry publication fields, rule object bytes, bridge state,
    render dispatch, continuation mutation, or row construction. Publication examples for
    reset, FF, page-size, orientation, paper-source, and copies are now owned by
-   [Representative Parsed-Stream
-   Outcomes](publication-commands.md#representative-parsed-stream-outcomes); new
+   [Page Environment Outcome
+   Matrix](publication-commands.md#page-environment-outcome-matrix); new
    publication work should start only from streams that change pool-header fields,
    source-record selection, bridge values, or a render helper input. The allocator
    rollover path across `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now

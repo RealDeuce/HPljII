@@ -58,6 +58,161 @@ Output effect:
   calls reach the ROM render helpers, pixel rows are defined by the ROM-local
   page/render documentation rather than by service-manual signal names.
 
+## DC Boundary Outcome Matrix
+
+This matrix owns the ROM-visible formatter/DC boundary. It does not turn
+manual connector names into unproven pixel semantics. It documents the fields
+that can pace, wake, or select already published render work before
+`0x1ef6a` consumes a band.
+
+Timer/status trampoline:
+
+- ROM path: `0x0d52..0x0f7a`.
+- State class: firmware bookkeeping, derived/cache state, and
+  hardware/external MMIO.
+- Writers:
+  `0x0d52` acknowledges the tick through `0xffff2000`, increments
+  `0x780e04`, runs divider bytes `0x78017f..0x780181`, debounces `$8000.6`
+  and `$8000.7` into `0x783edc` / `0x783edd`, handles `$8a01.4` through
+  `0x78017e.0` / `0x780e35.0`, latches `$8000.5` into `0x780e69`, rotates
+  `$a200` output words from `0x782914`, optionally emits `$a400` pulses from
+  `0x782904[0x7828fe]`, and ages wait-object countdowns under `0x780182`.
+- Readers / consumers:
+  wait-object dispatch `0x1064` / `0x108e` / `0x123a`, active-pool wrapper
+  paths, external-ready/status paths, and active render scheduling.
+- Output effect:
+  no page objects and no pixels. It can change which wait object wakes, which
+  status branch runs, and therefore when already selected render work advances.
+- Evidence:
+  `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`,
+  `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`, and the
+  `Published Record To Active Render Scheduler` section of
+  [semantic-state-model.md](semantic-state-model.md).
+
+Scan/status interrupt:
+
+- ROM path: `0x0f84..0x10f2`.
+- State class: derived/cache state, firmware bookkeeping, and
+  hardware/external MMIO.
+- Writers:
+  the active branch around `0x0fa2` increments `0x78398c`, compares
+  thresholds `0x78398e` and `0x783998`, sets or clears `0x78399e`,
+  escalates to `0x78399f`, toggles and sets bits in shadow byte `0x7828f9`,
+  writes `$a601 = 0xfd` and `$a801`, and signals wait object `0x780182`
+  through `0x1036`.
+- Readers / consumers:
+  status-copy helper `0x1db0`, escalated-status helper `0x1e44`,
+  wrapper dispatcher `0x1cf8`, and active-pool copy helper `0x2038`.
+- Output effect:
+  pacing and status feedback only. It can force a copy/status pass or mark
+  active work done, but pixel content still comes from the render work record
+  and object roots consumed by `0x1ef6a`.
+- Evidence:
+  `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`,
+  `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`, and
+  fixture notes in `generated/analysis/ic30_ic13_renderer_fixture_harness.md`
+  for `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`.
+
+Wait-object and trap handoff:
+
+- ROM path: `0x1036 -> 0x1064/0x108e -> 0x123a`, with trap veneers
+  `0x10bc..0x11f8`.
+- State class: firmware bookkeeping.
+- Writers:
+  `0x1036` changes a target wait-object state word to ready state `2`, sets
+  pending bit `0x78017e.1`, and writes pending pointer `0x78017a`.
+  Dispatch `0x123a` selects active object `0x780176`, active priority
+  `0x780174`, object state word `+0x0a`, wait argument `+0x0c`, restart
+  payload `+0x12`, private stack base `+0x16`, and saved stack `+0x1a`.
+- Readers / consumers:
+  timer/status exits, scan/status exits, active-pool wrapper waits, and the
+  copied RAM vector stubs installed during startup.
+- Output effect:
+  controls which firmware continuation runs next. It affects pixels only if
+  the selected continuation changes active source record, render work fields,
+  band word, or render-entry call count.
+- Evidence:
+  `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`,
+  `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`,
+  `generated/analysis/ic30_ic13_startup_tables.txt`, and
+  [firmware-startup.md](firmware-startup.md#owner-summary).
+
+Active-pool wrapper:
+
+- ROM path: `0x1cf8..0x1ea8`.
+- State class: derived/cache state and firmware bookkeeping.
+- Writers:
+  wrapper branches consume pending bytes `0x78399e` and `0x78399f`, helper
+  `0xa680` readiness, engine counter `0x780e04`, attention bytes
+  `0x780e32` / `0x780e36`, and flag `0x7821f9.2`. They can call `0x1db0`,
+  `0x1e44`, `0x1e80`, or `0x1ea8`, set `0x780e6d`, set timeout byte
+  `0x780e67`, signal status bits, and enter copy helper `0x2038`.
+- Readers / consumers:
+  active-pool copy window `0x2038..0x223c`, row copy helper
+  `0x22f4..0x247a`, and active render scheduler state.
+- Output effect:
+  may copy engine rows, mark active source done through `0x780ea5`, or wait.
+  It does not decode PCL commands or alter page-object contents.
+- Evidence:
+  `generated/disasm/ic30_ic13_active_pool_cycle_001958.lst`,
+  `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`,
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, and
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix).
+
+Active render loop and engine pacing:
+
+- ROM path: `0x1eba4..0x1ecd2 -> 0x1ef6a`.
+- State class: canonical render-work state, derived/cache state, and firmware
+  bookkeeping.
+- Writers:
+  the loop reads active flags `0x780ea4` / `0x780ea5`, selectors
+  `0x7820bc` / `0x7820c0`, active and paired work-record words `+6`, `+0c`,
+  `+0e`, `+10`, and `+16`, then chooses cleanup, throttle, capacity wait, or
+  render. The render branch calls `0x1ef6a`, increments active band word
+  `+0x10`, and increments throttle/progress word `+0x0e`.
+- Readers / consumers:
+  render entry `0x1ef6a`, bucket/rule/fixed-list render helpers, and the row
+  writers owned by [page-raster-imaging.md](page-raster-imaging.md).
+- Output effect:
+  this is the ROM-visible point where engine pacing can change which band is
+  rendered next. Pixel bytes still derive from the render record selected by
+  `0x1ed84` / `0x1edc6` and the object helpers under `0x1ef6a`.
+- Evidence:
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix).
+
+Field grouping for this matrix:
+
+- Canonical:
+  published pool head `0x780ea6`, scheduler cursor `0x780eaa`, active source
+  `0x780eae`, render-work selectors `0x7820bc` / `0x7820c0`, active render
+  pointer `0x783a18`, render work band word `+0x10`, and wait-object records.
+- Derived/cache:
+  scan/status latches `0x78398c`, `0x78399e`, `0x78399f`, shadow byte
+  `0x7828f9`, output tables `0x782900` / `0x782914`, and render-band caches
+  `0x783a20`, `0x783a22`, `0x783a28`, and `0x783a1c`.
+- Parser scratch:
+  none. Parser state has already become page/control records before this
+  boundary.
+- Firmware bookkeeping:
+  timer dividers, pending bits `0x78017e`, pending pointer `0x78017a`, active
+  object `0x780176`, active priority `0x780174`, copied vector stubs,
+  timeout/attention bytes, and MMIO output shadows.
+- Hardware/external:
+  `$8000`, `$8a01`, `$a200`, `$a400`, `$a601`, `$a801`, `$aa01`,
+  `0xffff2000`, `0xfffe0001`, `0xfffe0003`, and physical formatter/DC
+  connector signals.
+- Unknown:
+  exact register-to-pin mapping and physical timing. The unresolved boundaries
+  are `0x0d52..0x0f7a`, `0x0f84..0x0fa0`, `0x1020..0x102e`,
+  `0x10bc..0x11f8`, `0x123a..0x1282`, and `0x1cf8..0x1ea8` only where they
+  depend on board-level MMIO or connector timing. No ROM-local parser,
+  page-object, render-helper, or pixel-composition edge remains hidden behind
+  the manual `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`, `CBSY`,
+  `STATS`, `PCLK`, `SBSY`, `RDY`, `PPRDY`, or `CPRDY` names in this note.
+
 ## Role
 
 The DC Controller PCA is the machine control system. It coordinates:

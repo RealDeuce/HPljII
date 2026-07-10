@@ -234,9 +234,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   major assemblies, paper path, print process.
 - [formatter-interface-pca.md](formatter-interface-pca.md#owner-summary) - HP 33440
   formatter architecture, memory, NVRAM, video path.
-- [dc-controller-engine.md](dc-controller-engine.md#owner-summary) - engine
-  responsibilities, sensors, motors, laser, high voltage, formatter/DC
-  signals.
+- [dc-controller-engine.md](dc-controller-engine.md) - engine responsibilities,
+  sensors, motors, laser, high voltage, formatter/DC signals. Start with
+  `DC Boundary Outcome Matrix` for ROM-visible engine-boundary effects.
 - [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) -
   keys, menu state, resets, service mode, self tests. Start with
   `Control Panel Default Outcome Matrix` for ROM-visible default outcomes.

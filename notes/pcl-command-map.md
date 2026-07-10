@@ -2725,20 +2725,21 @@ data-chain fetch, and `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into rows that
 match the direct mixed-stream model. The execute, call, and
 mixed-control replay payloads now also preserve the `0x1edc6`
 bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
-rendering. Selector `4` overlay publication is also fixture-backed:
-`0xff1e` resolves `0x782a94` through `0xe0a4`, builds a non-replay frame
-with `0xe4f4`, re-enters `0x11774`, queues the stored `!\r` payload into
-the current page record, and publishes/render-composes it with an existing
-selector-7 rectangle rule. Evidence: fixture `macro overlay finalization
-replays before page publication`. Overlay replay now also covers a payload
-matrix across text/control, transparent-data, raster, and span-flush families:
+rendering. Selector `4` overlay publication is the page-finalization replay
+route: `0xff1e` resolves saved overlay id `0x782a94` through `0xe0a4`,
+builds a non-replay frame with `0xe4f4`, re-enters parser loop `0x11774`,
+queues the stored `!\r` payload into the current page record, and then
+publishes/render-composes it with the existing selector-7 rectangle rule.
+Evidence anchor: `macro overlay finalization replays before page publication`.
+The same overlay route is documented across text/control, transparent-data,
+raster, and span-flush payload families:
 `ESC &k1G!\r!`, `ESC &a2C!`, `ESC &a72V!`, `ESC &a2c+1R!`,
 `ESC &a6l9M!`, `ESC &p2X!!`, `! ESC *t300R ESC *r0A ESC *b2W c3 3c`,
-the multi-row raster sibling, and `ESC &a6L!`. Those fixtures prove
-non-replay frames re-enter `0x11774`, route through the normal command
-handlers, queue compact text, transparent printable bytes, raster objects, or
-span-list objects as appropriate, preserve the existing selector-7 rule, and
-publish/render through `0x1ed84` / `0x1ef6a`. Evidence: fixtures
+the multi-row raster sibling, and `ESC &a6L!`. Non-replay frames re-enter
+`0x11774`, route through the normal command handlers, queue compact text,
+transparent printable bytes, raster objects, or span-list objects as
+appropriate, preserve the existing selector-7 rule, and publish/render through
+`0x1ed84` / `0x1ef6a`. Evidence anchors:
 `macro overlay mixed-control payload publishes with page rule`,
 `macro overlay cursor-position payload publishes with page rule`,
 `macro overlay vertical-decipoint payload publishes with page rule`,
@@ -2751,10 +2752,10 @@ publish/render through `0x1ed84` / `0x1ef6a`. Evidence: fixtures
 semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; no macro replay/font-context
-middle edge remains in that checkpoint. Fixture
-`0xe860 reads inline +0x16 and offset-table +0x20 class bytes` names the
-last resource-format split: inline/downloaded records use `+0x16`, and
-bit-30 offset-table/built-in records use `+0x20`.
+middle edge remains in that checkpoint. The remaining resource-format split is
+local to `0xe860`: inline/downloaded records use class byte `+0x16`, and
+bit-30 offset-table/built-in records use class byte `+0x20`. Evidence anchor:
+`0xe860 reads inline +0x16 and offset-table +0x20 class bytes`.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,

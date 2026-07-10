@@ -13,6 +13,8 @@ It covers this command family:
 
 Evidence:
 
+- `generated/analysis/ic30_ic13_pcl_command_map.md`
+- `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`
 - `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
 - `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`
@@ -425,6 +427,16 @@ inputs.
   `0x10a40`, `0x10ae0`, or `0x10dce` write rectangle state
   `0x78316a`, `0x783166`, or `0x78316e`. No page root is ensured, no rule
   object is allocated, and the visible consumer is a later `ESC *c#P`.
+- Alternate/data rectangle boundary:
+  when alternate/data table `0x116f6` is active, uppercase `ESC *c`
+  terminals `A/B/G/H/P/V` have no handler and lowercase
+  `a/b/g/h/p/v` route only to rewind helper `0x11f4c`. The normal rectangle
+  writers `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`, `0x10dce`, and
+  producer `0x10898` are not called. Width `0x78316a`, height `0x783166`,
+  area-fill id `0x78316e`, clipped source record `0x782a88`, page-root
+  rule-list head `+0x24`, publication state, and render inputs remain
+  unchanged. Any later visible effect must come from replaying the stored
+  bytes through normal parser mode, not from the alternate/data parse itself.
 - Selector maps to no output:
   `0x10898..0x109fc` exits without queueing when selector `2` sees area-fill
   id outside `1..100`, selector `3` sees pattern id outside `1..6`, or the
@@ -495,6 +507,9 @@ State classification for the matrix:
 - Parser scratch is the six-byte `ESC *c` command record at `0x78299e - 6`,
   parser modes for lowercase chaining, and selector scratch before
   `0x10b80` accepts a nonzero on-page rectangle.
+  Alternate/data `ESC *c` records that terminate at blank table rows or
+  `0x11f4c` remain parser scratch only and do not become canonical rectangle
+  command state.
 - Firmware bookkeeping is stream allocator state `0x782a70/0x782a72/0x782a76`,
   no-room retry bit `root+0x15.0`, publication flag `0x782996`, and render
   scheduler progress.

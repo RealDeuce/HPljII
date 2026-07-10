@@ -10,6 +10,9 @@ queued page objects and encoded-span rendering. It covers the command family:
 
 Evidence:
 
+- `generated/analysis/ic30_ic13_pcl_command_map.md`
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
+- `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`
 - `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`
 - `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
@@ -118,6 +121,13 @@ Writers:
 - `0x11f82` schedules delayed transfer handler `0x105d0` through
   `0x121cc`; `0x12218` restores the saved command record before payload
   consumption.
+- Alternate/data table rows suppress ordinary raster state writers:
+  `ESC *t#R`, `ESC *r#A`, and `ESC *r#B` uppercase finals have no handler in
+  table `0x116f6`, while lowercase `r`, `a`, and `b` finals route only to
+  rewind helper `0x11f4c`. `ESC *b#W/w` is the exception because the counted
+  payload must remain representable in stored data; it still reaches
+  `0x11f82`, but delayed restore `0x12218` sees alternate/data flag
+  `0x782c18` and calls `0x12358` instead of saved handler `0x105d0`.
 - `0x105d0` writes current row `+0x02`, accepted count `+0x04`, overflow/drain
   count `+0x06`, and retry/publication state when `0x13070` reports no room.
 - `0x13070` writes derived bucket index `0x782a7c`, packed key `0x782a7e`, and
@@ -165,6 +175,11 @@ Field classification:
 - Parser scratch: delayed payload byte `0x782a1a`, saved handler
   `0x782a1c`, saved record `0x782a20..0x782a25`, restored command-record
   cursor `0x78299e`, and the live `ESC *b#W` record until `0x105d0` reads it.
+  Alternate/data raster-control and resolution records that end at blank
+  terminal rows or `0x11f4c` are parser scratch only; alternate/data
+  `ESC *b#W/w` payload records are restored only far enough for `0x12358`,
+  `0xdace`, `0xe002`, or wrapper drain `0x1228a -> 0x12328` to drain or
+  append bytes without calling `0x105d0`.
 - Firmware bookkeeping: allocator state `0x782a70/0x782a72/0x782a76`, copy-stop
   flag `0x782996`, root retry flag `+0x15.0`, and chunk allocator behavior in
   `0x132b6..0x13382`.
@@ -212,6 +227,22 @@ Decision rules:
   handler `0x105d0` through `0x121cc`. `0x12218` later restores the saved
   six-byte record and calls `0x105d0`; the payload bytes are not consumed at
   parser-table dispatch time.
+- Alternate/data raster boundary:
+  with alternate/data flag `0x782c18` set, `ESC *t#R`, `ESC *r#A`, and
+  `ESC *r#B` do not reach `0x10808`, `0x1075a`, or `0x107fa`.
+  Uppercase terminal rows are blank in table `0x116f6`; lowercase chaining
+  finals route only to `0x11f4c`, which subtracts one six-byte command record
+  from `0x78299e` and returns. No raster block fields, current page root,
+  bucket objects, publication state, or render inputs change.
+- Alternate/data raster payload boundary:
+  `ESC *b#W/w` still arms `0x11f82 -> 0x121cc`, but restore
+  `0x12218..0x12274` tests `0x782c18` before calling the saved handler. In
+  alternate/data mode it calls `0x12358`; if the saved handler matches wrapper
+  `0x1228a`, that wrapper drains the absolute payload count through
+  `0x12328`, otherwise positive counts are drained through `0xdace` and
+  appended through `0xe002`. In either case `0x105d0`, `0x13070`,
+  `0x13250`, and `0x138de` are not called, so no encoded raster row exists
+  until stored bytes later replay through the normal parser route.
 - `0x105d0` first flushes pending text spans, rewinds the restored record,
   reads absolute byte count, sets raster active byte `+0x12`, and derives the
   orientation-specific row coordinate.
@@ -250,6 +281,10 @@ State classification:
   `0x782a1c`, saved record `0x782a20..0x782a25`, restored command-record
   cursor `0x78299e`, and payload bytes consumed by `0x138de`, `0xdace`, or
   `0x12328`.
+  Alternate/data `ESC *t` and `ESC *r` records remain scratch-only when their
+  terminal rows are blank or lowercase `0x11f4c`; alternate/data `ESC *b`
+  records remain delayed-payload scratch unless replay later returns them to
+  normal parser mode.
 - Firmware bookkeeping: allocator cursors `0x782a70`, `0x782a72`, and
   `0x782a76`, copy-stop/publication byte `0x782996`, root retry flag
   `+0x15.0`, and no-room publication/retry state.

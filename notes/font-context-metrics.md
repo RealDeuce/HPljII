@@ -982,6 +982,39 @@ Dirty-map fixture results:
 - Dirty-2 selector mismatch skips both `0x13eb8` and `0xc428`; it only copies
   the active word to the remembered word and clears the dirty flags.
 
+Common-refresh branch ledger:
+
+- `0xc580..0xc5c8`: rewind the parser record and return immediately when
+  dirty flag `0x782f2c` is zero. No candidate refresh, page-root install,
+  remembered-word copy, or map rebuild occurs.
+- `0xc59e..0xc5ca`: load the parsed slot selector from record word `+2`,
+  accept only slots `0` and `1`, and report other selectors through
+  `0x1284(0x00e3, 0x0034)` before continuing through the common refresh
+  exit.
+- `0xc5d8..0xc5fa`: dirty flag `1` with selector match scans live flags
+  `0x78297f+n` for an inactive page-root context slot. If an inactive slot is
+  found or there is no current root, control reaches the install path at
+  `0xc646`.
+- `0xc61a..0xc640`: dirty flag `1` with all 16 live flags set and a current
+  root sets transient byte `0x78298f`, calls `0x13eb8(D5)`, clears
+  `0x78298f`, then attempts context reuse through `0xc4fc`.
+- `0xc646..0xc662`: install/reuse path calls `0xc4fc(0x782992)`. If
+  `0xc4fc` returns `0x11`, the page-root context table is full and no second
+  `0x13eb8` or `0xc428` call runs. Otherwise the path calls `0x13eb8(D5)`,
+  then `0xc428(D5)` to select the installed/reused page-root slot.
+- `0xc610..0xc618`: dirty flag `1` with selector mismatch calls only
+  `0x13eb8(D5)`. It refreshes active font state for that target slot but does
+  not call `0xc4fc` or `0xc428`, so it does not select a page-root context for
+  later printable bytes.
+- `0xc5fc..0xc60e`: dirty flag not equal to `1` with selector match is the
+  dirty-`2`/font-ID/default-symbol shortcut. It calls only `0xc428(D5)`, using
+  the current-font record already present in `0x782ee6` or `0x782ef6`; it does
+  not call `0x13eb8`.
+- `0xc666..0xc680`: all non-early refresh paths copy active symbol word
+  `0x783144 + 2*D5` into remembered word `0x782f08 + 2*D5`, clear dirty flag
+  `0x782f2c`, and return. This remembered-word copy happens even for
+  selector-mismatch paths that did not install a page-root context.
+
 `0xc428` also refreshes HMI/cache state from the selected context:
 
 - If context byte `+0x04` is zero, it treats context `+0x00` as an

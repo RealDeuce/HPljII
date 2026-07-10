@@ -4221,6 +4221,15 @@ Symbol and map behavior:
   full-table no-match skip, selector-mismatch refresh-only, dirty-2
   selector-match installs, and dirty-2 selector-mismatch remembered-word-only
   behavior.
+- The exact `0xc580` branch ledger is in
+  [font-context-metrics.md](font-context-metrics.md#page-root-context-install):
+  `0xc580..0xc5c8` exits when dirty flag `0x782f2c` is zero,
+  `0xc5d8..0xc662` either refreshes, installs/reuses, or skips full context
+  tables for dirty-1 selector matches, `0xc610..0xc618` is dirty-1
+  selector-mismatch refresh without page-root install, `0xc5fc..0xc60e` is
+  dirty-2 selector-match install without `0x13eb8`, and `0xc666..0xc680`
+  copies the active symbol word to the remembered word before clearing
+  `0x782f2c`.
 
 Page-root context install:
 

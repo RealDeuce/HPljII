@@ -167,15 +167,13 @@ owner, and whether visible pixels can result.
   update page environment fields such as `0x782da2`, `0x782da3`,
   `0x782da4`, and `0x782da6`, and leave later objects to render through
   `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
-- Direct controls and text placement:
-  C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`,
-  SO/SI `0xc6b8` / `0xc68a`, plus cursor/margin helpers; owner
-  [Direct-Control Output Decision
-  Checkpoint](direct-control-codes.md#direct-control-output-decision-checkpoint).
-  These commands mostly change cursor, selected text slot, line-termination,
-  span, and margin state. Visible output occurs when later printable text or a
-  span flush queues compact objects through `0xd04a`, `0x12f2e`, and
-  `0x1387c`.
+- Direct controls and text placement: C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
+  and `0xf2a8`, SO/SI `0xc6b8` / `0xc68a`, plus cursor/margin helpers; owner
+  [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix). These commands mostly
+  change cursor, selected text slot, line-termination, span, and margin state. Visible
+  output occurs when later printable text or a span flush queues compact objects through
+  `0xd04a`, `0x12f2e`, and `0x1387c`.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
   [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),

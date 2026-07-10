@@ -9309,7 +9309,8 @@ Priority ROM-local documentation targets:
    instead of treating the command as visually complete. SO/SI selected-context
    switching, printable source capture, cursor-stack push/pop, and the documented
    layout writers are now
-   owned by [direct-control-codes.md](direct-control-codes.md); new state-only
+   owned by [Direct-Control Outcome
+   Matrix](direct-control-codes.md#direct-control-outcome-matrix); new state-only
    work should start only when a stream changes a canonical field, downstream
    consumer, page-object field, compact source/object field beyond the
    [printable source outcome

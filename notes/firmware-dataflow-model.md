@@ -745,7 +745,8 @@ Evidence and remaining boundaries:
   `Cursor And Margin Placement`, `Page Length, Wrap, And Perforation
   Controls`, `Raster Row`, `Raster Transfer Gates And Modes`,
   `Rectangle Rule`, and `Rectangle Rule Selectors And Clipping`.
-- Detail owners are [direct-control-codes.md](direct-control-codes.md),
+- Detail owners are [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix),
   [raster-graphics.md](raster-graphics.md), and
   [rectangle-graphics.md](rectangle-graphics.md). Key listings include
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,

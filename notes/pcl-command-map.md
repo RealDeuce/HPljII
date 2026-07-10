@@ -513,33 +513,30 @@ Use this quick route before opening the longer supported-stream matrix. It
 maps representative admitted byte forms to the first semantic owner and the
 output class that a byte-stream reader should follow next.
 
-- Plain printable bytes:
-  normal mode-zero no-row-match dispatch reaches `0xd04a`; the text owner then
-  uses `0x1393a` and `0x12f2e` to create compact bucket objects. Continue in
-  [direct-control-codes.md](direct-control-codes.md),
+- Plain printable bytes: normal mode-zero no-row-match dispatch reaches `0xd04a`; the
+  text owner then uses `0x1393a` and `0x12f2e` to create compact bucket objects.
+  Continue in [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix),
   [font-context-metrics.md](font-context-metrics.md), and
-  [page-raster-imaging.md](page-raster-imaging.md). Output class:
-  page-object producer, then compact render.
-- Direct C0 controls:
-  CR/LF/FF/HT/BS/SO/SI route to `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
-  `0xf2a8`, `0xc6b8`, or `0xc68a`. Continue in
-  [direct-control-codes.md](direct-control-codes.md) and
-  [publication-commands.md](publication-commands.md) for cursor movement,
-  selected-slot switching, span flush, or page publication. Output class:
-  state-only, span/page-object producer, or publication depending on the
-  control.
+  [page-raster-imaging.md](page-raster-imaging.md). Output class: page-object producer,
+  then compact render.
+- Direct C0 controls: CR/LF/FF/HT/BS/SO/SI route to `0xf02c`, `0xf08c`, `0xf0f0`,
+  `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`. Continue in [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix) and
+  [publication-commands.md](publication-commands.md) for cursor movement, selected-slot
+  switching, span flush, or page publication. Output class: state-only, span/page-object
+  producer, or publication depending on the control.
 - Parser artifacts and explicit no-output rows:
   normal zero-handler rows `0x00`, `0x07`, `0x0b`, wrapper-handled `ESC ?`,
   display-reader terminator `ESC Z`, and `ESC &lT/t` do not own imaging state.
   Continue in [pcl-parser-core.md](pcl-parser-core.md). Output class:
   parser bookkeeping or explicit no-output.
-- Cursor, margin, text-motion, and dot-position commands:
-  handlers `0xeb58`, `0xec0c`, `0xedb0`, `0xedf8`, `0xee64`, `0xf39e`,
-  `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, and `0xf692` write placement,
-  wrap, HMI/VMI, or span state. Continue in
-  [direct-control-codes.md](direct-control-codes.md). Output class:
-  state-only until later printable text, rectangle/raster placement, span
-  flush, VFC, or publication consumes the fields.
+- Cursor, margin, text-motion, and dot-position commands: handlers `0xeb58`, `0xec0c`,
+  `0xedb0`, `0xedf8`, `0xee64`, `0xf39e`, `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, and
+  `0xf692` write placement, wrap, HMI/VMI, or span state. Continue in [Direct-Control
+  Outcome Matrix](direct-control-codes.md#direct-control-outcome-matrix). Output class:
+  state-only until later printable text, rectangle/raster placement, span flush, VFC, or
+  publication consumes the fields.
 - Page environment and publication commands:
   reset `0xcc52`, FF `0xf0f0`, page-size and page-length handlers
   `0xfc74` / `0xcb00`, orientation `0xc992`, paper source `0xece2`, and
@@ -807,7 +804,8 @@ Normal table `0x112a4`:
   `0xeef0`, `0xef62`, `0xf02c`, `0xf08c`, `0xf0f0`, `0xf176`, `0xf1cc`,
   `0xf2a8`, `0xf39e`, `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, `0xf692`,
   `0xf75e`, `0xf9e8`, `0xfc74`, `0x10220`, `0x12622`, and `0x1280a`.
-  Owners are [direct-control-codes.md](direct-control-codes.md),
+  Owners are [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix),
   [publication-commands.md](publication-commands.md#owner-summary),
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary), and
   [font-context-metrics.md](font-context-metrics.md#owner-summary). These handlers write

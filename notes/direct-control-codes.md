@@ -275,6 +275,143 @@ Decision rules:
   until printable prechecks, LF/FF/perforation overflow, raster/rectangle
   placement, VFC, or publication reads the mutated fields.
 
+## Direct-Control Outcome Matrix
+
+This matrix is the command-family contract for direct controls and text
+placement. It preserves the low-level ledgers below while grouping each
+admitted byte or command by the next semantic object a renderer must model:
+compact text object, segment-list span object, page publication, delayed
+state-only mutation, or explicit no-output parser behavior.
+
+- Printable byte:
+  normal-mode no-row-match dispatch reaches `0xd04a`. The path captures source
+  state through `0x1393a`, branches through unflagged `0xd140 -> 0xd3b2` or
+  flagged `0xd550 -> 0xd824`, queues compact objects through
+  `0x12f2e -> 0x1387c`, and later renders through publication, bridge, and
+  compact dispatch. Canonical state is selected slot/context, cursor, current
+  page root, source scratch `0x782d7e`, and compact bucket entries. Evidence:
+  [Printable Source Outcome Matrix](#printable-source-outcome-matrix),
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and fixture
+  `plain printable parser trace feeds page-record queue`.
+- Line-termination mode:
+  `ESC &k#G` reaches `0xedf8` and writes byte `0x78318f`: selector `1`
+  writes `0x80`, selector `2` writes `0x60`, selector `3` writes `0xe0`, and
+  selector `0` clears the byte. Readers are CR `0xf02c`, LF `0xf08c`, and FF
+  `0xf0f0`. Output effect is delayed until those controls consume the bits.
+  Evidence: fixtures `control stream ESC &k3G applies CR/LF/FF combined line
+  termination` and `control stream ESC &k2G then FF applies CR+page-eject`.
+- CR and LF:
+  CR `0xf02c` resets horizontal cursor through `0xf06e`, flushes pending spans
+  through `0xf34a`, and can also run LF-style vertical movement when
+  `0x78318f.7` is set. LF `0xf08c` optionally applies CR-style reset when
+  `0x78318f.6` is set, then advances vertical cursor through VMI-scaled
+  movement. Output effect is cursor/span state consumed by later printable,
+  raster, rectangle, VFC, or publication paths. Evidence: fixtures
+  `mixed printable/control parser trace feeds page-record queue` and
+  `LF parser trace feeds page-record queue`.
+- FF:
+  FF `0xf0f0` optionally applies CR-style reset when `0x78318f.5` is set,
+  flushes spans, calls page-eject path `0xf124 -> 0xff1e`, and writes pending
+  page-eject latch `0x782a6d = 0xff`. Output effect is current-root
+  publication when a root exists, or a no-publication reset/clear boundary when
+  no root is active. Evidence: fixture `control stream ESC &k2G then FF
+  applies CR+page-eject` and publication owner
+  [publication-commands.md](publication-commands.md#publication-decision-checkpoint).
+- HT and BS:
+  HT `0xf1cc` advances to the next eight-column stop from left margin
+  `0x782dd6` using HMI `0x78315c`; BS `0xf2a8` subtracts HMI or previous-width
+  state `0x782a58/0x782a5a/0x782a5c`. Both update cursor/span state and create
+  no page object directly. The following printable byte is the visible
+  consumer. Evidence: fixture `HT/BS parser trace feeds page-record queue`.
+- SI and SO:
+  SI `0xc68a` and SO `0xc6b8` select primary or secondary text context by
+  calling `0xc428(slot)` when a switch is needed, updating selected slot
+  `0x782f06`, page-root selected slot `0x78297e`, and context slots
+  `+0x2c..+0x68`. They create no page object directly. The following
+  printable consumes the selected context through `0xd04a -> 0x1393a`.
+  Evidence: [Selected Context Switch
+  Checkpoint](#selected-context-switch-checkpoint) and fixtures
+  `live primary current-font RAM install feeds SI page-record rows` and
+  `live secondary current-font RAM install feeds SO page-record rows`.
+- Margin reset and margin writers:
+  `ESC 9` handler `0xe9ba` clears left margin `0x782dd6`, copies page width
+  `0x782db8` to right margin `0x782dda`, and clears fractional companion
+  `0x782ddc`. `ESC &a#L/#M` handlers `0xeb58` / `0xec0c` write left/right
+  margins and may move horizontal cursor `0x782c8a`. Output effect is delayed
+  placement, unless pending span state is flushed through `0xf34a -> 0x12714`.
+  Evidence: margin fixtures named in `Output Effect` and
+  [Span Flush Producers](#span-flush-producers).
+- Cursor and dot positioning:
+  `ESC &a#C/#H`, `ESC &a#R/#V`, and `ESC *p#X/#Y` reach
+  `0xf39e`, `0xf416`, `0xf560`, `0xf60a`, `0xf48c`, and `0xf692`, then commit
+  through horizontal helper `0xf4ca` or vertical helper `0xf6e2`. Canonical
+  output is cursor state `0x782c8a/0x782c8e`; visible pixels appear only when
+  later printable, raster start, rectangle clipping, VFC, or publication reads
+  those fields. Evidence: shared coordinate helper boundaries and cursor
+  position fixtures in `Output Effect`.
+- Cursor stack:
+  `ESC &f#S` reaches `0xf75e`. Selector `0` pushes cursor plus vertical offset
+  into stack `0x782c96..0x782d36`; selector `1` pops and clamps restored
+  cursor to current extents; other selectors or full/empty stack cases return
+  without output. Output effect is restored placement consumed by later
+  printable, raster, or rectangle commands. Evidence:
+  [Cursor Stack State Checkpoint](#cursor-stack-state-checkpoint).
+- Underline/span state:
+  `ESC &d` handler `0x12622` writes underline/text-attribute selector
+  `0x783185` for accepted selector terminals and arms pending span state
+  through `0x126e2`. Terminal flush paths, CR, margins, or vertical cursor
+  changes can materialize selector-`0x4000` segment-list objects through
+  `0xf34a -> 0x12714 -> 0x126e2`. Evidence:
+  [Span Flush Producers](#span-flush-producers) and fixture
+  `ESC &d underline selector materializes span output`.
+- Layout, wrap, and perforation state:
+  HMI/VMI/page-layout handlers `0xca8c`, `0xcb00`, `0xc992`, `0xece2`,
+  `0xea9e`, `0xee64`, `0xedb0`, and `0xf9e8` write HMI, VMI, page extent,
+  top/text limits, perforation skip `0x783191`, and wrap byte `0x783190`.
+  They are delayed state until printable prechecks `0xd28a` / `0xd6bc`,
+  overflow helper `0xf36c`, VFC, raster/rectangle placement, FF, or following
+  printable bytes consume the fields. Evidence:
+  [Layout State To Output Checkpoint](#layout-state-to-output-checkpoint).
+- Parser-only and no-handler rows: explicit zero-handler rows and lowercase chaining
+  helpers keep parser state or report ignored bytes without page output. They belong to
+  the parser owner unless a later terminal handler consumes the retained command-family
+  record. Evidence:
+  [pcl-parser-core.md](pcl-parser-core.md#no-output-and-reported-byte-checkpoint).
+
+State grouping:
+
+- Canonical:
+  cursor fields, margins, HMI/VMI, selected text slot/context, page-root
+  selected context slot, line-termination byte, wrap/perforation state,
+  cursor-stack entries, pending span fields, current page root, compact bucket
+  objects, and segment-list span objects.
+- Derived/cache:
+  printable source scratch, compact coordinates, previous-width latches,
+  precheck result, span watermarks, queue keys, and render-band caches created
+  after publication.
+- Parser scratch:
+  admitted C0 bytes, six-byte parsed command records, lowercase family
+  chaining state, and lookahead bytes consumed by underline/parser helpers.
+- Firmware bookkeeping:
+  dirty-map byte, pending cursor/page latch `0x782a6d`, right-limit and
+  previous-width latches, modified-layout byte, retry publication flag, and
+  page-root allocation effects.
+- Hardware/external:
+  none for ROM-local direct-control behavior; physical paper timing begins
+  after publication/render scheduling.
+- Unknown:
+  manual-facing names for some latches remain external, but the ROM-local
+  writers, readers, object effects, and no-output boundaries above are pinned
+  by disassembly and fixtures.
+
+Unresolved boundaries:
+
+- No ROM-local middle edge remains for the documented printable, CR/LF/FF,
+  HT/BS, SI/SO, cursor/margin, cursor-stack, span-flush, wrap, perforation,
+  or layout outcomes. New direct-control work should start only when a stream
+  changes a named field, downstream consumer, page-object byte, publication
+  state, bridge field, or render-helper input in the outcomes above.
+
 ### Selected Context Switch Checkpoint
 
 SI and SO are state-only direct controls whose visible effect is delayed until

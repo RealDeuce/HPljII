@@ -63,7 +63,9 @@ standalone deliverables.
   published-record scheduling, active render pointer `0x783a18`, bridge
   `0x1ed84` / `0x1edc6`, render entry `0x1ef6a`, compact
   text/downloaded-glyph helpers, rule/fixed-list helpers, and encoded raster
-  helper `0x1f88e`.
+  helper `0x1f88e`. The shared row-store order, current-band/fallback
+  destination model, and overwrite composition rule are in
+  [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint).
 - The broad host-byte-to-pixel walkthrough and residual-boundary index is
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). The unified
   semantic field index is [semantic-state-model.md](semantic-state-model.md),

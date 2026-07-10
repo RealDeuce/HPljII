@@ -348,6 +348,68 @@ Evidence:
   below provide concrete object fields, helper addresses, row-write behavior,
   and exact unresolved computed-jump boundaries.
 
+## Pixel Composition Checkpoint
+
+This checkpoint composes the shared pixel path from an active render record to
+ROM-local row stores. It is the practical answer to "where do pixels come
+from" after the parser and page-object owners have already produced visible
+objects.
+
+Execution order:
+
+- `0x1ef6a` loads active render pointer `0x783a18`, calls setup helper
+  `0x1ef86`, then calls bucket dispatcher `0x1efc2`, rule dispatcher
+  `0x1f446`, and fixed-list dispatcher `0x1f756` in that order.
+- `0x1ef86` derives current-band caches from render work fields:
+  row count `0x783a20`, remainder `0x783a22`, destination base
+  `0x783a28`, and render work copy at `+0x12`.
+- `0x1efc2` reads render root `+0x18` and dispatches bucket objects by class
+  byte `+4`: compact/text `0x00..0x3f`, segment-list `0x40..0x7f`, and
+  encoded raster `0x80..0xff`.
+- `0x1f446` reads rule root `+0x1c` only on five-band boundaries, then
+  dispatches solid or patterned rule helpers by object byte `+5 & 0x0f`.
+- `0x1f756` reads fixed-list root `+0x20` on the same five-band boundary
+  pattern and writes pattern rows through `0x1f7b0`.
+
+Destination selection:
+
+- Compact, segment-list, and encoded-raster helpers use destination helper
+  `0x1f3d4`; rule and fixed-list helpers use `0x1f626`.
+- `0x1f3d4` decodes packed coordinate `D1`, sets phase byte `$a001`, chooses
+  current-band address `0x783a28 + row_offset[coord_high_nibble] +
+  byte_pair_offset`, and preserves the byte-pair offset for fallback rows.
+- `0x1f414` clips a requested row count against current-band rows
+  `0x783a20`; if rows extend beyond the current band, it returns a split
+  count with fallback rows in the high word of `D3`.
+- `0x1f626` performs the same coordinate and clipping job for rule/fixed
+  objects, but also handles vertical displacement before selecting either the
+  current-band buffer or fallback base `0x7810b4`.
+
+Composition rule:
+
+- These helpers write generated row words, bytes, or longwords directly to the
+  selected destination. The disassembly path uses `move` stores; it does not
+  read the old destination word and combine it with a raster operation.
+- Overlap is therefore resolved by call order: bucket objects first, rules
+  second, fixed-list objects third. Within a bucket chain or list, linked-list
+  order controls later stores.
+- Fallback rows are not a separate page. They are continuation storage for
+  rows that did not fit the current band and are resumed by later render-band
+  calls using the same object fields and byte-pair offset.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`:
+  `0x1ef6a..0x1ef7c`, `0x1ef86..0x1efbc`, and `0x1efc2..0x1eff8`.
+- `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`:
+  `0x1f3d4..0x1f436`, `0x1f446..0x1f620`, `0x1f626..0x1f6ec`,
+  and `0x1f756..0x1f88c`.
+- `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`:
+  encoded-raster stores selected by object byte `+5 & 3`.
+- `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst` and
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`:
+  compact and wide glyph row-copy stores selected by compact helpers.
+
 ## Page Size Tables
 
 The page-size command handler `ESC &l#A` at `0x00fc74` maps PCL

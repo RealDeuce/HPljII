@@ -270,24 +270,29 @@ controlling artifact.
 
 - Host input handling and parser state transitions:
   covered by [host-byte-fetch.md](host-byte-fetch.md),
-  [pcl-parser-core.md](pcl-parser-core.md), the `Minimal Host Input
-  Walkthrough`, and `Worked Path: Host Byte Source Priority` / `Worked Path:
-  Command Record And Payload Dispatch` in
+  [pcl-parser-core.md](pcl-parser-core.md), `Admitted Byte Outcome Bridge`,
+  the `Minimal Host Input Walkthrough`, and `Worked Path: Host Byte Source
+  Priority` / `Worked Path: Command Record And Payload Dispatch` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). The ROM-local
   contract is `0xa904` normalized byte output into `0xda9a` / `0xdaf0` /
-  `0xdb74`, parser mode `0x782999`, and six-byte records at `0x78299e..`.
-  Residuals are physical bus/MMIO naming unless a new source changes the
-  normalized byte sequence.
+  `0xdb74`, parser loop `0x11774`, parser mode `0x782999`, six-byte records at
+  `0x78299e..`, and the branch outcomes that either reach a family owner,
+  append through `0xe002`, return through service/no-byte state, or stop as an
+  explicit no-output parser row. Residuals are physical bus/MMIO naming unless
+  a new source changes the normalized byte sequence.
 - Normal bytes, control codes, ESC entry, parameterized commands, binary payloads,
   macro/replay, and ignored/error cases: the branch-level parser outcomes are documented
-  in [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and the
-  command-family classes are indexed by
-  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes). The ROM
-  Semantic Index in [pcl4-language.md](pcl4-language.md#owner-summary) adds the
-  command-language entry point: for each major PCL Level IV family it names first parser
-  handlers, representative byte streams, page-object bytes or state fields, render
-  routes, and owner notes. Checked-in owners are
-  [direct-control-codes.md](direct-control-codes.md),
+  in [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), summarized
+  in `Admitted Byte Outcome Bridge`, and indexed by
+  [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes). These outcomes
+  include printable dispatch `0xd04a`, direct C0 handlers, explicit zero-handler rows,
+  parser-external service/return `0x117d2..0x11818`, no-match fallback/append/callback
+  paths `0x118b2..0x11900` / `0x11b32..0x11b8a`, delayed binary payload restore, and
+  macro/data replay through `0xa904`. The ROM Semantic Index in
+  [pcl4-language.md](pcl4-language.md#owner-summary) adds the command-language entry
+  point: for each major PCL Level IV family it names first parser handlers,
+  representative byte streams, page-object bytes or state fields, render routes, and
+  owner notes. Checked-in owners are [direct-control-codes.md](direct-control-codes.md),
   [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint),
   [display-functions.md](display-functions.md),
   [macro-data-chain.md](macro-data-chain.md), [raster-graphics.md](raster-graphics.md),
@@ -307,9 +312,11 @@ controlling artifact.
   [pcl4-language.md](pcl4-language.md), and `Worked Path: Command Record And
   Payload Dispatch`.
   Normal table `0x112a4`, alternate/data table `0x116f6`, parser loop
-  `0x11774`, delayed arming helpers `0x11f5a` / `0x11f6e` / `0x11f82` /
-  `0x11f96`, restore path `0x121cc -> 0x12218`, and owner notes form the
-  current dispatch contract.
+  `0x11774`, matched-handler range `0x11912..0x119a4`, zero-handler range
+  `0x119a6..0x119f4`, alternate append range `0x11930..0x11ab8`, delayed
+  arming helpers `0x11f5a` / `0x11f6e` / `0x11f82` / `0x11f96`, restore path
+  `0x121cc -> 0x12218`, no-match callback pointer `0x78299a`, and owner notes
+  form the current dispatch contract.
 - Detailed command-family behavior:
   documented by the owner notes listed in the `Supported Stream Entry Points`
   section below. Each owner records parsed inputs, RAM writers, consumers,
@@ -328,12 +335,13 @@ controlling artifact.
 - Page/image assembly model: covered by [Page Assembly Decision
   Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
   [page-raster-imaging.md](page-raster-imaging.md), `Worked Path: Shared Page-Record
-  Storage And Allocator`, `Page Image Assembly` in
+  Storage And Allocator`, `Page Image Assembly` and `Page Versus Band Model` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and the `Minimal Page
   Assembly Walkthrough`. The canonical model is current root `0x78297a`, stream
   allocator state `0x782a70/0x782a72/0x782a76`, compact and raster buckets under root
   `+0x1c`, rules under `+0x24`, fixed objects under `+0x28`, context slots
-  `+0x2c..+0x68`, publication `0xff1e`, and bridge `0x1ed84` / `0x1edc6`.
+  `+0x2c..+0x68`, publication `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and
+  scheduler-selected band rendering rather than a parser-time full-page bitmap.
 - Output/render engine:
   covered by [active-render-scheduler.md](active-render-scheduler.md),
   [page-raster-imaging.md](page-raster-imaging.md), `Published Record To Active

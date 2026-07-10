@@ -180,8 +180,8 @@ boundary outside these owners, the relevant owner note must be extended.
   static cross-references, and named fixtures as supporting evidence.
   [unresolved-boundaries.md](unresolved-boundaries.md#unresolved-boundary-outcome-matrix)
   is the compact index of exact stop points by reason: ROM-local invalid target/source,
-  ROM-local unresolved caller, missing resource data, hardware/MMIO boundary, optional
-  external data, or manual/physical correlation.
+  ROM-local unresolved caller, missing resource data, exact ROM stop, hardware/MMIO
+  boundary, optional external data, or manual/physical correlation.
 
 ## Shared Page-Object Contract
 
@@ -735,11 +735,12 @@ end-to-end stream:
   use only when a concrete address range or field has observed reads/writes
   but its source, consumer, physical identity, or legal values are not proven.
   The boundary entry must say whether it is ROM-local invalid target/source,
-  ROM-local unresolved caller, hardware/MMIO, missing external resource data,
-  optional external data, or manual/physical correlation. Current examples are
-  the physical decode for `0x0c0000..0x0c0321`, exact MMIO-to-formatter signal
-  mapping, optional active-pool helper entry `0x247c..0x2746`, and bounded
-  downloaded-glyph helper table/source-read edges.
+  ROM-local unresolved caller, missing external resource data, exact ROM stop,
+  hardware/MMIO, optional external data, or manual/physical correlation.
+  Current examples are the physical decode for `0x0c0000..0x0c0321`, restored
+  `ESC )s#W` payload-count cap, exact MMIO-to-formatter signal mapping,
+  optional active-pool helper entry `0x247c..0x2746`, and bounded downloaded-
+  glyph helper table/source-read edges.
 
 Do not use fixtures as a separate state class. A fixture can exercise a
 documented interpretation, but the documented field must still be classified

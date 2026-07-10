@@ -54,6 +54,164 @@ Output effect:
   resource bytes use the parser, page, scheduler, and render owners rather
   than any additional board-level interpretation in this note.
 
+## Formatter Boundary Outcome Matrix
+
+This matrix composes Interface PCA board facts into the firmware dataflow
+model. It does not own parser commands, page-object construction, or row
+rendering; it owns the provenance and hardware boundaries that decide which
+ROM bytes, resource bytes, RAM windows, and MMIO edges are valid inputs to
+those owners.
+
+Executable firmware image:
+
+- ROM path:
+  `IC30,IC13 -> initial SP 0x00800000 -> reset PC 0x00000110`.
+- State class:
+  canonical ROM provenance and firmware bookkeeping.
+- Writers:
+  none at runtime. The verified `IC30,IC13` interleave supplies immutable
+  68000 instruction bytes, parser tables, command handlers, page builders,
+  scheduler code, and render helpers.
+- Readers / consumers:
+  all `generated/disasm/ic30_ic13_*.lst` listings, parser notes, command
+  family owners, page-record owners, scheduler owners, and render owners.
+- Output effect:
+  evidentiary. It defines the executable byte image behind every firmware
+  handler address cited by the checked-in documentation.
+- Evidence:
+  `data/rom_manifest.json`,
+  [rom-dump-manifest.md](rom-dump-manifest.md), and
+  `generated/analysis/ic30_ic13_vectors.txt`.
+
+Built-in resource image:
+
+- ROM path:
+  `IC32,IC15 -> firmware resource window 0x080000..0x0bffff`, with scanner
+  bounds seeded as `0x080000..0x0ffffe`.
+- State class:
+  canonical resource data, derived/cache address mapping, and
+  hardware/external decode after the verified suffix.
+- Writers:
+  none for verified built-in bytes. Startup/resource scan helpers read the
+  immutable image and build candidate state elsewhere.
+- Readers / consumers:
+  startup `HEAD` scanner `0x41a`, font/resource scan
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be`, font selection, glyph resolver `0x1f354`,
+  and transparent segment-57 resource reads.
+- Output effect:
+  no pixels directly. It supplies font records, glyph tables, and bitmap
+  payload bytes that become visible only after parser/font state selects them
+  and render helpers consume compact objects.
+- Evidence:
+  `data/rom_manifest.json`,
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
+  [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+  `generated/analysis/ic32_ic15_header.txt`, and
+  `generated/analysis/ic32_ic15_resource_glyph_probe.md`.
+
+Startup RAM and resource-window baseline:
+
+- ROM path:
+  reset `0x0110..0x0240`, memory probes/tests `0x073a..0x0c22`, and
+  heap/window setup `0x0b18`.
+- State class:
+  canonical startup memory/config, canonical heap/allocation state,
+  derived/cache state, and firmware bookkeeping.
+- Writers:
+  startup code clears RAM, copies RAM trampoline stubs to `0x780000..0x780173`,
+  initializes heap fields including `0x780efa` / `0x780efe`, computes
+  resource/window fields `0x7810b4` / `0x7810b8`, seeds scheduler and
+  render-work state, and initializes host input/output buffers.
+- Readers / consumers:
+  host byte fetch, parser reset, allocator users, page-root allocation,
+  raster/downloaded-font storage, macro/data-chain storage, scheduler startup,
+  and optional resource scan paths.
+- Output effect:
+  establishes the baseline from which a host byte stream is interpreted. It
+  does not parse commands or render rows by itself.
+- Evidence:
+  [firmware-startup.md](firmware-startup.md#owner-summary),
+  `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`,
+  `generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`, and
+  `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`.
+
+Retained defaults and NVRAM provenance:
+
+- ROM path:
+  retained/default helpers and panel paths documented in the control-panel
+  owner.
+- State class:
+  canonical defaults, firmware bookkeeping, and hardware/external retained
+  storage.
+- Writers:
+  panel/default and retained-record code produces selector `0x7822d5`,
+  backing records under `0x780eda`, canonical defaults `0x78219d`,
+  `0x78219e`, and `0x7821a2`, dirty flags, and serial shadow state.
+- Readers / consumers:
+  startup default loading, `ESC E` reset/environment rebuild, paper-source
+  fallback, and page-layout consumers.
+- Output effect:
+  indirect default-state effect. Pixels change only when later reset,
+  page-layout, text, or raster paths consume the canonical defaults.
+- Evidence: [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) section
+  `Control Panel Default Outcome Matrix` and
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix).
+
+Formatter/DC and video handoff:
+
+- ROM path:
+  timer/status `0x0d52..0x0f7a`, scan/status `0x0f84..0x10f2`,
+  wait-object handoff `0x1036 -> 0x123a`, and active render loop
+  `0x1eba4..0x1ecd2 -> 0x1ef6a`.
+- State class:
+  canonical scheduler/render state, derived/cache state, firmware
+  bookkeeping, and hardware/external MMIO.
+- Writers:
+  firmware updates wait-object records, scan/status latches, MMIO shadows,
+  output tables, active source `0x780eae`, active render pointer `0x783a18`,
+  and render work band word `+0x10`.
+- Readers / consumers:
+  active render scheduler, render entry `0x1ef6a`, bitmap object helpers, and
+  physical DC Controller/video hardware.
+- Output effect:
+  this boundary can pace or select which already published band reaches the
+  render helpers. It does not define parser semantics or glyph/raster pixel
+  bytes once the same render record and band word reach `0x1ef6a`.
+- Evidence:
+  [dc-controller-engine.md](dc-controller-engine.md) section
+  `DC Boundary Outcome Matrix`,
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+  and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+
+State grouping for this matrix:
+
+- Canonical:
+  executable ROM pair `IC30,IC13`, resource ROM pair `IC32,IC15`, reset vector
+  fields, verified resource bytes through `0x0bffff`, startup RAM/window
+  fields, retained defaults, page/control pool fields, and active render
+  pointer fields.
+- Derived/cache:
+  generated disassembly and resource reports, firmware address mappings, heap
+  and resource-window calculations, candidate scan results, MMIO shadows, and
+  render-band caches.
+- Parser scratch:
+  none assigned here. Parser scratch belongs to the parser and command-family
+  owners after startup and host-byte admission.
+- Firmware bookkeeping:
+  `data/rom_manifest.json`, RAM trampoline stubs, startup diagnostics,
+  retained dirty flags, scheduler wait objects, output shadows, and generated
+  analysis files derived from the verified ROM pairs.
+- Hardware/external:
+  gate-array decode, physical memory-control registers, optional resource
+  windows, NVRAM device identity, video scan buffers, and formatter/DC
+  connector timing.
+- Unknown:
+  physical decode for `0x0c0000..0x0c0321`, optional cartridge contents,
+  exact register-to-connector mapping, CPU clock source for cycle fidelity,
+  and scan-buffer implementation. These are external board/MMIO/resource
+  boundaries, not hidden parser, page-object, render-helper, or pixel
+  composition steps.
+
 ## Naming
 
 The service manual uses:

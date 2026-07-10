@@ -15,9 +15,10 @@ Primary route into the ROM model:
 - Product identity and PCL level identify the target as HP 33440A /
   LaserJet Series II, a 300 dpi PCL Level IV printer.
 - Formatter/interface details that affect the disassembly are owned by
-  [formatter-interface-pca.md](formatter-interface-pca.md#owner-summary):
-  68000-family CPU evidence, ROM package pairing, DRAM/NVRAM context,
-  built-in resource decode, and board-level provenance boundaries.
+  [formatter-interface-pca.md](formatter-interface-pca.md): 68000-family CPU
+  evidence, ROM package pairing, DRAM/NVRAM context, built-in resource decode,
+  and board-level provenance boundaries. Start with its
+  `Formatter Boundary Outcome Matrix` for ROM-visible dataflow effects.
 - Host interface facts that affect byte streams are owned by
   [io-interfaces.md](io-interfaces.md#owner-summary) and
   [host-byte-fetch.md](host-byte-fetch.md#owner-summary). Those notes reduce

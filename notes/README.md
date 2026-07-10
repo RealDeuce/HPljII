@@ -232,8 +232,10 @@ parser route, field value, object layout, bridge copy, or helper input.
   use it.
 - [hardware-overview.md](hardware-overview.md) - model identity, specs,
   major assemblies, paper path, print process.
-- [formatter-interface-pca.md](formatter-interface-pca.md#owner-summary) - HP 33440
-  formatter architecture, memory, NVRAM, video path.
+- [formatter-interface-pca.md](formatter-interface-pca.md) - HP 33440
+  formatter architecture, memory, NVRAM, video path. Start with
+  `Formatter Boundary Outcome Matrix` for ROM/image provenance and
+  board-facing boundaries.
 - [dc-controller-engine.md](dc-controller-engine.md) - engine responsibilities,
   sensors, motors, laser, high voltage, formatter/DC signals. Start with
   `DC Boundary Outcome Matrix` for ROM-visible engine-boundary effects.

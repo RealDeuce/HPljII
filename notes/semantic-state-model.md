@@ -19,12 +19,23 @@ Primary handoff:
 - Host and parser owners write byte-source state around `0xa904`, parser mode
   `0x782999`, six-byte records at `0x78299e`, alternate/data state
   `0x782c18`, and delayed-payload fields `0x782a1a..0x782a25`.
+- Parser routing is the semantic owner-selection boundary documented in
+  [pcl-command-map.md](pcl-command-map.md#reproduction-contract): normalized
+  bytes pass through `0xda9a`, `0xdaf0`, `0xdb74`, and parser loop `0x11774`
+  before they become printable bytes, direct controls, delayed payloads,
+  alternate/data appends, host/status queries, macro replay, no-output rows,
+  or command-family handlers.
 - Command-family owners write durable command state: cursor and layout fields,
   selected font contexts and maps, macro/data-chain records, raster block
   `0x783170`, rectangle state `0x783166..0x78316e`, downloaded glyph records,
   VFC table words, host-output FIFO state, or current page root `0x78297a`.
 - Page/image owners convert visible producers into page-root objects under
   root `+0x1c`, `+0x24`, `+0x28`, and context slots `+0x2c..+0x68`.
+- Page/image lifetime is the storage boundary documented in
+  [page-record-storage.md](page-record-storage.md#page-object-lifetime-and-band-boundary):
+  supported visible streams build a page-root object graph first, then publication and
+  active-render scheduling select records and bands. The ROM evidence does not model
+  parser-time full-page bitmaps or independent strips.
 - Publication and render owners consume published pool records, active source
   `0x780eae`, active render pointer `0x783a18`, bridge roots copied by
   `0x1edc6`, scheduler band words, and render helper inputs under `0x1ef6a`.
@@ -78,7 +89,11 @@ each checkpoint. The required behavior is:
 - Canonical state is authoritative input to later firmware behavior. Parser
   records, current font contexts, page roots, published records, raster/glyph
   object fields, macro/data-chain frames, and selected resource records must
-  be preserved when downstream code reads them.
+  be preserved when downstream code reads them. Parser records are selected by
+  the routing contract in
+  [pcl-command-map.md](pcl-command-map.md#reproduction-contract); page roots
+  and object fields follow the storage contract in
+  [page-record-storage.md](page-record-storage.md#reproduction-contract).
 - Derived/cache state may be recomputed only when the documented producer and
   consumer relationship is preserved. Bucket keys, copied render roots,
   selected-map caches, span watermarks, metric conversions, and band-local
@@ -87,8 +102,10 @@ each checkpoint. The required behavior is:
 - Parser scratch is local to parser/tokenizer/payload scheduling. Six-byte
   records, saved delayed records, numeric scratch, append buffers, and payload
   drain cursors matter while handlers consume them, but they are not page
-  objects until a command-family producer writes canonical page or resource
-  state.
+  objects until
+  [pcl-command-map.md](pcl-command-map.md#reproduction-contract) hands the
+  parsed outcome to a command-family producer that writes canonical page or
+  resource state.
 - Firmware bookkeeping controls firmware execution without becoming PCL state
   by itself. Allocator cursors, wait objects, service latches, retry flags,
   continuation counters, and scheduler progress must be preserved when they
@@ -97,7 +114,11 @@ each checkpoint. The required behavior is:
   into a byte, word, page object, resource record, or render input. Physical
   MMIO names, retained-storage identity, formatter/DC signal timing, optional
   cartridge contents, and resource-window continuation bytes are not inferred
-  from fixtures.
+  from fixtures. The formatter/DC boundary is governed by
+  [dc-controller-engine.md](dc-controller-engine.md#reproduction-contract):
+  physical timing matters only if it changes ROM-visible byte admission,
+  wait-object wake order, selected source record, band word, or `0x1ef6a` call
+  order.
 - Unknown state must stay bounded by exact addresses and call ranges. A field
   graduates from unknown only when the disassembly-backed writer/reader chain
   is documented in the relevant owner note.

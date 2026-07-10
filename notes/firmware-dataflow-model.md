@@ -1925,7 +1925,9 @@ owns the semantic behavior.
 
 The parser table does not itself define output pixels. It routes to handlers
 that mutate environment state, enqueue page objects, publish pages, or schedule
-payload readers. The command-family notes own those effects:
+payload readers. The command-family notes own those effects; for page-producing
+families, `Command-Family To Page-Object Crosswalk` below names the first
+page-root field and first render consumer after this dispatch handoff.
 
 Parser-table handoff anchors:
 

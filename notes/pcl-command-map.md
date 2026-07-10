@@ -910,7 +910,8 @@ Shared parser state classification:
 - Canonical delayed-payload state:
   pending byte `0x782a1a`, saved handler pointer `0x782a1c`, saved command
   record `0x782a20..0x782a25`, restore boundary `0x12218`, and family
-  payload readers such as `0x12452`, `0x12cfe`, `0x105d0`, and `0x15a18`.
+  payload readers such as `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, and
+  `0x16c14`.
 - Parser scratch:
   matched prefix bytes `0x783196..0x783199`, callback pointer `0x78299a`,
   tokenizer locals in `0xda9a` / `0xdaf0` / `0xdb74`, and the current host
@@ -918,7 +919,8 @@ Shared parser state classification:
 - Firmware bookkeeping:
   prefix/setup helpers `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11ff6`,
   delayed scheduler `0x121cc`, delayed restore `0x12218`, alternate/data
-  append sink `0xe002`, and zero-handler reset `0x12218` for ignored rows.
+  append sink `0xe002`, and zero-handler terminal reset path
+  `0x119a6..0x119f4` for ignored rows.
 - Derived/cache state:
   generated table rows and the owner route selected by the parsed family.
   The semantic owner note, not this routing checkpoint, owns downstream
@@ -930,6 +932,12 @@ Shared parser state classification:
 
 Outcome owners:
 
+- For streams that create page content, use this owner list together with
+  `Command-Family To Page-Object Crosswalk` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#command-family-to-page-object-crosswalk).
+  The matrix below says which command-family owner receives the parsed form; the
+  crosswalk says which page-root field, object class, and first render consumer the
+  owner eventually reaches.
 - Printable text and direct C0 controls: bytes reaching `0xd04a`, `0xd0f0`, `0xf02c`,
   `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a` are owned by [Printable
   Source Outcome Matrix](direct-control-codes.md#printable-source-outcome-matrix),

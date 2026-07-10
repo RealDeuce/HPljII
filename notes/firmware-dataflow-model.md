@@ -2174,8 +2174,8 @@ terminators such as `ESC Z`; they are not anonymous imaging commands.
   [downloaded-fonts.md](downloaded-fonts.md) documents downloaded records and
   compact/segmented glyph objects.
 - Built-in resources:
-  [resource-rom.md](resource-rom.md) documents built-in font/glyph data
-  consumed by text renderers.
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix) documents
+  built-in font/glyph data consumed by text renderers.
 - Vertical forms control:
   [vertical-forms-control.md](vertical-forms-control.md) documents VFC table
   definition and channel jumps.
@@ -3767,7 +3767,7 @@ Evidence and unresolved boundary:
 
 - Detail note: [page-font-scheduler.md](page-font-scheduler.md).
 - Related resource and font notes:
-  [resource-rom.md](resource-rom.md),
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [downloaded-fonts.md](downloaded-fonts.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [external-ready-service.md](external-ready-service.md).
@@ -3899,7 +3899,7 @@ State classification for this path:
 
 Evidence for this path is in
 [built-in-resource-scan.md](built-in-resource-scan.md),
-[resource-rom.md](resource-rom.md),
+[resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
 [font-context-metrics.md](font-context-metrics.md), and
 [semantic-state-model.md](semantic-state-model.md), section
 `Built-In Resource Scan And Candidate Windows`. Key supporting reports and
@@ -4674,7 +4674,7 @@ State classification:
 Evidence:
 
 - Detail note: [font-sample-page.md](font-sample-page.md).
-- Resource note: [resource-rom.md](resource-rom.md).
+- Resource note: [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix).
 - Semantic checkpoint: `Built-In Font Sample Printout Loop` in
   [semantic-state-model.md](semantic-state-model.md).
 - Disassembly evidence:

@@ -447,7 +447,7 @@ Evidence:
   [raster-graphics.md](raster-graphics.md),
   [rectangle-graphics.md](rectangle-graphics.md),
   [downloaded-fonts.md](downloaded-fonts.md), and
-  [resource-rom.md](resource-rom.md).
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix).
 
 ## Pixel Generation Owner Summary
 

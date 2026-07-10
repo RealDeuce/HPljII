@@ -2,9 +2,9 @@
 
 This note documents the firmware path that turns the `IC32,IC15`
 resource ROM into selectable built-in font candidates. The byte-level
-record and bitmap ledger remains in [resource-rom.md](resource-rom.md#owner-summary);
-this file records the state contract used by font selection and visible
-text output.
+record and bitmap ledger remains in
+[resource-rom.md](resource-rom.md#resource-rom-outcome-matrix); this file
+records the state contract used by font selection and visible text output.
 
 ## Owner Summary
 
@@ -419,7 +419,7 @@ Glyph/render handoff:
   visible text rows come from the selected resource bitmap rows rendered
   into output buffers.
 - Evidence:
-  [resource-rom.md](resource-rom.md#reproduction-contract),
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [font-sample-page.md](font-sample-page.md#owner-summary), and
   generated glyph payload reports.
 
@@ -668,4 +668,5 @@ ROM image evidence has been captured for those ranges.
   row.
 - Resource fields `+0x28/+0x2a` and `+0x2f..+0x31`: decoded roles are
   documented as height inputs and chooser tie-breakers, while precise
-  manual terminology remains open in [resource-rom.md](resource-rom.md#owner-summary).
+  manual terminology remains open in
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix).

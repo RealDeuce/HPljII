@@ -3792,7 +3792,7 @@ State classification:
 Evidence:
 
 - Checked-in explanations:
-  [resource-rom.md](resource-rom.md),
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [built-in-resource-scan.md](built-in-resource-scan.md),
   [font-context-metrics.md](font-context-metrics.md),
   `Built-In Font Selection To Visible Text` in
@@ -4868,7 +4868,7 @@ Evidence:
   `Boundary: Secondary Segment-57 Source` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md),
   [transparent-print-data.md](transparent-print-data.md),
-  [resource-rom.md](resource-rom.md),
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [built-in-resource-scan.md](built-in-resource-scan.md),
   [formatter-interface-pca.md](formatter-interface-pca.md), and
   [rom-dump-manifest.md](rom-dump-manifest.md).
@@ -6480,8 +6480,9 @@ Address-level cluster map:
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md),
-  [resource-rom.md](resource-rom.md), and `Worked Path: Font Selection To
-  Visible Glyphs`. The font commands update candidate/context/map state
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix), and
+  `Worked Path: Font Selection To Visible Glyphs`. The font commands update
+  candidate/context/map state
   through resource-scan windows, `0xc580`, `0x13eb8`, `0x144d2`, and
   `0x14c64`; visible output is produced only when later printable bytes
   consume those contexts through `0xd04a -> 0x1393a -> 0x12f2e` and
@@ -7360,7 +7361,8 @@ Address-level cluster map:
   row-construction inputs.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
-  Checked-in documentation is [resource-rom.md](resource-rom.md),
+  Checked-in documentation is
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [built-in-resource-scan.md](built-in-resource-scan.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [font-sample-page.md](font-sample-page.md), surfaced first as
@@ -8868,7 +8870,7 @@ Address-level cluster map:
   unresolved part is physical ROM decode after verified resource-pair suffix
   `0x0bfe22..0x0bffff`. Evidence:
   [transparent-print-data.md](transparent-print-data.md),
-  [resource-rom.md](resource-rom.md), and
+  [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix), and
   [built-in-resource-scan.md](built-in-resource-scan.md).
 
 ## Pixel-Perfect Coverage And Residual Risks

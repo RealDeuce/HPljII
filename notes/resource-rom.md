@@ -105,6 +105,194 @@ Output effect:
   fields, glyph-entry interpretation, bitmap payload bytes, and continuation
   boundary rather than substituting inferred missing data.
 
+## Resource ROM Outcome Matrix
+
+This matrix composes the byte-level resource ledger into the parser-to-pixels
+dataflow. It covers the built-in font/resource bytes that the parser and render
+engine consume; it does not claim cartridge contents or bytes beyond the
+verified `IC32,IC15` image.
+
+Resource address mapping:
+
+- ROM path:
+  resource byte offset `N` maps to firmware address `0x080000 + N` for
+  verified local bytes through `0x0bffff`.
+- State category:
+  canonical resource data.
+- Writers:
+  none at runtime; the interleaved `IC32,IC15` image supplies immutable
+  firmware-visible bytes.
+- Readers / consumers:
+  startup scanner `0x41a`, built-in font scanner `0x1a2e4 -> 0x1a616`,
+  candidate classifier `0x1a9be`, font selectors, and glyph resolver
+  `0x1f354`.
+- Output effect:
+  no pixels directly; it defines the resource addresses later used for font
+  records, glyph tables, and bitmap payloads.
+- Evidence:
+  `generated/analysis/ic32_ic15_header.txt`,
+  `generated/analysis/ic32_ic15_resource_markers.txt`,
+  `generated/analysis/ic32_ic15_font_records.md`, and the address contract in
+  this note's reproduction section.
+
+Startup `HEAD` chain:
+
+- ROM path:
+  `0x41a`.
+- State category:
+  canonical resource data and firmware bookkeeping.
+- Writers:
+  scanner helper state while walking length-delimited records.
+- Readers / consumers:
+  boot/resource discovery code consumes the `HEAD` signature, record length
+  fields, record type fields, and chain terminator.
+- Output effect:
+  establishes that the verified resource image contains a valid built-in
+  resource chain; it does not select or render a font by itself.
+- Evidence:
+  fixture `0x41a HEAD scanner walks verified IC32/IC15 resource chain`,
+  [firmware-startup.md](firmware-startup.md#extension-and-resource-probing),
+  `tools/probe_resource_window.py`, and the header walkthrough below.
+
+Built-in resource scan and candidate windows:
+
+- ROM path:
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be`.
+- State category:
+  canonical resource data, derived/cache state, and firmware bookkeeping.
+- Writers:
+  candidate records and counts for accepted built-in font records.
+- Readers / consumers:
+  font selection helpers `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, and
+  chooser `0x14398`.
+- Output effect:
+  limits later text pixels to the resource records accepted by scan,
+  activation, symbol, height, spacing, pitch, and chooser filters.
+- Evidence:
+  [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+  `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`, and
+  `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`.
+
+Font selection and context install:
+
+- ROM path:
+  `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, `0x14398`, `0x144d2`,
+  `0x14c64`, and `0xc428`.
+- State category:
+  canonical selected-resource state, derived/cache state, and firmware
+  bookkeeping.
+- Writers:
+  selected resource contexts such as `0xc008004c`, `0xc00ae122`, and
+  `0x440946b4`; selected-font HMI/cache fields; and current-font/page-root
+  context slots consumed by printable text.
+- Readers / consumers:
+  printable-byte handler `0x1393a`, page object queueing `0x12f2e`, bridge
+  and publication paths, and compact glyph renderers.
+- Output effect:
+  selects which built-in resource table will supply future glyph rows, but
+  still produces no pixels until printable bytes build page objects.
+- Evidence:
+  [symbol-set-selection.md](symbol-set-selection.md),
+  [symbol-map-patching.md](symbol-map-patching.md),
+  `generated/analysis/ic30_ic13_font_context_bridge.md`, and selector
+  listings named in the source list above.
+
+Printable compact object path:
+
+- ROM path:
+  `0x1393a -> 0xd04a -> 0x12f2e -> 0x1387c`.
+- State category:
+  canonical page/text state and derived/cache state.
+- Writers:
+  compact source objects containing the mapped glyph index, selected resource
+  context, and object prefix consumed by later publication and render stages.
+- Readers / consumers:
+  page publication, render-record bridge, active render scheduler, and compact
+  object dispatcher `0x1ef6a -> 0x1efc2 -> 0x1effe`.
+- Output effect:
+  turns selected resource state and printable host bytes into page/image
+  structures that can later emit text pixels.
+- Evidence:
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
+  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
+  `generated/analysis/ic30_ic13_font_context_bridge.md`.
+
+Built-in glyph resolver:
+
+- ROM path:
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354`.
+- State category:
+  canonical resource data, canonical selected-resource state, and
+  derived/cache state.
+- Writers:
+  resolver registers and row-copy source pointers; no resource bytes are
+  modified.
+- Readers / consumers:
+  `0x1f354` consumes the active context cache, the compact glyph index, the
+  offset-table entry for bit-30 contexts, glyph-entry fields
+  `+0/+2/+4/+5/+6/+8`, and bitmap payload bytes. Row-copy helpers consume the
+  returned source pointers, span byte count, and row count.
+- Output effect:
+  emits the ROM-derived glyph rows used by built-in text, subject to the
+  explicit continuation boundary below.
+- Evidence:
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
+  `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+  and `generated/analysis/ic32_ic15_resource_glyph_probe.md`.
+
+Secondary segment-57 continuation:
+
+- ROM path:
+  `0x1f354 -> 0x1f1f0`.
+- State category:
+  canonical resource data, derived/cache state, hardware/external state, and
+  unknown.
+- Writers:
+  none for the resource bytes; the path computes source pointers and row-copy
+  bounds.
+- Readers / consumers:
+  secondary `LINE_PRINTER` context `0xc00ae122`, glyph `0x5f`, segment
+  `0x39`, source file offset `0x03fe22`, and firmware address `0x0bfe22`.
+- Output effect:
+  current-band rows backed by `0x0bfe22..0x0bffff` are ROM-derived. Rows that
+  require `0x0c0000..0x0c0321` are unresolved because that byte source is
+  outside the verified dumped pair.
+- Evidence: `tools/probe_resource_window.py --quiet`,
+  `generated/analysis/ic32_ic15_resource_glyph_probe.md`,
+  [boundary](end-to-end-reproduction-map.md#minimal-secondary-segment-57-boundary-walkthrough),
+  and the continuation decision rule below.
+
+State grouping for this matrix:
+
+- Canonical resource data:
+  `HEAD` records, `COURIER` and `LINE_PRINTER` font records, record fields,
+  glyph-table entries, glyph-entry fields, and bitmap bytes verified in the
+  local resource image.
+- Canonical selected-resource state:
+  selected context longwords, selected glyph table index, segment number, and
+  compact text selectors copied from font selection into page/render records.
+- Derived/cache state:
+  firmware addresses, local file offsets, hashes, decoded row dimensions,
+  placement spans, selected-font HMI/cache values, and continuation-policy
+  hashes.
+- Parser scratch:
+  none in the resource layer itself; parser and font-selection records choose
+  which resource state is consumed.
+- Firmware bookkeeping:
+  candidate lists/counts, current-font slots, page-root/render context slots,
+  selected-font flags, sample-page recent-context lists, and scan/checksum
+  helper state.
+- Hardware/external state:
+  physical decode after `0x0bffff`, optional cartridge/resource windows, and
+  address-controller or gate-array mapping for `0x0c0000..0x0c0321`.
+- Unknown:
+  physical bytes for firmware range `0x0c0000..0x0c0321` and manual-facing
+  names for several record fields. The parser, page-object, bridge, and
+  compact-dispatch routes listed above are not unknown for the documented
+  built-in glyph paths.
+
 ## Reproduction Contract
 
 For built-in font output, this resource layer is reproduced when the same

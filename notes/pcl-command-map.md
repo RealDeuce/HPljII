@@ -213,9 +213,12 @@ Use the row class before assigning a byte to a command-family owner:
   handlers such as `0x11eb6`, `0x11ec8`, `0x11eda`, `0x11ff6`,
   `0x12008`, and `0x1201e` update parser mode, callback pointer
   `0x78299a`, matched-byte scratch, or command-record cursor state. They do
-  not own page output. Their consumer is a later terminal row in the same PCL
-  family, for example `ESC`, `ESC &`, `ESC &l`, `ESC *c`, and the primary or
-  secondary font-family prefixes.
+  not own page output. Alternate font-family wrappers `0x11fd2` and
+  `0x11fe4` are setup-only rows: they call generic group setup `0x11ec8` and
+  tokenizer `0xdaf0`, but not the normal secondary/primary slot-record setup
+  helpers `0x11efe` / `0x11f26`. Their consumer is a later terminal row in the
+  same PCL family, for example `ESC`, `ESC &`, `ESC &l`, `ESC *c`, and the
+  primary or secondary font-family prefixes.
 - Normal terminal handler rows:
   a nonzero handler longword is the semantic handoff. The selected owner reads
   the live six-byte record at `0x78299e` and writes cursor, font, page,
@@ -832,6 +835,10 @@ Command-family suppression and exception matrix:
   exception is delayed raster transfer `ESC *b#W/w`, which keeps active
   payload scheduling through `0x11f82`.
 - Font designation and font-selection families:
+  alternate/data `ESC (` and `ESC )` prefixes remain active only as syntax
+  setup. Handlers `0x11fe4` and `0x11fd2` call generic group setup `0x11ec8`
+  and tokenizer `0xdaf0`, unlike normal handlers `0x1201e` / `0x12008`, which
+  also call primary/secondary slot setup `0x11f26` / `0x11efe`. The
   alternate/data `ESC (#` / `ESC )#` terminal rows and uppercase
   `ESC (s#B/H/P/S/T/V` / `ESC )s#B/H/P/S/T/V` rows are blank; lowercase
   font-selection finals rewind through `0x11f4c`. They therefore do not
@@ -862,7 +869,10 @@ Field groups:
 - Parser scratch:
   matched-byte buffer `0x783196..0x783199`, byte scratch cursor
   `0x782a26`, numeric scratch cursor `0x782a3e`, and scratch buffers flushed
-  through `0x123ae` and `0x123de`.
+  through `0x123ae` and `0x123de`. Alternate font-family prefix handlers
+  `0x11fd2` / `0x11fe4` write only parser-tokenizer state through `0x11ec8`
+  and `0xdaf0`; they do not create the normal synthetic slot record consumed
+  by `0x120be`.
 - Firmware bookkeeping:
   append sink `0xe002`, lowercase rewind helper `0x11f4c`, terminal reset
   path `0x11930..0x11ab8`, delayed restore `0x12218`, alternate payload
@@ -902,7 +912,10 @@ Evidence:
   mode-zero append path, table scan, `0x11930..0x11ab8` append-preserving
   terminal path, and `0x11b82` no-match append path.
 - `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` anchors
-  `0x12218`, `0x1228a`, `0x12328`, and `0x12358`.
+  `0x11fd2 -> 0x11ec8 -> 0xdaf0`, `0x11fe4 -> 0x11ec8 -> 0xdaf0`,
+  `0x12008 -> 0x11ec8 -> 0x11efe -> 0xdaf0`,
+  `0x1201e -> 0x11ec8 -> 0x11f26 -> 0xdaf0`, and alternate-payload
+  boundaries `0x12218`, `0x1228a`, `0x12328`, and `0x12358`.
 - [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix),
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [display-functions.md](display-functions.md#owner-summary) provide the

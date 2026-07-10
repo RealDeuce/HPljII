@@ -3,6 +3,79 @@
 Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch.
 13.
 
+## Owner Summary
+
+This note owns ROM status, attendance, host-output FIFO, and parser-visible
+backchannel behavior. These paths matter to byte-stream reproduction because
+they can return bytes to a bidirectional host, stall a parser-side producer,
+or change service/status control flow. They do not create page roots, page
+objects, publication records, render work, or bitmap rows.
+
+Primary routes:
+
+- Host-output FIFO:
+  `0xb0c0` appends one byte, `0xb022` removes one byte, and blocking wrapper
+  `0xb090` retries on a full FIFO using wait object `0x7801e2`.
+- Output worker:
+  `0xae2c` drains service byte `0x13`, pending status bytes, or FIFO bytes
+  according to backend selector `0x780e40`; helper `0xaece` builds outbound
+  status bytes.
+- Parser-visible model-ID response:
+  `ESC *r#K` and `ESC *s#^` reach wrapper `0x12034`; producer
+  `0x122be..0x12326` consumes the next query byte through `0xda9a` and emits
+  literal `33440A\r\n` from `0x12280..0x12288` only for query byte `0x11`
+  with active record word `1` or `-1`.
+- Page-environment status:
+  `0x2888` compares selected page/control record fields with active
+  environment state, writes `0x780e90` and `0x780e98`, and feeds host status
+  and panel/service selection.
+- Panel/service status:
+  `0x36e4`, `0x7612`, `0x7c96..0x7e20`, `0x8656`, `0x8a48`, and display
+  helpers under `0x8c7a..0x9406` fold status longwords, sensor/status bytes,
+  and page-environment state into host-visible or panel-visible messages.
+
+Field groups:
+
+- Canonical host-output state:
+  FIFO storage `0x783e92..0x783ed1`, count `0x783ed2`, read pointer
+  `0x783ed4`, write pointer `0x783ed8`, backend selector `0x780e40`, and
+  wait object `0x7801e2`.
+- Canonical parser/backchannel state:
+  synthetic setup record from `0x12034 -> 0x11efe`, active parser cursor
+  `0x78299e`, query byte from `0xda9a`, and literal `0x12280..0x12288`.
+- Canonical status state:
+  page-environment bytes `0x780e8e` / `0x780e8f`, selected page/control bytes
+  `+6/+7/+8`, status root fields `0x780e12`, `0x780e0a`, `0x780e2a`,
+  `0x780e32`, `0x780e2e`, and `0x780e36`.
+- Derived/cache state:
+  pending status count `0x780e22`, service byte latch `0x783e61`, reason byte
+  `0x783e60`, accepted status byte `0x780e62`, page-environment flag
+  `0x780e90`, media-feed cache `0x780e98`, and display shadow buffers.
+- Parser scratch:
+  the synthetic setup record and query byte used by `0x122be..0x12326`; these
+  are consumed by the backchannel producer and do not enter page/image state.
+- Firmware bookkeeping:
+  service latch fields, aggregate-status helper state, panel desired/shadow
+  buffers, display wrapper flag `0x78296c`, attendance byte `0x7821f9`, and
+  self-test/font-print selectors.
+- Hardware/external state:
+  physical output backend registers, panel side effects, and DC-controller or
+  sensor sources that produce attendance bits.
+- Unknown:
+  physical names/timing for output MMIO banks, panel flag-`1` effects, exact
+  external protocol name for query byte `0x11`, and sensor producers for
+  `0x7821f9`. No ROM-local page-object or render edge is unknown here.
+
+Output effect:
+
+- Host backchannel bytes are protocol output, not page pixels.
+- Pixel reproduction changes only indirectly if a bidirectional host reacts to
+  status/model-ID bytes by sending a different future stream, or if FIFO
+  fullness blocks a parser-side producer.
+- A closed byte-stream renderer can treat these paths as no-page-output
+  protocol state while still preserving FIFO order, blocking semantics, and
+  status byte formulas when host backchannel behavior is modeled.
+
 ## Normal Status
 
 | Message | Meaning |

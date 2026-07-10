@@ -231,7 +231,7 @@ boundaries:
   [page-raster-imaging.md](page-raster-imaging.md#owner-summary).
 - Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including
   the `0x12034 -> 0x122be` `33440A\r\n` producer and host-output FIFO:
-  [errors-and-status.md](errors-and-status.md) and
+  [errors-and-status.md](errors-and-status.md#owner-summary) and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary), with rule/span render
@@ -500,7 +500,7 @@ Normal table `0x112a4`:
   `0xcd86`, `0x12034`, `0x120d2`, `0x1219e`, and `0x12536`.
   Owners are [display-functions.md](display-functions.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md), and
-  [errors-and-status.md](errors-and-status.md). Normal display/transparent
+  [errors-and-status.md](errors-and-status.md#owner-summary). Normal display/transparent
   readers can feed bytes into `0xd04a` / `0xd0f0`; `0xcd86` and `0x12034`
   are host/status side channels with no page-object output.
 - Raster and rectangle imaging handlers:
@@ -1744,7 +1744,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   selector `0x780e40`, and mode `0` can also emit service/status bytes built
   by `0xaece`. No FIFO consumer feeds `0xda9a`, page roots, page objects,
   `0xff1e`, `0x1ed84`, or bitmap renderers. Evidence is
-  [errors-and-status.md](errors-and-status.md),
+  [errors-and-status.md](errors-and-status.md#owner-summary),
   [host-byte-fetch.md](host-byte-fetch.md),
   `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
   `generated/disasm/ic30_ic13_interface_output_worker_00ae2c.lst`,
@@ -1760,7 +1760,7 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   physical signal names for MMIO status/data registers, user-facing names for
   folded status categories, and the external protocol name for query byte
   `0x11`. Owner note:
-  [errors-and-status.md](errors-and-status.md).
+  [errors-and-status.md](errors-and-status.md#owner-summary).
 
 ## High-Value Normal-Mode Handlers
 

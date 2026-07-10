@@ -2580,6 +2580,7 @@ Evidence:
 
 - Checked-in explanations:
   [reset-default-environment.md](reset-default-environment.md),
+  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary),
   `Worked Path: Reset And Default Environment` and
   `Default Environment Record Producers` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), and

@@ -6903,7 +6903,8 @@ Default inputs consumed by reset:
   record helpers `0x96c4` / `0x97e4`, and maintenance helpers `0x56c2` /
   `0x571e` / `0x5a62` produce or maintain those canonical defaults. Their
   detailed producer contract lives in
-  [reset-default-environment.md](reset-default-environment.md).
+  [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md#owner-summary)
+  and [reset-default-environment.md](reset-default-environment.md).
 
 Default record producer chain:
 

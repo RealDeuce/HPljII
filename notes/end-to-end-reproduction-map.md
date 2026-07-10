@@ -5280,6 +5280,28 @@ Address-level cluster map:
   [firmware-dataflow-model.md](firmware-dataflow-model.md), the concrete
   two-printable-byte route in [pcl-command-map.md](pcl-command-map.md), and
   the text renderer section of [page-raster-imaging.md](page-raster-imaging.md).
+  Printable text state classification: canonical parser/text state is the
+  mode-zero printable byte in `D5`, selected slot `0x782f06`, current-font
+  records `0x782ee6` / `0x782ef6`, active maps `0x782f32` / `0x783032`, and
+  source object `0x782d7e` fields `+0x00`, `+0x04`, `+0x08`, `+0x0a`,
+  `+0x10`, `+0x12`, `+0x14`, and `+0x16` written by `0x1393a`, `0xd3b2`,
+  and `0xd824`. Canonical page/image state is current root `0x78297a`,
+  page-root slot `0x78297e`, live-font byte `0x78297f + slot`, compact bucket
+  root `+0x1c`, bucket object links, selector/class byte `+0x04`, entry count
+  `+0x06`, and compact payload entries written by `0x12f2e -> 0x1387c`.
+  Derived/cache state is HMI and previous-width placement state `0x78315c` /
+  `0x782a58..0x782a5c`, bucket index `0x782a7c`, compact coordinate words,
+  selector bits for context, width, and tall rows, plus render roots and band
+  fields after `0x1edc6`. Parser scratch is the transient printable byte,
+  high-bit normalization and `0xd99a` reporting, plus high-character flags
+  `0x783132/0x783133` while `0xd04a` decides whether to mask before
+  `0x1393a`. Firmware bookkeeping is text queue precheck result `0x782a6e`,
+  pending span state `0x783184..0x78318a`, page-root retry bit `+0x14.0`,
+  stream allocator fields `0x782a70/0x782a72/0x782a76`, publication flag
+  `0x782996`, and the compact render phase/cache fields used by `0x1effe` /
+  `0x1f354`. Hardware state is not a printable-cluster input after `0xa904`
+  has supplied the byte; later physical output timing starts only after the
+  ROM-derived render rows have been written.
 - Direct control and placement cluster:
   parser rows dispatch CR/LF/FF/HT/BS/SO/SI to `0xf02c`, `0xf08c`,
   `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, and `0xc68a`; cursor and margin

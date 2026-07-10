@@ -1172,8 +1172,8 @@ Evidence and unresolved edges:
 - Key listings include
   `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
-  `generated/disasm/ic30_ic13_page_record_alloc_010084.lst`,
-  `generated/disasm/ic30_ic13_reset_handlers_00cc52.lst`, and the page-control
+  `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`, and the page-control
   handler listings named by [publication-commands.md](publication-commands.md).
 - Exact unresolved middle edges are limited to variants that change a named
   field not listed here: a new `0xff1e` header bit path, a page-control command

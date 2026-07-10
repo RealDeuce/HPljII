@@ -824,7 +824,7 @@ Evidence:
 
 - Handler disassembly:
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
-  `generated/disasm/ic30_ic13_reset_handler_00cc52.lst`,
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
   `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
   `generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
   `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,

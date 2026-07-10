@@ -3571,7 +3571,8 @@ Output effect:
 
 Evidence and unresolved boundaries:
 
-- Detail notes: [external-ready-service.md](external-ready-service.md),
+- Detail notes:
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix),
   [errors-and-status.md](errors-and-status.md),
   [io-interfaces.md](io-interfaces.md), and
   [page-font-scheduler.md](page-font-scheduler.md).
@@ -3586,7 +3587,8 @@ Evidence and unresolved boundaries:
   `0xc1c6 displays pending external-ready message`, and
   `0xbb0a external-ready teardown ignores scheduler return`.
 - The retained-storage status edges are now software-composed in
-  [external-ready-service.md](external-ready-service.md): commit/readback
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix):
+  commit/readback
   failure writes `0x780e39.3` through `0x571e -> 0x9bee`, and `0xc1c6`
   consumes that bit as non-returning `68 SERVICE` through `0x85c0`; startup
   retained-record load reaches separate active-bank validation

@@ -1999,7 +1999,7 @@ State classification:
 Evidence:
 
 - Checked-in explanations:
-  [external-ready-service.md](external-ready-service.md),
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix),
   [errors-and-status.md](errors-and-status.md),
   [io-interfaces.md](io-interfaces.md),
   `Worked Path: External Ready Service Preemption` in
@@ -6555,7 +6555,7 @@ Address-level cluster map:
   `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst` and
   `generated/disasm/ic30_ic13_external_service_reset_00c06e.lst`.
   Reproduction evidence is
-  [external-ready-service.md](external-ready-service.md),
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix),
   `External Ready And Service Status Loop` in `notes/semantic-state-model.md`,
   and `Worked Path: External Ready Service Preemption` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md), plus fixtures for
@@ -6566,7 +6566,8 @@ Address-level cluster map:
   `0x782312` through `0x8c7a` when no status bits are active. This cluster
   is not a page-imaging producer, but it can stop or defer normal parsing
   before page objects are generated. The retained-storage service edge is
-  software-composed in [external-ready-service.md](external-ready-service.md):
+  software-composed in
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix):
   commit/readback failure sets `0x780e39.3` through
   `0x571e -> 0x9bee(0x780e36, 0x00000008)`, and `0xc1c6` consumes the same bit
   as non-returning `68 SERVICE` through `0x85c0`. Startup retained-record load

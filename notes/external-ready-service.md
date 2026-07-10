@@ -78,6 +78,159 @@ Output effect:
   register shadows, status bits, message buffer, `68 SERVICE` path, and
   teardown handoff.
 
+## External Ready Outcome Matrix
+
+This matrix composes `0xba48..0xc36e` into ROM-visible service/status
+outcomes. The loop is outside PCL page imaging: it can preempt host parsing and
+change status or service state, but it does not create page objects or bitmap
+rows.
+
+Entry and external-ready display:
+
+- ROM path:
+  `0x2e38 -> 0xba48 -> 0xbb36`.
+- State category:
+  canonical status/output state, derived/cache state, and firmware
+  bookkeeping.
+- Writers:
+  displays string `0xb63b` (`01 EXT READY`) through `0x8c7a`, writes
+  `$a200 = 0xff00`, clears `0x780e09`, sets entry latch `0x782302` when
+  entering the loop, and eventually writes aggregate status byte `0x780e08`.
+- Readers / consumers:
+  external-ready loop state, status aggregation `0x36e4`, and operator/status
+  display paths consume these fields.
+- Output effect:
+  no page pixels; the visible effect is service/display state outside the page
+  renderer.
+- Evidence:
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst` and
+  `generated/analysis/ic30_ic13_strings.txt`.
+
+Register shadow and message intake:
+
+- ROM path:
+  `0xbb84`, `0xbbb2`, `0xbc56`, `0xbc88`, `0xbcfe`, and `0xc340`.
+- State category:
+  derived/cache state, parser/status scratch, firmware bookkeeping, and
+  hardware/external state.
+- Writers:
+  samples `$fffee00b`, writes shadows `0x7822eb`, `0x7822ec`, and
+  `0x7828f9`, updates timing snapshots `0x78230a/0x78230e`, seeds
+  `0x782312` with `01 EXT READY`, and appends external text bytes from
+  `$fffee011` until carriage return.
+- Readers / consumers:
+  display helper `0x8c7a`, service dispatcher `0xc1c6`, final reset helper
+  `0xc108`, and status aggregation paths consume these shadows and buffers.
+- Output effect:
+  no page object. The message buffer can drive operator display text and can
+  preempt or delay normal parser progress.
+- Evidence:
+  `generated/disasm/ic30_ic13_external_service_io_00bcd8.lst` and fixture
+  `0xc1c6 displays pending external-ready message`.
+
+External status-bit publication:
+
+- ROM path:
+  `0xc0ae -> 0x9bee`.
+- State category:
+  canonical status/output state and hardware/external state.
+- Writers:
+  publishes `$fffee005.7` and `$fffee005.6` as masks `0x80` and `0x40` into
+  status longword root `0x780e2e`.
+- Readers / consumers:
+  host/status owner paths and service dispatch consume the published status
+  bits.
+- Output effect:
+  host/status side effect only; no page-root or render entry is involved.
+- Evidence:
+  `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst` and fixture
+  `0xc0ae publishes external status bits through 0x9bee`.
+
+Retained-storage service status:
+
+- ROM path:
+  writer `0x571e -> 0x9bee`; consumer `0xc1c6 -> 0x85c0`.
+- State category:
+  canonical status state, canonical retained-record state, firmware
+  bookkeeping, and hardware/external state.
+- Writers:
+  exhausted retained-record commit/readback retries set `0x780e39.3` through
+  mask `0x00000008`.
+- Readers / consumers:
+  `0xc1c6` tests `0x780e39.3`, clears service latch `0x7822fd`, samples the
+  service byte through `0xc2b8`, then calls non-returning service display
+  `0x85c0`.
+- Output effect:
+  displays `68 SERVICE` and stops in service display; no page/image path is
+  entered.
+- Evidence:
+  `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst` and
+  fixture `0xc1c6 dispatches 68 SERVICE from retained-status bit`.
+
+Pending external-ready message:
+
+- ROM path:
+  `0xc1c6`.
+- State category:
+  parser/status scratch and firmware bookkeeping.
+- Writers:
+  consumes pending-message flag `0x782301`, displays buffer `0x782312`
+  through `0x8c7a`, clears `0x782301`, and returns `D7 = 0`.
+- Readers / consumers:
+  caller/status loop observes the return value and cleared pending-message
+  state.
+- Output effect:
+  operator/status display only; no page object or bitmap row.
+- Evidence:
+  fixture `0xc1c6 displays pending external-ready message`.
+
+Teardown and scheduler handoff:
+
+- ROM path:
+  `0xbb0a -> 0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`.
+- State category:
+  firmware bookkeeping, derived/cache state, and scheduler state.
+- Writers:
+  clears service shadows, writes the cleared value to `$fffee00d`, clears
+  service-poll latch `0x7822fd`, calls page/font scheduler `0x19dd2`, ignores
+  scheduler `D7`, and writes final aggregate status byte `0x780e08` from
+  `0x36e4`.
+- Readers / consumers:
+  later host/status flow consumes the final aggregate byte; scheduler side
+  effects are owned by the page/font scheduler matrix.
+- Output effect:
+  no direct pixels. Normal parser/render work can resume after service teardown
+  according to the caller state.
+- Evidence:
+  `generated/disasm/ic30_ic13_external_service_reset_00c06e.lst`,
+  [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix),
+  and fixture `0xbb0a external-ready teardown ignores scheduler return`.
+
+State grouping for this matrix:
+
+- Canonical state:
+  status byte `0x780e08`, status longwords `0x780e2e` and
+  `0x780e36..0x780e39`, external control writes `$a200` / `$fffee00d` /
+  `$a801`, retained-storage failure bit `0x780e39.3`, and display/message
+  strings.
+- Derived/cache state:
+  register shadows `0x7822eb`, `0x7822ec`, `0x7828f9`, timestamp snapshots
+  `0x78230a/0x78230e`, and text-buffer state `0x782300..0x782322`.
+- Parser scratch:
+  none from PCL parser records; the message buffer is service-interface
+  scratch.
+- Firmware bookkeeping:
+  ready/service latches `0x782302`, `0x7822fd`, `0x7822fe`, `0x7822ff`,
+  stable service byte `0x7821aa`, timer baseline `0x7821ac`, copied byte
+  `0x7822fa`, and scratch bytes `0x7821e7..0x7821ef`.
+- Hardware/external state:
+  physical identity and timing of the `$fffee00*`, `$a200`, `$a801`,
+  retained-storage, and service/panel interfaces.
+- Unknown:
+  board-level device identity and some sibling service-bit names. No ROM-local
+  page-object, publication, render, or bitmap-write edge is unknown in this
+  service loop.
+
 ## Evidence
 
 - `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`

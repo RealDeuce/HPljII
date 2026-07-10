@@ -339,7 +339,7 @@ boundaries:
   publication, and data-chain byte replay:
   [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
 - External-ready service and page/font scheduler handoff:
-  [external-ready-service.md](external-ready-service.md#owner-summary),
+  [external-ready-service.md](external-ready-service.md#external-ready-outcome-matrix),
   [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix),
   and `Minimal Page/Font Scheduler Handoff Walkthrough` in
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), plus `Worked Path:

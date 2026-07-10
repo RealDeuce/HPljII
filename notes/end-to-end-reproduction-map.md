@@ -113,6 +113,70 @@ the language map names the route, this file composes the route into the
 host-byte-to-pixel model, and the owner note carries the low-level ledger with
 handler addresses, fields, consumers, evidence, and unresolved boundaries.
 
+## Objective Coverage Index
+
+This index maps the active documentation objective to the checked-in owner
+sections that currently carry the proof. It is a navigation contract, not a
+completion claim: if a stream changes a field, object byte, render input, or
+boundary outside these owners, the relevant owner note must be extended.
+
+- Host input handling and parser state transitions:
+  [host-byte-fetch.md](host-byte-fetch.md#owner-summary) owns `0xa904..0xab8a`, source
+  priority, data-chain replay, direct hardware fetches, and the `D7` caller contract.
+  [pcl-parser-core.md](pcl-parser-core.md#owner-summary) owns `0xda9a`, `0xdaf0`,
+  `0xdb74`, parser mode `0x782999`, command-record cursor `0x78299e`, and parser loop
+  `0x11774`.
+- Normal bytes, C0 controls, ESC entry, parameterized commands, binary
+  payloads, macro/replay input, and ignored/error cases:
+  [direct-control-codes.md](direct-control-codes.md#owner-summary) owns
+  printable `0xd04a`, C0 controls, cursor movement, spans, and line
+  termination; [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix)
+  owns ESC parsing, no-output rows, and parser artifacts;
+  [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix)
+  owns delayed restore `0x121cc -> 0x12218` and generic counted drains;
+  [macro-data-chain.md](macro-data-chain.md#owner-summary) owns
+  `0xe418`, `0xe4f4`, and `0xe22c` replay frames.
+- Command dispatch tables and mapping from parsed forms to handlers:
+  [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) owns
+  dispatch classes, table rows, terminal handlers, explicit zero rows,
+  delayed-payload setup, alternate/data append, and callback/no-match exits
+  from parser table roots `0x112a4` and `0x116f6`.
+- Detailed command-family behavior:
+  [pcl4-language.md](pcl4-language.md#level-iv-command-family-outcome-matrix)
+  is the manual-family route map. Owner notes carry the low-level fields and
+  effects: publication/page control, direct controls, display/transparent
+  readers, font and symbol selection, raster graphics, rectangle/rules,
+  downloaded fonts, macros, VFC, host/status side channels, and resource ROM
+  paths.
+- Page/image assembly model:
+  [page-record-storage.md](page-record-storage.md#owner-summary) owns
+  current page root `0x78297a`, compact/raster bucket root `+0x1c`, rule-list
+  root `+0x24`, fixed-list root `+0x28`, context slots `+0x2c..+0x68`,
+  stream allocation through `0x1381c` / `0x1387c`, and publication
+  `0xff1e`. Shared object shape and render bridge context are summarized in
+  `Shared Page-Object Contract` below.
+- Output/render engine:
+  [active-render-scheduler.md](active-render-scheduler.md#owner-summary) owns active
+  render scheduling and wait-object handoff.
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary) owns
+  bridge `0x1ed84 -> 0x1edc6`, render dispatch `0x1ef6a`, compact text/downloaded-glyph
+  helpers, segment-list and fixed-list helpers, rule/rectangle helpers, encoded raster
+  helper `0x1f88e`, destination buffers, and ROM-defined pixel composition.
+- Field and state classification:
+  [semantic-state-model.md](semantic-state-model.md#owner-summary) is the
+  canonical field-classification ledger. Owner notes repeat local groups as
+  canonical state, derived/cache state, parser scratch, firmware bookkeeping,
+  hardware/external state, and unknown state only where those fields affect a
+  specific route.
+- Evidence and unresolved boundaries: [source-index.md](source-index.md#owner-summary)
+  owns manual/PDF evidence boundaries. Checked-in owner notes cite focused listings
+  under `generated/disasm/`, table extracts under `generated/analysis/`, ROM fields,
+  static cross-references, and named fixtures as supporting evidence.
+  [unresolved-boundaries.md](unresolved-boundaries.md#unresolved-boundary-outcome-matrix)
+  is the compact index of exact stop points by reason: ROM-local invalid target/source,
+  missing resource data, hardware/MMIO boundary, optional external data, or
+  manual/physical correlation.
+
 ## Shared Page-Object Contract
 
 The current checked-in model treats page content as queued ROM objects, not as a

@@ -7170,15 +7170,18 @@ State classification:
   budget `0x783140`, and the host byte-source position where the stream stops
   before renderer entry.
 - Firmware bookkeeping:
-  partial parser/delayed-payload state used to drain or resume command input;
-  no completed downloaded-record allocation or page publication for the
-  stopped cases.
+  partial parser/delayed-payload state, common drain/return state through
+  `0x15dcc -> 0x12328` or `0x16c68 -> 0x12328`, and no completed
+  downloaded-record allocation, page-root bucket, publication flag, or
+  render-work object for the stopped cases.
 - Hardware/external state:
   none for this ROM-local parser cap.
 - Unknown:
-  no ROM-local renderer edge is open for these oversized streams because they
-  do not reach the renderer. Remaining uncertainty is only what a broader
-  host/application stream does after the parser stop point.
+  none for pixel reproduction of this oversized stream family. The remaining
+  host bytes after the capped payload budget are outside the stopped
+  `ESC )s#W` command's restored byte count; they belong to the next parser
+  input observed after the stop, not to an undiscovered downloaded-glyph
+  renderer edge.
 
 Output effect:
 

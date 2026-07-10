@@ -764,12 +764,17 @@ Outcome classes:
   [font-context-metrics.md](font-context-metrics.md),
   [page-record-storage.md](page-record-storage.md), and
   [page-raster-imaging.md](page-raster-imaging.md).
-- Direct C0 control:
-  CR, LF, FF, HT, and BS route through `0xf02c`, `0xf08c`, `0xf0f0`,
-  `0xf1cc`, and `0xf2a8`. These mutate cursor/page state, publish a page
-  for FF, or create no page object depending on the control. Owners:
-  [direct-control-codes.md](direct-control-codes.md) and
-  [publication-commands.md](publication-commands.md).
+- Direct C0 control: CR, LF, FF, HT, and BS route through `0xf02c`, `0xf08c`, `0xf0f0`,
+  `0xf1cc`, and `0xf2a8`. These mutate cursor/page state, publish a page for FF, or
+  create no page object depending on the control. The state that matters for later
+  pixels includes cursor `0x782c8a` / `0x782c8e`, margins `0x782dd6` / `0x782dda`,
+  HMI/VMI `0x78315c` / `0x783160`, line mode `0x78318f`, wrap byte `0x783190`, and
+  pending-width latches `0x782a58..0x782a5c`. Later consumers are printable `0xd04a`,
+  span flush `0xf34a -> 0x12714`, page-eject/publication `0xf124 -> 0xff1e`, raster
+  start, and rectangle clipping. Owners:
+  [direct-control-codes.md](direct-control-codes.md),
+  [publication-commands.md](publication-commands.md), and
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#command-family-to-page-object-crosswalk).
 - Explicit no-output parser row:
   normal-table zero handlers such as `NUL`, `BEL`, and `VT` reset parser mode
   and produce no page object or state mutation beyond parser bookkeeping.
@@ -804,6 +809,11 @@ Outcome classes:
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix);
   the language-facing entry point is
   [pcl4-language.md](pcl4-language.md#rom-semantic-index-for-quick-reference).
+  State-only terminals are still pixel dependencies when they write fields
+  later consumed by printable placement, VFC, raster setup, rectangle fill,
+  publication, or render scheduling; the field-level bridge is
+  [Command-Family To Page-Object
+  Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk).
 - Delayed binary payload:
   setup helpers such as `0x11f5a`, `0x11f6e`, `0x11f82`, and `0x11f96` call
   `0x121cc` to save a six-byte record in `0x782a20..0x782a25`, arm handler

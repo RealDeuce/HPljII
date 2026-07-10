@@ -1334,9 +1334,10 @@ render-record layers.
 
 ### Active Render Scheduler Semantic Checkpoint
 
-See [active-render-scheduler.md](active-render-scheduler.md) for the
-standalone published-record-to-band-render contract. This section preserves the
-full low-level ledger and fixture list.
+See [active-render-scheduler.md](active-render-scheduler.md) and its
+[Scheduler Outcome Matrix](active-render-scheduler.md#scheduler-outcome-matrix)
+for the standalone published-record-to-band-render contract. This section
+preserves the full low-level ledger and fixture list.
 
 This checkpoint covers the scheduler handoff from a published page/control
 pool record to active render work. It is the boundary after page-record

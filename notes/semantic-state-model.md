@@ -12604,7 +12604,9 @@ state, scheduler band words, or rendered rows.
 ## Published Record To Active Render Scheduler
 
 The standalone scheduler contract is in
-[active-render-scheduler.md](active-render-scheduler.md). This section
+[active-render-scheduler.md](active-render-scheduler.md), with the branch
+composition summarized in the [Scheduler Outcome
+Matrix](active-render-scheduler.md#scheduler-outcome-matrix). This section
 preserves the detailed low-level ledger and fixture evidence.
 
 Status: anchored as a composition checkpoint from a published

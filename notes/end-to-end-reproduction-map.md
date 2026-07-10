@@ -556,7 +556,8 @@ command-family and page-image structure:
 6. Cross the publication and scheduler boundary:
    use [publication-commands.md](publication-commands.md),
    [page-record-storage.md](page-record-storage.md), and
-   [active-render-scheduler.md](active-render-scheduler.md) to follow
+   the [Scheduler Outcome
+   Matrix](active-render-scheduler.md#scheduler-outcome-matrix) to follow
    `0xff1e`, pool cursors `0x780ea6/0x780eaa/0x780eae`, render-work pointer
    `0x783a18`, active copy `0x1ed84`, and bridge `0x1edc6`. If the stream is
    not published yet, the visible output remains pending page-record state.
@@ -9032,12 +9033,12 @@ shape, publication boundary, or render helper inputs.
    cleanup, throttle, capacity-wait, and render-call branches, while fixture
    `0x1eba4 scheduler band words render published downloaded glyph` checks
    the ROM-local interpretation of scheduler-produced band words `0..9`
-   against a published downloaded-glyph record. The reproduction rule in
-   [active-render-scheduler.md](active-render-scheduler.md#reproduction-contract)
-   makes that band contract explicit: only the capacity-approved branch
-   `0x1ec8e..0x1ecac` calls `0x1ef6a`; cleanup, stale-work, throttle-yield,
-   and capacity-wait branches are no-pixel scheduler outcomes for that
-   iteration.
+   against a published downloaded-glyph record. The [Scheduler Outcome
+   Matrix](active-render-scheduler.md#scheduler-outcome-matrix) makes that
+   band contract explicit: only the capacity-approved branch
+   `0x1ec8e..0x1ecac` calls `0x1ef6a`; cleanup, stale-work,
+   throttle-yield, and capacity-wait branches are no-pixel scheduler outcomes
+   for that iteration.
    The remaining scheduler risk is not a ROM object/rendering middle edge: it is
    board-level timing for `$8000.4`
    selection at `0x0f84..0x0fa0` and `0x1020..0x102e`, MMIO effects around `$a601 =

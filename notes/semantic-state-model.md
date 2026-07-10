@@ -8574,75 +8574,43 @@ installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: insta
   allocation-failure release through `0x1887a` is fixture-backed for the
   bit-30-clear extended fixed-record case; the remaining release risk is
   broader variant coverage, not this control-flow edge.
-- The span-metric bridge in `notes/font-context-metrics.md` now covers
-  host-fetched type-0, type-1, and type-2 downloaded payloads for both span
-  consumers, the shared consumer branch family, and a seven-case
-  parser-produced legal metric-value matrix that flips tight `d4ac`
-  page-extent gates, exercises rounded-metric clamping into `+0x2c/+0x2d`,
-  preserves zero rounded/offset fields through visible `d4ac` and `d8fc` span
-  objects, preserves negative offset byte `0xfe` as copied word `0xfffe`,
-  moves `d8fc` visible rows, updates `d8fc` without a span object, suppresses
-  both span consumers through copied lower-bound fields, and preserves `d4ac`
-  span output while `d8fc` exits `beyond-page-extent`. Fixture
-  `legal descriptor metric boundary values drive d4ac and d8fc consumers`
-  adds `d8fc` lower-bound equality, exact page-extent equality, max positive
-  offset byte `0x7f`, max negative offset byte `0xff`, normal rounded input
-  `0x0013` storing `+0x2c = 0x0014`, and the rounded `0x1500`,
-  `0x1508`, and `0x15ff` transforms to copied `+0x2c = 0x0060` that send
-  `d4ac` to `beyond-page-extent`. Those high-byte rounded cases prove the
-  descriptor transform discards the low byte; `d4ac` exits `beyond-page-extent`,
-  while `d8fc` consumes `+0x16/+0x18/+0x1a = 0x0004/0x0013/0x0001` and renders digest
-  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
-  Fixture
-  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
-  proves first-code zero and first-code `range - 1` are legal parser-produced
-  endpoints for the `0x17430` formula, copying derived/cache `+0x18` values
-  `0x0017` and `0x0000` while both legal selected forms still feed the
-  documented visible span paths.
-  Fixture
-  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
-  adds rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`;
-  they copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, preserving
-  `d4ac` span rows and `d8fc` high-y `20` / digest
-  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
-  Fixture
+- The span-metric bridge in `notes/font-context-metrics.md` now documents the
+  route from host-fetched type-0, type-1, and type-2 downloaded payloads through
+  descriptor validation, selected-font context, the `0xd4ac` and `0xd8fc` span
+  consumers, pending-span state, and render-facing span objects. The legal
+  inline/unflagged selected form reaches `0xd4ac`; the legal resource/flagged
+  selected form reaches `0xd8fc`; swapped forms fail at selected-map/render
+  boundaries rather than becoming additional metric paths.
+- The producer formulas feeding those consumers are documented from
+  `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`. The covered legal descriptor
+  classes include first-code zero, range-minus-one, range one/two,
+  lower-bound and upper-bound gates, exact page-extent fenceposts, low-nibble
+  rounding, byte-boundary rounding, clamped rounding, midpoint rounding,
+  signed positive and negative offsets, and mixed cases where all three
+  producer helpers change copied fields together.
+- The covered consumer effects are also route-level, not external pixel-oracle
+  claims. Copied `+0x2c` can send `d4ac` to compact-only output at the
+  page-extent gate or restore the normal span path after byte-boundary
+  rounding. Copied `+0x16/+0x18/+0x1a` can accept `d8fc` lower-bound equality,
+  accept exact page-extent equality, change high-y through the signed offset,
+  or exit before offset placement when the derived height already exceeds the
+  page extent.
+- Fixture anchors for this route are
+  `descriptor metric fields match across inline and resource contexts`,
+  `legal descriptor metric value matrix drives d4ac and d8fc consumers`,
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`,
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`,
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`,
   `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
-  consumers` adds rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and
-  `0x0102`, copying `+0x2c = 0x00fc/0x0100/0x0100/0x0104`; the capped
-  range sibling copies `0x0102` back to `0x0100` when `+0x14 = 0x0040`.
-  It proves `d4ac` flips from compact-only digest
-  `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`
-  at copied `0x00fc` to the standard span digest
-  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`
-  once copied `+0x2c` crosses to `0x0100`.
-  Fixture `legal descriptor metric mixed values drive d4ac and d8fc consumers` adds
-  middle-range combined producer cases: `0x0008/0x0030/0x002a/0x02` copies
-  `+0x18/+0x1a/+0x2c = 0x0027/0x0002/0x002c`, suppresses `d4ac`, and renders
-  `d8fc`; rounded `0x00ff` caps copied `+0x2c` to `0x00c0`; offset byte `0x80`
-  sign-extends to `+0x1a = 0xff80`; and first-code `0x002f` derives `+0x18 = 0`.
-  Fixture `legal descriptor metric tight range values drive d4ac and d8fc consumers`
-  adds the smallest legal range/count cross-products: range one copies
-  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
-  `0x0002/0x0001/0x0000`, and both still feed visible consumer rows while
-  varying rounded outputs and max signed offsets.
-  Fixture `legal descriptor metric extent fenceposts drive d4ac and d8fc
-  consumers` proves the `d8fc` page-extent fence after the derived-height
-  formula: range words `0x002f`, `0x0031`, and `0x0032` copy derived heights
-  `42`, `44`, and `45`; height `42` with offset `0` renders high-y `21`,
-  while heights `44` and `45` exit `beyond-page-extent` even with offsets
-  `1` and `2`.
-  Fixture
-  `descriptor metric fields match across inline and resource contexts` now
-  pins the legal inline/unflagged and resource/flagged producer forms plus the
-  two invalid swapped forms. The producer formulas are documented from
-  `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; additional legal metric
-  values are cross-products of those formulas and the covered matrix,
-  boundary, range-endpoint, extent-fence, mixed-value, tight-range,
-  low-nibble, and byte-boundary fixtures. Remaining descriptor work is
-  selected-font state combinations that change selected context records,
-  active maps, source-object fields, copied metric fields, pending span
-  fields, page-object fields, bridge context slots, or rendered rows, plus
-  external naming for consumed-but-not-staged validation fields.
+  consumers`, `legal descriptor metric mixed values drive d4ac and d8fc
+  consumers`, `legal descriptor metric tight range values drive d4ac and d8fc
+  consumers`, and
+  `legal descriptor metric extent fenceposts drive d4ac and d8fc consumers`.
+  Additional legal metric values are cross-products of the documented producer
+  formulas and consumer gates unless they change selected context records,
+  active maps, source-object fields, copied metric fields, pending span fields,
+  page-object fields, bridge context slots, or span-render inputs. External
+  naming for consumed-but-not-staged validation fields remains open.
 
 ## Macro Definition And Data-Chain Replay
 

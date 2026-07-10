@@ -4978,22 +4978,24 @@ State classification:
 
 Output effects:
 
-- Fixture `unflagged printable d4ac low-watermark flush renders span` checks
-  cursor y `21`, fields `+0x2b/+0x2c/+0x2d = 7/0/10`, and alternate-y state
-  produce high-y `28`, flush through `0x12714`, and render segment-list rows
-  `12..14`.
-- Fixture `flagged printable d8fc low-watermark flush renders span` checks
-  cursor y `21`, fields `+0x16/+0x18/+0x1a = 0/10/18`, and alternate-y state
-  produce high-y `3`, flush through `0x12714`, and render segment-list rows
-  `3..5`.
-- Host-fetched `ESC )s80W` descriptor fixtures prove `0x16fae` /
-  `0x1719c` can feed both legal forms: inline/unflagged contexts reach
-  `0xd4ac` and resource/flagged contexts reach `0xd8fc`; swapped forms fail
-  at concrete map/render boundaries rather than forming additional legal
-  metric paths.
-- Legal descriptor-matrix fixtures prove the ROM formulas above across lower
-  bounds, page extent equality, signed-offset extremes, range endpoints,
-  low-nibble rounding, byte-boundary rounding, mixed values, and tight ranges.
+- Unflagged printable placement routes through `0xd4ac` when source byte
+  `+0x10` selects the inline context form. With pending span state enabled,
+  `0xd4ac` consumes `+0x2b/+0x2c/+0x2d`, updates high-y/high-x, and can flush
+  through `0x12714` when current x falls below low-water `0x783186`.
+- Flagged printable placement routes through `0xd8fc` when source byte `+0x10`
+  selects the resource-style context form. With pending span state enabled,
+  `0xd8fc` consumes `+0x16/+0x18/+0x1a`, updates high-y/high-x, and can flush
+  through the same `0x12714` pending-span publication path.
+- Host-fetched `ESC )s80W` descriptors feed those consumers through the ROM
+  route `0x16fae` -> `0x1719c` -> selected-font context -> printable source
+  capture. Inline/unflagged contexts reach `0xd4ac`; resource/flagged contexts
+  reach `0xd8fc`; swapped forms fail at map/render boundaries instead of
+  forming additional metric paths.
+- The legal descriptor matrix covers the ROM formulas across lower bounds, page
+  extent equality, signed-offset extremes, range endpoints, low-nibble rounding,
+  byte-boundary rounding, mixed values, and tight ranges. These are static
+  producer/consumer route claims; fixture rows and digests are supporting
+  anchors, not an independent rendered-row oracle.
 
 Evidence:
 

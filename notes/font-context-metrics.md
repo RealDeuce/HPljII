@@ -2208,77 +2208,44 @@ Readers and consumers:
 
 Output effect:
 
-- Fixtures `host-fetched 0x1719c payload metrics feed d4ac span rows` and
-  `host-fetched 0x1719c payload metrics feed d8fc span rows` prove the
-  type-0 host-fetched `ESC )s80W` payload reaches each legal consumer and
-  changes visible span rows.
-- Fixtures `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc
-  span rows` and `host-fetched type-2 0x1719c payload metrics feed d4ac and
-  d8fc span rows` prove the same metric contract survives type-1 and type-2
-  payload forms.
-- Fixture `host-fetched metric variant changes d4ac gate and d8fc rows` proves
-  changing parser-produced `+0x2c` and `+0x1a` flips the tight `d4ac` page
-  gate and moves the rendered `d8fc` span key.
-- Fixture `host-fetched clamped metric variant changes d4ac gate and d8fc
-  rows` proves a reduced range/count clamps `+0x2c` to `0x0014`, flips the
-  `d4ac` gate, and changes `d8fc` high-y.
-- Fixture `host-fetched lower-bound metric variant suppresses d4ac and d8fc
-  spans` proves descriptor-owned lower-bound fields can suppress both span
-  consumers while preserving compact glyph output.
-- Fixture `host-fetched upper-bound metric variant keeps d4ac span but
-  suppresses d8fc` proves a wider range/count can preserve unflagged span
-  output while `d8fc` exits `beyond-page-extent`.
-- Fixture `legal descriptor metric value matrix drives d4ac and d8fc
-  consumers` covers small-rounded, clamped-rounded, midpoint-rounded,
-  zero-rounded-offset, negative-offset, lower-bound, and upper-bound legal
-  descriptor values behind the two legal selected forms.
-- Fixture `legal descriptor metric boundary values drive d4ac and d8fc
-  consumers` proves `d8fc` lower-bound equality, exact page-extent equality,
-  max positive offset byte `0x7f`, max negative offset byte `0xff`, normal
-  rounded `0x0013 -> +0x2c = 0x0014`, and the `0x1500` / `0x1508` /
-  `0x15ff -> +0x2c = 0x0060` rounded-transform family.
-- Fixture `legal descriptor metric extent fenceposts drive d4ac and d8fc
-  consumers` proves derived heights `42`, `44`, and `45` around the `d8fc`
-  page-extent gate. Height `42` with offset `0` renders; heights `44` and
-  `45` exit `beyond-page-extent` even when offsets `1` and `2` would move the
-  final high-y, proving the extent gate consumes derived height before offset
-  placement can recover the span.
-- Fixture `legal descriptor metric range endpoints drive d4ac and d8fc
-  consumers` proves `0x17430` accepts first-code zero as
-  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and the range-minus-one endpoint
-  as `0x0015/0x0014/0x0000`, with both legal forms still feeding the same
-  documented `d4ac` and `d8fc` visible output paths.
-- Fixture `legal descriptor metric mixed values drive d4ac and d8fc
-  consumers` proves multi-field legal combinations where `0x17430`,
-  `0x1757a`, and `0x1762a` all change: middle-range
-  `0x0008/0x0030/0x002a/0x02` copies `+0x18/+0x1a/+0x2c =
-  0x0027/0x0002/0x002c`, suppresses `d4ac`, and renders `d8fc`; rounded
-  `0x00ff` caps copied `+0x2c` to `0x00c0`; offset byte `0x80` sign-extends
-  to `+0x1a = 0xff80`; and late first-code `0x002f` derives `+0x18 = 0`,
-  keeping `d4ac` visible while `d8fc` exits before lower bound.
-- Fixture `legal descriptor metric tight range values drive d4ac and d8fc
-  consumers` proves the smallest legal range/count cross-products: range one
-  copies `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
-  `0x0002/0x0001/0x0000`, and both still feed visible `d4ac`/`d8fc` output
-  while varying rounded output and signed offset endpoints.
-- Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
-  consumers` proves inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
-  `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010` and keep
-  both consumers on the documented visible output paths.
-- Fixture `legal descriptor metric byte-boundary rounding drives d4ac and
-  d8fc consumers` proves rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and
-  `0x0102` copy to `+0x2c = 0x00fc/0x0100/0x0100/0x0104`; a range/count
-  `0x0040` sibling caps `0x0102` back to `0x0100`. The copied `0x00fc` case
-  leaves `d4ac` on compact-only output, while crossing to `0x0100` restores
-  the standard `d4ac` span digest. The same submatrix keeps `d8fc` at
-  `beyond-page-extent` because the derived `+0x18` exceeds the page extent.
+- Host-fetched `ESC )s80W` type-0, type-1, and type-2 descriptor payloads enter
+  `0x16fae`, stage validated metric fields below `0x782862`, and copy the
+  accepted sparse header through `0x1719c..0x1725c`. Once selected, the legal
+  inline/unflagged form reaches `0xd4ac`; the legal resource/flagged form
+  reaches `0xd8fc`. Swapping those forms fails at the selected-map/render
+  boundary instead of creating a third metric path.
+- `0xd4ac` uses copied bytes `+0x2b/+0x2c/+0x2d` to gate and update pending-span
+  high-y for inline/unflagged text. The documented metric variants change the
+  ROM inputs that matter to this consumer: copied `+0x2c` can suppress the span
+  on the page-extent gate, restore the standard span when rounding crosses a
+  byte boundary, or leave compact glyph output without a span object.
+- `0xd8fc` uses copied words `+0x16/+0x18/+0x1a` to gate and update pending-span
+  high-y for resource/flagged text. Lower-bound equality is accepted, exact
+  page-extent equality is accepted, and the page-extent comparison consumes the
+  derived height before the alternate y offset can recover an overlarge span.
+- The producer formulas that feed those consumers are fixed by ROM helpers:
+  `0x17430` derives range/count fields and `+0x18`, `0x1757a` derives rounded
+  and clamped `+0x2c`, `0x1762a` sign-extends the alternate offset, and
+  `0x1719c` copies the staged values into the installed payload.
+- The legal value matrix covers the semantic classes behind those formulas:
+  first-code zero, range-minus-one, range one/two, lower-bound and upper-bound
+  gates, exact page-extent fenceposts, low-nibble rounding, byte-boundary
+  rounding, clamped rounding, midpoint rounding, signed positive and negative
+  offsets, and mixed cases where all three producer helpers change copied
+  fields together. Additional legal values are cross-products of these formulas
+  and consumer gates unless they change a named copied field or branch product.
+- Accepted consumer updates flow into pending span state `0x783184..0x78318a`.
+  A low-water flush calls `0x12714`; portrait output becomes segment-list span
+  records through `0x13520` / `0x135f0`, while landscape output becomes
+  fixed-list records through `0x136d2`. The render side consumes those records
+  through `0x1edc6`, `0x1ef6a`, and the span render helpers.
 
 Confidence:
 
 - High for the copied-field formulas, selected-context legal forms, consumer
-  branch behavior, and visible span effects for the cited cases because each
-  claim is backed by host-fetched descriptor fixtures, disassembly, and
-  rendered row digests.
+  branch behavior, and page-record/span effects named above because each claim
+  is backed by ROM disassembly and host-fetched descriptor routes. Fixture row
+  digests are supporting branch anchors, not an independent rendered-row oracle.
 - Medium for broader descriptor compatibility only where a new byte stream
   changes a named ROM input to the documented path: selected context records,
   active maps, source-object fields, copied metric fields, pending span

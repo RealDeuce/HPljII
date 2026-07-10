@@ -5627,11 +5627,11 @@ or from a byte stream that changes a named field in the family sections.
   `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` documents the
   span-31 fallback A2 source-read boundary at offset `+0xb50` after
   `0x1f264` selected-segment dispatch. `Boundary: Downloaded-Glyph Payload
-  Count Cap` documents the parser/payload sibling: oversized segmented-wide
-  high-row streams exceed the restored `ESC )s#W` count cap `0x7fff`, so they
-  stop before installed-glyph publication or render dispatch. These are
-  ROM-local byte-to-output boundaries, not page-object publication or bridge
-  gaps.
+  Count Cap` is the exact ROM-stop sibling: oversized segmented-wide high-row
+  streams exceed the restored `ESC )s#W` count cap `0x7fff`, so they stop with
+  parser/payload budget state before installed-glyph publication or render
+  dispatch. These are ROM-local byte-to-output boundaries, not page-object
+  publication or bridge gaps.
 - Host physical interface:
   `0xa904..0xab8a` is documented as the normalized byte-source contract for
   parser reproduction. Remaining work is physical bus/MMIO naming for host

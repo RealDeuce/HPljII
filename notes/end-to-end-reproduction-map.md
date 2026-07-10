@@ -5748,12 +5748,26 @@ Address-level cluster map:
   `0x1a4fa`, and `0x1a900` before returning `D7 = 1`; later pixels can
   change only when font designation, downloaded-font lookup, printable text,
   publication, or rendering consumes the changed candidate/context state.
-  Canonical state is resource-window table `0x7828b6..0x7828dd` plus status
-  root `0x780e2e`; derived/cache state is scan pointer/limit state
-  `0x782884` / `0x78288c` / `0x782890` and candidate windows; parser scratch
-  is local predicate bytes `A6-0x29` / `A6-0x2a`; firmware bookkeeping is
-  current downloaded-font records `0x782640..0x782776`, candidate lists, dirty
-  bytes `0x782f2c` / `0x782f2d`, and caller-specific handling of `D7`.
+  Page/font scheduler state classification: canonical state is the two-slot
+  optional resource-window table `0x7828b6..0x7828dd`, status root
+  `0x780e2e`, status predicate byte `0x780e8d`, candidate count
+  `0x78278e`, and candidate-list count/window fields pruned or committed by
+  `0x1ba92` and `0x1a900`. Derived/cache state is scratch pointer
+  `0x782894`, optional-window scan cursor/base/limit
+  `0x782884/0x78288c/0x782890`, terminal byte `0x782898`, active
+  candidate-window pointers/counts `0x7827a8..0x7827b4` /
+  `0x782790..0x78279c`, and caller local result word `A6-0x02` for the
+  `0x1a2e4 -> 0x1b50e` font-scan path. Parser scratch is the two predicate
+  bytes `A6-0x29` / `A6-0x2a` plus fresh scratch slots
+  `A6-0x28..A6-0x15` and `A6-0x14..A6-0x01` filled by `0x1a0f2`.
+  Firmware bookkeeping is current downloaded-font records
+  `0x782640..0x782776`, candidate pointer-list entries `0x782324..`, dirty
+  bytes `0x782f2c/0x782f2d`, return value `D7`, caller-specific quiesce/menu
+  fields, and stack argument reuse for `0x19fb8`, `0x1ba92`, `0x178fa`, and
+  `0x1a4fa`. Hardware/external state is the optional resource-window contents
+  at `0x200000..0x3ffffe` and `0x400000..0x5ffffe`, plus the board-level
+  meaning of `$8000.14` and `$8000.15`; the scheduler itself does not queue
+  page objects, publish page records, call render entry, or write bitmap rows.
   Evidence is [page-font-scheduler.md](page-font-scheduler.md) and fixtures
   `0x19dd2 optional-window change composes refresh helpers`,
   `0x19dd2 modeled unchanged and status branch exits`,

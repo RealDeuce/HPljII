@@ -878,6 +878,8 @@ Evidence:
 `0x1393a..0x13994`,
 `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
 `0x12f2e..0x1306e`,
+`generated/analysis/ic30_ic13_printable_text_path.md`,
+`generated/analysis/ic30_ic13_text_cursor_span_flow.md`,
 [font-context-metrics.md](font-context-metrics.md#printable-source-capture),
 [page-record-storage.md](page-record-storage.md#page-assembly-decision-checkpoint),
 and fixtures `plain printable parser trace feeds page-record queue`,
@@ -886,37 +888,6 @@ and fixtures `plain printable parser trace feeds page-record queue`,
 parser trace feeds selected context output`, `flagged printable d8fc
 low-watermark flush renders span`, and `unflagged printable d4ac low-watermark
 flush renders span`.
-
-Field groups for this path:
-
-- Canonical state:
-  `0x782c8a` horizontal cursor, `0x782c8e` vertical cursor, current page root
-  `0x78297a`, current root context slot `0x78297e`, live-slot bytes
-  `0x78297f..`, and compact bucket objects under page-root `+0x1c`.
-- Derived/cache state:
-  source scratch `0x782d7e`, queue key `0x782a7c`, pending-width latch
-  `0x782a58/0x782a5a/0x782a5c`, and precheck result `0x782a6e`.
-- Parser scratch:
-  the admitted host byte and parser state that routed to `0xd04a`; after
-  `0x1393a`, the page-object producer consumes source scratch, not the parser
-  record.
-- Firmware bookkeeping:
-  `0x782a6d`, retry publication flag `root+0x15.0`, and span watermarks
-  updated later by `0xd4ac` / `0xd8fc`.
-- Unknown:
-  no unresolved ROM-local middle edge remains between a normal printable byte
-  reaching `0xd04a` and a compact bucket object reaching page-root `+0x1c` for
-  the documented short and segmented source shapes. New work must change one
-  of the named fields, allocation branches, source widths/rows, or compact
-  object bytes.
-
-Controlling evidence is
-`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst` for
-`0xd04a..0xd8fc`, `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
-for `0x12f2e..0x1306e`, and
-`generated/analysis/ic30_ic13_printable_text_path.md` /
-`generated/analysis/ic30_ic13_text_cursor_span_flow.md` for table extracts and
-field-reference scans.
 
 ## Output Effect
 

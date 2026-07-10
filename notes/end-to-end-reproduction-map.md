@@ -5581,27 +5581,38 @@ Address-level cluster map:
   fields are ROM-local inputs to later page-object construction.
 - Parser artifact and no-output cluster:
   explicit zero-handler rows, unmatched command forms, alternate/data appends,
-  and delayed restore paths stay in `0x11774`, `0x11912..0x119bc`,
-  `0x12218`, `0x1228a`, `0x12328`, `0x12358`, normal table `0x112a4`, and
-  alternate table `0x116f6`. Owners are
+  no-byte service returns, callback continuations, and delayed restore paths
+  stay in `0x11774`, `0x117d2..0x11818`, `0x118b2..0x11900`,
+  `0x11930..0x11ab8`, `0x119a6..0x119f4`, `0x11b32..0x11b8a`, `0x12218`,
+  `0x1228a`, `0x12328`, `0x12358`, normal table `0x112a4`, and alternate
+  table `0x116f6`. Owners are
   [pcl-parser-core.md](pcl-parser-core.md) and
   [pcl-command-map.md](pcl-command-map.md), with
   `Minimal Generic Counted Payload Drain Walkthrough` covering the no-output
   `W/w` wrapper path. The residual is a new table row or delayed-restore
   branch that changes saved parser record state or reaches a page-object
   owner. Normal zero-handler rows `0x00`, `0x07`, and `0x0b` match explicit
-  table entries, run terminal cleanup through `0x11912..0x119bc`, call
+  table entries, run terminal cleanup through `0x119a6..0x119f4`, call
   delayed restore `0x12218`, reset parser scratch, and do not fall through to
   printable or direct-control handlers. Alternate/data blank C0 rows
   `0x00` and `0x07..0x0f` append through `0xe002` before cleanup, so they can
   become visible only if later macro/data-chain replay feeds them back through
   `0xa904`. `ESC ?` is consumed by the `0xda9a` ESC-aware wrapper, `ESC Z` is
   local to display-functions readers, and `ESC &lT/t` has no page-output
-  handler.
+  handler. No-byte service path `0x117d2..0x11818` clears `0x780e3b`, services
+  wait object `0x780202`, and can return from the parser loop when
+  `0x782a92 == 0x63`. Normal mode-zero no-match path `0x118b2..0x11900`
+  either sends the byte to printable `0xd04a` when selected context byte
+  `0x782ee6 + 16 * 0x782f06 + 5` is `1`, or ignores the byte and fetches
+  again. Alternate/data mode-zero no-match path `0x11b82..0x11b8a` appends
+  the byte through `0xe002`. Nonzero-mode no-match path `0x11b32..0x11b7e`
+  calls active callback pointer `0x78299a`; a mode-zero callback return clears
+  parser cursors and delayed byte `0x782a1a`, while a nonzero return keeps the
+  command-family mode active.
   Concrete parser-artifact streams are now part of the route index.
   Normal-mode `NUL BEL VT` enters through `0xa904 -> 0xda9a -> 0x11774`,
   matches explicit zero-handler rows for `0x00`, `0x07`, and `0x0b`, runs
-  `0x11912..0x119bc -> 0x12218`, resets command/numeric scratch, and creates
+  `0x119a6..0x119f4 -> 0x12218`, resets command/numeric scratch, and creates
   no page root, page object, publication, render record, or host-output FIFO
   byte. `ESC ? 11` is swallowed in wrapper `0xda9a`: after `ESC`, fetch
   `0xdaa6` sees `?`, fetch `0xdab2` consumes third byte `0x11`, and the
@@ -5621,6 +5632,16 @@ Address-level cluster map:
   [pcl-command-map.md](pcl-command-map.md), and `Worked Path: Explicit
   No-Output Parser Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Service/no-match outcomes share the same no-page-output contract unless they
+  explicitly reroute to `0xd04a` or a callback owner: `0x117d2..0x11818`
+  consumes the `0x780e3b` no-byte latch and wait-object service boundary,
+  `0x118b2..0x11900` uses the selected-font context byte to decide
+  printable-versus-ignore for unmatched normal mode-zero bytes,
+  `0x11b82..0x11b8a` appends unmatched alternate/data mode-zero bytes, and
+  `0x11b32..0x11b7e` delegates unmatched nonzero-mode bytes to callback
+  `0x78299a`. These are parser control-flow outcomes, not hidden imaging
+  commands; page/render state begins only if the branch reaches `0xd04a` or a
+  downstream command-family owner.
   Parser-artifact state classification: canonical parser state is mode byte
   `0x782999`, normal versus alternate/data selector `0x782c18`, command-record
   cursor `0x78299e`, active six-byte records, delayed pending byte
@@ -5642,7 +5663,8 @@ Address-level cluster map:
   helper `0x9ec0`, and payload-control helper `0xd99a`. Hardware/external
   state is outside this cluster after `0xa904` admits the bytes. Unknown
   state remains only for future streams that reach a different rejecting
-  predicate, delayed consumer, append path, or status/error side channel.
+  predicate, callback owner, delayed consumer, append path, or status/error
+  side channel.
 - Transparent/display-reader cluster: transparent data uses `0x11f5a -> 0x121cc ->
   0x12218 -> 0x12452`; display functions use normal reader `0x12536` or alternate/data
   reader `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and

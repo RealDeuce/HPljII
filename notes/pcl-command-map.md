@@ -1053,6 +1053,19 @@ Outcome owners:
   The matrix below says which command-family owner receives the parsed form; the
   crosswalk says which page-root field, object class, and first render consumer the
   owner eventually reaches.
+- Delayed-payload restore owners:
+  `0x121cc` records the saved handler and six-byte command record, but the
+  restored handler defines the semantic route. Transparent restore
+  `0x12452` is owned by
+  [transparent-print-data.md](transparent-print-data.md), VFC table restore
+  `0x12cfe` by [vertical-forms-control.md](vertical-forms-control.md), raster
+  transfer restore `0x105d0` by [raster-graphics.md](raster-graphics.md),
+  downloaded-font descriptor/current-record restore `0x15d0a` and nonzero
+  resource/glyph restore `0x16c14` by
+  [downloaded-fonts.md](downloaded-fonts.md), and generic wrapper
+  `0x1228a` by the parser-core counted-drain path. In alternate/data mode,
+  `0x12358` preserves only the generic wrapper call; non-wrapper positive
+  counts append through `0xe002` instead of running the normal family owner.
 - Printable text and direct C0 controls: bytes reaching `0xd04a`, `0xd0f0`, `0xf02c`,
   `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a` are owned by [Printable
   Source Outcome Matrix](direct-control-codes.md#printable-source-outcome-matrix),

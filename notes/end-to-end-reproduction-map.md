@@ -6769,6 +6769,8 @@ Address-level cluster map:
   Flush And Fixed-Width Spans` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md),
   [font-context-metrics.md](font-context-metrics.md), and
+  [Fixed-List Outcome
+  Matrix](page-record-storage.md#fixed-list-outcome-matrix) in
   [page-record-storage.md](page-record-storage.md).
   Confidence is high for the pending state writers, metric gates, object byte
   shapes, orientation split, bridge shape, and ROM-derived row construction
@@ -9216,7 +9218,11 @@ Priority ROM-local documentation targets:
    named in [Render Helper Boundary
    Index](page-raster-imaging.md#render-helper-boundary-index): compact selector class,
    segment/fixed-list object bytes, raster encoded object fields, rule/fixed roots,
-   continuation mutation, fallback split, or row-copy helper inputs. Raster streams
+   continuation mutation, fallback split, or row-copy helper inputs. Fixed-list
+   landscape-span streams should start only when they change key derivation, insertion
+   order, object bytes, bridge continuation fields, five-band gating, or row
+   construction beyond the [fixed-list outcome
+   matrix](page-record-storage.md#fixed-list-outcome-matrix). Raster streams
    should start only when they change accepted-byte counts, row advancement, object
    bytes, or render inputs beyond the [raster transfer gate outcome
    matrix](raster-graphics.md#transfer-gate-outcome-matrix), and rectangle streams only

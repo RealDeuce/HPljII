@@ -674,6 +674,85 @@ landscape insertion; and fixture
 `0x1edc6 page-record bridge normalizes rule and fixed lists` for the
 root-to-render bridge.
 
+### Fixed-List Outcome Matrix
+
+This matrix composes the landscape span route from parsed command side effects
+to page-root object shape and the first render consumer. It is the owner
+checkpoint for fixed-list variants that do not change parser dispatch but do
+change object bytes, root `+0x28`, bridge `+0x20`, continuation fields, or
+`0x1f756` inputs.
+
+- Portrait span sibling:
+  `0x12714 -> 0x13520 -> 0x1354a -> 0x135f0` uses bucket root `+0x1c`, not
+  the fixed-list root. The fixed-list outcome for those streams is no
+  root-`+0x28` write; render later reaches segment-list consumer `0x1f812`
+  through bucket root `+0x18`.
+- Empty fixed-list insertion:
+  `0x1366c -> 0x137a2 -> 0x136d2` allocates one 14-byte object through
+  `0x1381c`, stores it as page-root `+0x28`, clears object link `+0x00`, and
+  fills bytes/words `+0x04`, `+0x05`, `+0x06`, and `+0x08`.
+- Nonempty ordered insertion:
+  `0x136d2` calls `0x13690` before allocation. The search compares existing
+  object byte `+0x04` with key `0x782a7c`, then returns a tail append,
+  head insert, or predecessor insert. Equal and lower keys stay before the
+  new node; the first larger byte becomes the insertion boundary.
+- Allocation failure:
+  a zero return from `0x1381c` exits either before root `+0x28` is written
+  for an empty list or after `0x13690` has searched a nonempty list. In both
+  cases root `+0x28`, existing nodes, and stream bookkeeping remain unchanged;
+  the upstream span-flush retry/publication behavior is owned by `0x12714`.
+- Bridge normalization:
+  `0x1edc6` copies source root `+0x28` to render root `+0x20`, ORs node byte
+  `+0x05` with `0x10`, copies source extent word `+0x08` to remaining-row
+  word `+0x0a`, writes byte `+0x0c = 1`, and writes byte `+0x0d = 8`.
+  These are derived render-continuation fields, not new parser state.
+- Render consumption:
+  `0x1f756` reads render root `+0x20` only on five-band boundaries. It skips
+  empty roots, nodes whose byte `+0x04` is beyond `band + 4`, and nodes with
+  remaining word `+0x0a <= 0`. Accepted nodes pass row displacement, selector
+  pattern `object[5] & 0x0f`, packed coordinate word `+0x06`, and remaining
+  rows to `0x1f7b0` / `0x1f626`.
+
+Field grouping for this route:
+
+- Canonical state:
+  page root `0x78297a`, fixed-list root `+0x28`, object link `+0x00`,
+  ordering byte `+0x04`, selector byte `+0x05`, packed coordinate word
+  `+0x06`, and extent word `+0x08`.
+- Derived/cache state:
+  `0x137a2` key fields `0x782a7a`, `0x782a7b`, `0x782a7c`, `0x782a7d`, and
+  `0x782a7e`; `0x13690` predecessor/tail status; render root `+0x20`; and
+  bridge-created continuation fields `+0x0a`, `+0x0c`, and `+0x0d`.
+- Parser scratch:
+  none is owned by `0x136d2`. The upstream parser or direct-control command
+  has already materialized pending span state before `0x12714` builds the
+  local source.
+- Firmware bookkeeping:
+  allocator state behind `0x1381c`, the zero/nonzero return in `D7`,
+  page-root retry bit `+0x14.0` set by `0x12714` when fixed-list allocation
+  failure forces publication, and the stream chunk accounting that must not
+  change on failed insertion.
+- Unknown:
+  no ROM-local producer-to-render middle edge remains for the documented
+  landscape span streams. New fixed-list work starts only when a byte stream
+  changes `0x137a2` key derivation, `0x13690` ordering, `0x136d2` object
+  bytes, `0x1edc6` continuation fields, the five-band gate in `0x1f756`, or
+  row construction through `0x1f7b0` / `0x1f626`.
+
+Evidence: producer listing
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+`0x1366c..0x1381a`; bridge listing
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+`0x1edc6..0x1ee5e`; render listing
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`
+`0x1f756..0x1f810`; fixtures
+`0x12714 landscape span inserts into nonempty fixed list`,
+`0x12714 allocation failure publishes page and retries span`,
+`0x136d2 address-aware fixed-list insertion uses 0x1381c storage`,
+`0x136d2 no-room return preserves fixed-list head after search`,
+`0x1edc6 page-record bridge normalizes rule and fixed lists`, and
+`0x1f756 fixed-width list renders bridged +0x20 object`.
+
 ## Render-Record Bridge Contract
 
 `0x1ed84` and `0x1edc6` are the publication-to-render boundary for page

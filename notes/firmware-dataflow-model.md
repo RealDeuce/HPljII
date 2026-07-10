@@ -6504,9 +6504,13 @@ State classification for this path:
   install-to-print-to-publication path, the listed normal/wide selector
   siblings, descriptor validation no-install exits, character-object
   no-install exits, or status-`2` partial-install visible-output exits.
-  Remaining downloaded-glyph work is broader row/span cross-products, exact
-  HP manual labels for some descriptor fields, and ROM-local behavior after
-  documented wrapped source-byte invalid-helper boundaries.
+  Remaining downloaded-glyph work starts only when row/span input changes a
+  concrete boundary: descriptor fields copied by `0x1719c`, installed row/span
+  state consumed by `0x16498`, payload budget `0x783140`, current source bytes
+  consumed by `0x12f2e`, compact selector classes `0x0003/0x1003/0x2003/0x3003`,
+  publication/bridge roots, or helper/source boundaries in
+  `0x1f034 -> 0x1f08e`, `0x1fe76 -> 0x1fe8a`, and `0x1f264`. Exact HP manual
+  labels for some descriptor fields remain external naming work.
 
 Evidence for this path is in
 [downloaded-fonts.md](downloaded-fonts.md),

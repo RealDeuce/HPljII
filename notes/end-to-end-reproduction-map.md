@@ -8222,9 +8222,13 @@ Address-level cluster map:
   handler-level state and ROM-derived row construction.
   No unresolved ROM-local middle edge remains for the documented
   `ESC &l#A`, `ESC &l#O`, `ESC &l66P`, `ESC &l0P`, `ESC &l#C/#D`,
-  `ESC &l#E`, or `ESC &l#F` paths. Remaining work is broader geometry
-  cross-products that expose new consumer behavior; physical output, if
-  captured, would be optional correlation outside the ROM render buffer.
+  `ESC &l#E`, or `ESC &l#F` paths. Remaining geometry work starts only when a
+  byte stream changes table-derived page code or orientation fields, extent or
+  text-bottom words consumed by printable placement and overflow checks,
+  publication-before-mutation state at `0xff1e`, VFC/perforation-skip
+  consumers, raster-origin or rectangle-clipping inputs, or render rows derived
+  after those changed fields. Physical output, if captured, would be optional
+  correlation outside the ROM render buffer.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed `ESC *b#W`,
   lowercase transfer chaining, active-raster resolution behavior, row caps,
   beyond-extent drains, and modes 0/1/2/3. Evidence: [Raster Command-To-Pixel Owner

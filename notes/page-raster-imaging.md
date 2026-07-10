@@ -3449,8 +3449,11 @@ Unresolved middle edges:
   fallback, non-Roman `0N` / `10U` / `11U`, real final-`@` defaults, final-`X`
   built-in and inline/downloaded success, final-`X` non-selected exits, and
   `0x13eb8` no-dispatch exits are page-visible through compact rendering.
-  Remaining ROM-internal work is broader command combinations only where they
-  expose new selected-context, map, or page-root slot states.
+  Remaining ROM-internal work starts only when a command combination changes
+  selected context records `0x782ee6/0x782ef6`, active maps
+  `0x782f32/0x783032`, page-root context slots `+0x2c..+0x68`, compact source
+  fields produced by `0x1393a`, or helper inputs consumed by `0x1f354` before
+  row-copy dispatch.
 - `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide, partial,
   no-install, row-count boundary, main width-span, and compact-wide remainder cases are
   documented; the segmented-wide matrix now covers spans `17..32` at rows `0x81`.

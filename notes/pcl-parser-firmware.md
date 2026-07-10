@@ -666,9 +666,13 @@ reset`, `mixed printable/reset page-record finalization publishes bridged
 record`, and `addressed printable reset publishes rendered page record` cover
 `! ESC E` from printable parse, compact bucket materialization, `0xff1e`
 publication/current-root clearing, and `0x1ed84`/`0x1ef6a` rendered rows.
-Remaining parser-firmware work is broader heterogeneous streams that expose
-different allocator fields, publication fields, bridge roots, or rendered
-rows, not this compact-text reset boundary.
+Remaining parser-firmware work starts only when a heterogeneous stream changes
+one of the concrete downstream boundaries already named by the owner notes:
+stream allocator fields `0x782a70/0x782a72/0x782a76`, publication fields or
+root clearing at `0xff1e`, bridge roots copied by `0x1ed84` / `0x1edc6`, or
+render inputs consumed by `0x1ef6a`. Additional compact-text/reset streams
+that preserve those fields are regression cross-products, not new
+parser-firmware documentation.
 
 For symbol-set selection, the harness now drives `ESC (2U` and `ESC )0E`
 through `0x120be`/`0x1be22`/`0xc580`, records active words `0x0055` and

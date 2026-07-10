@@ -818,7 +818,17 @@ Outcome classes:
   setup helpers such as `0x11f5a`, `0x11f6e`, `0x11f82`, and `0x11f96` call
   `0x121cc` to save a six-byte record in `0x782a20..0x782a25`, arm handler
   pointer `0x782a1c`, and store the payload budget. Restore `0x12218` copies
-  the saved record back before the family reader consumes raw bytes. Owners:
+  the saved record back before the family reader consumes raw bytes. The
+  restored handlers define the first semantic effect: transparent data
+  `0x12452` routes counted bytes into fixed-space/control or printable
+  output, VFC table load `0x12cfe` writes table state for later channel
+  movement, raster transfer `0x105d0` queues encoded raster objects,
+  downloaded-font count-zero `0x15d0a` updates descriptor/current-record
+  state, downloaded-font nonzero `0x16c14` installs resource or glyph payload
+  data, and generic wrapper `0x1228a` drains bytes without page output.
+  Alternate/data restore through `0x12358` either preserves the generic drain
+  or appends non-wrapper payload bytes through `0xe002` instead of calling the
+  normal family handler. Owners:
   [transparent-print-data.md](transparent-print-data.md),
   [raster-graphics.md](raster-graphics.md),
   [downloaded-fonts.md](downloaded-fonts.md), and

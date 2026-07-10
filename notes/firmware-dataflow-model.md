@@ -3275,8 +3275,8 @@ State classification:
   `0x780e62`, aggregate words `0x780e12` and `0x780e0a`, warning/status
   accumulator `0x780e2a`, page-environment status flag `0x780e90`, and cached
   media/status code `0x780e98`.
-- Parser scratch: the synthetic setup record appended by `0x11efe` and the
-  normal command-record cursor state used by `0x122be`.
+- Parser scratch: transient query/fetch state used by `0x122be` before the
+  byte is accepted as `0x11` or reported through `0x9ec0`.
 - Firmware bookkeeping: wait object `0x7801e2`, output worker sleep state,
   and service-message fields consumed by `0x7612`, `0x8656`, and `0x8a48`.
 - Hardware/external state: physical names and timing for `0xfffe0001`,

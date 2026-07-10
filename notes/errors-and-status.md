@@ -52,8 +52,9 @@ Field groups:
   `0x783e60`, accepted status byte `0x780e62`, page-environment flag
   `0x780e90`, media-feed cache `0x780e98`, and display shadow buffers.
 - Parser scratch:
-  the synthetic setup record and query byte used by `0x122be..0x12326`; these
-  are consumed by the backchannel producer and do not enter page/image state.
+  transient query/fetch state while `0x122be..0x12326` reads through
+  `0xda9a` before either accepting query byte `0x11` or reporting another byte
+  through `0x9ec0`. These bytes do not enter page/image state.
 - Firmware bookkeeping:
   service latch fields, aggregate-status helper state, panel desired/shadow
   buffers, display wrapper flag `0x78296c`, attendance byte `0x7821f9`, and
@@ -123,8 +124,8 @@ State classification:
   `0x783e61`, reason byte `0x783e60`, accepted status byte `0x780e62`,
   page-environment flag `0x780e90`, media-feed cache `0x780e98`, and folded
   status fields `0x780e0e` / `0x780e1a`.
-- Parser scratch: the synthetic setup record and query byte consumed by
-  `0x122be..0x12326`.
+- Parser scratch: transient query/fetch state consumed by
+  `0x122be..0x12326` before the byte is accepted or reported.
 - Firmware bookkeeping: FIFO critical sections, wait-object scheduling,
   display/message shadow state, service latch fields, and panel wrapper flag
   `0x78296c`.

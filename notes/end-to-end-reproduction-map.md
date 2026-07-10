@@ -5910,9 +5910,10 @@ Address-level cluster map:
   active service byte `0x783e61`, reason byte `0x783e60`, and bridge/status
   byte `0x780e90`. Derived/cache state is pending status count `0x780e22`,
   last accepted service/status byte `0x780e62`, host-status composition bits,
-  and reason-byte folding in `0xaece`. Parser scratch is the synthetic setup
-  record plus query byte consumed by `0x122be..0x12326`; these bytes do not
-  become page/image state. Firmware bookkeeping is FIFO critical sections,
+  and reason-byte folding in `0xaece`. Parser scratch is transient query/fetch
+  state in `0x122be..0x12326` before the byte is accepted as `0x11` or
+  reported through `0x9ec0`; these bytes do not become page/image state.
+  Firmware bookkeeping is FIFO critical sections,
   blocking enqueue through `0xb090`, worker drain selection in `0xae2c`,
   `ESC z` service markers `0x7821cc` / `0x7822db`, and external protocol or
   register naming behind `0x780e40`. Hardware/external state is limited to

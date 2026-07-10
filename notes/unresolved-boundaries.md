@@ -163,12 +163,17 @@ State classification for these pixel-affecting stops:
   helper `0x1f0d2` and are documented for sampled cases.
 - Exact stopped state:
   low source width bytes `0x00..0x10` target helpers outside the decoded
-  row-copy helper heads. Listing
+  row-copy helper heads after the normal page-object path has already
+  published bucket `0`. The installed full width word is still canonical
+  glyph state, but `0x12f2e` chooses selector `0x0003` from the printable
+  source low byte. `0x1f034` then uses the full span returned by `0x1f354` as
+  the `0x1f08e` table index. Listing
   `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst` shows
   the sample target is not a row-copy helper.
 - What is not unresolved:
-  installed span preservation, compact object fields, helper selection for
-  legal high-width cases, and the page-record bridge.
+  parser payload restore, installed span preservation, low-byte selector
+  choice, compact object fields, publication bucket `0`, render-record bridge,
+  and helper selection/pixel derivation for legal high-width cases.
 - Evidence: `Downloaded-Glyph Render Decision Checkpoint` in
   [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
   [page-raster-imaging.md](page-raster-imaging.md), `Downloaded Glyph Renderer Boundary

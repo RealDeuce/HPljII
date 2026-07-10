@@ -2007,6 +2007,80 @@ with `tst.b $7821b9.l`, branches through scheduler/control helpers, and later
 unwinds a normal stack frame; it is not a row-copy helper entered with a
 renderer-compatible prologue.
 
+### Wrapped Width Low-Byte Invalid Helper Checkpoint
+
+This checkpoint composes the wrapped-width stop into the semantic model. It is
+part of the downloaded-character command family, but the unresolved edge is in
+the render helper table, not in parser restore, glyph install, publication, or
+page-record bridge state.
+
+Writers and readers:
+
+- `0x16498` writes canonical downloaded-character records. The width-span
+  fixture proves installed width words through `0x020d` survive in record word
+  `+8`, while the bitmap payload and mode byte are installed normally.
+- `0x12f2e` reads the printable source object's low width byte, not the
+  installed record's full width word, when choosing the compact selector. Low
+  source width bytes `0x00..0x10` therefore publish selector `0x0003`; source
+  bytes `0x11..0xff` publish selector `0x1003`.
+- `0xff1e` publishes bucket `0` for both sides of the split and clears the
+  current root. The published bucket root matches the object queued before
+  publication.
+- `0x1ed84 -> 0x1ef6a -> 0x1effe` consumes that published bucket. Selector
+  `0x1003` reaches wide compact helper `0x1f0d2`; selector `0x0003` reaches
+  short compact helper `0x1f034`.
+- `0x1f034` calls `0x1f354`, stores the resolved span in `D5`, shifts `D5`
+  left by two, reads longword table `0x1f08e[D5]`, and jumps to the result.
+  There is no bounds check before the `jsr (A0)` at `0x1f066`.
+
+State classification:
+
+- Canonical state:
+  installed downloaded-glyph table entries, full installed width words such as
+  `0x0102`, mode byte `1` or `2`, bitmap bytes, queued page object, published
+  bucket `0`, and render-record bucket root.
+- Derived/cache state:
+  printable low width byte, compact selector `0x0003` / `0x1003`, compact
+  object byte `0x00` / `0x10`, helper table index `D5 << 2`, and invalid
+  helper target longword.
+- Parser scratch:
+  restored `ESC )s#W` record, payload budget `0x783140`, copy status `1`,
+  zero-byte drain through `0x12328`, and next parser handler `0xd04a`.
+- Firmware bookkeeping:
+  downloaded-record allocation around `0x16c14` / `0x16498`, publication flag
+  `0x782996`, and render-work progress.
+- Hardware/external state:
+  none. This stop is entirely inside ROM control flow and ROM tables.
+- Unknown:
+  execution after the invalid `0x1f08e[D5]` target under the compact-renderer
+  register and stack context. No page-record, publication, or dispatch edge is
+  unknown for this byte-stream family.
+
+Output effect:
+
+- The valid high-source-byte sibling reaches pixels: selector `0x1003` enters
+  `0x1f0d2`, and sampled spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and
+  `0x01fe` derive rows from the installed bitmap through the documented wide
+  compact full-chunk/remainder model.
+- The low-source-byte sibling stops before a pixel contract. For span
+  `0x0102`, `0x1f034` indexes `0x1f08e + (0x0102 << 2) = 0x1f496`, reads bytes
+  `00 00 66 cc`, and jumps to `0x0066cc`. Listing
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst` shows
+  `0x0066cc` starts inside unrelated control/status code, not at a row-copy
+  helper head. A reproducer should report this exact invalid-helper boundary
+  after modeling the documented upstream state.
+
+Evidence:
+
+- Parser/install/publication evidence is the fixture
+  `downloaded glyph width-byte boundary truncates page-record span`, described
+  above.
+- Render-table evidence is
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` for
+  `0x1f034..0x1f066` and table base `0x1f08e`.
+- Invalid-target evidence is
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`.
+
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`
 streams whose descriptor widths produce spans `17..32`, row word `0x0081`,

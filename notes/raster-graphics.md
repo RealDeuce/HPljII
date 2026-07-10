@@ -535,6 +535,37 @@ boundary. The writer set is therefore `0x105d0` for `+0x02`, `+0x04`,
 `+0x06`, and `+0x12`; the consumers are `0xdace` for discarded bytes,
 `0x10084` for page-root availability, and `0x13070` for accepted rows.
 
+Representative parser-fed gate outcomes:
+
+- Capped queue:
+  the `ESC *t300R` / `ESC *r0A` / `ESC *b4W f0 0f aa 55` gate path reaches
+  `0x10808`, `0x1075a`, `0x11f82`, `0x12218`, and `0x105d0`. With byte limit
+  `2`, `0x105d0` stores accepted count `+0x04 = 2`, overflow
+  `+0x06 = 2`, and queues only the first two payload bytes as object
+  `00 00 00 00 80 00 00 02 00 00 f0 0f`; the remaining two bytes are drain
+  input, not object payload.
+- Inclusive page-extent queue:
+  when the computed row equals page extent `15`, the same delayed record path
+  still queues the row, advances the modeled row state to `16`, and emits
+  encoded object `00 00 00 00 80 00 00 02 f0 00 f0 0f`. The final rendered
+  row for that object is `####........####`.
+- Beyond-extent drain:
+  when the row is already beyond extent, `0x1065c..0x10698` drains all four
+  payload bytes through `0xdace`, returns before `0x10084`, leaves the gate
+  unqueued, and does not advance row state.
+- Negative-row drain:
+  when the row is `-1`, the count/overflow stores still occur
+  (`+0x04 = 2`, `+0x06 = 2` for the capped four-byte stream) and `0x10084`
+  still ensures a root, but `0x106b6..0x106f6` drains all four payload bytes
+  without calling `0x13070`. The exit path advances the modeled row state to
+  `0`, and object length remains zero.
+
+The host-fetched gate fixture starts from the same admitted byte stream through
+`0xa904` before these outcomes, so the parser-to-family boundary is not only a
+modeled state setup. The documentation claim is still ROM-local: the evidence
+is the restored record, gate stores, object bytes or no-object outcome, and
+handler addresses above, not a comparison to a physical printed raster row.
+
 For rows that pass the beyond-extent test, `0x105d0` ensures a page root through
 `0x10084`, writes current row word `+0x02`, and either drains a negative row or
 calls `0x13070` with the raster state block. If `0x13070` reports no room, it

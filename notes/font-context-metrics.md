@@ -150,6 +150,114 @@ Output effect:
   reads page-root/render context slots, mapped glyph bytes, source-class flags,
   and resource or downloaded glyph records.
 
+## Font Request Outcome Matrix
+
+This matrix composes the delayed-output font request family from parsed command
+handlers to later printable pixels. It covers multiple writers that share
+common refresh `0xc580`, page-root context install `0xc428`, printable source
+capture `0x1393a`, and compact render dispatch. It starts after parser
+dispatch has reached the command-family handler and stops at the first
+page-object producer or explicit no-output outcome.
+
+- Font attribute writer:
+  wrappers `0x12046`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, and
+  `0x1205a` route to attribute writers `0xc6ec`, `0xc780`, `0xc930`,
+  `0xc89c`, `0xc840`, and `0xc7e0`. They write requested point, style,
+  spacing, pitch, stroke, or typeface fields under the primary/secondary
+  request block, then mark dirty flags `0x782f2c` / `0x782f2d`. The output
+  effect is pending font state; no page object is queued.
+- Pitch-mode compatibility writer:
+  `0xc390` handles `ESC &k#S/s` selectors `0`, `2`, and `4` by rewriting the
+  active parser record into synthetic pitch records and calling
+  `0xc89c -> 0xc580`. Selector `0` performs two synthetic updates; selectors
+  `2` and `4` perform one; all other selectors return through `0xc420`
+  without changing pitch or refreshing font state.
+- Symbol/font designation writer:
+  `0x120be -> 0x1be22` writes requested symbol/default/font-id state, with
+  detailed outcomes owned by the [Symbol/Font Designation Outcome
+  Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix).
+  Its output joins the same `0xc580`, `0x13eb8`, `0x144d2`, `0x14c64`, and
+  later printable path as ordinary font attributes.
+- Common refresh:
+  `0xc580` consumes dirty flags, selected text slot `0x782f06`, page-root live
+  flags `0x78297f..0x78298e`, current contexts, and transient record
+  `0x782992`. Dirty-1 selector matches can refresh and install; dirty-1
+  selector mismatches refresh only; full-root paths may reuse or skip install;
+  dirty-2 final-`X` selector matches install the already selected context
+  without another `0x13eb8` refresh.
+- Candidate, context, and map selection:
+  `0x13eb8` filters candidates; `0x14398` selects a candidate slot;
+  `0x144d2` writes current-font context `0x782ee6` or `0x782ef6`; `0x14c64`
+  rebuilds map `0x782f32` or `0x783032`; `0x14f16` applies symbol-map patches;
+  and `0x1440c` snapshots selected-font state. These are canonical or
+  derived font state, not page objects.
+- Page-root context install:
+  `0xc428` selects primary or secondary context, and `0xc4fc` either reuses a
+  matching root slot or installs the context under current page-root
+  `+0x2c..+0x68`. It writes selected page-root slot `0x78297e`. The live flag
+  is marked later by printable queueing, so a context install alone still has
+  no pixels.
+- Later printable object:
+  `0xd04a -> 0x1393a` reads selected slot `0x782f06`, current context,
+  active map, cursor state, and page-root context slot. It writes source
+  fields under `0x782d7e`; `0xd3b2` or `0xd824` positions the source and marks
+  the selected root slot live; `0x12f2e -> 0x1387c` queues compact text under
+  page-root `+0x1c`. This is the first page-object output for the font request
+  family.
+- Span side effect:
+  while printable bytes are placed, `0xd4ac` or `0xd8fc` can update pending
+  span state from selected context metrics. A later flush through
+  `0xf34a -> 0x12714 -> 0x126e2` turns that state into segment-list or
+  fixed-list page objects.
+- Render consumer:
+  publication `0xff1e`, bridge `0x1edc6`, and render entry `0x1ef6a` carry
+  compact text and copied context slots to `0x1effe -> 0x1f354`. The renderer
+  consumes the captured mapped glyph byte plus copied context slot; it does
+  not re-run the original PCL font request.
+
+State classification for this matrix:
+
+- Canonical state:
+  requested font fields under the primary/secondary request blocks, selected
+  slot `0x782f06`, current contexts `0x782ee6/0x782ef6`, selected maps
+  `0x782f32/0x783032`, page-root context slots, source record `0x782d7e`,
+  compact text objects, and span objects emitted by `0x12714`.
+- Derived/cache state:
+  selected candidate `0x7828a8`, selected target `0x7828de`, transient context
+  `0x782992`, selected-font snapshots `0x783148/0x783152`, map flags
+  `0x783132..`, HMI `0x78315c`, compact coordinates, pending span bounds, and
+  render-band fields after publication.
+- Parser scratch:
+  command records at `0x78299e`, synthetic pitch records written by `0xc390`,
+  symbol/designation setup records, parsed integer/fraction fields, and the
+  cursor advances that let shared writers consume synthetic records.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c/0x782f2d`, page-root live flags
+  `0x78297f..0x78298e`, transient full-root flag `0x78298f`, `0xc4fc`
+  full-status result, publication flag `0x782996`, and scheduler progress
+  after a page is published.
+- Hardware/external state:
+  none after the byte stream has reached these ROM handlers. Optional
+  resource-window contents can change candidate records but not the documented
+  writer/refresh/printable control flow.
+- Unknown:
+  no ROM-local output edge remains for the documented font-attribute,
+  pitch-mode, symbol/designation, SI/SO, final-`X`, current-RAM handoff, or
+  span-metric paths. New work must change a concrete refresh branch, selected
+  context/map, source field, page-root object, bridge slot, or render helper
+  input.
+
+Evidence:
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`,
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+[Symbol/Font Designation Outcome
+Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix), and
+fixtures named in this note's Evidence list.
+
 ## Concept
 
 The firmware does not render text directly from the current PCL font request.

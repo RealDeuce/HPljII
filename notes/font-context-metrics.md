@@ -235,12 +235,13 @@ State classification for this matrix:
 - Canonical state:
   requested font fields under the primary/secondary request blocks, selected
   slot `0x782f06`, current contexts `0x782ee6/0x782ef6`, selected maps
-  `0x782f32/0x783032`, page-root context slots, source record `0x782d7e`,
-  compact text objects, and span objects emitted by `0x12714`.
+  `0x782f32/0x783032`, selected candidate `0x7828a8`, selected target
+  `0x7828de`, selected-font flags `0x783132` / `0x783133`, HMI
+  `0x78315c`, page-root context slots, source record `0x782d7e`, compact text
+  objects, and span objects emitted by `0x12714`.
 - Derived/cache state:
-  selected candidate `0x7828a8`, selected target `0x7828de`, transient context
-  `0x782992`, selected-font snapshots `0x783148/0x783152`, map flags
-  `0x783132..`, HMI `0x78315c`, compact coordinates, pending span bounds, and
+  transient context `0x782992`, selected-font snapshots
+  `0x783148/0x783152`, compact coordinates, pending span bounds, and
   render-band fields after publication.
 - Parser scratch:
   command records at `0x78299e`, synthetic pitch records written by `0xc390`,
@@ -393,16 +394,19 @@ Parser-produced downloaded-font metric fields:
   allocation units `0x7827ba`, and byte `+0x2b`, which remains `0` in the
   covered `0x1719c` metric fixtures.
 
-Derived/cache state:
+Canonical selected-resource state:
 
 - `0x7828de`: selected primary/secondary target used by `0x144d2` and
   `0x14c64`.
 - `0x7828a8`: selected candidate slot pointer used by `0x144d2`,
   `0x14c64`, and `0x1440c`.
-- `0x782992`: transient selected context record used by `0xc580` when a
-  page root is full or needs a pre-refresh context probe.
 - `0x783132` / `0x783133`: primary/secondary selected-font flags maintained
   during map rebuild.
+
+Derived/cache state:
+
+- `0x782992`: transient selected context record used by `0xc580` when a
+  page root is full or needs a pre-refresh context probe.
 - `0x783134` / `0x78313a`: primary/secondary mapped character ranges.
 
 Parser scratch:
@@ -641,12 +645,12 @@ Field classification for this pitch-mode bridge:
 
 - Canonical state: pitch request word `0x782ef0 + 0x10*slot`, selected slot
   `0x782f06`, current font context records `0x782ee6` / `0x782ef6`, selected
-  maps `0x782f32` / `0x783032`, page-root context slots, and later compact
-  text objects created by `0xd04a`.
+  maps `0x782f32` / `0x783032`, selected candidate `0x7828a8`, selected target
+  `0x7828de`, selected-font flags `0x783132` / `0x783133`, HMI `0x78315c`,
+  page-root context slots, and later compact text objects created by `0xd04a`.
 - Derived/cache state: synthetic record integer/fraction words, selected
-  candidate pointer `0x7828a8`, selected target `0x7828de`, transient context
-  record `0x782992`, HMI `0x78315c`, compact coordinates, and render-band
-  fields after publication.
+  candidate survivor marks/lists, transient context record `0x782992`,
+  compact coordinates, and render-band fields after publication.
 - Parser scratch: the original six-byte `ESC &k#S/s` record, the mutated
   synthetic pitch records, and `0x78299e` cursor advances used only to make
   `0xc89c` consume those synthetic records.

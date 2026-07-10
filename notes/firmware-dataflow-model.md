@@ -4766,24 +4766,25 @@ State classification for this path:
   selected text slot `0x782f06`, primary context `0x782ee6`, secondary context
   `0x782ef6`, primary map `0x782f32`, secondary map `0x783032`, active symbol
   words `0x783144` / `0x783146`, remembered symbol words `0x782f08` /
-  `0x782f0a`, page-root context slots, selected page-root slot `0x78297e`,
-  compact text objects, and render-record context slots.
+  `0x782f0a`, candidate counts/cursors `0x78278e`,
+  `0x782790..0x78279e`, and `0x7827a0..0x7827b4`, active candidate
+  pointer/count `0x78287c` / `0x7827b8`, selected candidate slot
+  `0x7828a8`, selected target `0x7828de`, HMI `0x78315c`, page-root context
+  slots, selected page-root slot `0x78297e`, compact text objects, and
+  render-record context slots.
 - Derived/cache state:
-  candidate survivor lists, selected candidate slot `0x7828a8`, selected
-  target `0x7828de`, snapshot records `0x783148` / `0x783152`, HMI
-  `0x78315c`, transient selected context `0x782992`, current font ID
-  `0x782f2e`, default-symbol tables `0x782f1c`, `0x782f20`,
-  `0x782f24`, and `0x782f28`, compact coordinates, glyph-entry pointers, and
-  render-band fields.
+  candidate survivor marks/lists, snapshot records `0x783148` / `0x783152`,
+  transient selected context `0x782992`, current font ID `0x782f2e`,
+  default-symbol tables `0x782f1c`, `0x782f20`, `0x782f24`, and `0x782f28`,
+  compact coordinates, glyph-entry pointers, and render-band fields.
 - Parser scratch:
   setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
-  records, dirty flags `0x782f2c` / `0x782f2d` while refresh is pending, and
-  the following printable bytes.
+  records, and the following printable bytes.
 - Firmware bookkeeping:
-  page-root live-font flags, `0xc4fc` slot scan state, symbol-map snapshot
-  provenance byte `+0x09`, selected-font flags `0x783132` / `0x783133`,
-  publication flag `0x782996`, scheduler cursors, and render-work progress
-  words.
+  dirty flags `0x782f2c` / `0x782f2d` while refresh is pending, page-root
+  live-font flags, `0xc4fc` slot scan state, symbol-map snapshot provenance
+  byte `+0x09`, selected-font flags `0x783132` / `0x783133`, publication flag
+  `0x782996`, scheduler cursors, and render-work progress words.
 - Unknown:
   no unresolved ROM-local middle edge remains for the primary and secondary
   built-in selection streams documented here. Remaining font work is limited
@@ -4855,13 +4856,13 @@ State classification:
 - Canonical font-request state:
   pitch word `0x782ef0 + 0x10 * slot`, current font contexts `0x782ee6` and
   `0x782ef6`, maps `0x782f32` and `0x783032`, selected text slot
-  `0x782f06`, page-root context slots, and rendered compact text objects
-  produced by later printable bytes.
+  `0x782f06`, selected candidate pointer `0x7828a8`, selected target
+  `0x7828de`, selected-font flags `0x783132` / `0x783133`, HMI `0x78315c`,
+  page-root context slots, and rendered compact text objects produced by later
+  printable bytes.
 - Derived/cache state:
-  selected candidate pointer `0x7828a8`, selected target `0x7828de`,
-  transient context record `0x782992`, selected-font flags `0x783132` /
-  `0x783133`, HMI `0x78315c`, compact coordinates, glyph-entry pointers, and
-  render-band fields.
+  transient context record `0x782992`, compact coordinates,
+  glyph-entry pointers, and render-band fields.
 - Parser scratch:
   the six-byte `ESC &k#S/s` record, synthetic pitch records written by
   `0xc390`, command cursor `0x78299e`, and the advanced second synthetic

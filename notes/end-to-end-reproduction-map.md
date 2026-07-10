@@ -3585,25 +3585,24 @@ State classification:
   selected text slot `0x782f06`, primary context `0x782ee6`, secondary
   context `0x782ef6`, primary map `0x782f32`, secondary map `0x783032`,
   active symbol words `0x783144/0x783146`, remembered symbol words
-  `0x782f08/0x782f0a`, selected page-root slot `0x78297e`, page-root context
-  slots, compact text objects, and render-record context slots.
+  `0x782f08/0x782f0a`, candidate counts/cursors `0x78278e`,
+  `0x782790..0x78279e`, and `0x7827a0..0x7827b4`, active candidate
+  pointer/count `0x78287c` / `0x7827b8`, selected candidate slot
+  `0x7828a8`, selected target `0x7828de`, HMI `0x78315c`, selected
+  page-root slot `0x78297e`, page-root context slots, compact text objects,
+  and render-record context slots.
 - Derived/cache:
-  candidate counts/cursors `0x78278e`, `0x782790..0x78279e`, and
-  `0x7827a0..0x7827b4`, active candidate pointer/count
-  `0x78287c` / `0x7827b8`, candidate survivor lists, selected candidate slot
-  `0x7828a8`, selected target `0x7828de`, snapshot records
-  `0x783148/0x783152`, HMI `0x78315c`, transient selected context
-  `0x782992`, current font id `0x782f2e`, compact coordinates,
-  glyph-entry pointers, and render-band fields.
+  candidate survivor marks/lists, snapshot records `0x783148/0x783152`,
+  transient selected context `0x782992`, current font id `0x782f2e`, compact
+  coordinates, glyph-entry pointers, and render-band fields.
 - Parser scratch:
   setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
-  records, dirty flags `0x782f2c/0x782f2d` while refresh is pending, and the
-  following printable bytes.
+  records, and the following printable bytes.
 - Firmware bookkeeping:
-  page-root live-font flags, `0xc4fc` slot-scan state, symbol-map snapshot
-  provenance byte `+0x09`, selected-font flags `0x783132/0x783133`,
-  publication flag `0x782996`, scheduler cursors, and render-work progress
-  words.
+  dirty flags `0x782f2c/0x782f2d` while refresh is pending, page-root
+  live-font flags, `0xc4fc` slot-scan state, symbol-map snapshot provenance
+  byte `+0x09`, selected-font flags `0x783132/0x783133`, publication flag
+  `0x782996`, scheduler cursors, and render-work progress words.
 - Hardware/external:
   the physical host path that supplied the same normalized bytes to `0xa904`,
   plus later formatter/DC timing outside the ROM-local page-record/render

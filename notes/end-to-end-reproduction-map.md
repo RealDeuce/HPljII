@@ -5575,9 +5575,13 @@ Address-level cluster map:
   `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`, and `0xc68a`; cursor and margin
   commands dispatch to `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf48c`,
   `0xf560`, `0xf60a`, and `0xf692`. Owner note is
-  [direct-control-codes.md](direct-control-codes.md). The output edge is
-  usually delayed until later printable text, span flush `0xf34a -> 0x12714`,
-  or publication `0xff1e` consumes the changed cursor/layout state.
+  [direct-control-codes.md](direct-control-codes.md); selected slot handoff
+  is composed in
+  [Selected Context Switch
+  Checkpoint](direct-control-codes.md#selected-context-switch-checkpoint).
+  The output edge is usually delayed until later printable text, span flush
+  `0xf34a -> 0x12714`, or publication `0xff1e` consumes the changed
+  cursor/layout state.
   `ESC &k#G` writes line-termination byte `0x78318f` through `0xedf8`; CR,
   LF, and FF consume its bits through `0xf02c`, `0xf08c`, and `0xf0f0`.
   CR `0xf02c` runs `0xf06e` to copy left margin `0x782dd6` into cursor x
@@ -5971,7 +5975,9 @@ Address-level cluster map:
   rebuilds maps `0x782f32` / `0x783032`. SO/SI controls `0xc6b8` / `0xc68a`
   select slot `1` or `0`, and `0xc428` installs the selected context into
   page-root slot state before later printable bytes queue context-indexed
-  compact objects.
+  compact objects; the direct-control side of that handoff is the
+  [Selected Context Switch
+  Checkpoint](direct-control-codes.md#selected-context-switch-checkpoint).
   Concrete final-`X` stream examples are now part of the route index.
   `ESC (7X!!` reaches setup `0x1201e`, terminal `0x120be`, font-id selector
   `0x17708`, selected context `0xc0089fb0`, and compact object prefix
@@ -7744,7 +7750,10 @@ Address-level cluster map:
   matching or free page-root context slot, and `0xc428` writes selected
   page-root slot `0x78297e`. SI `0xc68a` installs/selects primary slot `0`;
   SO `0xc6b8` installs/selects secondary slot `1` and updates selected text
-  slot `0x782f06`. Later printable bytes consume that state through
+  slot `0x782f06`. This state-only control path is owned by
+  [Selected Context Switch
+  Checkpoint](direct-control-codes.md#selected-context-switch-checkpoint).
+  Later printable bytes consume that state through
   `0xd04a -> 0x1393a`: primary text reads context `0xc008004c` and map
   `0x782f32`, secondary text reads context `0xc00ae122` and map `0x783032`,
   and `0x12f2e` queues compact objects under the ordinary page-root bucket
@@ -9252,7 +9261,12 @@ Priority ROM-local documentation targets:
    it visible: for example layout fields consumed by printable placement,
    raster origin/bounds, rectangle clipping, publication, or page overflow. If
    no later consumer is known, record that exact field and consumer boundary
-   instead of treating the command as visually complete.
+   instead of treating the command as visually complete. SO/SI selected-context
+   switching, cursor-stack push/pop, and the documented layout writers are now
+   owned by [direct-control-codes.md](direct-control-codes.md); new state-only
+   work should start only when a stream changes a canonical field, downstream
+   consumer, page-object field, or exact boundary not named by those
+   checkpoints.
 
 Edges that should not drive more ROM tracing unless new evidence changes a
 named upstream field:

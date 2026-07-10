@@ -8413,6 +8413,15 @@ Address-level cluster map:
   `Host Byte Fetch And Data-Chain Input` in
   [semantic-state-model.md](semantic-state-model.md), and supporting report
   `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
+- Host-output/status canonical state: parser-visible model-ID response state from
+  `0x12034 -> 0x122be`, literal response bytes at `0x12280..0x12288`, FIFO storage
+  `0x783e92..0x783ed1`, count `0x783ed2`, read/write pointers `0x783ed4/0x783ed8`, wait
+  object `0x7801e2`, backend selector `0x780e40`, page-environment status bytes
+  `0x780e8e/0x780e8f`, selected page/control bytes `+6/+7/+8`, and status roots
+  `0x780e12`, `0x780e0a`, `0x780e2a`, `0x780e32`, `0x780e2e`, and `0x780e36`. Evidence:
+  [errors-and-status.md](errors-and-status.md), [io-interfaces.md](io-interfaces.md),
+  and `Host/Status Side-Channel Decision Checkpoint` in
+  [errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
 - Parser scratch: six-byte command records at `0x78299e..0x7829a7`,
   delayed handler snapshots, payload counters, and alternate/data mode state.
   Evidence: `Parser Record And Delayed Payload State` in

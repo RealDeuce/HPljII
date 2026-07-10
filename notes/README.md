@@ -82,11 +82,11 @@ standalone deliverables.
   `Boundary: Secondary Segment-57 Source` are the shortest checked-in path
   from an admitted byte stream to page objects, rendered pixels, and exact
   pixel-affecting stop points.
-- Resource bytes are owned by [resource-rom.md](resource-rom.md) and
+- Resource bytes are owned by [resource-rom.md](resource-rom.md#owner-summary) and
   [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary). The verified
   `IC32,IC15` pair supplies built-in resource bytes through firmware address
   `0x0bffff`; the transparent secondary segment-57 continuation rule in
-  [resource-rom.md](resource-rom.md) is the owner for the remaining
+  [resource-rom.md](resource-rom.md#owner-summary) is the owner for the remaining
   pixel-affecting resource boundary at `0x0c0000..0x0c0321`.
 - Exact remaining stop points are indexed in
   [unresolved-boundaries.md](unresolved-boundaries.md), grouped as ROM-local
@@ -184,7 +184,7 @@ checked-in ROM model:
    hardware assumption. For the transparent secondary segment-57 path, use
    `Boundary: Secondary Segment-57 Source` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
-   continuation rule in [resource-rom.md](resource-rom.md).
+   continuation rule in [resource-rom.md](resource-rom.md#owner-summary).
 
 ## Files
 
@@ -293,7 +293,7 @@ checked-in ROM model:
 - [semantic-state-model.md](semantic-state-model.md) - composed
   renderer-facing state blocks with field groups, evidence, and
   unresolved middle edges.
-- [resource-rom.md](resource-rom.md) - current findings for the
+- [resource-rom.md](resource-rom.md#owner-summary) - current findings for the
   IC32/IC15 resource/font ROM pair.
 - [unresolved-boundaries.md](unresolved-boundaries.md) - exact remaining
   ROM-local, resource-data, hardware/MMIO, optional-data, and physical/manual

@@ -28,7 +28,82 @@ dense offset tables. Treat it as the current source for built-in font
 directories, metrics, and glyph data.
 
 The firmware-facing scan and candidate-window contract for these records
-is documented in [built-in-resource-scan.md](built-in-resource-scan.md).
+is documented in
+[built-in-resource-scan.md](built-in-resource-scan.md#owner-summary).
+
+## Owner Summary
+
+This note owns the byte-level `IC32,IC15` resource ROM ledger used by built-in
+font selection and glyph rendering. It maps interleaved resource bytes to
+firmware addresses, identifies built-in font records and glyph payloads, and
+names the physical continuation boundary where renderer reads leave the
+verified dumped pair.
+
+Primary routes:
+
+- Address mapping:
+  local resource byte offset `N` maps to firmware address `0x080000 + N` for
+  verified `IC32,IC15` bytes through `0x0bffff`.
+- Startup/resource scan:
+  startup scanner `0x41a` verifies the `HEAD` chain; font scanner
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be` turns accepted records into candidate
+  windows documented by the built-in resource owner.
+- Font selection:
+  parsed font and symbol requests choose a resource candidate through
+  `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, and `0x14398`, then install the
+  selected context through `0x144d2`, `0x14c64`, and `0xc428`.
+- Printable and render route:
+  `0x1393a` captures the mapped glyph index and selected context into source
+  state, `0x12f2e` queues compact text, publication/bridge copies context
+  slots into render records, and `0x1f354` resolves built-in glyph table
+  entries and bitmap payload bytes.
+- Continuation boundary:
+  secondary segment-57 reads verified bytes at `0x0bfe22..0x0bffff` and then
+  requires `0x0c0000..0x0c0321`. Mirror, code-pair, and zero-fill
+  continuations are recorded hypotheses until static board, emulator, or
+  gate-array decode evidence selects the physical byte source.
+
+Field groups:
+
+- Canonical resource data:
+  `HEAD` chain records, `COURIER` and `LINE_PRINTER` font records, record
+  fields `+0x20/+0x21/+0x22/+0x24/+0x28/+0x2a/+0x2f..+0x31`, glyph table
+  entries, glyph-entry fields `+0/+2/+4/+5/+6/+8`, and bitmap payload bytes.
+- Canonical selected-resource state:
+  context longwords such as `0xc008004c`, `0xc00ae122`, and `0x440946b4`,
+  selected glyph table index, segment number, and compact object selector.
+- Derived/cache state:
+  firmware addresses, file offsets, payload spans, hashes, decoded row
+  dimensions, placement offsets, selected-font HMI/cache fields, and the
+  fixture-mode continuation hashes.
+- Parser scratch:
+  host bytes, symbol maps, and font-selection parser records only choose which
+  resource record/glyph index is consumed; they are not fields in the resource
+  ROM.
+- Firmware bookkeeping:
+  candidate lists, current-font/page-root/render context slots, selected-font
+  flags, sample-page recent-context lists, and scan/checksum helper state that
+  references resource bytes.
+- Hardware/external state:
+  physical decode after `0x0bffff`, cartridge/resource windows outside the
+  dumped pair, and address-controller/gate-array mapping that may select the
+  actual bytes for `0x0c0000..0x0c0321`.
+- Unknown:
+  no parser, page-object, bridge, or compact-dispatch edge remains unknown for
+  the documented built-in glyph paths. Remaining uncertainty is the physical
+  resource continuation and manual-facing names for some record fields.
+
+Output effect:
+
+- Resource bytes do not draw on their own. They affect pixels only after font
+  selection installs a context, printable bytes queue compact objects, and
+  render helpers read glyph entries and bitmap payload bytes.
+- Verified bytes through `0x0bffff` produce ROM-derived rows. Rows needing
+  `0x0c0000..0x0c0321` remain explicitly unresolved until the physical decode
+  source is known.
+- A byte-stream renderer must preserve the resource address mapping, record
+  fields, glyph-entry interpretation, bitmap payload bytes, and continuation
+  boundary rather than substituting inferred missing data.
 
 ## Reproduction Contract
 

@@ -289,7 +289,7 @@ verified built-in window that the symbol-set refresh consumes.
 candidate pointer list at `0x782324`. For the verified built-ins, `0x1a9be` accepts 24
 `HEAD`-path records: 12 class-zero records and 12 class-one records in the low built-in
 resource window. The resulting candidate counters and cursors are documented in
-[resource-rom.md](resource-rom.md) and
+[resource-rom.md](resource-rom.md#owner-summary) and
 [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary):
 
 - total accepted candidate count `0x78278e = 24`;

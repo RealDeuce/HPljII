@@ -244,7 +244,7 @@ Concrete example:
 - A Roman-8 selected built-in record with active word `0x0005` uses the hard
   HP Roman Extension path. The upper map half is copied down, so a later host
   byte such as `0x21` can map to a high-half glyph index before compact text
-  queuing. This effect is documented in [resource-rom.md](resource-rom.md)
+  queuing. This effect is documented in [resource-rom.md](resource-rom.md#owner-summary)
   and [page-raster-imaging.md](page-raster-imaging.md).
 
 ## Reproduction Contract
@@ -303,5 +303,5 @@ Supporting checked-in notes:
 - [symbol-set-selection.md](symbol-set-selection.md#owner-summary)
 - [font-context-metrics.md](font-context-metrics.md#owner-summary)
 - [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary)
-- [resource-rom.md](resource-rom.md)
+- [resource-rom.md](resource-rom.md#owner-summary)
 - [page-raster-imaging.md](page-raster-imaging.md)

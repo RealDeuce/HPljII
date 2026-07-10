@@ -3053,7 +3053,7 @@ object shapes or visible rows.
 
 Status: composed as the built-in resource producer state that feeds font
 selection. The low-level record layout and glyph payload ledger remain in
-[resource-rom.md](resource-rom.md). The standalone scan contract is in
+[resource-rom.md](resource-rom.md#owner-summary). The standalone scan contract is in
 [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary); this section
 preserves the detailed field ledger for the candidate-list state consumed
 by `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, `0x14398`, and the parsed
@@ -3382,7 +3382,7 @@ resources because no image is available in this repo.
   `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
   same-class `0x1428c` chooser tie-breaker tuple. Final
   baseline/cell/manual terminology remains unresolved and is tracked in
-  [resource-rom.md](resource-rom.md).
+  [resource-rom.md](resource-rom.md#owner-summary).
 
 ## Built-In Font Sample Printout Loop
 
@@ -3986,7 +3986,7 @@ for those measurements.
   headings, `0x1b50e` two-window candidate resolution, class filtering,
   continuation-page entry, row-index advance/status writes, and the post-row
   recent-context scan. The verified internal-font mode-3 row sequence is
-  documented in [resource-rom.md](resource-rom.md) for both class passes:
+  documented in [resource-rom.md](resource-rom.md#owner-summary) for both class passes:
   class-zero emits `I00..I13`, class-one emits `I00` plus `I16..I28`, and
   the full-loop status chain is class-zero `0x783f05 = 14`, class-one resume
   through `0x1c41a..0x1c428`, and final class-one `0x783f05 = 29`. The

@@ -23,6 +23,10 @@ Boundary classes:
   over-indexing after `0x1fe76`, wrapped mode-0 target selection through
   `0x1f034 -> 0x1f08e`, or segmented-wide fallback source reads after
   `0x1f264`.
+- ROM-local unresolved caller:
+  decoded helper bodies whose field effects are documented, but whose direct
+  caller, computed target, trap/vector entry, or scheduler entry is not located
+  in the current ROM evidence.
 - Missing external resource data:
   ROM-visible reads beyond the verified IC32/IC15 resource suffix, currently
   the secondary segment-57 source range `0x0c0000..0x0c0321`.
@@ -65,6 +69,9 @@ Use the classification column before continuing work:
 - ROM-local invalid target/source: the ROM reaches an address or table/source
   calculation that is defined by instructions, but the calculated target or
   source is outside the documented valid helper/data range.
+- ROM-local unresolved caller: the helper body and its fields are decoded, but
+  the checked-in model lacks the ROM entry provenance needed to treat it as an
+  ordinary parser-to-render route.
 - Missing external resource data: the ROM asks for bytes outside the verified
   local resource image.
 - Hardware/MMIO boundary: the ROM-visible polling, status, or handshake
@@ -176,6 +183,38 @@ Host and formatter/MMIO boundaries:
   board/register-to-connector evidence and physical timing evidence for the
   named MMIO registers and formatter/DC signals.
 
+Optional active-pool pattern helper caller:
+
+- Boundary class:
+  ROM-local unresolved caller.
+- Exact stop:
+  direct entry provenance for helper `0x247c..0x270c`. The current xref scan
+  does not locate an absolute `0x0000247c` target; the adjacent copy-pass
+  listing returns at `0x2330` and the coordinate helper returns at `0x247a`
+  before the separate `0x247c` body.
+- Covered upstream state:
+  active-pool scheduling, work-record selection, source pointer `0x783992`,
+  destination row base `0x78399a`, row-copy jump offset `0x7839a4`,
+  destination stride `0x7839a8`, accumulator `0x7839d4`, and pattern-pointer
+  cache `0x7839d8..0x7839f7` are documented before the stop. Ordinary active
+  rendering still reaches page-band objects through `0x1ef6a` and copied rows
+  through `0x22f4`.
+- Output effect:
+  do not treat `0x247c..0x270c` as an ordinary page-object pixel route unless
+  a caller is located. If later ROM evidence proves an entry into `0x247c`,
+  model the decoded accumulator, pattern-pointer, and destination writes from
+  that helper; otherwise it remains a bounded side path outside the supported
+  parser-to-pixels route.
+- Evidence:
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+  [semantic-state-model.md](semantic-state-model.md#published-record-to-active-render-scheduler),
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`,
+  `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`, and
+  `generated/analysis/ic30_ic13_long_reference_scan.md`.
+- Needed to close:
+  static caller/xref evidence, a computed jump target, a trap/vector entry, or
+  scheduler-entry evidence proving ROM control flow into `0x247c`.
+
 Optional external resource windows:
 
 - Boundary class:
@@ -231,7 +270,8 @@ State grouping for this matrix:
   publication records, render roots, status fields, and scheduler state.
 - Derived/cache:
   computed helper indexes, source offsets, row/span products, resource ranges,
-  wait-object predicates, status folds, and continuation hashes.
+  active-pool helper offsets, optional pattern-pointer caches, wait-object
+  predicates, status folds, and continuation hashes.
 - Parser scratch:
   restored six-byte records, delayed payload state, payload budgets, alternate
   drains, and query/no-byte parser state that reach a boundary.
@@ -244,9 +284,9 @@ State grouping for this matrix:
   service-manual labels.
 - Unknown:
   only the specific invalid target/source, missing range, physical identity,
-  optional contents, timing source, or manual name listed above. Earlier parser
-  dispatch, page-object production, bridge roots, and render dispatch remain
-  documented by their owner notes.
+  unresolved helper caller, optional contents, timing source, or manual name
+  listed above. Earlier parser dispatch, page-object production, bridge roots,
+  and render dispatch remain documented by their owner notes.
 
 ## Pixel-Affecting Boundaries
 

@@ -667,9 +667,13 @@ Unknown:
   ordinary finals, final `X`, or final `@`;
 - the verified built-in candidate-window path is pinned for primary and
   secondary `0N`, `10U`, `11U`, and fallback cases named above;
-- remaining uncertainty is limited to absent cartridge/external resource data
-  or untraced variants that change `0x13eb8`, `0x156de`, `0x17708`, or
-  `0x14c64` outcomes.
+- absent cartridge/external resource data remains outside the verified
+  built-in windows. ROM-local variant work starts only when a byte stream
+  changes final-`@` table selection `0x1be22 -> 0x1bec8`, default-symbol table
+  words `0x782f1c..0x782f28`, fallback table words `0x782f0c..0x782f18`,
+  resolver outputs from `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1ad66`,
+  `0x1bbfe`, or `0x1b060`, or downstream `0x13eb8`, `0x156de`, `0x17708`,
+  `0x14c64`, page-object, bridge, or render inputs.
 
 ## Writers, Readers, And Output Effect
 

@@ -3034,30 +3034,34 @@ and falls through to fallback-table word `0x0115` for the primary stream.
 For the secondary stream, the same requested word misses class-one candidates
 and is now covered both through remembered word `0x000e` at `0x782f0a` before
 fallback and through fallback-table word `0x000e` when remembered recovery is
-not available. Remaining default-font
-uncertainty is narrowed further by real scanned built-in fallback
-coverage: class-zero candidates feed `0x1b060` and choose record
-`0x00004c` by Roman-8 fallback for requested `0x0005`, while class-one
-candidates choose record `0x01a984` by exact symbol `0x000e`. Real
+not available. The default-font candidate path is now real-record backed rather
+than an open command-map uncertainty: class-zero candidates feed `0x1b060` and
+choose record `0x00004c` by Roman-8 fallback for requested `0x0005`, while
+class-one candidates choose record `0x01a984` by exact symbol `0x000e`. Real
 scanned windows also feed mode-3 `0x1b50e`: ordinal 1 selects slot
-`0x782354` / record `0x08004c`, a non-Roman-8 duplicate ordinal 2
-returns requested word `0x0005`, and current-slot duplicate suppression
-advances to slot `0x782358` / record `0x080418`. The same real windows
-feed `0x1ab84` after its orientation flip, selecting record `0x00004c`
-by Roman-8 fallback and record `0x01a984` by exact `0x000e`; real
-`0x1b50e` results also feed `0x1b250`, where `0x00004c` maps to slot
-`0x782354` after boundary `0x7827ac` and `0x01a984` maps to slot
-`0x782330` before it. A real-backed `@0`/`@1`/`@2`/`@3` caller stream
-now routes through ROM terminal handler `0x120be` and consumes those
-table/default-font words through the same default-table/copy/default-font
-subdispatch. Fixture `real final-@ default-table streams select visible
-built-ins` appends primary `ESC (s0p10h12v0s0b3T!!` and secondary
-`ESC )s0p16h8v0s0b0T SO !!` tails to that caller stream. The final active
-words `[0x000e, 0x0005]` select primary context `0xc0080cb8` and secondary
-context `0xc00ad4aa`, queue the same compact object prefixes as the pinned
-primary non-Roman and secondary SO streams, and render row digests
+`0x782354` / record `0x08004c`, a non-Roman-8 duplicate ordinal 2 returns
+requested word `0x0005`, and current-slot duplicate suppression advances to
+slot `0x782358` / record `0x080418`. The same real windows feed `0x1ab84`
+after its orientation flip, selecting record `0x00004c` by Roman-8 fallback
+and record `0x01a984` by exact `0x000e`; real `0x1b50e` results also feed
+`0x1b250`, where `0x00004c` maps to slot `0x782354` after boundary
+`0x7827ac` and `0x01a984` maps to slot `0x782330` before it. A real-backed
+`@0`/`@1`/`@2`/`@3` caller stream now routes through ROM terminal handler
+`0x120be` and consumes those table/default-font words through the same
+default-table/copy/default-font subdispatch. Fixture `real final-@ default-table
+streams select visible built-ins` appends primary `ESC (s0p10h12v0s0b3T!!` and
+secondary `ESC )s0p16h8v0s0b0T SO !!` tails to that caller stream. The final
+active words `[0x000e, 0x0005]` select primary context `0xc0080cb8` and
+secondary context `0xc00ad4aa`, queue the same compact object prefixes as the
+pinned primary non-Roman and secondary SO streams, and render row digests
 `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c` /
 `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
+Remaining default-symbol/default-font work starts only when a byte stream
+changes the `0x1be22 -> 0x1bec8` subdispatch target, default tables
+`0x782f1c/20/24/28`, fallback tables `0x782f0c/10/14/18`, resolver outputs
+from `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1ad66`, `0x1bbfe`, or `0x1b060`,
+active words `0x783144/0x783146`, selected context records, map rebuild
+through `0x14c64`, or later printable page-object/render inputs.
 
 Downloaded-font command edges are now decoded in
 `generated/analysis/ic30_ic13_font_control_flow.md`. `ESC *c#D`

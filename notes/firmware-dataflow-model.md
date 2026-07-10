@@ -9258,6 +9258,15 @@ Transfer gate behavior at `0x105d0`:
 - Rows that pass the gate call `0x13070` with the raster state pointer
   `A4 = 0x783170`; `0x13070` computes bucket/key fields and `0x13250`
   allocates encoded-span objects under root `+0x1c`.
+- The branch ledger in [raster-graphics.md](raster-graphics.md#transfer-gate-at-0x105d0)
+  gives the exact transfer outcomes:
+  `0x1065c..0x10698` drains beyond-extent rows before root allocation,
+  `0x10670..0x1068e` caps raw counts above limit and records overflow,
+  `0x1069c..0x106a0` records full in-limit counts, `0x106a4..0x106c8`
+  drains negative rows after root ensure but before object queueing,
+  `0x106ca..0x106d2` queues accepted nonnegative rows through `0x13070`,
+  `0x106d2..0x106f2` publishes/retries on no-room, and
+  `0x106f8..0x10752` updates cursor state for completed transfers.
 
 Mode and row-object variants:
 

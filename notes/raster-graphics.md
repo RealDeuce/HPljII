@@ -491,6 +491,40 @@ Gate behavior:
   otherwise the later cursor-update path advances the modeled row from `-1`
   to `0`.
 
+Branch-outcome ledger:
+
+- `0x1065c..0x10698`, beyond extent:
+  consumes discarded payload through `0xdace` only while `D5 > 0`; returns
+  before `0x10084`, so it writes no current-root state, queues no object, and
+  does not run the cursor-update block at `0x106f8..0x10752`.
+- `0x10670..0x1068e`, in range with raw count above limit:
+  writes accepted count `+0x04 = +0x10`, writes overflow `+0x06 = raw -
+  limit`, then continues through `0x10084` and queues only accepted bytes.
+  The overflow bytes are drained by `0x13070` through `0x12328` after object
+  copy or copy-stop.
+- `0x1069c..0x106a0`, in range with raw count within limit:
+  writes accepted count `+0x04 = raw`, clears overflow `+0x06`, then
+  continues through the same root/object path as the capped case.
+- `0x106a4..0x106c8`, negative row:
+  ensures a root and writes row word `+0x02`, but branches around `0x13070`.
+  It drains positive payload through `0xdace`; unless the drain returns `-1`,
+  the cursor-update block still advances the modeled raster position.
+- `0x106ca..0x106d2`, accepted nonnegative row:
+  passes `A4 = 0x783170` to `0x13070`. The page object boundary is therefore
+  the raster state block plus the live payload source, not the parser command
+  record.
+- `0x106d2..0x106f2`, object allocation failure:
+  treats `D7 == 0` from `0x13070` as no room, marks current root byte
+  `+0x15.0`, publishes through `0xff1e`, ensures a fresh root through
+  `0x10084`, and leaves transfer completion to the following shared exit
+  block.
+- `0x106f8..0x10752`, successful or drained transfer exit:
+  skips only when transfer state is `D5 = -1`. Portrait restores horizontal
+  cursor from origin `+0x0a` and advances vertical cursor by scale `+0x0e`;
+  landscape subtracts scale from horizontal cursor, clamps it at zero, and
+  restores vertical cursor from origin `+0x0a`. Both orientations clamp final
+  vertical cursor against `0x782dc6`.
+
 Fixtures `0x105d0-modeled raster transfer skip and cap gate`, `modeled raster
 command stream applies 0x105d0 byte-count cap`, `modeled raster command stream
 queues inclusive page-extent row`, `modeled raster command stream drains

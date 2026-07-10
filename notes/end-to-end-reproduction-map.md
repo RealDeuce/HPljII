@@ -112,10 +112,10 @@ handler addresses, fields, consumers, evidence, and unresolved boundaries.
 
 ## Shared Page-Object Contract
 
-The current checked-in model treats page content as queued ROM objects, not as
-a parser-time bitmap. This section is the common object contract used by the
-command-family notes; detailed ledgers remain in
-[page-record-storage.md](page-record-storage.md),
+The current checked-in model treats page content as queued ROM objects, not as a
+parser-time bitmap. This section is the common object contract used by the
+command-family notes; detailed ledgers remain in [Page Assembly Decision
+Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
 [page-raster-imaging.md](page-raster-imaging.md), and
 [semantic-state-model.md](semantic-state-model.md).
 
@@ -322,16 +322,15 @@ controlling artifact.
   cluster map does not replace those ledgers; it is the top-level dispatch
   bridge from parsed command forms into those command-family ledgers and from
   page producers into publication and renderer owners.
-- Page/image assembly model:
-  covered by [page-record-storage.md](page-record-storage.md),
-  [page-raster-imaging.md](page-raster-imaging.md),
-  `Worked Path: Shared Page-Record Storage And Allocator`, `Page Image
-  Assembly` in [firmware-dataflow-model.md](firmware-dataflow-model.md), and
-  the `Minimal Page Assembly Walkthrough`. The canonical model is current root
-  `0x78297a`, stream allocator state `0x782a70/0x782a72/0x782a76`, compact and
-  raster buckets under root `+0x1c`, rules under `+0x24`, fixed objects under
-  `+0x28`, context slots `+0x2c..+0x68`, publication `0xff1e`, and bridge
-  `0x1ed84` / `0x1edc6`.
+- Page/image assembly model: covered by [Page Assembly Decision
+  Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint),
+  [page-raster-imaging.md](page-raster-imaging.md), `Worked Path: Shared Page-Record
+  Storage And Allocator`, `Page Image Assembly` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md), and the `Minimal Page
+  Assembly Walkthrough`. The canonical model is current root `0x78297a`, stream
+  allocator state `0x782a70/0x782a72/0x782a76`, compact and raster buckets under root
+  `+0x1c`, rules under `+0x24`, fixed objects under `+0x28`, context slots
+  `+0x2c..+0x68`, publication `0xff1e`, and bridge `0x1ed84` / `0x1edc6`.
 - Output/render engine:
   covered by [active-render-scheduler.md](active-render-scheduler.md),
   [page-raster-imaging.md](page-raster-imaging.md), `Published Record To Active
@@ -404,13 +403,11 @@ command-family and page-image structure:
    parser scratch consumed, derived/cache fields, firmware bookkeeping,
    readers/consumers, and no-output side effects. State-only commands remain
    in this step until a later byte consumes their changed fields.
-5. Map page/image objects:
-   when a command creates page content, use
-   [page-record-storage.md](page-record-storage.md) and its renderer-facing
-   object class map to identify the page-root field written by the producer:
-   compact/segment/raster buckets under root `+0x1c`, rule list under root
-   `+0x24`, fixed list under root `+0x28`, and context slots under root
-   `+0x2c..+0x68`.
+5. Map page/image objects: when a command creates page content, use [Page Assembly
+   Decision Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint) and
+   its renderer-facing object class map to identify the page-root field written by the
+   producer: compact/segment/raster buckets under root `+0x1c`, rule list under root
+   `+0x24`, fixed list under root `+0x28`, and context slots under root `+0x2c..+0x68`.
 6. Cross the publication and scheduler boundary:
    use [publication-commands.md](publication-commands.md),
    [page-record-storage.md](page-record-storage.md), and

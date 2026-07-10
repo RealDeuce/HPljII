@@ -407,8 +407,10 @@ Canonical command state:
   mode that makes FF apply CR-style horizontal reset before page eject.
 - `0x782da4`: copy count. `0xeef0` writes it for `ESC &l#X`; `0xff1e`
   copies it into published pool-header word `+0x0c`.
-- `0x782da6`: paper-source/environment byte. `0xef62` writes selector `2` as
-  `0x80`; the addressed paper-source route also mirrors it to `0x780e8f`.
+- `0x782da6`: paper-source/environment byte. `0xef62` writes selector `1` as
+  `0`, selector `2` as `0x80`, selector `3` as `0x90`, and other nonzero
+  selectors from default byte `0x7821a2`. The addressed paper-source route
+  can also mirror the selected byte to `0x780e8f`.
 - `0x782997`: pending page-size/page-length header flag. `0xfc74` and
   `0xf9e8` set it after committing a new page code or page length, and
   environment reset `0xcda2` can also set it from default state.
@@ -1325,6 +1327,92 @@ that helper returns `D7 == 1`, `0xefce..0xefe4` copies `D5` to output byte
 `0x9b5e(0x780e26, 1)`. `0xf00a..0xf01c` protects the canonical write with
 `0x15a6` / `0x15ac`, writes `0x782da6 = D5`, and sets pending publication byte
 `0x782998 = 1`.
+
+### Paper Source Selector Matrix
+
+This checkpoint composes every `ESC &l#H` selector class through publication
+timing and the state consumed by a later page finalization. The command always
+publishes any active current root before changing the paper-source state:
+`0xef90 -> 0xf34a` flushes pending spans/text, `0xef96 -> 0xff1e` publishes
+the current page root, and `0xef9c -> 0xf8fc` refreshes placement state before
+the selector table dispatch at `0xef3a`.
+
+Selector outcomes:
+
+- Selector `0`:
+  dispatches to `0xefae`, calls status/service helper `0x9ac2`, and returns
+  at `0xf024` without writing `0x782da6`, `0x782998`, `0x780e8f`, or
+  `0x780e26`. Its visible page effect is only the pre-selector publication,
+  if a current root existed.
+- Selector `1`:
+  dispatches to `0xefb6`, clears `D5` to `0`, writes marker byte
+  `0x782990 = 1`, and enters the common output path at `0xefc0`.
+- Selector `2`:
+  dispatches to `0xefe8`, writes `D5 = 0x80`, and enters the common output
+  path. This is the addressed stream already covered by `! ESC &l2H`.
+- Selector `3`:
+  dispatches to `0xeff0`, writes `D5 = 0x90`, and enters the common output
+  path.
+- Other nonzero selectors:
+  dispatch to `0xeff8`, load `D5` from default paper-source byte `0x7821a2`,
+  write marker byte `0x782990 = 1`, and enter the common output path.
+
+The common output path has two layers. First, `0xefc0..0xefe4` calls `0x9b1e`;
+only when it returns `D7 == 1` does the ROM mirror `D5` to output byte
+`0x780e8f` and signal `0x780e26` through `0x9b5e`. Second,
+`0xf00a..0xf01c` always brackets the canonical write with `0x15a6` /
+`0x15ac`, stores `0x782da6 = D5`, and sets pending publication byte
+`0x782998 = 1`.
+
+State grouping for this selector matrix:
+
+- Canonical page-control state:
+  paper-source byte `0x782da6`, pending publication/header byte `0x782998`,
+  current page root `0x78297a`, and published pool record header byte `+0x07`
+  later copied by `0xff1e` from `0x782da6`.
+- Derived/cache state:
+  selector-derived `D5`, default paper-source byte `0x7821a2`, placement
+  refresh output from `0xf8fc`, and published/render records created from the
+  pre-change root.
+- Parser scratch:
+  the six-byte `ESC &l#H` command record rewound at `0xef72..0xef7a`, with
+  negative selectors converted to absolute values at `0xef80..0xef8e`.
+- Firmware bookkeeping:
+  marker byte `0x782990`, `0x15a6` / `0x15ac` critical-section calls,
+  `0x9b1e` return in `D7`, publication flag `0x782996`, and root-clear state
+  from `0xff1e`.
+- Hardware/external state:
+  `0x780e8f` and `0x780e26` are ROM-visible output/control bytes whose
+  physical paper-source meaning remains a hardware boundary.
+- Unknown:
+  no ROM-local selector table, publication timing, canonical write, pending
+  header, or mirror/signal branch remains unknown for `0xef62..0xf02a`.
+
+Writers and consumers:
+
+- `0xef62` writes `0x782da6`, `0x782998`, and sometimes `0x782990`,
+  `0x780e8f`, and `0x780e26` after publishing any old root.
+- `0xff1e` later consumes `0x782da6` and `0x782998`: `0x10044..0x1005a`
+  copies the paper-source byte to root header `+0x07`, while
+  `0x10032..0x1003a` records and clears pending paper-source/header state.
+- `0x1ed84` / `0x1edc6` consume the published root produced before selector
+  mutation; the paper-source update affects later page headers, not the
+  already-published compact buckets.
+
+Output effect:
+
+- Pre-existing page objects are published before selector mutation.
+- Selector `0` has no new canonical paper-source write after that publication.
+- Selectors `1`, `2`, `3`, and default write paper-source state for following
+  publications; the physical tray/source interpretation of `0`, `0x80`,
+  `0x90`, and `0x7821a2` is outside the ROM-local pixel model.
+
+Evidence: `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`
+`0xef62..0xf02a`, page-root finalizer
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`, fixture
+`addressed paper-source and copies publications render page records`, and
+fixture `host-fetched FF geometry and paper-source publications preserve
+0xff1e pool header defaults`.
 
 `ESC &l#X` enters `0xeef0`. `0xeef8..0xef14` rewinds the parser record by six
 bytes, reads word `+2`, sign-extends it, and converts negative counts to their

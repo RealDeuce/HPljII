@@ -87,7 +87,8 @@ Use these entry points according to the artifact in hand:
   page objects, publication, bridge, and render helper.
 - For the common page/image and pixel-output hop after a command-family note
   has created page content, use `Shared Page-Object Contract` and
-  `Render Helper Boundary Index` in this file. Those sections collect the
+  `Command-Family To Render Route Table`, then `Render Helper Boundary Index`
+  in this file. Those sections collect the handler-to-object route,
   page-root fields, publication and bridge fields, render-record roots,
   helper dispatch order, buffer destinations, and exact ROM-local render
   boundaries that are shared by printable text, spans, raster, rules, and

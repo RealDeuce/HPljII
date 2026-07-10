@@ -760,6 +760,55 @@ Decision rules:
   positive payload counts are drained through `0xdace` while each normalized
   byte is appended through `0xe002`.
 
+Command-family suppression and exception matrix:
+
+- Mode-zero printable bytes:
+  alternate/data fast path appends through `0xe002` instead of calling
+  printable handler `0xd04a`. No selected-font map, compact source object,
+  page-root bucket, bridge root, or render helper input changes until stored
+  bytes are replayed through a data-chain frame and the normal table.
+- Mode-zero C0 controls:
+  alternate/data rows for `0x00` and `0x07..0x0f` preserve the byte through
+  `0xe002` and terminal reset. The normal BS/HT/LF/FF/CR/SO/SI handlers
+  `0xf2a8`, `0xf1cc`, `0xf08c`, `0xf0f0`, `0xf02c`, `0xc6b8`, and
+  `0xc68a` do not run at this boundary, so cursor, page publication, and
+  selected text slot remain unchanged until replay.
+- Direct cursor/layout families:
+  uppercase `ESC &a#C/H/L/M/R/V`, `ESC &k#G/H/S`,
+  `ESC &l#A/C/D/E/F/H/L/O/P/V/X`, `ESC &s#C`, `ESC 9`, `ESC =`, and
+  `ESC *p#X/Y` table rows have blank alternate/data handlers. Lowercase
+  siblings rewind through `0x11f4c`. The immediate effect is parser
+  synchronization or stored syntax, not writes to cursor, margin, HMI/VMI,
+  wrap/perforation, paper, orientation, or dot-position state.
+- Rectangle, raster-control, and raster-resolution families:
+  uppercase alternate/data rows for `ESC *c#A/B/D/E/F/G/H/P/V`,
+  `ESC *r#A/B/K`, `ESC *s#^`, and `ESC *t#R` are blank, while lowercase
+  siblings rewind through `0x11f4c`. They do not write rectangle state
+  `0x78316a/0x783166/0x78316e`, downloaded-font control words
+  `0x782f2e/0x782f30`, raster state `0x783170..`, or page objects. The
+  exception is delayed raster transfer `ESC *b#W/w`, which keeps active
+  payload scheduling through `0x11f82`.
+- Font designation and font-selection families:
+  alternate/data `ESC (#` / `ESC )#` terminal rows and uppercase
+  `ESC (s#B/H/P/S/T/V` / `ESC )s#B/H/P/S/T/V` rows are blank; lowercase
+  font-selection finals rewind through `0x11f4c`. They therefore do not
+  update requested font fields, selected symbol words, selected maps, page-root
+  context slots, or source-object render inputs until the stored bytes are
+  replayed in normal mode. Downloaded-font payloads `ESC (s#W/w` and
+  `ESC )s#W/w` remain active because stored payload bytes must keep their
+  counted boundary.
+- Payload and storage exceptions:
+  transparent data `ESC &p#X/x`, VFC table payload `ESC &l#W/w`, raster
+  transfer `ESC *b#W/w`, downloaded-font payloads, display reader
+  `ESC Y -> 0x12120`, local Control-Z append/report handlers
+  `0x1210c/0x121b2`, and macro control `ESC &f#X/x -> 0xdd08` are active
+  alternate/data rows. Their owner notes still decide whether bytes are
+  appended, drained, stored as payload, or later replayed.
+- Reset exception:
+  `ESC E -> 0xcc52` remains active in alternate/data mode. It is the only
+  broad page/environment command in this checkpoint that immediately crosses
+  into a normal command-family owner instead of being suppressed or stored.
+
 Field groups:
 
 - Canonical parser state:

@@ -1325,8 +1325,11 @@ instead of rechecking the same state through another byte-stream variant.
 
 A byte-stream renderer must preserve:
 
-- normal-mode direct-control dispatch for CR, LF, FF, HT, and BS;
+- normal-mode direct-control dispatch for CR, LF, FF, HT, BS, SO, and SI;
 - the `ESC &k#G` mode byte and its per-control-bit consumption;
+- SO/SI selected-context switching through `0xc6b8` / `0xc68a`,
+  `0xc428` / `0xc4fc`, selected slot `0x782f06`, and page-root context slot
+  `0x78297e`;
 - the `ESC &s#C` wrap byte and its prequeue effect on `0xd28a` / `0xd6bc`
   horizontal overflow decisions;
 - VMI/LPI, page-length, top-margin, text-length, and perforation-skip state as
@@ -1353,9 +1356,9 @@ fixtures that start at modeled host byte fetch and reach `0x1387c`,
 `0x1edc6`, `0x1ed84`, and `0x1ef6a`. The fixtures drive ROM-local branches;
 they are not external rendered-output comparisons.
 
-High for `ESC 9`, `ESC =`, cursor-stack, underline/span, and perforation-skip
-representative output effects because each has a named parser/page-record
-fixture and concrete handler evidence.
+High for SO/SI selected-context switching, `ESC 9`, `ESC =`, cursor-stack,
+underline/span, and perforation-skip representative output effects because
+each has a named parser/page-record fixture and concrete handler evidence.
 
 High for `ESC &s#C` selector handling and printable precheck consumption,
 because the `0xedb0` writer and paired `0xd28a` / `0xd6bc` consumers are pinned

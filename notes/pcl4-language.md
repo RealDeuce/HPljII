@@ -1177,6 +1177,13 @@ Field groups for this index:
   nonzero `ESC )s#W` payload handler `0x16c14` consumes `0x782f2e`,
   `0x782f30`, current-record pool `0x782640..0x782776`, and payload budget
   `0x783140` before a later printable can select the installed glyph.
+  Successful downloaded-character copies return through
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`; the usual full-success case
+  leaves `0x783140 = 0`, drains zero bytes, and resumes at the next parser
+  handler. Rejected or partial payloads use the same boundary with a nonzero
+  remaining budget or status-`2` continuation state, so reproduction must
+  distinguish an installed glyph from a payload drain before interpreting the
+  following byte.
   Selected maps affect later printable bytes; downloaded glyphs install
   records that later queue compact objects and render through `0x1effe` /
   `0x1f0d2` / `0x1f1f0` / `0x1f264`. Concrete final-`X` stream

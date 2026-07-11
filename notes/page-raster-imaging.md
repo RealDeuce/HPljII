@@ -640,6 +640,52 @@ Output effect:
 - Segment-list and fixed-list pixels come from their bridged object fields and
   continuation counters.
 
+Row-store primitive map:
+
+- Compact text / downloaded glyph mode `0x00`:
+  `0x1effe -> 0x1f034` uses destination helpers `0x1f3d4` /
+  `0x1f414`. Row-copy table `0x1f08e` selects byte/word writers under
+  `0x1fa5c..0x207ac`; odd widths take the trailing byte from `A3`. Canonical
+  inputs are compact entries, selected context `0x783a2c`, glyph fields from
+  `0x1f354`, and the coordinate word.
+- Compact wide mode `0x10`:
+  `0x1effe -> 0x1f0d2` uses the same destination helpers. Full 16-byte chunks
+  render through `0x2f27c`, and the remainder renders through table
+  `0x1f1ac`. Additional inputs are wide-copy caches `0x783a40..0x783a48` and
+  phase `0x783a46`.
+- Compact segmented modes `0x20` and `0x30`:
+  `0x1effe -> 0x1f1f0` uses `0x1f08e` after vertical/plane pointer adjustment;
+  `0x1effe -> 0x1f264` combines that adjustment with `0x2f27c` chunks and
+  `0x1f1ac` remainder writes. Inputs are compact entry fields, selected source
+  plane, coordinate word, and wide-copy caches for mode `0x30`.
+- Segment-list spans:
+  `0x1efc2 -> 0x1f812 -> 0x1f862` uses `0x1f3d4` / `0x1f414`. It writes full
+  words plus a trailing mask from table `0x308f2`, using six-byte span entries
+  from `0x12714 -> 0x13520/0x135f0`.
+- Encoded raster:
+  `0x1efc2 -> 0x1f88e -> 0x1f8da` copies mode-0 payload words to consecutive
+  destination words. Modes `1..3` select `0x1f8e6`, `0x1f920`, or `0x1f9c6`,
+  expand payload bytes through tables `0x30914` or `0x30b14`, and store two,
+  three, or four destination rows. Canonical inputs are object mode byte
+  `+0x05`, count word `+0x06`, coordinate word `+0x08`, and payload `+0x0a`.
+- Rule / rectangle:
+  `0x1ef6a -> 0x1f446 -> 0x1f596/0x1f4e0` uses destination helper `0x1f626`.
+  It stores solid or pattern words after clipping and displacement. Inputs are
+  rule selector `+0x05 & 0x0f`, dimensions, key word, and continuation
+  `+0x0c`.
+- Fixed-list spans:
+  `0x1ef6a -> 0x1f756 -> 0x1f7b0` uses destination helper `0x1f626`. It stores
+  pattern rows on the fixed-list cadence from bridged fixed-list fields
+  `+0x04..+0x0d` and continuation state.
+
+The destination helper column is part of the reproduction contract. Helpers
+`0x1f3d4` and `0x1f626` decode the packed coordinate into destination base
+`0x783a28`, row-offset table `0x7839f8..`, byte-pair offset, and phase byte
+`0xa001`; `0x1f414` and `0x1f626` split rows against current-band count
+`0x783a20` and fallback base `0x7810b4`. A supported renderer therefore
+derives pixels from object records and these store primitives. It does not
+compare rows to an external oracle or infer a separate graphics blend mode.
+
 Evidence:
 
 - `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst` anchors

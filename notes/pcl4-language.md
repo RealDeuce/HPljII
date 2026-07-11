@@ -971,6 +971,36 @@ Field groups for this index:
   broader byte-stream variants that change a named field/object/helper, and
   hardware/MMIO timing or physical naming.
 
+Manual-family owner audit result:
+
+- The quick-reference rows below are not syntax-only coverage. Each manual
+  family either names a parser/handler boundary and checked-in owner note, or
+  stops at an explicit no-output, append-only, status, or hardware/MMIO
+  boundary. The behavioral proof remains in the owner notes; this index is the
+  manual-command route into those notes.
+- State-only commands are covered only when the later consumer is named.
+  Cursor, margin, HMI/VMI, wrap, perforation, VFC, macro, raster setup, and
+  rectangle setup rows list the canonical writer field and the first visible
+  consumer that can convert that state into compact text, span, raster,
+  rule-list, publication, or replay effects.
+- Pixel-producing command families are routed through page-object and render
+  owners rather than through manual names: printable/text/font routes use
+  `0xd04a -> 0x1393a -> 0x12f2e`; raster transfer uses
+  `0x105d0 -> 0x13070 -> 0x13250`; rectangle fill uses
+  `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`; downloaded glyphs use
+  `0x16498` plus later printable selection; publication uses `0xff1e`; and all
+  rendered rows pass through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+- Non-page command families are explicit terminal routes, not documentation
+  holes: alternate/data appends through `0xe002`, macro replay returns stored
+  bytes through `0xa904`, display/transparent append siblings store bytes
+  until replay, model/status queries write host FIFO/status state, and parser
+  no-output rows consume syntax without page-root mutation.
+- Remaining completion risk for this language layer is therefore not an
+  unassigned manual command row in the current quick-reference index. New work
+  should start only when a byte stream changes the parser owner, canonical
+  field write, downstream consumer, page-object bytes, render helper input, or
+  exact boundary named by the owner note.
+
 State-only consumer index:
 
 - `ESC &k#G`: writer `0xedf8` stores line-termination byte `0x78318f`.

@@ -2748,6 +2748,26 @@ the first ROM field where each byte-stream family becomes page-image state.
   object fields `+0x04/+0x05/+0x06/+0x08` and payload bytes at `+0x0a`. The
   first render consumer is `0x1ef6a -> 0x1efc2 -> 0x1effe`, then the compact
   helper selected by object selector bits.
+- Transparent/display direct readers and local Control-Z terminals:
+  transparent `ESC &p#X` restores delayed reader `0x12452`; normal
+  display-functions `ESC Y ... ESC Z` reaches direct reader `0x12536`; normal
+  local Control-Z terminals reach `0x120d2` or `0x1219e`. These readers do not
+  create a special page-object class. Their first page-image state exists only
+  when a routed value calls `0xd04a` or fixed-space helper `0xd0f0` and then
+  rejoins the compact text path under current root `+0x1c`. Alternate/data
+  display and Control-Z siblings `0x12120`, `0x1210c`, and `0x121b2` instead
+  append normalized bytes through `0xe002`, so no page root, object field,
+  bridge field, or render input changes until later macro/data replay feeds
+  those stored bytes back through `0xa904`.
+- Host/status side-channel commands:
+  model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
+  `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.
+  Their durable state is host/status state, not page-image state: FIFO bytes
+  under `0x783e92..0x783ed8`, backend selector `0x780e40`, status fields such
+  as `0x780e2a`, `0x7821cc`, and `0x7822db`, and wait object `0x7801e2`.
+  These routes have no first page object and no render consumer unless their
+  host-visible response causes a bidirectional host to send different later
+  bytes.
 - Macro definition, execute/call, and overlay replay:
   macro id/control handlers `0xe112` and `0xdd08` select records, definition
   mode stores bytes through append sink `0xe002`, and execute/call selectors
@@ -2894,6 +2914,9 @@ Evidence:
 - Object-owner notes:
   [direct-control-codes.md](direct-control-codes.md),
   [macro-data-chain.md](macro-data-chain.md),
+  [transparent-print-data.md](transparent-print-data.md),
+  [display-functions.md](display-functions.md),
+  [errors-and-status.md](errors-and-status.md),
   [font-context-metrics.md](font-context-metrics.md),
   [downloaded-fonts.md](downloaded-fonts.md),
   [raster-graphics.md](raster-graphics.md),

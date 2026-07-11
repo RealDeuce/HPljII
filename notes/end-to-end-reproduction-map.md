@@ -602,7 +602,12 @@ controlling artifact.
   stream: it names the parser route and the first command-family/page/render owners for
   printable text, direct controls, parser artifacts, transparent/display readers, font
   selection, scheduler handoff, downloaded fonts, raster/rectangle graphics,
-  publication/render, macro replay, and VFC.
+  publication/render, macro replay, and VFC. Binary payload coverage includes both sides
+  of delayed restore: normal `0x121cc -> 0x12218` calls family handlers `0x12452`,
+  `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`; alternate/data restore routes
+  non-wrapper payload bytes through `0x12358 -> 0xdace -> 0xe002`, making them
+  macro/data-chain stored input with no page-object, family-state, bridge, or render
+  effect until later `0xa904` replay reaches the normal owner.
 - Command dispatch tables and parsed forms to handlers:
   covered by [pcl-command-map.md](pcl-command-map.md), generated table extracts
   cited there, the ROM Semantic Index in
@@ -617,8 +622,9 @@ controlling artifact.
   `0x11774`, matched-handler range `0x11912..0x119a4`, zero-handler range
   `0x119a6..0x119f4`, alternate append range `0x11930..0x11ab8`, delayed
   arming helpers `0x11f5a` / `0x11f6e` / `0x11f82` / `0x11f96`, restore path
-  `0x121cc -> 0x12218`, no-match callback pointer `0x78299a`, and owner notes
-  form the current dispatch contract.
+  `0x121cc -> 0x12218`, alternate restore wrapper `0x12358`, append sink
+  `0xe002`, no-match callback pointer `0x78299a`, and owner notes form the
+  current dispatch contract.
 - Detailed command-family behavior:
   documented by the owner notes listed in the `Supported Stream Entry Points`
   section below. Each owner records parsed inputs, RAM writers, consumers,

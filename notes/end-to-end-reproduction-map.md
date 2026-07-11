@@ -152,6 +152,24 @@ that owner note before claiming equivalent output.
   [font-context-metrics.md](font-context-metrics.md#byte-to-glyph-flow), and
   `Minimal End-To-End Example` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#minimal-end-to-end-example).
+- Font selection to visible glyphs `ESC (s0p10h12v0s0b3T ! !`: command bytes enter
+  through `0xa904 -> 0xda9a -> 0x11774`. `ESC (` creates the primary setup record
+  through `0x1201e`; the mode-13 `s...T` sequence writes spacing, pitch, point-size,
+  style, stroke, and typeface request fields through `0xc930`, `0xc89c`, `0xc6ec`,
+  `0xc780`, `0xc840`, and `0xc7e0`, then refreshes through `0x1205a -> 0xc580`.
+  Candidate selection runs `0x13eb8 -> 0x1569c -> 0x156de -> 0x153c6 -> 0x1519a ->
+  0x14398`; `0x144d2` writes primary context `0x782ee6`, and `0x14c64` rebuilds primary
+  map `0x782f32`. The covered stream selects context `0xc008004c`; later printable `!`
+  bytes read selected slot `0`, that context, and map `0x782f32` in source helper
+  `0x1393a`, mapping host byte `0x21` to glyph `0x00`. Text queueing uses `0xd04a ->
+  0xd824 -> 0x12f2e -> 0x1387c` and writes compact object prefix `00 00 00 00 00 00 00
+  02 00 6a 00 00 68 02` under page-root bucket `+0x1c`. Publication/bridge copies
+  page-root context slot `0` into render-record context slots through `0xff1e -> 0x1ed84
+  -> 0x1edc6`; compact render `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` resolves pixels
+  from context `0xc008004c` plus mapped glyph byte `0x00`. Evidence: `Minimal Font
+  Selection Walkthrough` in this file and `Worked Path: Font Selection To Visible
+  Glyphs` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-font-selection-to-visible-glyphs).
 - Underline/span output `ESC &d3D ! ESC &d@`: command bytes enter through `0xa904 ->
   0xda9a -> 0x11774`; `ESC &d3D` dispatches to tokenizer/handler `0x12622`, which writes
   underline/text-attribute selector `0x783185 = 1` and arms pending span state through

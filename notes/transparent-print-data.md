@@ -9,6 +9,7 @@ Evidence:
 
 - `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`
 - `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+- `generated/disasm/ic30_ic13_payload_control_helper_00d99a.lst`
 - `tools/render_fixture_harness.py`, fixtures:
   - `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
   - `transparent data parser trace feeds page-record queue`
@@ -77,8 +78,10 @@ Field groups:
   segment/bucket caches.
 - Parser scratch: fetched payload bytes from `0xa904`, local payload count
   `D4`, and the temporary `0x1a` probe byte.
-- Firmware bookkeeping: `0xd99a` side effect for local `0x1a 0x58`
-  normalization and the alternate/data restore redirect
+- Firmware bookkeeping:
+  `0xd99a` side effect for local `0x1a 0x58` normalization, payload-control
+  counter `0x782c72`, status accumulator `0x780e2e.5`, and the
+  alternate/data restore redirect
   `0x1226e..0x1227e -> 0x12358(0x1228a)`, whose non-wrapper branch drains
   positive counts through `0xdace` and appends normalized bytes through
   `0xe002`.
@@ -104,6 +107,14 @@ Writers:
   byte `0x782eea` from font/sample-page setup paths.
 - `0x12452..0x12534` decrements payload count `D4`, applies the local probe,
   and selects `0xd04a` or `0xd0f0`.
+- `0xd99a` is called only after `0x12452` has consumed local pair
+  `0x1a 0x58`. In normal transparent mode, saved handler `0x782a1c` is
+  `0x12452`, so `0xd99a` takes its normal branch: ensure current root
+  `0x78297a` through `0x10084`, increment `0x782c72`, signal
+  `0x780e2e.5` on first use, and publish through `0xf34a -> 0xff1e` if the
+  counter overflows. In alternate/data mode, `0x12218` redirects through
+  `0x12358` and `0x12452` is not called, so this normal branch is not part of
+  the append-only path.
 - `0xd04a` / `0xd824` write compact page-record text objects; `0x12f2e` and
   `0x1387c` allocate or merge those records under current root bucket `+0x1c`.
 - `0xd0f0` writes the source object for substituted host space; the flagged
@@ -131,7 +142,11 @@ Output effect:
 - Transparent payload bytes are not parsed as commands while the count is
   active.
 - `0x1a 0x58` consumes two host bytes and contributes routed value `0x7f`;
-  `0x1a xx` with `xx != 0x58` contributes `xx`.
+  `0x1a xx` with `xx != 0x58` contributes `xx`. The `0x7f` substitution and
+  the `0xd99a` side effect are separate: the routed byte still follows the
+  `0xd04a` / `0xd0f0` filter decision, while the helper may also update
+  `0x782c72`, signal `0x780e2e.5`, or publish an existing root in normal
+  transparent mode.
 - Printable payload values use the same compact text object and render path as
   normal printable host bytes. In the pinned short compact cases, object byte
   `+0x04` is compact class `0`, `+0x05` is the selected context slot, `+0x06`
@@ -470,6 +485,13 @@ Firmware bookkeeping:
 
 - local stack word at `A6-2`: the control-byte filtering word selected before
   the payload loop.
+- `0xd99a`: payload-control side-effect helper for local `0x1a 0x58`.
+  Listing `generated/disasm/ic30_ic13_payload_control_helper_00d99a.lst`
+  shows that normal transparent mode is not one of the status-only cases: it
+  can ensure root `0x78297a`, increment `0x782c72`, and publish through
+  `0xf34a -> 0xff1e` when the counter exceeds `0xff`. Status-only cases are
+  alternate/data mode or saved handlers `0x12cfe`, `0x1228a`, `0x15d0a`, and
+  `0x16c14`.
 
 Hardware/external state:
 

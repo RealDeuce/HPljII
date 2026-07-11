@@ -14,6 +14,7 @@ below.
 
 - `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
 - `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`
+- `generated/disasm/ic30_ic13_payload_control_helper_00d99a.lst`
 - `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`
 - `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`
@@ -75,8 +76,12 @@ Field groups:
   termination on local `ESC Z` or `0xa904 == -1`, mode-2 local Control-Z
   dispatch rows, and command records that route bytes to `0x120d2`, `0x1210c`,
   `0x1219e`, or `0x121b2`.
-- Firmware bookkeeping: `0xd99a` reporting/normalization side effect and
-  status helper `0x9c2c`.
+- Firmware bookkeeping:
+  `0xd99a` reporting/normalization side effect, payload-control counter
+  `0x782c72`, status accumulator `0x780e2e.5`, and status helper `0x9c2c`.
+  The display readers own the local `0x1a 0x58` probe, while
+  [pcl-parser-core.md](pcl-parser-core.md#payload-control-side-effect-helper)
+  owns the helper body.
 - Unknown: manual-facing names for status latches are unknown; their ROM-local
   writes and consumers are the `0xcd86 -> 0x9c2c -> 0x9b5e` boundary.
 
@@ -101,6 +106,14 @@ Output effect:
 - Normal `ESC Y` can create compact text objects because its routed bytes enter
   `0xd04a`; default-filtered control ranges can instead enter fixed-space
   handler `0xd0f0`.
+- Normal `ESC Y` also inherits the non-status `0xd99a` branch for local
+  `0x1a 0x58`: because `0x782c18` is clear and saved handler `0x782a1c` is
+  not one of the status-only payload handlers, `0xd99a` can ensure current
+  root `0x78297a` through `0x10084`, increment payload-control counter
+  `0x782c72`, and on overflow clear that counter, flush pending text/span
+  state through `0xf34a`, and publish through `0xff1e`. The display-loop byte
+  still substitutes `0x7f`; the helper side effect is page/publication state,
+  not another byte reader.
 - The normal routed-text page-image boundary is the shared compact path:
   `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0x12f2e -> 0x1387c` queues a
   compact bucket object under current root `+0x1c`. The compact object carries
@@ -109,7 +122,10 @@ Output effect:
   `+0x1c` to render root `+0x18`, and render entry `0x1ef6a -> 0x1efc2 ->
   0x1effe` selects the compact glyph/fixed-space helper.
 - Alternate/data `ESC Y` creates no immediate pixels. It preserves bytes in
-  the append sink for later macro/data-chain replay.
+  the append sink for later macro/data-chain replay. Its local
+  `0x1a 0x58 -> 0x7f` call to `0xd99a` is status-only because
+  `0x782c18 == 1`: it signals `0x780e2e.5` through `0x9b5e`, returns
+  nonzero, and does not allocate a page root or update `0x782c72`.
 - Local Control-Z terminals are table-dependent; they are not one global
   control code. Each terminal's page, append, or no-output behavior is listed
   below with its exact handler address.
@@ -250,7 +266,12 @@ Canonical append state:
 
 Firmware bookkeeping:
 
-- `0xd99a`: local side effect for `0x1a 0x58` control reporting.
+- `0xd99a`: local side effect for `0x1a 0x58` control reporting. Listing
+  `generated/disasm/ic30_ic13_payload_control_helper_00d99a.lst` shows the
+  status-only branch for `0x782c18 == 1` or saved handlers
+  `0x12cfe/0x1228a/0x15d0a/0x16c14`, and the normal branch that ensures
+  current root `0x78297a`, increments `0x782c72`, and can publish through
+  `0xf34a -> 0xff1e` after the counter exceeds `0xff`.
 - `0xf054`: CR post-handler called by normal handler `0x12536` after routed
   value `0x0d`.
 - Control-Z handler siblings:

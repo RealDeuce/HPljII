@@ -3226,6 +3226,17 @@ State classification at this handoff:
 - Parser scratch:
   none at render entry. Parser records and payload bytes have already been
   committed into page objects or state records before publication.
+- Hardware/external state:
+  none is needed to choose object dispatch once a render work record and band
+  word have reached `0x1ef6a`. Physical engine timing and MMIO readiness live
+  before the scheduler admits a render call or after band buffers have been
+  written; they do not change bucket, rule, or fixed-list object semantics at
+  this handoff.
+- Unknown:
+  unresolved render boundaries are exact helper/data stops named by the object
+  owner notes, such as invalid compact helper targets or missing external
+  resource bytes. They are not hidden parser records, page-root roots, bridge
+  fields, or top-level render dispatch choices for the listed object classes.
 
 The detailed render contracts live in
 [Page Object Storage Outcome

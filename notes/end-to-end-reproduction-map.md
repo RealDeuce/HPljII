@@ -361,6 +361,22 @@ that owner note before claiming equivalent output.
   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and `Worked
   Path: Explicit No-Output Parser Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-explicit-no-output-parser-rows).
+- Host/status side channel `ESC *r1K 0x11`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`; `ESC *r#K` dispatches wrapper `0x12034`,
+  which calls setup helper `0x11efe`, appends a synthetic six-byte record with
+  word `+2 = 1`, and enters producer `0x122be..0x12326`. The producer rewinds
+  command-record cursor `0x78299e`, fetches query byte `0x11` through
+  `0xda9a`, walks ROM literal `33440A\r\n` at `0x12280..0x12288`, and enqueues
+  each byte through blocking FIFO helper `0xb090`; `0xb090` retries writer
+  `0xb0c0` and can wait on object `0x7801e2` while FIFO count `0x783ed2` is
+  full. This route writes host-output FIFO state `0x783e92..0x783ed1`,
+  `0x783ed2`, `0x783ed4`, and `0x783ed8`; it does not call page-root allocator
+  `0x10084`, publication `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, or render
+  entry `0x1ef6a`. Pixel output can change only if a bidirectional host reacts
+  by sending different later input, or if FIFO fullness stalls later byte
+  admission. Evidence:
+  [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix) and
+  `Minimal Host/Status Side-Channel Walkthrough` in this file.
 
 ## Objective Coverage Index
 

@@ -146,6 +146,35 @@ This file is the composition ledger for those classifications. The owner notes
 remain the behavioral source for command-family details and pixel-producing
 paths.
 
+Classification audit result:
+
+- The six field classes used by the active documentation objective are owned
+  here and repeated in route-specific owner notes: canonical state,
+  derived/cache state, parser scratch, firmware bookkeeping,
+  hardware/external state, and unknown. A route is not considered documented by
+  this model unless the owning note names the relevant writer, later
+  reader/consumer, output effect, evidence, and exact boundary for the field.
+- Canonical state covers the values that later ROM code treats as durable
+  behavior inputs: parser records, cursor/layout fields, font contexts/maps,
+  macro/data-chain records, downloaded resources, page roots, published pool
+  records, render roots, and page-object bytes. These fields must be preserved
+  exactly for byte-stream reproduction.
+- Derived/cache state covers values that may be recomputed only when their
+  producer and consumer are both documented: selected-map caches, compact
+  bucket keys, span bounds, raster object keys, render bridge roots, band
+  caches, row-helper indexes, and destination pointers.
+- Parser scratch and firmware bookkeeping are not shortcuts to pixels. Parser
+  scratch stops at tokenizer, delayed-payload, alternate/data, drain, or
+  handler-entry boundaries unless an owner converts it into canonical command
+  state. Firmware bookkeeping matters only when it controls allocation,
+  publication, replay, wait-object scheduling, status/FIFO behavior, or render
+  progress.
+- Hardware/external and unknown classifications are bounded stops, not open
+  semantic holes. They are valid only when the exact missing address, physical
+  identity, optional source, invalid target/source, or manual-facing label is
+  named in [unresolved-boundaries.md](unresolved-boundaries.md#owner-summary)
+  or the owning route note.
+
 ## Generated Lead Reports
 
 Status: indexed as lead-only artifacts. These reports are useful for search

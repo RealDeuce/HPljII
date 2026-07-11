@@ -463,10 +463,13 @@ Evidence and unresolved boundary:
   [semantic-state-model.md](semantic-state-model.md) under `Firmware Startup
   And Allocator`.
 - Focused disassembly:
+  `generated/disasm/ic30_ic13_reset_000110.lst`,
+  `generated/disasm/ic30_ic13_startup_retained_load_000266.lst`,
   `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`,
   `generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`,
   `generated/disasm/ic30_ic13_startup_config_init_00071c.lst`,
   `generated/disasm/ic30_ic13_startup_config_probe_0005ba.lst`,
+  `generated/disasm/ic30_ic13_startup_config_code_019a78.lst`,
   `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`,
   `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`,
   `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`,
@@ -495,6 +498,11 @@ baseline state. The required software behavior is:
   verified local baseline should preserve the documented `0x780efa`,
   `0x780efe`, `0x7810b4`, and `0x7810b8` values or explicitly document a
   different memory configuration.
+- Startup config code `0x19a78..0x19b40` reconstructs an encoded value from
+  `0x780ef4`, `0x780ef6`, and `0x780ef8` by packing the high selector bits,
+  low bit run, and bit-transition position. Its result is startup
+  configuration state used by later memory/resource setup, not parser
+  command state.
 - Heap initializer `0x164a` owns the allocation baseline. Page objects,
   macro/data-chain chunks, raster payloads, and downloaded-font payloads later
   depend on allocator fields `0x780e86`, `0x783972..0x783986`, and payload base
@@ -510,6 +518,11 @@ baseline state. The required software behavior is:
   records. Its parser/page effects are consumed later by reset, page layout,
   and font/context notes; physical retained-storage identity remains an
   external boundary.
+- Startup retained-load caller `0x0266..0x0296` seeds MMIO/control shadows
+  `0x7828fa = 0xf1`, `0x7828f9 = 0x7e`, and `0x7828f6 = 0xf348`, installs
+  RAM trampolines through `0x0298`, samples startup config through `0x071c`
+  and `0x02b2`, then calls `0x2c84`. These writes form initial firmware
+  bookkeeping and retained/default state before any host byte is admitted.
 
 Physical names for reset MMIO registers are not required for byte-stream
 pixel reproduction unless their sampled values change one of the software

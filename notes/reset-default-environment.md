@@ -28,6 +28,8 @@ below.
 - `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`
 - `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`
 - `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`
+- `generated/disasm/ic30_ic13_nvram_service_poll_00bbb2.lst`
+- `generated/disasm/ic30_ic13_startup_retained_load_000266.lst`
 - `notes/page-raster-imaging.md`
 - `notes/pcl-parser-firmware.md`
 - `notes/semantic-state-model.md`
@@ -94,6 +96,11 @@ Field groups:
 - Retained/default bookkeeping: retained-record flags `0x780eba..0x780ed8`,
   maintenance counters `0x780ef0`, buffers `0x782252..0x782270`, and serial
   retained-storage helpers using `$a400` and `$8c01`.
+- Service-poll retained bookkeeping: `0x0bbb2` gates on `0x7822fd`, samples
+  `$8a01` into status shadow `0x7822eb` through `0x0bc56`, samples
+  `$fffee00b` into `0x7822ec` through `0x0bc88`, mirrors low status bits into
+  `0x7828f9` and `$a801`, and updates timestamps `0x78230a` / `0x78230e`
+  when service/status predicates require it.
 - Firmware bookkeeping: reset pending bytes `0x782997` / `0x782998`,
   reset-cleared latches, reset-set latches `0x782a6d` / `0x783191`, active
   symbol snapshots, and reset completion byte `0x782a93`.
@@ -124,6 +131,10 @@ Writers and readers:
   data-chain chunks where needed.
 - `0x5e80`, menu/update handlers, retained-record maintenance, and NVRAM
   helpers produce or preserve the default fields consumed by later reset.
+- `0x0bbb2` preserves service/status shadow state while retained-storage
+  serial traffic is active. It does not parse host bytes or queue page
+  objects; its visible effect is through later status/service consumers and
+  retained/default-state decisions.
 
 Output effect:
 
@@ -145,7 +156,9 @@ Evidence and boundaries:
   `ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
   `ic30_ic13_font_default_metric_helpers_01bd64.lst`,
   `ic30_ic13_page_root_finalize_00ff1e.lst`, and the default/retained-record
-  listings named above.
+  listings named above, including startup retained-load
+  `ic30_ic13_startup_retained_load_000266.lst` and service poll
+  `ic30_ic13_nvram_service_poll_00bbb2.lst`.
 - Fixture evidence is named in the Primary fixtures list above; those streams
   pin valid-root publication, missing-root no-publication, page-record bridge,
   default-field production/consumption, and VMI conversion.

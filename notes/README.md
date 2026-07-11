@@ -163,10 +163,17 @@ checked-in ROM model:
    `0xdaf0` / `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`,
    six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and delayed restore
    `0x121cc -> 0x12218`. For counted binary payload commands, use `Binary Payload
-   Lifecycle` in [firmware-dataflow-model.md](firmware-dataflow-model.md). For
-   definition-mode or replayed bytes, use `Alternate/Data And Macro Replay Boundary` in
-   the same file before jumping to the family owner. For explicit ignored rows, wrapper
-   artifacts, or generic counted drains, use `Parser Artifact And No-Output Boundary`.
+   Lifecycle` in [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
+   `Stream Trace Procedure` in
+   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#stream-trace-procedure)
+   to split normal restore from alternate/data restore: normal restore calls saved
+   handlers such as `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`, while
+   alternate/data restore routes positive payload bytes through `0x12358 -> 0xdace ->
+   0xe002` as stored macro/data-chain input with no immediate page-object or render
+   effect. For definition-mode or replayed bytes, use `Alternate/Data And Macro Replay
+   Boundary` in the same file before jumping to the family owner. For explicit ignored
+   rows, wrapper artifacts, or generic counted drains, use `Parser Artifact And
+   No-Output Boundary`.
 4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
    index. After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.

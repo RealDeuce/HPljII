@@ -182,6 +182,24 @@ that owner note before claiming equivalent output.
   -> 0x1effe`. Evidence: `Minimal Display Functions Walkthrough` in this file and
   `Worked Path: Display Functions Direct Reader` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-display-functions-direct-reader).
+- Vertical forms control `ESC &l4W 00 00 00 02 !` / `! ESC &l0V !`: table-load bytes
+  enter through `0xa904 -> 0xda9a -> 0x11774`; `ESC &l#W` dispatches to arming handler
+  `0x11f6e`, which schedules delayed VFC reader `0x12cfe` through `0x121cc`. Restore
+  `0x12218` calls `0x12cfe`; that handler reads the absolute count, consumes payload
+  bytes through `0xdace`, writes VFC table words rooted at `0x782dde`, derives VFC
+  bottom `0x782dc2`, copies text-bottom cache `0x782dd2`, and clears modified-layout
+  flag `0x782ee1`. VFC writes no pixels directly. Channel jumps dispatch through `ESC
+  &l#V -> 0x1280a`, which consumes selector, VMI `0x783160`, cursor `0x782c8a/0x782c8e`,
+  top offset `0x782dce`, line caches `0x782ede..0x782ee0`, and table
+  `0x782dde..0x782edd`. Cursor-only jumps leave the following printable on the current
+  page; publishing siblings such as `! ESC &l0V !` take branch `0x1299c..0x129c4`, run
+  `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publish the old page through `0xff1e`, reset
+  x/y to `10`/`126`, and let the next `!` queue on a fresh root at compact coordinate
+  `0x9001`. Published pre-VFC rows render through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`;
+  post-VFC rows render when the fresh page is later published. Evidence: `Minimal VFC
+  Walkthrough` in this file, [vertical-forms-control.md](vertical-forms-control.md), and
+  `Worked Path: VFC Table And Channel Branch Matrix` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-vfc-table-and-channel-branch-matrix).
 - Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
   resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
   0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue

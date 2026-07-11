@@ -1145,6 +1145,12 @@ Field groups for this index:
   final-`@` dispatches through the ROM default-symbol table, and final-`X`
   calls `0x17708(slot, parameter)` for font-id selection. Those paths rejoin
   `0xc580`, selected-context rebuild, and map rebuild before any pixel effect.
+  In alternate/data mode, `ESC (` reaches `0x11fe4` and `ESC )` reaches
+  `0x11fd2`; those wrappers call `0x11ec8 -> 0xdaf0` without the normal
+  primary/secondary slot-record helpers `0x11f26` / `0x11efe`, and ordinary
+  final rows are blank instead of `0x120be`. Stored macro/data streams
+  therefore preserve the bytes without immediately changing requested symbol
+  words, selected maps, page-root context slots, or glyph render inputs.
   The `0x14f16` patcher mutates only the rebuilt active map, so the output
   contract remains: track the requested/active symbol words, selected context,
   and `0x782f32` / `0x783032` until later printable bytes reach

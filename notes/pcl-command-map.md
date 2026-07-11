@@ -1161,8 +1161,8 @@ Outcome owners:
   `Command-Family To Page-Object Crosswalk` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#command-family-to-page-object-crosswalk).
   The matrix below says which command-family owner receives the parsed form; the
-  crosswalk says which page-root field, object class, and first render consumer the
-  owner eventually reaches.
+  crosswalk says which page-root field, object class, first render consumer, and
+  row-store owner the owner eventually reaches.
 - Delayed-payload restore owners:
   `0x121cc` records the saved handler and six-byte command record, but the
   restored handler defines the semantic route. Transparent restore
@@ -1208,7 +1208,9 @@ Outcome owners:
   Outcome Matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Output
   effects are class-`0x80` raster bucket objects under page-root `+0x1c`,
   with mode/count/key/payload fields consumed after publication by
-  `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e`; final row stores are
+  the mode helpers `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6` named by the
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
 - Rectangle and rule imaging:
   handlers `0x10898`, `0x10a40`, `0x10ae0`, `0x10dce`, `0x10e22`, and
   `0x10e68` are owned by
@@ -1217,7 +1219,8 @@ Outcome owners:
   [Rule-List Outcome Matrix](page-record-storage.md#rule-list-outcome-matrix).
   Output effects are rule-list objects under page-root `+0x24`; bridge
   `0x1ed84 -> 0x1edc6` normalizes them into render list `+0x1c`, and
-  `0x1ef6a -> 0x1f446` dispatches solid and pattern helpers.
+  `0x1ef6a -> 0x1f446` dispatches solid helper `0x1f596` or pattern helper
+  `0x1f4e0`, with destination clipping through `0x1f626`.
 - Page-object storage and render handoff: compact, segment-list, fixed-list, rule-list,
   raster-bucket, publication, and render-bridge records are owned by [Page Object
   Storage Outcome Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
@@ -1226,7 +1229,8 @@ Outcome owners:
   [Render Entry Outcome
   Matrix](page-raster-imaging.md#render-entry-outcome-matrix). This is the common
   owner for the object-to-pixel hop after a command-family note has created page
-  content.
+  content; the final byte/word store families are summarized in
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
 - Font selection, symbol selection, and downloaded font output: handlers `0xc390`,
   `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`, `0xc930`, `0x12046`, `0x1205a`,
   `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, `0x120be`, `0x15a18`, `0x15a56`, and

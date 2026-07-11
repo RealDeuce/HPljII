@@ -430,6 +430,32 @@ or renderer file is named.
   interpreted and no pixels are produced in this outcome. Evidence is
   `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor` and
   `0x1eb2a/0x1ecd6 selects published record for render entry`.
+- Candidate-slot selection details:
+  `0x7ec6..0x7f90` derives the slot count from
+  `(0x7821fb & 0x7e) >> 1`, caps it at `6`, and walks longword slots
+  `0x780e6e[]`. Empty slots and slots equal to the prior survivor are cleared.
+  A nonempty candidate whose state byte `+0x04` is `4`, or whose word `+0x0e`
+  is nonzero, is promoted by writing byte `+0x04 = 2`, incrementing word
+  `+0x0e`, and copying the record pointer to both release cursor `0x780eb2`
+  and scheduler cursor `0x780eaa`. A no-candidate or invalid-candidate path
+  reports through `0x6f32(0x5d)`, sets status masks on `0x780e32` and
+  `0x780e2e`, and leaves no page-object/render side effect.
+- Release-cursor advance details:
+  `0x7722..0x779a` only advances release state when scheduler cursor
+  `0x780eaa` still equals release cursor `0x780eb2`. If the release record's
+  state byte is `2`, the helper marks it `4`, clears word `+0x0e`, copies
+  engine/status counter `0x780e04` into longword `+0x10`, and advances
+  `0x780eb2` to the next pool record. If cursor and release diverge, or the
+  selected cursor still equals protected head `0x780ea6` in a non-state-`2`
+  case, the helper leaves the cursors unchanged.
+- Active candidate staging:
+  `0x1c04..0x1c98` starts from release cursor `0x780eb2`. If ready predicate
+  `0x21b8` fails, it waits on object `0x7801c2` through `0x10c8` and returns
+  `D7 = 0`. If ready, it marks the release record state byte `+0x04 = 3`,
+  raises latch `0x780e6d` when record word `+0x14` is nonzero, runs the
+  active-pool copy/status helpers, and returns `D7 = 1`. This is scheduler
+  bookkeeping that can make a published record eligible for later render
+  selection; it does not interpret object classes or write pixels.
 - New-geometry work selection:
   `0x1ecde..0x1ed34` toggles selector `0x7820bc`, chooses `0x7820c4` or
   `0x782128`, writes active render pointer `0x783a18`, copies source byte

@@ -2859,6 +2859,18 @@ Reproduction rule:
   band/fallback buffers using `0x783a20`, `0x783a22`, and `0x783a28`; vertical
   coordinates choose buckets, segments, and fallback splits rather than causing
   a parser-time full-page bitmap allocation.
+- Finish each object-class route at the row-store owner, not at first
+  dispatch. Compact routes continue from `0x1effe` to `0x1f034`, `0x1f0d2`,
+  `0x1f1f0`, or `0x1f264`, then row-copy tables `0x1f08e`, `0x1f1ac`, or
+  helper `0x2f27c`. Segment-list routes continue from `0x1f812` to
+  `0x1f862`; encoded raster routes continue from `0x1f88e` to `0x1f8da`,
+  `0x1f8e6`, `0x1f920`, or `0x1f9c6`; rule routes continue from `0x1f446` to
+  `0x1f596` or `0x1f4e0`; and fixed-list routes continue from `0x1f756` to
+  `0x1f7b0`. Destination helpers `0x1f3d4`, `0x1f414`, and `0x1f626` choose
+  current-band versus fallback-buffer rows from the packed object coordinate
+  and band caches. The checked-in owner for this final handoff is
+  [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map).
 
 ### Command-Family To Page-Object Crosswalk
 

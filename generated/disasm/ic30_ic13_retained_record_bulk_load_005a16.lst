@@ -1,0 +1,29 @@
+05a16: 4e56 0000       link    A6, #$0
+05a1a: 48e7 8400       movem.l D0/D5, -(A7)
+05a1e: 7a10            moveq   #$10, D5
+05a20: 4a85            tst.l   D5
+05a22: 6716            beq     $5a3a
+05a24: 2e05            move.l  D5, D7
+05a26: 5387            subq.l  #1, D7
+05a28: e387            asl.l   #1, D7
+05a2a: 2447            movea.l D7, A2
+05a2c: d5fc 0078 0eba  adda.l  #$780eba, A2
+05a32: 34bc 0001       move.w  #$1, (A2)
+05a36: 5385            subq.l  #1, D5
+05a38: 60e6            bra     $5a20
+05a3a: 4eb9 0000 97e4  jsr     $97e4.l
+05a40: 7a10            moveq   #$10, D5
+05a42: 4a85            tst.l   D5
+05a44: 6714            beq     $5a5a
+05a46: 2e05            move.l  D5, D7
+05a48: 5387            subq.l  #1, D7
+05a4a: e387            asl.l   #1, D7
+05a4c: 2447            movea.l D7, A2
+05a4e: d5fc 0078 0eba  adda.l  #$780eba, A2
+05a54: 4252            clr.w   (A2)
+05a56: 5385            subq.l  #1, D5
+05a58: 60e8            bra     $5a42
+05a5a: 4cdf 0021       movem.l (A7)+, D0/D5
+05a5e: 4e5e            unlk    A6
+05a60: 4e75            rts
+05a62: 4e56 0000       link    A6, #$0

@@ -3,8 +3,15 @@
 *.bin
 *.BIN
 
-# Generated local analysis output derived from ROM contents.
-generated/
+# Generated local analysis output derived from ROM contents. Keep bulk/raw
+# outputs local, but track the text evidence files cited by checked-in notes.
+generated/*
+!generated/analysis/
+generated/analysis/*
+!generated/analysis/*.md
+!generated/disasm/
+generated/disasm/*
+!generated/disasm/*.lst
 
 # Local Python bytecode caches from analysis scripts.
 __pycache__/

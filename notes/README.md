@@ -28,6 +28,11 @@ For a concrete host byte stream, the checked-in owner notes are the controlling
 artifact. Generated listings and fixture logs support those notes; they are not
 standalone deliverables.
 
+The generated text evidence cited by these notes is also checked in when it is
+small and reviewable: focused disassembly listings under `generated/disasm/*.lst`
+and generated analysis reports under `generated/analysis/*.md`. Bulk generated
+outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
+
 - Host bytes enter through [host-byte-fetch.md](host-byte-fetch.md#owner-summary),
   which documents `0xa904` source priority, data-chain replay, direct host
   paths, and the normalized byte returned in `D7`. Its

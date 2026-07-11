@@ -1,0 +1,22 @@
+066c0: 1e39 0078 21b8  move.b  $7821b8.l, D7
+066c6: 0c47 0001       cmpi.w  #$1, D7
+066ca: 6616            bne     $66e2
+066cc: 4a39 0078 21b9  tst.b   $7821b9.l
+066d2: 660e            bne     $66e2
+066d4: 2ebc 0078 0202  move.l  #$780202, (A7)
+066da: 4eb9 0000 10c8  jsr     $10c8.l
+066e0: 60dc            bra     $66be
+066e2: 4eb9 0000 15a6  jsr     $15a6.l
+066e8: 4287            clr.l   D7
+066ea: 3e2d 000c       move.w  ($c,A5), D7
+066ee: 0c87 0000 0001  cmpi.l  #$1, D7
+066f4: 630c            bls     $6702
+066f6: 3b7c 0002 000c  move.w  #$2, ($c,A5)
+066fc: 3b7c 0002 000e  move.w  #$2, ($e,A5)
+06702: 4eb9 0000 15ac  jsr     $15ac.l
+06708: 4eb9 0000 9ac2  jsr     $9ac2.l
+0670e: 4878 0003       pea     $3.w
+06712: 4eb9 0000 6722  jsr     $6722.l
+06718: 588f            addq.l  #4, A7
+0671a: 4cdf 3021       movem.l (A7)+, D0/D5/A4-A5
+0671e: 4e5e            unlk    A6

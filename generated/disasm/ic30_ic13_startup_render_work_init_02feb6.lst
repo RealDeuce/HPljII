@@ -1,0 +1,21 @@
+2feb6: 4e56 0000       link    A6, #$0
+2feba: 48e7 8c04       movem.l D0/D4-D5/A5, -(A7)
+2febe: 2a79 0078 10b4  movea.l $7810b4.l, A5
+2fec4: 2a39 0078 10b8  move.l  $7810b8.l, D5
+2feca: 4a85            tst.l   D5
+2fecc: 6f0c            ble     $2feda
+2fece: 1815            move.b  (A5), D4
+2fed0: 4884            ext.w   D4
+2fed2: 48c4            ext.l   D4
+2fed4: 528d            addq.l  #1, A5
+2fed6: 5385            subq.l  #1, D5
+2fed8: 60f0            bra     $2feca
+2feda: 7001            moveq   #$1, D0
+2fedc: 23c0 0078 20bc  move.l  D0, $7820bc.l
+2fee2: 7001            moveq   #$1, D0
+2fee4: 23c0 0078 20c0  move.l  D0, $7820c0.l
+2feea: 4279 0078 20c8  clr.w   $7820c8.l
+2fef0: 4279 0078 212c  clr.w   $78212c.l
+2fef6: 4cdf 2031       movem.l (A7)+, D0/D4-D5/A5
+2fefa: 4e5e            unlk    A6
+2fefc: 4e75            rts

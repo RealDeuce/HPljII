@@ -1,0 +1,99 @@
+0c580: 4e56 0000            link    A6, #$0
+0c584: 48e7 8c0c            movem.l D0/D4-D5/A4-A5, -(A7)
+0c588: 2a79 0078 299e       movea.l $78299e.l, A5
+0c58e: 5d8d                 subq.l  #6, A5
+0c590: 23cd 0078 299e       move.l  A5, $78299e.l
+0c596: 4a39 0078 2f2c       tst.b   $782f2c.l
+0c59c: 6724                 beq     $c5c2
+0c59e: 3a2d 0002            move.w  ($2,A5), D5
+0c5a2: 48c5                 ext.l   D5
+0c5a4: 4a85                 tst.l   D5
+0c5a6: 6722                 beq     $c5ca
+0c5a8: 0c85 0000 0001       cmpi.l  #$1, D5
+0c5ae: 671a                 beq     $c5ca
+0c5b0: 4878 0034            pea     $34.w
+0c5b4: 4878 00e3            pea     $e3.w
+0c5b8: 4eb9 0000 1284       jsr     $1284.l
+0c5be: 508f                 addq.l  #8, A7
+0c5c0: 6008                 bra     $c5ca
+0c5c2: 4cdf 3031            movem.l (A7)+, D0/D4-D5/A4-A5
+0c5c6: 4e5e                 unlk    A6
+0c5c8: 4e75                 rts
+0c5ca: 4287                 clr.l   D7
+0c5cc: 1e39 0078 2f2c       move.b  $782f2c.l, D7
+0c5d2: 0c47 0001            cmpi.w  #$1, D7
+0c5d6: 6624                 bne     $c5fc
+0c5d8: 4287                 clr.l   D7
+0c5da: 1e39 0078 2f06       move.b  $782f06.l, D7
+0c5e0: be85                 cmp.l   D5, D7
+0c5e2: 662c                 bne     $c610
+0c5e4: 4284                 clr.l   D4
+0c5e6: 0c84 0000 0010       cmpi.l  #$10, D4
+0c5ec: 6c2c                 bge     $c61a
+0c5ee: 2444                 movea.l D4, A2
+0c5f0: d5fc 0078 297f       adda.l  #$78297f, A2
+0c5f6: 4a12                 tst.b   (A2)
+0c5f8: 6648                 bne     $c642
+0c5fa: 601e                 bra     $c61a
+0c5fc: 4287                 clr.l   D7
+0c5fe: 1e39 0078 2f06       move.b  $782f06.l, D7
+0c604: be85                 cmp.l   D5, D7
+0c606: 665e                 bne     $c666
+0c608: 2e85                 move.l  D5, (A7)
+0c60a: 4eba fe1c            jsr     ($c428,PC)
+0c60e: 6056                 bra     $c666
+0c610: 2e85                 move.l  D5, (A7)
+0c612: 4eb9 0001 3eb8       jsr     $13eb8.l
+0c618: 604c                 bra     $c666
+0c61a: 4ab9 0078 297a       tst.l   $78297a.l
+0c620: 6724                 beq     $c646
+0c622: 0c84 0000 0010       cmpi.l  #$10, D4
+0c628: 661c                 bne     $c646
+0c62a: 13fc 0001 0078 298f  move.b  #$1, $78298f.l
+0c632: 2e85                 move.l  D5, (A7)
+0c634: 4eb9 0001 3eb8       jsr     $13eb8.l
+0c63a: 4239 0078 298f       clr.b   $78298f.l
+0c640: 6004                 bra     $c646
+0c642: 5284                 addq.l  #1, D4
+0c644: 60a0                 bra     $c5e6
+0c646: 2eb9 0078 2992       move.l  $782992.l, (A7)
+0c64c: 4eba feae            jsr     ($c4fc,PC)
+0c650: 0c87 0000 0011       cmpi.l  #$11, D7
+0c656: 670e                 beq     $c666
+0c658: 2e85                 move.l  D5, (A7)
+0c65a: 4eb9 0001 3eb8       jsr     $13eb8.l
+0c660: 2e85                 move.l  D5, (A7)
+0c662: 4eba fdc4            jsr     ($c428,PC)
+0c666: 2e05                 move.l  D5, D7
+0c668: e387                 asl.l   #1, D7
+0c66a: 2447                 movea.l D7, A2
+0c66c: d5fc 0078 2f08       adda.l  #$782f08, A2
+0c672: 2e05                 move.l  D5, D7
+0c674: e387                 asl.l   #1, D7
+0c676: 2847                 movea.l D7, A4
+0c678: d9fc 0078 3144       adda.l  #$783144, A4
+0c67e: 3494                 move.w  (A4), (A2)
+0c680: 4239 0078 2f2c       clr.b   $782f2c.l
+0c686: 6000 ff3a            bra     $c5c2
+0c68a: 4e56 fffc            link    A6, #-$4
+0c68e: 13fc 0001 0078 2f2d  move.b  #$1, $782f2d.l
+0c696: 4a39 0078 2f06       tst.b   $782f06.l
+0c69c: 6710                 beq     $c6ae
+0c69e: 4297                 clr.l   (A7)
+0c6a0: 4eba fd86            jsr     ($c428,PC)
+0c6a4: 4a87                 tst.l   D7
+0c6a6: 6706                 beq     $c6ae
+0c6a8: 4239 0078 2f06       clr.b   $782f06.l
+0c6ae: 4239 0078 2f2d       clr.b   $782f2d.l
+0c6b4: 4e5e                 unlk    A6
+0c6b6: 4e75                 rts
+0c6b8: 4e56 0000            link    A6, #$0
+0c6bc: 13fc 0001 0078 2f2d  move.b  #$1, $782f2d.l
+0c6c4: 4a39 0078 2f06       tst.b   $782f06.l
+0c6ca: 6616                 bne     $c6e2
+0c6cc: 4878 0001            pea     $1.w
+0c6d0: 4eba fd56            jsr     ($c428,PC)
+0c6d4: 588f                 addq.l  #4, A7
+0c6d6: 4a87                 tst.l   D7
+0c6d8: 6708                 beq     $c6e2
+0c6da: 13fc 0001 0078 2f06  move.b  #$1, $782f06.l

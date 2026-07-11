@@ -1,0 +1,41 @@
+0eec0: 548a                 addq.l  #2, A2
+0eec2: 3a12                 move.w  (A2), D5
+0eec4: 48c5                 ext.l   D5
+0eec6: 6608                 bne     $eed0
+0eec8: 13c5 0078 2da7       move.b  D5, $782da7.l
+0eece: 600a                 bra     $eeda
+0eed0: 4a85                 tst.l   D5
+0eed2: 6c06                 bge     $eeda
+0eed4: 2e05                 move.l  D5, D7
+0eed6: 4487                 neg.l   D7
+0eed8: 2a07                 move.l  D7, D5
+0eeda: 0c85 0000 0001       cmpi.l  #$1, D5
+0eee0: 6606                 bne     $eee8
+0eee2: bb39 0078 2da7       eor.b   D5, $782da7.l
+0eee8: 4cdf 0021            movem.l (A7)+, D0/D5
+0eeec: 4e5e                 unlk    A6
+0eeee: 4e75                 rts
+0eef0: 4e56 0000            link    A6, #$0
+0eef4: 48e7 8404            movem.l D0/D5/A5, -(A7)
+0eef8: 2a79 0078 299e       movea.l $78299e.l, A5
+0eefe: 5d8d                 subq.l  #6, A5
+0ef00: 23cd 0078 299e       move.l  A5, $78299e.l
+0ef06: 3a2d 0002            move.w  ($2,A5), D5
+0ef0a: 48c5                 ext.l   D5
+0ef0c: 4a85                 tst.l   D5
+0ef0e: 6c06                 bge     $ef16
+0ef10: 2e05                 move.l  D5, D7
+0ef12: 4487                 neg.l   D7
+0ef14: 2a07                 move.l  D7, D5
+0ef16: 0c85 0000 0063       cmpi.l  #$63, D5
+0ef1c: 6f0a                 ble     $ef28
+0ef1e: 33fc 0063 0078 2da4  move.w  #$63, $782da4.l
+0ef26: 600a                 bra     $ef32
+0ef28: 4a85                 tst.l   D5
+0ef2a: 6706                 beq     $ef32
+0ef2c: 33c5 0078 2da4       move.w  D5, $782da4.l
+0ef32: 4cdf 2021            movem.l (A7)+, D0/D5/A5
+0ef36: 4e5e                 unlk    A6
+0ef38: 4e75                 rts
+0ef3a: 0000 eff0            ori.b   #$f0, D0
+0ef3e: 0000 0003            ori.b   #$3, D0

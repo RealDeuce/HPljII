@@ -1,0 +1,153 @@
+2f27c: 48e7 1068       movem.l D3/A1-A2/A4, -(A7)
+2f280: 3079 0078 3a40  movea.w $783a40.l, A0
+2f286: d2f9 0078 3a46  adda.w  $783a46.l, A1
+2f28c: d4f9 0078 3a46  adda.w  $783a46.l, A2
+2f292: 2039 0078 3a1c  move.l  $783a1c.l, D0
+2f298: 0480 0000 000e  subi.l  #$e, D0
+2f29e: 49f9 0002 f2ac  lea     $2f2ac.l, A4
+2f2a4: e54b            lsl.w   #2, D3
+2f2a6: 2874 3000       movea.l (A4,D3.w), A4
+2f2aa: 4ed4            jmp     (A4)
+2f2ac: 0002 feb0       ori.b   #$b0, D2
+2f2b0: 0002 fe9c       ori.b   #$9c, D2
+2f2b4: 0002 fe88       ori.b   #$88, D2
+2f2b8: 0002 fe74       ori.b   #$74, D2
+2f2bc: 0002 fe60       ori.b   #$60, D2
+2f2c0: 0002 fe4c       ori.b   #$4c, D2
+2f2c4: 0002 fe38       ori.b   #$38, D2
+2f2c8: 0002 fe24       ori.b   #$24, D2
+2f2cc: 0002 fe10       ori.b   #$10, D2
+2f2d0: 0002 fdfc       ori.b   #$fc, D2
+2f2d4: 0002 fde8       ori.b   #$e8, D2
+2f2d8: 0002 fdd4       ori.b   #$d4, D2
+2f2dc: 0002 fdc0       ori.b   #$c0, D2
+2f2e0: 0002 fdac       ori.b   #$ac, D2
+2f2e4: 0002 fd98       ori.b   #$98, D2
+2f2e8: 0002 fd84       ori.b   #$84, D2
+2f2ec: 0002 fd70       ori.b   #$70, D2
+2f2f0: 0002 fd5c       ori.b   #$5c, D2
+2f2f4: 0002 fd48       ori.b   #$48, D2
+2f2f8: 0002 fd34       ori.b   #$34, D2
+2f2fc: 0002 fd20       ori.b   #$20, D2
+2f300: 0002 fd0c       ori.b   #$c, D2
+2f304: 0002 fcf8       ori.b   #$f8, D2
+2f308: 0002 fce4       ori.b   #$e4, D2
+2f30c: 0002 fcd0       ori.b   #$d0, D2
+2f310: 0002 fcbc       ori.b   #$bc, D2
+2f314: 0002 fca8       ori.b   #$a8, D2
+2f318: 0002 fc94       ori.b   #$94, D2
+2f31c: 0002 fc80       ori.b   #$80, D2
+2f320: 0002 fc6c       ori.b   #$6c, D2
+2f324: 0002 fc58       ori.b   #$58, D2
+2f328: 0002 fc44       ori.b   #$44, D2
+2f32c: 0002 fc30       ori.b   #$30, D2
+2f330: 0002 fc1c       ori.b   #$1c, D2
+2f334: 0002 fc08       ori.b   #$8, D2
+2f338: 0002 fbf4       ori.b   #$f4, D2
+2f33c: 0002 fbe0       ori.b   #$e0, D2
+2f340: 0002 fbcc       ori.b   #$cc, D2
+2f344: 0002 fbb8       ori.b   #$b8, D2
+2f348: 0002 fba4       ori.b   #$a4, D2
+2f34c: 0002 fb90       ori.b   #$90, D2
+2f350: 0002 fb7c       ori.b   #$7c, D2
+2f354: 0002 fb68       ori.b   #$68, D2
+2f358: 0002 fb54       ori.b   #$54, D2
+2f35c: 0002 fb40       ori.b   #$40, D2
+2f360: 0002 fb2c       ori.b   #$2c, D2
+2f364: 0002 fb18       ori.b   #$18, D2
+2f368: 0002 fb04       ori.b   #$4, D2
+2f36c: 0002 faf0       ori.b   #$f0, D2
+2f370: 0002 fadc       ori.b   #$dc, D2
+2f374: 0002 fac8       ori.b   #$c8, D2
+2f378: 0002 fab4       ori.b   #$b4, D2
+2f37c: 0002 faa0       ori.b   #$a0, D2
+2f380: 0002 fa8c       ori.b   #$8c, D2
+2f384: 0002 fa78       ori.b   #$78, D2
+2f388: 0002 fa64       ori.b   #$64, D2
+2f38c: 0002 fa50       ori.b   #$50, D2
+2f390: 0002 fa3c       ori.b   #$3c, D2
+2f394: 0002 fa28       ori.b   #$28, D2
+2f398: 0002 fa14       ori.b   #$14, D2
+2f39c: 0002 fa00       ori.b   #$0, D2
+2f3a0: 0002 f9ec       ori.b   #$ec, D2
+2f3a4: 0002 f9d8       ori.b   #$d8, D2
+2f3a8: 0002 f9c4       ori.b   #$c4, D2
+2f3ac: 0002 f9b0       ori.b   #$b0, D2
+2f3b0: 0002 f99c       ori.b   #$9c, D2
+2f3b4: 0002 f988       ori.b   #$88, D2
+2f3b8: 0002 f974       ori.b   #$74, D2
+2f3bc: 0002 f960       ori.b   #$60, D2
+2f3c0: 0002 f94c       ori.b   #$4c, D2
+2f3c4: 0002 f938       ori.b   #$38, D2
+2f3c8: 0002 f924       ori.b   #$24, D2
+2f3cc: 0002 f910       ori.b   #$10, D2
+2f3d0: 0002 f8fc       ori.b   #$fc, D2
+2f3d4: 0002 f8e8       ori.b   #$e8, D2
+2f3d8: 0002 f8d4       ori.b   #$d4, D2
+2f3dc: 0002 f8c0       ori.b   #$c0, D2
+2f3e0: 0002 f8ac       ori.b   #$ac, D2
+2f3e4: 0002 f898       ori.b   #$98, D2
+2f3e8: 0002 f884       ori.b   #$84, D2
+2f3ec: 0002 f870       ori.b   #$70, D2
+2f3f0: 0002 f85c       ori.b   #$5c, D2
+2f3f4: 0002 f848       ori.b   #$48, D2
+2f3f8: 0002 f834       ori.b   #$34, D2
+2f3fc: 0002 f820       ori.b   #$20, D2
+2f400: 0002 f80c       ori.b   #$c, D2
+2f404: 0002 f7f8       ori.b   #$f8, D2
+2f408: 0002 f7e4       ori.b   #$e4, D2
+2f40c: 0002 f7d0       ori.b   #$d0, D2
+2f410: 0002 f7bc       ori.b   #$bc, D2
+2f414: 0002 f7a8       ori.b   #$a8, D2
+2f418: 0002 f794       ori.b   #$94, D2
+2f41c: 0002 f780       ori.b   #$80, D2
+2f420: 0002 f76c       ori.b   #$6c, D2
+2f424: 0002 f758       ori.b   #$58, D2
+2f428: 0002 f744       ori.b   #$44, D2
+2f42c: 0002 f730       ori.b   #$30, D2
+2f430: 0002 f71c       ori.b   #$1c, D2
+2f434: 0002 f708       ori.b   #$8, D2
+2f438: 0002 f6f4       ori.b   #$f4, D2
+2f43c: 0002 f6e0       ori.b   #$e0, D2
+2f440: 0002 f6cc       ori.b   #$cc, D2
+2f444: 0002 f6b8       ori.b   #$b8, D2
+2f448: 0002 f6a4       ori.b   #$a4, D2
+2f44c: 0002 f690       ori.b   #$90, D2
+2f450: 0002 f67c       ori.b   #$7c, D2
+2f454: 0002 f668       ori.b   #$68, D2
+2f458: 0002 f654       ori.b   #$54, D2
+2f45c: 0002 f640       ori.b   #$40, D2
+2f460: 0002 f62c       ori.b   #$2c, D2
+2f464: 0002 f618       ori.b   #$18, D2
+2f468: 0002 f604       ori.b   #$4, D2
+2f46c: 0002 f5f0       ori.b   #$f0, D2
+2f470: 0002 f5dc       ori.b   #$dc, D2
+2f474: 0002 f5c8       ori.b   #$c8, D2
+2f478: 0002 f5b4       ori.b   #$b4, D2
+2f47c: 0002 f5a0       ori.b   #$a0, D2
+2f480: 0002 f58c       ori.b   #$8c, D2
+2f484: 0002 f578       ori.b   #$78, D2
+2f488: 0002 f564       ori.b   #$64, D2
+2f48c: 0002 f550       ori.b   #$50, D2
+2f490: 0002 f53c       ori.b   #$3c, D2
+2f494: 0002 f528       ori.b   #$28, D2
+2f498: 0002 f514       ori.b   #$14, D2
+2f49c: 0002 f500       ori.b   #$0, D2
+2f4a0: 0002 f4ec       ori.b   #$ec, D2
+2f4a4: 0002 f4d8       ori.b   #$d8, D2
+2f4a8: 0002 f4c4       ori.b   #$c4, D2
+2f4ac: 0002 f4b0       ori.b   #$b0, D2
+2f4b0: 32da            move.w  (A2)+, (A1)+
+2f4b2: 32da            move.w  (A2)+, (A1)+
+2f4b4: 32da            move.w  (A2)+, (A1)+
+2f4b6: 32da            move.w  (A2)+, (A1)+
+2f4b8: 32da            move.w  (A2)+, (A1)+
+2f4ba: 32da            move.w  (A2)+, (A1)+
+2f4bc: 32da            move.w  (A2)+, (A1)+
+2f4be: 329a            move.w  (A2)+, (A1)
+2f4c0: d3c0            adda.l  D0, A1
+2f4c2: d5c8            adda.l  A0, A2
+2f4c4: 32da            move.w  (A2)+, (A1)+
+2f4c6: 32da            move.w  (A2)+, (A1)+
+2f4c8: 32da            move.w  (A2)+, (A1)+
+2f4ca: 32da            move.w  (A2)+, (A1)+

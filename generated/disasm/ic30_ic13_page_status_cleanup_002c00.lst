@@ -1,0 +1,25 @@
+02c00: 0000 4eb9       ori.b   #$b9, D0
+02c04: 0000 15a6       ori.b   #$a6, D0
+02c08: 4a39 0078 39d2  tst.b   $7839d2.l
+02c0e: 6718            beq     $2c28
+02c10: 4239 0078 39d2  clr.b   $7839d2.l
+02c16: 4eb9 0000 15ac  jsr     $15ac.l
+02c1c: 4eb9 0000 2c44  jsr     $2c44.l
+02c22: 4eb9 0000 15a6  jsr     $15a6.l
+02c28: 4239 0078 39d3  clr.b   $7839d3.l
+02c2e: 4eb9 0000 a5da  jsr     $a5da.l
+02c34: 4239 0078 0e90  clr.b   $780e90.l
+02c3a: 4eb9 0000 15ac  jsr     $15ac.l
+02c40: 4e5e            unlk    A6
+02c42: 4e75            rts
+02c44: 4e56 fffc       link    A6, #-$4
+02c48: 4eb9 0000 15a6  jsr     $15a6.l
+02c4e: 4eb9 0000 a668  jsr     $a668.l
+02c54: 4eb9 0000 a620  jsr     $a620.l
+02c5a: 4eb9 0000 15ac  jsr     $15ac.l
+02c60: 4eb9 0000 2332  jsr     $2332.l
+02c66: 4eb9 0000 15a6  jsr     $15a6.l
+02c6c: 4eb9 0000 a638  jsr     $a638.l
+02c72: 4eb9 0000 15ac  jsr     $15ac.l
+02c78: 4297            clr.l   (A7)
+02c7a: 4eb9 0000 1fd4  jsr     $1fd4.l

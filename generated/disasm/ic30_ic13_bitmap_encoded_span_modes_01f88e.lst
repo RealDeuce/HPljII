@@ -1,0 +1,174 @@
+1f88e: 48e7 0c00       movem.l D4-D5, -(A7)
+1f892: 2449            movea.l A1, A2
+1f894: 528a            addq.l  #1, A2
+1f896: 181a            move.b  (A2)+, D4
+1f898: 0244 0003       andi.w  #$3, D4
+1f89c: 3a1a            move.w  (A2)+, D5
+1f89e: 3604            move.w  D4, D3
+1f8a0: 5243            addq.w  #1, D3
+1f8a2: 321a            move.w  (A2)+, D1
+1f8a4: 4eb9 0001 f3d4  jsr     $1f3d4.l
+1f8aa: 2642            movea.l D2, A3
+1f8ac: 4eb9 0001 f414  jsr     $1f414.l
+1f8b2: 3405            move.w  D5, D2
+1f8b4: 3004            move.w  D4, D0
+1f8b6: e548            lsl.w   #2, D0
+1f8b8: 41f9 0001 f8ca  lea     $1f8ca.l, A0
+1f8be: 2070 0000       movea.l (A0,D0.w), A0
+1f8c2: 4e90            jsr     (A0)
+1f8c4: 4cdf 0030       movem.l (A7)+, D4-D5
+1f8c8: 4e75            rts
+1f8ca: 0001 f8da       ori.b   #$da, D1
+1f8ce: 0001 f8e6       ori.b   #$e6, D1
+1f8d2: 0001 f920       ori.b   #$20, D1
+1f8d6: 0001 f9c6       ori.b   #$c6, D1
+1f8da: 4a42            tst.w   D2
+1f8dc: 6706            beq     $1f8e4
+1f8de: 32da            move.w  (A2)+, (A1)+
+1f8e0: 5542            subq.w  #2, D2
+1f8e2: 62fa            bhi     $1f8de
+1f8e4: 4e75            rts
+1f8e6: 2f0c            move.l  A4, -(A7)
+1f8e8: 2849            movea.l A1, A4
+1f8ea: d9f9 0078 3a1c  adda.l  $783a1c.l, A4
+1f8f0: 2003            move.l  D3, D0
+1f8f2: 4840            swap    D0
+1f8f4: 3000            move.w  D0, D0
+1f8f6: 6708            beq     $1f900
+1f8f8: 2879 0078 10b4  movea.l $7810b4.l, A4
+1f8fe: d9cb            adda.l  A3, A4
+1f900: 41f9 0003 0914  lea     $30914.l, A0
+1f906: 5342            subq.w  #1, D2
+1f908: 6512            bcs     $1f91c
+1f90a: 4240            clr.w   D0
+1f90c: 101a            move.b  (A2)+, D0
+1f90e: d040            add.w   D0, D0
+1f910: 3230 0000       move.w  (A0,D0.w), D1
+1f914: 32c1            move.w  D1, (A1)+
+1f916: 38c1            move.w  D1, (A4)+
+1f918: 51ca fff0       dbra    D2, $1f90a
+1f91c: 285f            movea.l (A7)+, A4
+1f91e: 4e75            rts
+1f920: 48e7 000c       movem.l A4-A5, -(A7)
+1f924: 2039 0078 3a1c  move.l  $783a1c.l, D0
+1f92a: 3e02            move.w  D2, D7
+1f92c: 6700 0092       beq     $1f9c0
+1f930: e24f            lsr.w   #1, D7
+1f932: 6502            bcs     $1f936
+1f934: 5347            subq.w  #1, D7
+1f936: 4843            swap    D3
+1f938: 5343            subq.w  #1, D3
+1f93a: 6504            bcs     $1f940
+1f93c: 670c            beq     $1f94a
+1f93e: 6418            bcc     $1f958
+1f940: 2849            movea.l A1, A4
+1f942: d9c0            adda.l  D0, A4
+1f944: 2a4c            movea.l A4, A5
+1f946: dbc0            adda.l  D0, A5
+1f948: 601a            bra     $1f964
+1f94a: 2849            movea.l A1, A4
+1f94c: d9c0            adda.l  D0, A4
+1f94e: 2a79 0078 10b4  movea.l $7810b4.l, A5
+1f954: dbcb            adda.l  A3, A5
+1f956: 600c            bra     $1f964
+1f958: 2879 0078 10b4  movea.l $7810b4.l, A4
+1f95e: d9cb            adda.l  A3, A4
+1f960: 2a4c            movea.l A4, A5
+1f962: dbc0            adda.l  D0, A5
+1f964: 41f9 0003 0b14  lea     $30b14.l, A0
+1f96a: 6134            bsr     $1f9a0
+1f96c: 0201 000f       andi.b  #$f, D1
+1f970: 5101            subq.b  #8, D1
+1f972: 6508            bcs     $1f97c
+1f974: 5889            addq.l  #4, A1
+1f976: 588c            addq.l  #4, A4
+1f978: 588d            addq.l  #4, A5
+1f97a: 600a            bra     $1f986
+1f97c: 5489            addq.l  #2, A1
+1f97e: 548c            addq.l  #2, A4
+1f980: 548d            addq.l  #2, A5
+1f982: 0601 0010       addi.b  #$10, D1
+1f986: 0001 0010       ori.b   #$10, D1
+1f98a: 11c1 a001       move.b  D1, $a001.w
+1f98e: 528a            addq.l  #1, A2
+1f990: 3e02            move.w  D2, D7
+1f992: e24f            lsr.w   #1, D7
+1f994: 672a            beq     $1f9c0
+1f996: 5347            subq.w  #1, D7
+1f998: 6106            bsr     $1f9a0
+1f99a: 4cdf 3000       movem.l (A7)+, A4-A5
+1f99e: 4e75            rts
+1f9a0: 48e7 006c       movem.l A1-A2/A4-A5, -(A7)
+1f9a4: 4280            clr.l   D0
+1f9a6: 1012            move.b  (A2), D0
+1f9a8: 548a            addq.l  #2, A2
+1f9aa: e548            lsl.w   #2, D0
+1f9ac: 2030 0000       move.l  (A0,D0.w), D0
+1f9b0: 2280            move.l  D0, (A1)
+1f9b2: 5c89            addq.l  #6, A1
+1f9b4: 2880            move.l  D0, (A4)
+1f9b6: 5c8c            addq.l  #6, A4
+1f9b8: 2a80            move.l  D0, (A5)
+1f9ba: 5c8d            addq.l  #6, A5
+1f9bc: 51cf ffe6       dbra    D7, $1f9a4
+1f9c0: 4cdf 3600       movem.l (A7)+, A1-A2/A4-A5
+1f9c4: 4e75            rts
+1f9c6: 48e7 000e       movem.l A4-A6, -(A7)
+1f9ca: 2039 0078 3a1c  move.l  $783a1c.l, D0
+1f9d0: 5342            subq.w  #1, D2
+1f9d2: 6500 0082       bcs     $1fa56
+1f9d6: 4843            swap    D3
+1f9d8: 4a43            tst.w   D3
+1f9da: 6708            beq     $1f9e4
+1f9dc: 5543            subq.w  #2, D3
+1f9de: 6512            bcs     $1f9f2
+1f9e0: 6722            beq     $1fa04
+1f9e2: 6432            bcc     $1fa16
+1f9e4: 2849            movea.l A1, A4
+1f9e6: d9c0            adda.l  D0, A4
+1f9e8: 2a4c            movea.l A4, A5
+1f9ea: dbc0            adda.l  D0, A5
+1f9ec: 2c4d            movea.l A5, A6
+1f9ee: ddc0            adda.l  D0, A6
+1f9f0: 6034            bra     $1fa26
+1f9f2: 2849            movea.l A1, A4
+1f9f4: d9c0            adda.l  D0, A4
+1f9f6: 2a4c            movea.l A4, A5
+1f9f8: dbc0            adda.l  D0, A5
+1f9fa: 2c79 0078 10b4  movea.l $7810b4.l, A6
+1fa00: ddcb            adda.l  A3, A6
+1fa02: 6022            bra     $1fa26
+1fa04: 2849            movea.l A1, A4
+1fa06: d9c0            adda.l  D0, A4
+1fa08: 2a79 0078 10b4  movea.l $7810b4.l, A5
+1fa0e: dbcb            adda.l  A3, A5
+1fa10: 2c4d            movea.l A5, A6
+1fa12: ddc0            adda.l  D0, A6
+1fa14: 6010            bra     $1fa26
+1fa16: 2879 0078 10b4  movea.l $7810b4.l, A4
+1fa1c: d9cb            adda.l  A3, A4
+1fa1e: 2a4c            movea.l A4, A5
+1fa20: dbc0            adda.l  D0, A5
+1fa22: 2c4d            movea.l A5, A6
+1fa24: ddc0            adda.l  D0, A6
+1fa26: 41f9 0003 0914  lea     $30914.l, A0
+1fa2c: 4241            clr.w   D1
+1fa2e: 121a            move.b  (A2)+, D1
+1fa30: d241            add.w   D1, D1
+1fa32: 3230 1000       move.w  (A0,D1.w), D1
+1fa36: 4240            clr.w   D0
+1fa38: 1001            move.b  D1, D0
+1fa3a: e049            lsr.w   #8, D1
+1fa3c: d241            add.w   D1, D1
+1fa3e: 3230 1000       move.w  (A0,D1.w), D1
+1fa42: 4841            swap    D1
+1fa44: d040            add.w   D0, D0
+1fa46: 3230 0000       move.w  (A0,D0.w), D1
+1fa4a: 22c1            move.l  D1, (A1)+
+1fa4c: 28c1            move.l  D1, (A4)+
+1fa4e: 2ac1            move.l  D1, (A5)+
+1fa50: 2cc1            move.l  D1, (A6)+
+1fa52: 51ca ffd8       dbra    D2, $1fa2c
+1fa56: 4cdf 7000       movem.l (A7)+, A4-A6
+1fa5a: 4e75            rts
+1fa5c: 2039 0078 3a1c  move.l  $783a1c.l, D0

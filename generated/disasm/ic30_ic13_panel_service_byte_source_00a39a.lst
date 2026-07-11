@@ -1,0 +1,68 @@
+0a39a: 4e56 0000            link    A6, #$0
+0a39e: 4287                 clr.l   D7
+0a3a0: 1e39 0078 0e40       move.b  $780e40.l, D7
+0a3a6: 0c47 0001            cmpi.w  #$1, D7
+0a3aa: 660e                 bne     $a3ba
+0a3ac: 7e10                 moveq   #$10, D7
+0a3ae: 4286                 clr.l   D6
+0a3b0: 1c38 8e01            move.b  $8e01.w, D6
+0a3b4: ce86                 and.l   D6, D7
+0a3b6: 4e5e                 unlk    A6
+0a3b8: 4e75                 rts
+0a3ba: 7e01                 moveq   #$1, D7
+0a3bc: 4286                 clr.l   D6
+0a3be: 1c39 fffe e005       move.b  $fffee005.l, D6
+0a3c4: ce86                 and.l   D6, D7
+0a3c6: 4e5e                 unlk    A6
+0a3c8: 4e75                 rts
+0a3ca: 4e56 0000            link    A6, #$0
+0a3ce: 48e7 8400            movem.l D0/D5, -(A7)
+0a3d2: 4287                 clr.l   D7
+0a3d4: 3e38 8000            move.w  $8000.w, D7
+0a3d8: 0287 0000 00ff       andi.l  #$ff, D7
+0a3de: 2a07                 move.l  D7, D5
+0a3e0: 4878 0014            pea     $14.w
+0a3e4: 4eb9 0000 8bea       jsr     $8bea.l
+0a3ea: 588f                 addq.l  #4, A7
+0a3ec: 4287                 clr.l   D7
+0a3ee: 3e38 8000            move.w  $8000.w, D7
+0a3f2: 0287 0000 00ff       andi.l  #$ff, D7
+0a3f8: be85                 cmp.l   D5, D7
+0a3fa: 671c                 beq     $a418
+0a3fc: 4287                 clr.l   D7
+0a3fe: 3e38 8000            move.w  $8000.w, D7
+0a402: 0287 0000 00ff       andi.l  #$ff, D7
+0a408: 2a07                 move.l  D7, D5
+0a40a: 4878 0014            pea     $14.w
+0a40e: 4eb9 0000 8bea       jsr     $8bea.l
+0a414: 588f                 addq.l  #4, A7
+0a416: 60d4                 bra     $a3ec
+0a418: 2e05                 move.l  D5, D7
+0a41a: 4cdf 0021            movem.l (A7)+, D0/D5
+0a41e: 4e5e                 unlk    A6
+0a420: 4e75                 rts
+0a422: 4e56 0000            link    A6, #$0
+0a426: 7e01                 moveq   #$1, D7
+0a428: 4e5e                 unlk    A6
+0a42a: 4e75                 rts
+0a42c: 4e56 0000            link    A6, #$0
+0a430: 08b9 0000 0078 28f9  bclr    #$0, $7828f9.l
+0a438: 11f9 0078 28f9 a801  move.b  $7828f9.l, $a801.w
+0a440: 4e5e                 unlk    A6
+0a442: 4e75                 rts
+0a444: 4e56 0000            link    A6, #$0
+0a448: 08f9 0000 0078 28f9  bset    #$0, $7828f9.l
+0a450: 11f9 0078 28f9 a801  move.b  $7828f9.l, $a801.w
+0a458: 4e5e                 unlk    A6
+0a45a: 4e75                 rts
+0a45c: 4e56 0000            link    A6, #$0
+0a460: 7e10                 moveq   #$10, D7
+0a462: 4286                 clr.l   D6
+0a464: 1c38 8a01            move.b  $8a01.w, D6
+0a468: ce86                 and.l   D6, D7
+0a46a: 4e5e                 unlk    A6
+0a46c: 4e75                 rts
+0a46e: 4e56 0000            link    A6, #$0
+0a472: 7e20                 moveq   #$20, D7
+0a474: 4286                 clr.l   D6
+0a476: 1c38 8a01            move.b  $8a01.w, D6

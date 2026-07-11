@@ -1,0 +1,88 @@
+1ba92: 4e56 fffc            link    A6, #-$4
+1ba96: 48e7 841c            movem.l D0/D5/A3-A5, -(A7)
+1ba9a: 4aae 0008            tst.l   ($8,A6)
+1ba9e: 6608                 bne     $1baa8
+1baa0: 4cdf 3821            movem.l (A7)+, D0/D5/A3-A5
+1baa4: 4e5e                 unlk    A6
+1baa6: 4e75                 rts
+1baa8: 0cae 0000 0001 0008  cmpi.l  #$1, ($8,A6)
+1bab0: 660e                 bne     $1bac0
+1bab2: 287c 0020 0000       movea.l #$200000, A4
+1bab8: 267c 003f fffe       movea.l #$3ffffe, A3
+1babe: 6024                 bra     $1bae4
+1bac0: 0cae 0000 0002 0008  cmpi.l  #$2, ($8,A6)
+1bac8: 660e                 bne     $1bad8
+1baca: 287c 0040 0000       movea.l #$400000, A4
+1bad0: 267c 005f fffe       movea.l #$5ffffe, A3
+1bad6: 600c                 bra     $1bae4
+1bad8: 287c 0020 0000       movea.l #$200000, A4
+1bade: 267c 005f fffe       movea.l #$5ffffe, A3
+1bae4: 2a7c 0078 2324       movea.l #$782324, A5
+1baea: 4285                 clr.l   D5
+1baec: 3a39 0078 278e       move.w  $78278e.l, D5
+1baf2: 2e05                 move.l  D5, D7
+1baf4: 5385                 subq.l  #1, D5
+1baf6: 4a87                 tst.l   D7
+1baf8: 6f74                 ble     $1bb6e
+1bafa: 2e15                 move.l  (A5), D7
+1bafc: 0287 00ff ffff       andi.l  #$ffffff, D7
+1bb02: 2d47 fffc            move.l  D7, (-$4,A6)
+1bb06: b9ee fffc            cmpa.l  (-$4,A6), A4
+1bb0a: 626a                 bhi     $1bb76
+1bb0c: 2e2e fffc            move.l  (-$4,A6), D7
+1bb10: be8b                 cmp.l   A3, D7
+1bb12: 6262                 bhi     $1bb76
+1bb14: 2e8d                 move.l  A5, (A7)
+1bb16: 4eb9 0001 bd2e       jsr     $1bd2e.l
+1bb1c: 4287                 clr.l   D7
+1bb1e: 3e39 0078 278e       move.w  $78278e.l, D7
+1bb24: 5387                 subq.l  #1, D7
+1bb26: 33c7 0078 278e       move.w  D7, $78278e.l
+1bb2c: bbf9 0078 27ac       cmpa.l  $7827ac.l, A5
+1bb32: 6448                 bcc     $1bb7c
+1bb34: 4287                 clr.l   D7
+1bb36: 3e39 0078 2790       move.w  $782790.l, D7
+1bb3c: 5387                 subq.l  #1, D7
+1bb3e: 33c7 0078 2790       move.w  D7, $782790.l
+1bb44: 4287                 clr.l   D7
+1bb46: 3e39 0078 2794       move.w  $782794.l, D7
+1bb4c: 5387                 subq.l  #1, D7
+1bb4e: 33c7 0078 2794       move.w  D7, $782794.l
+1bb54: 59b9 0078 27a8       subq.l  #4, $7827a8.l
+1bb5a: 59b9 0078 27ac       subq.l  #4, $7827ac.l
+1bb60: 59b9 0078 27b0       subq.l  #4, $7827b0.l
+1bb66: 59b9 0078 27b4       subq.l  #4, $7827b4.l
+1bb6c: 6084                 bra     $1baf2
+1bb6e: 4cdf 3821            movem.l (A7)+, D0/D5/A3-A5
+1bb72: 4e5e                 unlk    A6
+1bb74: 4e75                 rts
+1bb76: 588d                 addq.l  #4, A5
+1bb78: 6000 ff78            bra     $1baf2
+1bb7c: 4287                 clr.l   D7
+1bb7e: 3e39 0078 2798       move.w  $782798.l, D7
+1bb84: 5387                 subq.l  #1, D7
+1bb86: 33c7 0078 2798       move.w  D7, $782798.l
+1bb8c: 4287                 clr.l   D7
+1bb8e: 3e39 0078 279c       move.w  $78279c.l, D7
+1bb94: 5387                 subq.l  #1, D7
+1bb96: 33c7 0078 279c       move.w  D7, $78279c.l
+1bb9c: 59b9 0078 27b4       subq.l  #4, $7827b4.l
+1bba2: 6000 ff4e            bra     $1baf2
+1bba6: 4e56 fffc            link    A6, #-$4
+1bbaa: 4297                 clr.l   (A7)
+1bbac: 4eb9 0001 79da       jsr     $179da.l
+1bbb2: 4279 0078 2f2e       clr.w   $782f2e.l
+1bbb8: 4279 0078 2f30       clr.w   $782f30.l
+1bbbe: 4239 0078 287b       clr.b   $78287b.l
+1bbc4: 4239 0078 27c6       clr.b   $7827c6.l
+1bbca: 4279 0078 27c8       clr.w   $7827c8.l
+1bbd0: 42b9 0078 27ca       clr.l   $7827ca.l
+1bbd6: 42b9 0078 27ce       clr.l   $7827ce.l
+1bbdc: 42b9 0078 27d2       clr.l   $7827d2.l
+1bbe2: 4279 0078 27d6       clr.w   $7827d6.l
+1bbe8: 4279 0078 27d8       clr.w   $7827d8.l
+1bbee: 42b9 0078 27da       clr.l   $7827da.l
+1bbf4: 4eb9 0001 acb0       jsr     $1acb0.l
+1bbfa: 4e5e                 unlk    A6
+1bbfc: 4e75                 rts
+1bbfe: 4e56 fff8            link    A6, #-$8

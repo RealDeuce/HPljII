@@ -1,0 +1,59 @@
+104d8: 2e2f 0004       move.l  ($4,A7), D7
+104dc: 2c3c 0005 ffff  move.l  #$5ffff, D6
+104e2: 610c            bsr     $104f0
+104e4: 8ffc 000c       divs.w  #$c, D7
+104e8: 4847            swap    D7
+104ea: 4a47            tst.w   D7
+104ec: 6b5a            bmi     $10548
+104ee: 4e75            rts
+104f0: be86            cmp.l   D6, D7
+104f2: 6e06            bgt     $104fa
+104f4: 4486            neg.l   D6
+104f6: be86            cmp.l   D6, D7
+104f8: 6c02            bge     $104fc
+104fa: 2e06            move.l  D6, D7
+104fc: 4e75            rts
+104fe: 3e2f 0004       move.w  ($4,A7), D7
+10502: cffc 000c       muls.w  #$c, D7
+10506: 3c2f 0006       move.w  ($6,A7), D6
+1050a: 48c6            ext.l   D6
+1050c: de86            add.l   D6, D7
+1050e: 4e75            rts
+10510: 446f 0008       neg.w   ($8,A7)
+10514: 446f 000a       neg.w   ($a,A7)
+10518: 3c2f 0004       move.w  ($4,A7), D6
+1051c: 48c6            ext.l   D6
+1051e: 3e2f 0008       move.w  ($8,A7), D7
+10522: 48c7            ext.l   D7
+10524: de86            add.l   D6, D7
+10526: 2c3c 0000 7ffe  move.l  #$7ffe, D6
+1052c: 61c2            bsr     $104f0
+1052e: 4847            swap    D7
+10530: 3e2f 0006       move.w  ($6,A7), D7
+10534: de6f 000a       add.w   ($a,A7), D7
+10538: 6b0e            bmi     $10548
+1053a: 0c47 000c       cmpi.w  #$c, D7
+1053e: 6d06            blt     $10546
+10540: 0687 0000 fff4  addi.l  #$fff4, D7
+10546: 4e75            rts
+10548: 0687 fffe 000c  addi.l  #-$1fff4, D7
+1054e: 4e75            rts
+10550: 2e2f 0004       move.l  ($4,A7), D7
+10554: e48f            lsr.l   #2, D7
+10556: 3c07            move.w  D7, D6
+10558: ccfc 000c       mulu.w  #$c, D6
+1055c: 4846            swap    D6
+1055e: 3e06            move.w  D6, D7
+10560: 4e75            rts
+10562: 206f 0008       movea.l ($8,A7), A0
+10566: 2e08            move.l  A0, D7
+10568: 122f 0007       move.b  ($7,A7), D1
+1056c: 1001            move.b  D1, D0
+1056e: e808            lsr.b   #4, D0
+10570: 0600 0030       addi.b  #$30, D0
+10574: 0c00 0039       cmpi.b  #$39, D0
+10578: 6f04            ble     $1057e
+1057a: 0600 0027       addi.b  #$27, D0
+1057e: 10c0            move.b  D0, (A0)+
+10580: 0201 000f       andi.b  #$f, D1
+10584: 0601 0030       addi.b  #$30, D1

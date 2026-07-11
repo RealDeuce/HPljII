@@ -1,0 +1,32 @@
+02c84: 4eb9 0000 5a16       jsr     $5a16.l
+02c8a: 4eb9 0000 a3ca       jsr     $a3ca.l
+02c90: 0c07 00df            cmpi.b  #-$21, D7
+02c94: 671c                 beq     $2cb2
+02c96: 0c07 009d            cmpi.b  #-$63, D7
+02c9a: 660c                 bne     $2ca8
+02c9c: 4eb9 0000 5d2a       jsr     $5d2a.l
+02ca2: 0c07 0000            cmpi.b  #$0, D7
+02ca6: 6626                 bne     $2cce
+02ca8: 41f9 0000 b15f       lea     $b15f.l, A0
+02cae: 6000 000e            bra     $2cbe
+02cb2: 4eb9 0000 5a62       jsr     $5a62.l
+02cb8: 41f9 0000 b1a3       lea     $b1a3.l, A0
+02cbe: 2f3c 0000 0000       move.l  #$0, -(A7)
+02cc4: 2f08                 move.l  A0, -(A7)
+02cc6: 4eb9 0000 9182       jsr     $9182.l
+02ccc: 508f                 addq.l  #8, A7
+02cce: 4eb9 0000 5f96       jsr     $5f96.l
+02cd4: 13fc 0000 0078 0e47  move.b  #$0, $780e47.l
+02cdc: 13fc 0001 0078 0e44  move.b  #$1, $780e44.l
+02ce4: 13fc 0001 0078 0e46  move.b  #$1, $780e46.l
+02cec: 13fc 0000 0078 0e45  move.b  #$0, $780e45.l
+02cf4: 13fc 0000 0078 0e4e  move.b  #$0, $780e4e.l
+02cfc: 13fc 0000 0078 0e4f  move.b  #$0, $780e4f.l
+02d04: 13fc 0000 0078 0e50  move.b  #$0, $780e50.l
+02d0c: 13fc 0000 0078 0e51  move.b  #$0, $780e51.l
+02d14: 13fc 0000 0078 0e52  move.b  #$0, $780e52.l
+02d1c: 13fc 0000 0078 0e53  move.b  #$0, $780e53.l
+02d24: 13fc 0000 0078 0e54  move.b  #$0, $780e54.l
+02d2c: 13fc 0002 0078 0e55  move.b  #$2, $780e55.l
+02d34: 13fc 0001 0078 0e57  move.b  #$1, $780e57.l
+02d3c: 13fc 0001 0078 0e58  move.b  #$1, $780e58.l

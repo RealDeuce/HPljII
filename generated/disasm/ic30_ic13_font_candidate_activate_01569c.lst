@@ -1,0 +1,134 @@
+1569c: 4a39 0078 2da3  tst.b   $782da3.l
+156a2: 660e            bne     $156b2
+156a4: 3239 0078 2798  move.w  $782798.l, D1
+156aa: 2079 0078 27ac  movea.l $7827ac.l, A0
+156b0: 600c            bra     $156be
+156b2: 3239 0078 2790  move.w  $782790.l, D1
+156b8: 2079 0078 27a0  movea.l $7827a0.l, A0
+156be: 23c8 0078 287c  move.l  A0, $78287c.l
+156c4: 33c1 0078 27b8  move.w  D1, $7827b8.l
+156ca: 7000            moveq   #$0, D0
+156cc: 08c0 000f       bset    #$f, D0
+156d0: 5341            subq.w  #1, D1
+156d2: 6d08            blt     $156dc
+156d4: 8150            or.w    D0, (A0)
+156d6: 5888            addq.l  #4, A0
+156d8: 51c9 fffa       dbra    D1, $156d4
+156dc: 4e75            rts
+156de: 48e7 1c1c       movem.l D3-D5/A3-A5, -(A7)
+156e2: 4a79 0078 28de  tst.w   $7828de.l
+156e8: 6608            bne     $156f2
+156ea: 3639 0078 2ef4  move.w  $782ef4.l, D3
+156f0: 6006            bra     $156f8
+156f2: 3639 0078 2f04  move.w  $782f04.l, D3
+156f8: 3a79 0078 3f00  movea.w $783f00.l, A5
+156fe: 600a            bra     $1570a
+15700: 3203            move.w  D3, D1
+15702: 4eb9 0001 5850  jsr     $15850.l
+15708: 3a47            movea.w D7, A5
+1570a: 2679 0078 287c  movea.l $78287c.l, A3
+15710: 3839 0078 27b8  move.w  $7827b8.l, D4
+15716: 5344            subq.w  #1, D4
+15718: 201b            move.l  (A3)+, D0
+1571a: 6c40            bge     $1575c
+1571c: 2f00            move.l  D0, -(A7)
+1571e: 0800 001e       btst    #$1e, D0
+15722: 6708            beq     $1572c
+15724: 4eb9 0001 5890  jsr     $15890.l
+1572a: 6006            bra     $15732
+1572c: 4eb9 0001 58be  jsr     $158be.l
+15732: 588f            addq.l  #4, A7
+15734: b647            cmp.w   D7, D3
+15736: 676c            beq     $157a4
+15738: 300d            move.w  A5, D0
+1573a: 6706            beq     $15742
+1573c: 0c47 0115       cmpi.w  #$115, D7
+15740: 6762            beq     $157a4
+15742: 4847            swap    D7
+15744: 3e03            move.w  D3, D7
+15746: 41f9 0001 5840  lea     $15840.l, A0
+1574c: be98            cmp.l   (A0)+, D7
+1574e: 6754            beq     $157a4
+15750: be98            cmp.l   (A0)+, D7
+15752: 6750            beq     $157a4
+15754: be98            cmp.l   (A0)+, D7
+15756: 674c            beq     $157a4
+15758: be90            cmp.l   (A0), D7
+1575a: 6748            beq     $157a4
+1575c: 51cc ffba       dbra    D4, $15718
+15760: 4a79 0078 28de  tst.w   $7828de.l
+15766: 6608            bne     $15770
+15768: 3039 0078 2f08  move.w  $782f08.l, D0
+1576e: 6006            bra     $15776
+15770: 3039 0078 2f0a  move.w  $782f0a.l, D0
+15776: b640            cmp.w   D0, D3
+15778: 6704            beq     $1577e
+1577a: 3600            move.w  D0, D3
+1577c: 6082            bra     $15700
+1577e: 41f9 0078 2f0c  lea     $782f0c.l, A0
+15784: 4a39 0078 2da3  tst.b   $782da3.l
+1578a: 6702            beq     $1578e
+1578c: 5088            addq.l  #8, A0
+1578e: 4a79 0078 28de  tst.w   $7828de.l
+15794: 6702            beq     $15798
+15796: 5888            addq.l  #4, A0
+15798: 3610            move.w  (A0), D3
+1579a: 3203            move.w  D3, D1
+1579c: 4eb9 0001 5850  jsr     $15850.l
+157a2: 3a47            movea.w D7, A5
+157a4: 4a79 0078 28de  tst.w   $7828de.l
+157aa: 6608            bne     $157b4
+157ac: 33c3 0078 3144  move.w  D3, $783144.l
+157b2: 6006            bra     $157ba
+157b4: 33c3 0078 3146  move.w  D3, $783146.l
+157ba: 7000            moveq   #$0, D0
+157bc: 2840            movea.l D0, A4
+157be: 2679 0078 287c  movea.l $78287c.l, A3
+157c4: 3839 0078 27b8  move.w  $7827b8.l, D4
+157ca: 3a04            move.w  D4, D5
+157cc: 5344            subq.w  #1, D4
+157ce: 2013            move.l  (A3), D0
+157d0: 6c48            bge     $1581a
+157d2: 2f00            move.l  D0, -(A7)
+157d4: 0800 001e       btst    #$1e, D0
+157d8: 6708            beq     $157e2
+157da: 4eb9 0001 5890  jsr     $15890.l
+157e0: 6006            bra     $157e8
+157e2: 4eb9 0001 58be  jsr     $158be.l
+157e8: 588f            addq.l  #4, A7
+157ea: b647            cmp.w   D7, D3
+157ec: 6726            beq     $15814
+157ee: 300d            move.w  A5, D0
+157f0: 6706            beq     $157f8
+157f2: 0c47 0115       cmpi.w  #$115, D7
+157f6: 671c            beq     $15814
+157f8: 4847            swap    D7
+157fa: 3e03            move.w  D3, D7
+157fc: 41f9 0001 5840  lea     $15840.l, A0
+15802: be98            cmp.l   (A0)+, D7
+15804: 670e            beq     $15814
+15806: be98            cmp.l   (A0)+, D7
+15808: 670a            beq     $15814
+1580a: be98            cmp.l   (A0)+, D7
+1580c: 6706            beq     $15814
+1580e: be90            cmp.l   (A0), D7
+15810: 6702            beq     $15814
+15812: 600e            bra     $15822
+15814: 200c            move.l  A4, D0
+15816: 6602            bne     $1581a
+15818: 284b            movea.l A3, A4
+1581a: 588b            addq.l  #4, A3
+1581c: 51cc ffb0       dbra    D4, $157ce
+15820: 600c            bra     $1582e
+15822: 0893 0007       bclr    #$7, (A3)
+15826: 5345            subq.w  #1, D5
+15828: 588b            addq.l  #4, A3
+1582a: 51cc ffa2       dbra    D4, $157ce
+1582e: 23cc 0078 287c  move.l  A4, $78287c.l
+15834: 33c5 0078 27b8  move.w  D5, $7827b8.l
+1583a: 4cdf 3838       movem.l (A7)+, D3-D5/A3-A5
+1583e: 4e75            rts
+15840: 0001 000d       ori.b   #$d, D1
+15844: 000d            dc.w    $000d; ILLEGAL
+15846: 0001 0002       ori.b   #$2, D1
+1584a: 000c            dc.w    $000c; ILLEGAL

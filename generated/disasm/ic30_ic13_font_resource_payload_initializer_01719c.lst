@@ -1,0 +1,93 @@
+1719c: 4e56 0000            link    A6, #$0
+171a0: 48e7 8c1c            movem.l D0/D4-D5/A3-A5, -(A7)
+171a4: 2a6e 0008            movea.l ($8,A6), A5
+171a8: 2839 0078 2862       move.l  $782862.l, D4
+171ae: 2444                 movea.l D4, A2
+171b0: 2a92                 move.l  (A2), (A5)
+171b2: 2444                 movea.l D4, A2
+171b4: 588a                 addq.l  #4, A2
+171b6: 2b52 0004            move.l  (A2), ($4,A5)
+171ba: 3b7c 004a 0008       move.w  #$4a, ($8,A5)
+171c0: 2444                 movea.l D4, A2
+171c2: 45ea 000c            lea     ($c,A2), A2
+171c6: 1b52 000c            move.b  (A2), ($c,A5)
+171ca: 2444                 movea.l D4, A2
+171cc: 45ea 000e            lea     ($e,A2), A2
+171d0: 3b52 000e            move.w  (A2), ($e,A5)
+171d4: 2444                 movea.l D4, A2
+171d6: 45ea 0010            lea     ($10,A2), A2
+171da: 3b52 0010            move.w  (A2), ($10,A5)
+171de: 2444                 movea.l D4, A2
+171e0: 45ea 0012            lea     ($12,A2), A2
+171e4: 3b52 0012            move.w  (A2), ($12,A5)
+171e8: 2444                 movea.l D4, A2
+171ea: 45ea 0014            lea     ($14,A2), A2
+171ee: 3b52 0014            move.w  (A2), ($14,A5)
+171f2: 2444                 movea.l D4, A2
+171f4: 45ea 0016            lea     ($16,A2), A2
+171f8: 3b52 0016            move.w  (A2), ($16,A5)
+171fc: 2444                 movea.l D4, A2
+171fe: 45ea 0018            lea     ($18,A2), A2
+17202: 3b52 0018            move.w  (A2), ($18,A5)
+17206: 2444                 movea.l D4, A2
+17208: 45ea 001a            lea     ($1a,A2), A2
+1720c: 3b52 001a            move.w  (A2), ($1a,A5)
+17210: 2444                 movea.l D4, A2
+17212: 45ea 0020            lea     ($20,A2), A2
+17216: 1b52 0020            move.b  (A2), ($20,A5)
+1721a: 2444                 movea.l D4, A2
+1721c: 45ea 0021            lea     ($21,A2), A2
+17220: 1b52 0021            move.b  (A2), ($21,A5)
+17224: 2444                 movea.l D4, A2
+17226: 45ea 0022            lea     ($22,A2), A2
+1722a: 3b52 0022            move.w  (A2), ($22,A5)
+1722e: 2444                 movea.l D4, A2
+17230: 45ea 0024            lea     ($24,A2), A2
+17234: 3b52 0024            move.w  (A2), ($24,A5)
+17238: 2444                 movea.l D4, A2
+1723a: 45ea 0026            lea     ($26,A2), A2
+1723e: 1b52 0026            move.b  (A2), ($26,A5)
+17242: 2444                 movea.l D4, A2
+17244: 45ea 0028            lea     ($28,A2), A2
+17248: 3b52 0028            move.w  (A2), ($28,A5)
+1724c: 2444                 movea.l D4, A2
+1724e: 45ea 002a            lea     ($2a,A2), A2
+17252: 1b52 002a            move.b  (A2), ($2a,A5)
+17256: 2444                 movea.l D4, A2
+17258: 45ea 002c            lea     ($2c,A2), A2
+1725c: 3b52 002c            move.w  (A2), ($2c,A5)
+17260: 2444                 movea.l D4, A2
+17262: 45ea 002f            lea     ($2f,A2), A2
+17266: 1b52 002f            move.b  (A2), ($2f,A5)
+1726a: 2444                 movea.l D4, A2
+1726c: 45ea 0030            lea     ($30,A2), A2
+17270: 1b52 0030            move.b  (A2), ($30,A5)
+17274: 2444                 movea.l D4, A2
+17276: 45ea 0031            lea     ($31,A2), A2
+1727a: 1b52 0031            move.b  (A2), ($31,A5)
+1727e: 3a39 0078 2856       move.w  $782856.l, D5
+17284: 48c5                 ext.l   D5
+17286: 6730                 beq     $172b8
+17288: 7e4a                 moveq   #$4a, D7
+1728a: 2c39 0078 27ba       move.l  $7827ba.l, D6
+17290: e586                 asl.l   #2, D6
+17292: de86                 add.l   D6, D7
+17294: 2b47 0038            move.l  D7, ($38,A5)
+17298: 2e0d                 move.l  A5, D7
+1729a: dead 0038            add.l   ($38,A5), D7
+1729e: 2847                 movea.l D7, A4
+172a0: 3885                 move.w  D5, (A4)
+172a2: 548c                 addq.l  #2, A4
+172a4: 267c 0078 2842       movea.l #$782842, A3
+172aa: 4a85                 tst.l   D5
+172ac: 6f0a                 ble     $172b8
+172ae: 1893                 move.b  (A3), (A4)
+172b0: 5385                 subq.l  #1, D5
+172b2: 528c                 addq.l  #1, A4
+172b4: 528b                 addq.l  #1, A3
+172b6: 60f2                 bra     $172aa
+172b8: 4cdf 3831            movem.l (A7)+, D0/D4-D5/A3-A5
+172bc: 4e5e                 unlk    A6
+172be: 4e75                 rts
+172c0: 4e56 fffc            link    A6, #-$4
+172c4: 2d7c 0078 2640 fffc  move.l  #$782640, (-$4,A6)

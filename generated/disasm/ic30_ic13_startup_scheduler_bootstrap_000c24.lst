@@ -1,0 +1,25 @@
+00c24: 41f9 0000 15d0       lea     $15d0.l, A0
+00c2a: 4df9 00ff e000       lea     $ffe000.l, A6
+00c30: 47f9 0078 0262       lea     $780262.l, A3
+00c36: 3c18                 move.w  (A0)+, D6
+00c38: 2258                 movea.l (A0)+, A1
+00c3a: 234b 0004            move.l  A3, ($4,A1)
+00c3e: 3358 0008            move.w  (A0)+, ($8,A1)
+00c42: 3350 0010            move.w  (A0), ($10,A1)
+00c46: dcd8                 adda.w  (A0)+, A6
+00c48: 234e 0016            move.l  A6, ($16,A1)
+00c4c: 2350 0012            move.l  (A0), ($12,A1)
+00c50: 2858                 movea.l (A0)+, A4
+00c52: 2a4e                 movea.l A6, A5
+00c54: 2b0c                 move.l  A4, -(A5)
+00c56: 3b3c 2000            move.w  #$2000, -(A5)
+00c5a: 9afc 003c            suba.w  #$3c, A5
+00c5e: 234d 001a            move.l  A5, ($1a,A1)
+00c62: 2350 0000            move.l  (A0), ($0,A1)
+00c66: 2649                 movea.l A1, A3
+00c68: 51ce ffce            dbra    D6, $c38
+00c6c: 237c 0078 0182 0000  move.l  #$780182, ($0,A1)
+00c74: 43f9 0078 0262       lea     $780262.l, A1
+00c7a: 6000 05ea            bra     $1266
+00c7e: 123c 0001            move.b  #$1, D1
+00c82: 13fc 00c0 0078 3eef  move.b  #$c0, $783eef.l

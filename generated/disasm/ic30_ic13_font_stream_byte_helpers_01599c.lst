@@ -1,0 +1,55 @@
+1599c: 4ab9 0078 3140  tst.l   $783140.l
+159a2: 6f0e            ble     $159b2
+159a4: 4eb9 0000 dace  jsr     $dace.l
+159aa: 53b9 0078 3140  subq.l  #1, $783140.l
+159b0: 4e75            rts
+159b2: 4287            clr.l   D7
+159b4: 4e75            rts
+159b6: 4ab9 0078 3140  tst.l   $783140.l
+159bc: 6f12            ble     $159d0
+159be: 4eb9 0000 dace  jsr     $dace.l
+159c4: 53b9 0078 3140  subq.l  #1, $783140.l
+159ca: 4887            ext.w   D7
+159cc: 48c7            ext.l   D7
+159ce: 4e75            rts
+159d0: 4287            clr.l   D7
+159d2: 4e75            rts
+159d4: 4e56 fffe       link    A6, #-$2
+159d8: 4eb9 0001 599c  jsr     $1599c.l
+159de: 1d47 fffe       move.b  D7, (-$2,A6)
+159e2: 4eb9 0001 599c  jsr     $1599c.l
+159e8: 1d47 ffff       move.b  D7, (-$1,A6)
+159ec: 4287            clr.l   D7
+159ee: 3e2e fffe       move.w  (-$2,A6), D7
+159f2: 4e5e            unlk    A6
+159f4: 4e75            rts
+159f6: 4e56 fffe       link    A6, #-$2
+159fa: 4eb9 0001 599c  jsr     $1599c.l
+15a00: 1d47 fffe       move.b  D7, (-$2,A6)
+15a04: 4eb9 0001 599c  jsr     $1599c.l
+15a0a: 1d47 ffff       move.b  D7, (-$1,A6)
+15a0e: 3e2e fffe       move.w  (-$2,A6), D7
+15a12: 48c7            ext.l   D7
+15a14: 4e5e            unlk    A6
+15a16: 4e75            rts
+15a18: 4e56 0000       link    A6, #$0
+15a1c: 48e7 8400       movem.l D0/D5, -(A7)
+15a20: 5db9 0078 299e  subq.l  #6, $78299e.l
+15a26: 2479 0078 299e  movea.l $78299e.l, A2
+15a2c: 548a            addq.l  #2, A2
+15a2e: 3a12            move.w  (A2), D5
+15a30: 48c5            ext.l   D5
+15a32: 6c06            bge     $15a3a
+15a34: 2e05            move.l  D5, D7
+15a36: 4487            neg.l   D7
+15a38: 2a07            move.l  D7, D5
+15a3a: 0c85 0000 8000  cmpi.l  #$8000, D5
+15a40: 6606            bne     $15a48
+15a42: 3a3c 7fff       move.w  #$7fff, D5
+15a46: 48c5            ext.l   D5
+15a48: 33c5 0078 2f30  move.w  D5, $782f30.l
+15a4e: 4cdf 0021       movem.l (A7)+, D0/D5
+15a52: 4e5e            unlk    A6
+15a54: 4e75            rts
+15a56: 4e56 0000       link    A6, #$0
+15a5a: 48e7 8400       movem.l D0/D5, -(A7)

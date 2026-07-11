@@ -1,0 +1,28 @@
+08c7a: 4e56 fffc       link    A6, #-$4
+08c7e: 4297            clr.l   (A7)
+08c80: 2f2e 0008       move.l  ($8,A6), -(A7)
+08c84: 4eb9 0000 9182  jsr     $9182.l
+08c8a: 588f            addq.l  #4, A7
+08c8c: 4e5e            unlk    A6
+08c8e: 4e75            rts
+08c90: 4e56 0000       link    A6, #$0
+08c94: 4878 0001       pea     $1.w
+08c98: 2f2e 0008       move.l  ($8,A6), -(A7)
+08c9c: 4eb9 0000 9182  jsr     $9182.l
+08ca2: 508f            addq.l  #8, A7
+08ca4: 4e5e            unlk    A6
+08ca6: 4e75            rts
+08ca8: 4e56 fffc       link    A6, #-$4
+08cac: 2eae 000c       move.l  ($c,A6), (A7)
+08cb0: 2f2e 0008       move.l  ($8,A6), -(A7)
+08cb4: 4eb9 0000 8d68  jsr     $8d68.l
+08cba: 588f            addq.l  #4, A7
+08cbc: 2f07            move.l  D7, -(A7)
+08cbe: 4eb9 0000 9182  jsr     $9182.l
+08cc4: 588f            addq.l  #4, A7
+08cc6: 4e5e            unlk    A6
+08cc8: 4e75            rts
+08cca: 4e56 fffc       link    A6, #-$4
+08cce: 2eae 0010       move.l  ($10,A6), (A7)
+08cd2: 2f2e 0008       move.l  ($8,A6), -(A7)
+08cd6: 4eb9 0000 8d68  jsr     $8d68.l

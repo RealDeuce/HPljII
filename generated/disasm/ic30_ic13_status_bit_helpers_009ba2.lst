@@ -1,0 +1,52 @@
+09ba2: 4e56 fffc            link    A6, #-$4
+09ba6: 4eb9 0000 15a6       jsr     $15a6.l
+09bac: 246e 0008            movea.l ($8,A6), A2
+09bb0: 2e2e 000c            move.l  ($c,A6), D7
+09bb4: 8f92                 or.l    D7, (A2)
+09bb6: 4eb9 0000 15ac       jsr     $15ac.l
+09bbc: 2ebc 0078 0202       move.l  #$780202, (A7)
+09bc2: 4eb9 0000 10c8       jsr     $10c8.l
+09bc8: 4e5e                 unlk    A6
+09bca: 4e75                 rts
+09bcc: 4e56 fffc            link    A6, #-$4
+09bd0: 2eae 000c            move.l  ($c,A6), (A7)
+09bd4: 2f2e 0008            move.l  ($8,A6), -(A7)
+09bd8: 4eba ffc8            jsr     ($9ba2,PC)
+09bdc: 588f                 addq.l  #4, A7
+09bde: 4878 0005            pea     $5.w
+09be2: 4eb9 0000 10d0       jsr     $10d0.l
+09be8: 588f                 addq.l  #4, A7
+09bea: 4e5e                 unlk    A6
+09bec: 4e75                 rts
+09bee: 4e56 0000            link    A6, #$0
+09bf2: 4eb9 0000 15a6       jsr     $15a6.l
+09bf8: 246e 0008            movea.l ($8,A6), A2
+09bfc: 2e2e 000c            move.l  ($c,A6), D7
+09c00: 8f92                 or.l    D7, (A2)
+09c02: 4eb9 0000 15ac       jsr     $15ac.l
+09c08: 4e5e                 unlk    A6
+09c0a: 4e75                 rts
+09c0c: 4e56 0000            link    A6, #$0
+09c10: 4eb9 0000 15a6       jsr     $15a6.l
+09c16: 246e 0008            movea.l ($8,A6), A2
+09c1a: 2e2e 000c            move.l  ($c,A6), D7
+09c1e: 4687                 not.l   D7
+09c20: cf92                 and.l   D7, (A2)
+09c22: 4eb9 0000 15ac       jsr     $15ac.l
+09c28: 4e5e                 unlk    A6
+09c2a: 4e75                 rts
+09c2c: 4e56 fffc            link    A6, #-$4
+09c30: 4eb9 0000 15a6       jsr     $15a6.l
+09c36: 0839 0003 0078 0e2d  btst    #$3, $780e2d.l
+09c3e: 6630                 bne     $9c70
+09c40: 13fc 0001 0078 21cc  move.b  #$1, $7821cc.l
+09c48: 13fc 0001 0078 22db  move.b  #$1, $7822db.l
+09c50: 4878 0008            pea     $8.w
+09c54: 2f3c 0078 0e2a       move.l  #$780e2a, -(A7)
+09c5a: 4eba ff02            jsr     ($9b5e,PC)
+09c5e: 508f                 addq.l  #8, A7
+09c60: 4239 0078 21cc       clr.b   $7821cc.l
+09c66: 4eb9 0000 15ac       jsr     $15ac.l
+09c6c: 4e5e                 unlk    A6
+09c6e: 4e75                 rts
+09c70: 4eb9 0000 15ac       jsr     $15ac.l

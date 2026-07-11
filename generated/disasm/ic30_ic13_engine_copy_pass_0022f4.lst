@@ -1,0 +1,174 @@
+022f4: 41f9 0000 2342  lea     $2342.l, A0
+022fa: d1f9 0078 39a4  adda.l  $7839a4.l, A0
+02300: 2279 0078 3992  movea.l $783992.l, A1
+02306: 2479 0078 399a  movea.l $78399a.l, A2
+0230c: 2e39 0078 39a8  move.l  $7839a8.l, D7
+02312: 612c            bsr     $2340
+02314: d5c7            adda.l  D7, A2
+02316: 6128            bsr     $2340
+02318: d5c7            adda.l  D7, A2
+0231a: 6124            bsr     $2340
+0231c: d5c7            adda.l  D7, A2
+0231e: 6120            bsr     $2340
+02320: d5c7            adda.l  D7, A2
+02322: 611c            bsr     $2340
+02324: d5c7            adda.l  D7, A2
+02326: 6118            bsr     $2340
+02328: d5c7            adda.l  D7, A2
+0232a: 6114            bsr     $2340
+0232c: d5c7            adda.l  D7, A2
+0232e: 6110            bsr     $2340
+02330: 4e75            rts
+02332: 303c 1159       move.w  #$1159, D0
+02336: 4e71            nop
+02338: 4e71            nop
+0233a: 51c8 fffa       dbra    D0, $2336
+0233e: 4e75            rts
+02340: 4ed0            jmp     (A0)
+02342: 24d9            move.l  (A1)+, (A2)+
+02344: 24d9            move.l  (A1)+, (A2)+
+02346: 24d9            move.l  (A1)+, (A2)+
+02348: 24d9            move.l  (A1)+, (A2)+
+0234a: 24d9            move.l  (A1)+, (A2)+
+0234c: 24d9            move.l  (A1)+, (A2)+
+0234e: 24d9            move.l  (A1)+, (A2)+
+02350: 24d9            move.l  (A1)+, (A2)+
+02352: 24d9            move.l  (A1)+, (A2)+
+02354: 24d9            move.l  (A1)+, (A2)+
+02356: 24d9            move.l  (A1)+, (A2)+
+02358: 24d9            move.l  (A1)+, (A2)+
+0235a: 24d9            move.l  (A1)+, (A2)+
+0235c: 24d9            move.l  (A1)+, (A2)+
+0235e: 24d9            move.l  (A1)+, (A2)+
+02360: 24d9            move.l  (A1)+, (A2)+
+02362: 24d9            move.l  (A1)+, (A2)+
+02364: 24d9            move.l  (A1)+, (A2)+
+02366: 24d9            move.l  (A1)+, (A2)+
+02368: 24d9            move.l  (A1)+, (A2)+
+0236a: 24d9            move.l  (A1)+, (A2)+
+0236c: 24d9            move.l  (A1)+, (A2)+
+0236e: 24d9            move.l  (A1)+, (A2)+
+02370: 24d9            move.l  (A1)+, (A2)+
+02372: 24d9            move.l  (A1)+, (A2)+
+02374: 24d9            move.l  (A1)+, (A2)+
+02376: 24d9            move.l  (A1)+, (A2)+
+02378: 24d9            move.l  (A1)+, (A2)+
+0237a: 24d9            move.l  (A1)+, (A2)+
+0237c: 24d9            move.l  (A1)+, (A2)+
+0237e: 24d9            move.l  (A1)+, (A2)+
+02380: 24d9            move.l  (A1)+, (A2)+
+02382: 24d9            move.l  (A1)+, (A2)+
+02384: 24d9            move.l  (A1)+, (A2)+
+02386: 24d9            move.l  (A1)+, (A2)+
+02388: 24d9            move.l  (A1)+, (A2)+
+0238a: 24d9            move.l  (A1)+, (A2)+
+0238c: 24d9            move.l  (A1)+, (A2)+
+0238e: 24d9            move.l  (A1)+, (A2)+
+02390: 24d9            move.l  (A1)+, (A2)+
+02392: 24d9            move.l  (A1)+, (A2)+
+02394: 24d9            move.l  (A1)+, (A2)+
+02396: 24d9            move.l  (A1)+, (A2)+
+02398: 24d9            move.l  (A1)+, (A2)+
+0239a: 24d9            move.l  (A1)+, (A2)+
+0239c: 24d9            move.l  (A1)+, (A2)+
+0239e: 24d9            move.l  (A1)+, (A2)+
+023a0: 24d9            move.l  (A1)+, (A2)+
+023a2: 24d9            move.l  (A1)+, (A2)+
+023a4: 24d9            move.l  (A1)+, (A2)+
+023a6: 24d9            move.l  (A1)+, (A2)+
+023a8: 24d9            move.l  (A1)+, (A2)+
+023aa: 24d9            move.l  (A1)+, (A2)+
+023ac: 24d9            move.l  (A1)+, (A2)+
+023ae: 24d9            move.l  (A1)+, (A2)+
+023b0: 24d9            move.l  (A1)+, (A2)+
+023b2: 24d9            move.l  (A1)+, (A2)+
+023b4: 24d9            move.l  (A1)+, (A2)+
+023b6: 24d9            move.l  (A1)+, (A2)+
+023b8: 24d9            move.l  (A1)+, (A2)+
+023ba: 24d9            move.l  (A1)+, (A2)+
+023bc: 24d9            move.l  (A1)+, (A2)+
+023be: 24d9            move.l  (A1)+, (A2)+
+023c0: 24d9            move.l  (A1)+, (A2)+
+023c2: 24d9            move.l  (A1)+, (A2)+
+023c4: 24d9            move.l  (A1)+, (A2)+
+023c6: 24d9            move.l  (A1)+, (A2)+
+023c8: 24d9            move.l  (A1)+, (A2)+
+023ca: 24d9            move.l  (A1)+, (A2)+
+023cc: 24d9            move.l  (A1)+, (A2)+
+023ce: 24d9            move.l  (A1)+, (A2)+
+023d0: 24d9            move.l  (A1)+, (A2)+
+023d2: 24d9            move.l  (A1)+, (A2)+
+023d4: 24d9            move.l  (A1)+, (A2)+
+023d6: 24d9            move.l  (A1)+, (A2)+
+023d8: 24d9            move.l  (A1)+, (A2)+
+023da: 24d9            move.l  (A1)+, (A2)+
+023dc: 24d9            move.l  (A1)+, (A2)+
+023de: 24d9            move.l  (A1)+, (A2)+
+023e0: 24d9            move.l  (A1)+, (A2)+
+023e2: 24d9            move.l  (A1)+, (A2)+
+023e4: 24d9            move.l  (A1)+, (A2)+
+023e6: 24d9            move.l  (A1)+, (A2)+
+023e8: 24d9            move.l  (A1)+, (A2)+
+023ea: 24d9            move.l  (A1)+, (A2)+
+023ec: 24d9            move.l  (A1)+, (A2)+
+023ee: 24d9            move.l  (A1)+, (A2)+
+023f0: 24d9            move.l  (A1)+, (A2)+
+023f2: 24d9            move.l  (A1)+, (A2)+
+023f4: 24d9            move.l  (A1)+, (A2)+
+023f6: 24d9            move.l  (A1)+, (A2)+
+023f8: 24d9            move.l  (A1)+, (A2)+
+023fa: 24d9            move.l  (A1)+, (A2)+
+023fc: 24d9            move.l  (A1)+, (A2)+
+023fe: 24d9            move.l  (A1)+, (A2)+
+02400: 24d9            move.l  (A1)+, (A2)+
+02402: 24d9            move.l  (A1)+, (A2)+
+02404: 24d9            move.l  (A1)+, (A2)+
+02406: 24d9            move.l  (A1)+, (A2)+
+02408: 24d9            move.l  (A1)+, (A2)+
+0240a: 24d9            move.l  (A1)+, (A2)+
+0240c: 24d9            move.l  (A1)+, (A2)+
+0240e: 24d9            move.l  (A1)+, (A2)+
+02410: 24d9            move.l  (A1)+, (A2)+
+02412: 24d9            move.l  (A1)+, (A2)+
+02414: 24d9            move.l  (A1)+, (A2)+
+02416: 24d9            move.l  (A1)+, (A2)+
+02418: 24d9            move.l  (A1)+, (A2)+
+0241a: 24d9            move.l  (A1)+, (A2)+
+0241c: 24d9            move.l  (A1)+, (A2)+
+0241e: 24d9            move.l  (A1)+, (A2)+
+02420: 24d9            move.l  (A1)+, (A2)+
+02422: 24d9            move.l  (A1)+, (A2)+
+02424: 24d9            move.l  (A1)+, (A2)+
+02426: 24d9            move.l  (A1)+, (A2)+
+02428: 24d9            move.l  (A1)+, (A2)+
+0242a: 24d9            move.l  (A1)+, (A2)+
+0242c: 24d9            move.l  (A1)+, (A2)+
+0242e: 24d9            move.l  (A1)+, (A2)+
+02430: 24d9            move.l  (A1)+, (A2)+
+02432: 24d9            move.l  (A1)+, (A2)+
+02434: 24d9            move.l  (A1)+, (A2)+
+02436: 24d9            move.l  (A1)+, (A2)+
+02438: 24d9            move.l  (A1)+, (A2)+
+0243a: 24d9            move.l  (A1)+, (A2)+
+0243c: 24d9            move.l  (A1)+, (A2)+
+0243e: 24d9            move.l  (A1)+, (A2)+
+02440: 24d9            move.l  (A1)+, (A2)+
+02442: 3039 0078 39ac  move.w  $7839ac.l, D0
+02448: 4a40            tst.w   D0
+0244a: 6708            beq     $2454
+0244c: 5340            subq.w  #1, D0
+0244e: 2219            move.l  (A1)+, D1
+02450: 51c8 fffc       dbra    D0, $244e
+02454: 4e75            rts
+02456: 2e2f 0004       move.l  ($4,A7), D7
+0245a: deb9 0078 39ce  add.l   $7839ce.l, D7
+02460: 2479 0078 39b2  movea.l $7839b2.l, A2
+02466: 8ed2            divu.w  (A2), D7
+02468: 4847            swap    D7
+0246a: 2479 0078 39ca  movea.l $7839ca.l, A2
+02470: ced2            mulu.w  (A2), D7
+02472: ed87            asl.l   #6, D7
+02474: deb9 0078 39ae  add.l   $7839ae.l, D7
+0247a: 4e75            rts
+0247c: 41f9 0000 24c4  lea     $24c4.l, A0
+02482: d1f9 0078 39a4  adda.l  $7839a4.l, A0

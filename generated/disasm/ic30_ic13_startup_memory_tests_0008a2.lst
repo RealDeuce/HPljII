@@ -1,0 +1,74 @@
+008a2: 48e7 f860       movem.l D0-D4/A1-A2, -(A7)
+008a6: 263c 5555 aaaa  move.l  #$5555aaaa, D3
+008ac: e488            lsr.l   #2, D0
+008ae: 7801            moveq   #$1, D4
+008b0: 2248            movea.l A0, A1
+008b2: 2448            movea.l A0, A2
+008b4: 2200            move.l  D0, D1
+008b6: 2400            move.l  D0, D2
+008b8: 4843            swap    D3
+008ba: 22c3            move.l  D3, (A1)+
+008bc: 5381            subq.l  #1, D1
+008be: 66fa            bne     $8ba
+008c0: b69a            cmp.l   (A2)+, D3
+008c2: 660a            bne     $8ce
+008c4: 5382            subq.l  #1, D2
+008c6: 66f8            bne     $8c0
+008c8: 51cc ffe6       dbra    D4, $8b0
+008cc: 6006            bra     $8d4
+008ce: 2e3c 0000 b407  move.l  #$b407, D7
+008d4: 4cdf 061f       movem.l (A7)+, D0-D4/A1-A2
+008d8: ce87            and.l   D7, D7
+008da: 4e75            rts
+008dc: 48e7 f8c0       movem.l D0-D4/A0-A1, -(A7)
+008e0: 2248            movea.l A0, A1
+008e2: 1200            move.b  D0, D1
+008e4: 343c 00ff       move.w  #$ff, D2
+008e8: 10c1            move.b  D1, (A0)+
+008ea: 5201            addq.b  #1, D1
+008ec: 51ca fffa       dbra    D2, $8e8
+008f0: 1200            move.b  D0, D1
+008f2: 5201            addq.b  #1, D1
+008f4: 343c 00fe       move.w  #$fe, D2
+008f8: 283c 0000 0100  move.l  #$100, D4
+008fe: 1081            move.b  D1, (A0)
+00900: 5201            addq.b  #1, D1
+00902: d1c4            adda.l  D4, A0
+00904: 51ca fff8       dbra    D2, $8fe
+00908: 1200            move.b  D0, D1
+0090a: 5401            addq.b  #2, D1
+0090c: 283c 0001 0000  move.l  #$10000, D4
+00912: 343c 0006       move.w  #$6, D2
+00916: 1081            move.b  D1, (A0)
+00918: 5201            addq.b  #1, D1
+0091a: d1c4            adda.l  D4, A0
+0091c: 51ca fff8       dbra    D2, $916
+00920: 1200            move.b  D0, D1
+00922: 343c 00ff       move.w  #$ff, D2
+00926: b219            cmp.b   (A1)+, D1
+00928: 6642            bne     $96c
+0092a: 5201            addq.b  #1, D1
+0092c: 51ca fff8       dbra    D2, $926
+00930: 1200            move.b  D0, D1
+00932: 5201            addq.b  #1, D1
+00934: 343c 00fe       move.w  #$fe, D2
+00938: 283c 0000 0100  move.l  #$100, D4
+0093e: b211            cmp.b   (A1), D1
+00940: 662a            bne     $96c
+00942: 5201            addq.b  #1, D1
+00944: d3c4            adda.l  D4, A1
+00946: 51ca fff6       dbra    D2, $93e
+0094a: 1200            move.b  D0, D1
+0094c: 5401            addq.b  #2, D1
+0094e: 283c 0001 0000  move.l  #$10000, D4
+00954: 343c 0006       move.w  #$6, D2
+00958: b211            cmp.b   (A1), D1
+0095a: 6610            bne     $96c
+0095c: 5201            addq.b  #1, D1
+0095e: d3c4            adda.l  D4, A1
+00960: 51ca fff6       dbra    D2, $958
+00964: 4cdf 031f       movem.l (A7)+, D0-D4/A0-A1
+00968: ce87            and.l   D7, D7
+0096a: 4e75            rts
+0096c: 4cdf 031f       movem.l (A7)+, D0-D4/A0-A1
+00970: 2e3c 0000 b407  move.l  #$b407, D7

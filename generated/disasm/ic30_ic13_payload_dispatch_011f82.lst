@@ -1,0 +1,310 @@
+11f82: 4e56 fffc            link    A6, #-$4
+11f86: 2ebc 0001 05d0       move.l  #$105d0, (A7)
+11f8c: 4eb9 0001 21cc       jsr     $121cc.l
+11f92: 4e5e                 unlk    A6
+11f94: 4e75                 rts
+11f96: 4e56 0000            link    A6, #$0
+11f9a: 48e7 8004            movem.l D0/A5, -(A7)
+11f9e: 2a79 0078 299e       movea.l $78299e.l, A5
+11fa4: 9bfc 0000 000c       suba.l  #$c, A5
+11faa: 4a6d 0002            tst.w   ($2,A5)
+11fae: 660e                 bne     $11fbe
+11fb0: 2ebc 0001 5d0a       move.l  #$15d0a, (A7)
+11fb6: 4eb9 0001 21cc       jsr     $121cc.l
+11fbc: 600c                 bra     $11fca
+11fbe: 2ebc 0001 6c14       move.l  #$16c14, (A7)
+11fc4: 4eb9 0001 21cc       jsr     $121cc.l
+11fca: 4cdf 2001            movem.l (A7)+, D0/A5
+11fce: 4e5e                 unlk    A6
+11fd0: 4e75                 rts
+11fd2: 4e56 0000            link    A6, #$0
+11fd6: 4eba fef0            jsr     ($11ec8,PC)
+11fda: 4eb9 0000 daf0       jsr     $daf0.l
+11fe0: 4e5e                 unlk    A6
+11fe2: 4e75                 rts
+11fe4: 4e56 0000            link    A6, #$0
+11fe8: 4eba fede            jsr     ($11ec8,PC)
+11fec: 4eb9 0000 daf0       jsr     $daf0.l
+11ff2: 4e5e                 unlk    A6
+11ff4: 4e75                 rts
+11ff6: 4e56 0000            link    A6, #$0
+11ffa: 4eba fef0            jsr     ($11eec,PC)
+11ffe: 5db9 0078 299e       subq.l  #6, $78299e.l
+12004: 4e5e                 unlk    A6
+12006: 4e75                 rts
+12008: 4e56 0000            link    A6, #$0
+1200c: 4eba feba            jsr     ($11ec8,PC)
+12010: 4eba feec            jsr     ($11efe,PC)
+12014: 4eb9 0000 daf0       jsr     $daf0.l
+1201a: 4e5e                 unlk    A6
+1201c: 4e75                 rts
+1201e: 4e56 0000            link    A6, #$0
+12022: 4eba fea4            jsr     ($11ec8,PC)
+12026: 4eba fefe            jsr     ($11f26,PC)
+1202a: 4eb9 0000 daf0       jsr     $daf0.l
+12030: 4e5e                 unlk    A6
+12032: 4e75                 rts
+12034: 4e56 0000            link    A6, #$0
+12038: 4eba fec4            jsr     ($11efe,PC)
+1203c: 4eb9 0001 22be       jsr     $122be.l
+12042: 4e5e                 unlk    A6
+12044: 4e75                 rts
+12046: 4e56 0000            link    A6, #$0
+1204a: 4eb9 0000 c6ec       jsr     $c6ec.l
+12050: 4eb9 0000 c580       jsr     $c580.l
+12056: 4e5e                 unlk    A6
+12058: 4e75                 rts
+1205a: 4e56 0000            link    A6, #$0
+1205e: 4eb9 0000 c7e0       jsr     $c7e0.l
+12064: 4eb9 0000 c580       jsr     $c580.l
+1206a: 4e5e                 unlk    A6
+1206c: 4e75                 rts
+1206e: 4e56 0000            link    A6, #$0
+12072: 4eb9 0000 c780       jsr     $c780.l
+12078: 4eb9 0000 c580       jsr     $c580.l
+1207e: 4e5e                 unlk    A6
+12080: 4e75                 rts
+12082: 4e56 0000            link    A6, #$0
+12086: 4eb9 0000 c930       jsr     $c930.l
+1208c: 4eb9 0000 c580       jsr     $c580.l
+12092: 4e5e                 unlk    A6
+12094: 4e75                 rts
+12096: 4e56 0000            link    A6, #$0
+1209a: 4eb9 0000 c89c       jsr     $c89c.l
+120a0: 4eb9 0000 c580       jsr     $c580.l
+120a6: 4e5e                 unlk    A6
+120a8: 4e75                 rts
+120aa: 4e56 0000            link    A6, #$0
+120ae: 4eb9 0000 c840       jsr     $c840.l
+120b4: 4eb9 0000 c580       jsr     $c580.l
+120ba: 4e5e                 unlk    A6
+120bc: 4e75                 rts
+120be: 4e56 0000            link    A6, #$0
+120c2: 4eb9 0001 be22       jsr     $1be22.l
+120c8: 4eb9 0000 c580       jsr     $c580.l
+120ce: 4e5e                 unlk    A6
+120d0: 4e75                 rts
+120d2: 4e56 fffc            link    A6, #-$4
+120d6: 4287                 clr.l   D7
+120d8: 1e39 0078 2f06       move.b  $782f06.l, D7
+120de: 2e87                 move.l  D7, (A7)
+120e0: 4878 0010            pea     $10.w
+120e4: 4eb9 0003 32ee       jsr     $332ee.l
+120ea: 2457                 movea.l (A7), A2
+120ec: d5fc 0078 2eeb       adda.l  #$782eeb, A2
+120f2: 4287                 clr.l   D7
+120f4: 1e12                 move.b  (A2), D7
+120f6: 0c47 0001            cmpi.w  #$1, D7
+120fa: 660c                 bne     $12108
+120fc: 4878 001a            pea     $1a.w
+12100: 4eb9 0000 d04a       jsr     $d04a.l
+12106: 588f                 addq.l  #4, A7
+12108: 4e5e                 unlk    A6
+1210a: 4e75                 rts
+1210c: 4e56 0000            link    A6, #$0
+12110: 4878 001a            pea     $1a.w
+12114: 4eb9 0000 e002       jsr     $e002.l
+1211a: 588f                 addq.l  #4, A7
+1211c: 4e5e                 unlk    A6
+1211e: 4e75                 rts
+12120: 4e56 0000            link    A6, #$0
+12124: 48e7 8c00            movem.l D0/D4-D5, -(A7)
+12128: 4284                 clr.l   D4
+1212a: 4878 001b            pea     $1b.w
+1212e: 4eb9 0000 e002       jsr     $e002.l
+12134: 588f                 addq.l  #4, A7
+12136: 4878 0059            pea     $59.w
+1213a: 4eb9 0000 e002       jsr     $e002.l
+12140: 588f                 addq.l  #4, A7
+12142: 4eb9 0000 a904       jsr     $a904.l
+12148: 2a07                 move.l  D7, D5
+1214a: 0c85 0000 001a       cmpi.l  #$1a, D5
+12150: 6618                 bne     $1216a
+12152: 4eb9 0000 a904       jsr     $a904.l
+12158: 2a07                 move.l  D7, D5
+1215a: 0c85 0000 0058       cmpi.l  #$58, D5
+12160: 6608                 bne     $1216a
+12162: 4eb9 0000 d99a       jsr     $d99a.l
+12168: 7a7f                 moveq   #$7f, D5
+1216a: 0c85 ffff ffff       cmpi.l  #-$1, D5
+12170: 6720                 beq     $12192
+12172: 2e85                 move.l  D5, (A7)
+12174: 4eb9 0000 e002       jsr     $e002.l
+1217a: 0c85 0000 001b       cmpi.l  #$1b, D5
+12180: 6604                 bne     $12186
+12182: 7801                 moveq   #$1, D4
+12184: 60bc                 bra     $12142
+12186: 0c85 0000 005a       cmpi.l  #$5a, D5
+1218c: 660c                 bne     $1219a
+1218e: 4a84                 tst.l   D4
+12190: 6708                 beq     $1219a
+12192: 4cdf 0031            movem.l (A7)+, D0/D4-D5
+12196: 4e5e                 unlk    A6
+12198: 4e75                 rts
+1219a: 4284                 clr.l   D4
+1219c: 60a4                 bra     $12142
+1219e: 4e56 fffc            link    A6, #-$4
+121a2: 2ebc 0000 0100       move.l  #$100, (A7)
+121a8: 4eb9 0000 d04a       jsr     $d04a.l
+121ae: 4e5e                 unlk    A6
+121b0: 4e75                 rts
+121b2: 4e56 0000            link    A6, #$0
+121b6: 4eb9 0000 d99a       jsr     $d99a.l
+121bc: 4878 007f            pea     $7f.w
+121c0: 4eb9 0000 e002       jsr     $e002.l
+121c6: 588f                 addq.l  #4, A7
+121c8: 4e5e                 unlk    A6
+121ca: 4e75                 rts
+121cc: 4e56 0000            link    A6, #$0
+121d0: 48e7 800c            movem.l D0/A4-A5, -(A7)
+121d4: 2a79 0078 299e       movea.l $78299e.l, A5
+121da: 5d8d                 subq.l  #6, A5
+121dc: 23cd 0078 299e       move.l  A5, $78299e.l
+121e2: 4a39 0078 2a1a       tst.b   $782a1a.l
+121e8: 6626                 bne     $12210
+121ea: 287c 0078 2a1a       movea.l #$782a1a, A4
+121f0: 18bc 0001            move.b  #$1, (A4)
+121f4: 296e 0008 0002       move.l  ($8,A6), ($2,A4)
+121fa: 1955 0006            move.b  (A5), ($6,A4)
+121fe: 196d 0001 0007       move.b  ($1,A5), ($7,A4)
+12204: 396d 0002 0008       move.w  ($2,A5), ($8,A4)
+1220a: 396d 0004 000a       move.w  ($4,A5), ($a,A4)
+12210: 4cdf 3001            movem.l (A7)+, D0/A4-A5
+12214: 4e5e                 unlk    A6
+12216: 4e75                 rts
+12218: 4e56 0000            link    A6, #$0
+1221c: 48e7 800c            movem.l D0/A4-A5, -(A7)
+12220: 0c39 0001 0078 2a1a  cmpi.b  #$1, $782a1a.l
+12228: 663c                 bne     $12266
+1222a: 287c 0078 2a1a       movea.l #$782a1a, A4
+12230: 4214                 clr.b   (A4)
+12232: 2a79 0078 299e       movea.l $78299e.l, A5
+12238: 1aac 0006            move.b  ($6,A4), (A5)
+1223c: 1b6c 0007 0001       move.b  ($7,A4), ($1,A5)
+12242: 3b6c 0008 0002       move.w  ($8,A4), ($2,A5)
+12248: 3b6c 000a 0004       move.w  ($a,A4), ($4,A5)
+1224e: 5c8d                 addq.l  #6, A5
+12250: 23cd 0078 299e       move.l  A5, $78299e.l
+12256: 4a39 0078 2c18       tst.b   $782c18.l
+1225c: 6610                 bne     $1226e
+1225e: 246c 0002            movea.l ($2,A4), A2
+12262: 4e92                 jsr     (A2)
+12264: 6014                 bra     $1227a
+12266: 4cdf 3001            movem.l (A7)+, D0/A4-A5
+1226a: 4e5e                 unlk    A6
+1226c: 4e75                 rts
+1226e: 2ebc 0001 228a       move.l  #$1228a, (A7)
+12274: 4eb9 0001 2358       jsr     $12358.l
+1227a: 42ac 0002            clr.l   ($2,A4)
+1227e: 60e6                 bra     $12266
+12280: 3333 3434            move.w  INVALID 33, -(A1)
+12284: 3041                 movea.w D1, A0
+12286: 0d0a 0000            movep.w ($0,A2), D6
+1228a: 4e56 0000            link    A6, #$0
+1228e: 48e7 8404            movem.l D0/D5/A5, -(A7)
+12292: 2a79 0078 299e       movea.l $78299e.l, A5
+12298: 5d8d                 subq.l  #6, A5
+1229a: 23cd 0078 299e       move.l  A5, $78299e.l
+122a0: 3a2d 0002            move.w  ($2,A5), D5
+122a4: 48c5                 ext.l   D5
+122a6: 6c06                 bge     $122ae
+122a8: 2e05                 move.l  D5, D7
+122aa: 4487                 neg.l   D7
+122ac: 2a07                 move.l  D7, D5
+122ae: 2e85                 move.l  D5, (A7)
+122b0: 4eb9 0001 2328       jsr     $12328.l
+122b6: 4cdf 2021            movem.l (A7)+, D0/D5/A5
+122ba: 4e5e                 unlk    A6
+122bc: 4e75                 rts
+122be: 4e56 0000            link    A6, #$0
+122c2: 48e7 840c            movem.l D0/D5/A4-A5, -(A7)
+122c6: 2a7c 0001 2280       movea.l #$12280, A5
+122cc: 2879 0078 299e       movea.l $78299e.l, A4
+122d2: 5d8c                 subq.l  #6, A4
+122d4: 23cc 0078 299e       move.l  A4, $78299e.l
+122da: 4eb9 0000 da9a       jsr     $da9a.l
+122e0: 2a07                 move.l  D7, D5
+122e2: 0c85 0000 0011       cmpi.l  #$11, D5
+122e8: 661a                 bne     $12304
+122ea: 3e2c 0002            move.w  ($2,A4), D7
+122ee: 48c7                 ext.l   D7
+122f0: 0c47 0001            cmpi.w  #$1, D7
+122f4: 671e                 beq     $12314
+122f6: 3e2c 0002            move.w  ($2,A4), D7
+122fa: 48c7                 ext.l   D7
+122fc: 0c47 ffff            cmpi.w  #-$1, D7
+12300: 660a                 bne     $1230c
+12302: 6010                 bra     $12314
+12304: 2e85                 move.l  D5, (A7)
+12306: 4eb9 0000 9ec0       jsr     $9ec0.l
+1230c: 4cdf 3021            movem.l (A7)+, D0/D5/A4-A5
+12310: 4e5e                 unlk    A6
+12312: 4e75                 rts
+12314: 4a15                 tst.b   (A5)
+12316: 67f4                 beq     $1230c
+12318: 1e1d                 move.b  (A5)+, D7
+1231a: 4887                 ext.w   D7
+1231c: 48c7                 ext.l   D7
+1231e: 2e87                 move.l  D7, (A7)
+12320: 4eb9 0000 b090       jsr     $b090.l
+12326: 60ec                 bra     $12314
+12328: 4e56 0000            link    A6, #$0
+1232c: 48e7 8400            movem.l D0/D5, -(A7)
+12330: 2a2e 0008            move.l  ($8,A6), D5
+12334: 4a85                 tst.l   D5
+12336: 6f12                 ble     $1234a
+12338: 4eb9 0000 dace       jsr     $dace.l
+1233e: 0c87 ffff ffff       cmpi.l  #-$1, D7
+12344: 660e                 bne     $12354
+12346: 7eff                 moveq   #-$1, D7
+12348: 6002                 bra     $1234c
+1234a: 7e01                 moveq   #$1, D7
+1234c: 4cdf 0021            movem.l (A7)+, D0/D5
+12350: 4e5e                 unlk    A6
+12352: 4e75                 rts
+12354: 5385                 subq.l  #1, D5
+12356: 60dc                 bra     $12334
+12358: 4e56 0000            link    A6, #$0
+1235c: 48e7 8c04            movem.l D0/D4-D5/A5, -(A7)
+12360: 2e39 0078 2a1c       move.l  $782a1c.l, D7
+12366: beae 0008            cmp.l   ($8,A6), D7
+1236a: 6606                 bne     $12372
+1236c: 4eba ff1c            jsr     ($1228a,PC)
+12370: 6028                 bra     $1239a
+12372: 2a79 0078 299e       movea.l $78299e.l, A5
+12378: 5d8d                 subq.l  #6, A5
+1237a: 23cd 0078 299e       move.l  A5, $78299e.l
+12380: 3a2d 0002            move.w  ($2,A5), D5
+12384: 48c5                 ext.l   D5
+12386: 4a85                 tst.l   D5
+12388: 6f10                 ble     $1239a
+1238a: 4eb9 0000 dace       jsr     $dace.l
+12390: 2807                 move.l  D7, D4
+12392: 0c84 ffff ffff       cmpi.l  #-$1, D4
+12398: 6608                 bne     $123a2
+1239a: 4cdf 2031            movem.l (A7)+, D0/D4-D5/A5
+1239e: 4e5e                 unlk    A6
+123a0: 4e75                 rts
+123a2: 2e84                 move.l  D4, (A7)
+123a4: 4eb9 0000 e002       jsr     $e002.l
+123aa: 5385                 subq.l  #1, D5
+123ac: 60d8                 bra     $12386
+123ae: 4e56 0000            link    A6, #$0
+123b2: 48e7 800c            movem.l D0/A4-A5, -(A7)
+123b6: 2a7c 0078 2a2a       movea.l #$782a2a, A5
+123bc: 2879 0078 2a26       movea.l $782a26.l, A4
+123c2: 538c                 subq.l  #1, A4
+123c4: bbcc                 cmpa.l  A4, A5
+123c6: 640e                 bcc     $123d6
+123c8: 4287                 clr.l   D7
+123ca: 1e1d                 move.b  (A5)+, D7
+123cc: 2e87                 move.l  D7, (A7)
+123ce: 4eb9 0000 e002       jsr     $e002.l
+123d4: 60ee                 bra     $123c4
+123d6: 4cdf 3001            movem.l (A7)+, D0/A4-A5
+123da: 4e5e                 unlk    A6
+123dc: 4e75                 rts
+123de: 4e56 0000            link    A6, #$0
+123e2: 48e7 8004            movem.l D0/A5, -(A7)
+123e6: 2a7c 0078 2a42       movea.l #$782a42, A5
+123ec: bbf9 0078 2a3e       cmpa.l  $782a3e.l, A5

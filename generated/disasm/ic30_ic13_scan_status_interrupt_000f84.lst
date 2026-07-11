@@ -1,0 +1,89 @@
+00f84: 0838 0004 8000       btst    #$4, $8000.w
+00f8a: 6600 0094            bne     $1020
+00f8e: 11fc 00fd a601       move.b  #$fd, $a601.w
+00f94: 0839 0006 0078 28f9  btst    #$6, $7828f9.l
+00f9c: 6704                 beq     $fa2
+00f9e: 6000 00c4            bra     $1064
+00fa2: 48e7 80c0            movem.l D0/A0-A1, -(A7)
+00fa6: 5279 0078 398c       addq.w  #1, $78398c.l
+00fac: 3039 0078 398c       move.w  $78398c.l, D0
+00fb2: b079 0078 3998       cmp.w   $783998.l, D0
+00fb8: 6254                 bhi     $100e
+00fba: b079 0078 398e       cmp.w   $78398e.l, D0
+00fc0: 6534                 bcs     $ff6
+00fc2: 6710                 beq     $fd4
+00fc4: 0879 0007 0078 28f9  bchg    #$7, $7828f9.l
+00fcc: 11f9 0078 28f9 a801  move.b  $7828f9.l, $a801.w
+00fd4: 4a39 0078 399e       tst.b   $78399e.l
+00fda: 6622                 bne     $ffe
+00fdc: b079 0078 3998       cmp.w   $783998.l, D0
+00fe2: 6708                 beq     $fec
+00fe4: 13fc 0001 0078 399e  move.b  #$1, $78399e.l
+00fec: 43f9 0078 0182       lea     $780182.l, A1
+00ff2: 6100 0042            bsr     $1036
+00ff6: 4cdf 0301            movem.l (A7)+, D0/A0-A1
+00ffa: 6000 0092            bra     $108e
+00ffe: 13fc 0000 0078 399e  move.b  #$0, $78399e.l
+01006: 13fc 0001 0078 399f  move.b  #$1, $78399f.l
+0100e: 08f9 0006 0078 28f9  bset    #$6, $7828f9.l
+01016: 11f9 0078 28f9 a801  move.b  $7828f9.l, $a801.w
+0101e: 60cc                 bra     $fec
+01020: 48e7 f0f0            movem.l D0-D3/A0-A3, -(A7)
+01024: 4eb9 0000 a6cc       jsr     $a6cc.l
+0102a: 4cdf 0f0f            movem.l (A7)+, D0-D3/A0-A3
+0102e: 6000 0034            bra     $1064
+01032: 4e71                 nop
+01034: 4e73                 rte
+01036: 40e7                 move    SR, -(A7)
+01038: 007c 0700            ori     #$700, SR
+0103c: 0c69 8006 000a       cmpi.w  #-$7ffa, ($a,A1)
+01042: 661e                 bne     $1062
+01044: 337c 0002 000a       move.w  #$2, ($a,A1)
+0104a: 08f9 0001 0078 017e  bset    #$1, $78017e.l
+01052: 6708                 beq     $105c
+01054: b3f9 0078 017a       cmpa.l  $78017a.l, A1
+0105a: 6c06                 bge     $1062
+0105c: 23c9 0078 017a       move.l  A1, $78017a.l
+01062: 4e73                 rte
+01064: 007c 0700            ori     #$700, SR
+01068: 3f57 fffe            move.w  (A7), (-$2,A7)
+0106c: 026f 0700 fffe       andi.w  #$700, (-$2,A7)
+01072: 6618                 bne     $108c
+01074: 08b9 0001 0078 017e  bclr    #$1, $78017e.l
+0107c: 670e                 beq     $108c
+0107e: 48e7 fffe            movem.l D0-D7/A0-A6, -(A7)
+01082: 2279 0078 017a       movea.l $78017a.l, A1
+01088: 6000 01b0            bra     $123a
+0108c: 4e73                 rte
+0108e: 3f57 fffe            move.w  (A7), (-$2,A7)
+01092: 026f 0700 fffe       andi.w  #$700, (-$2,A7)
+01098: 6620                 bne     $10ba
+0109a: 027c f5ff            andi    #$f5ff, SR
+0109e: 007c 0700            ori     #$700, SR
+010a2: 08b9 0001 0078 017e  bclr    #$1, $78017e.l
+010aa: 670e                 beq     $10ba
+010ac: 48e7 fffe            movem.l D0-D7/A0-A6, -(A7)
+010b0: 2279 0078 017a       movea.l $78017a.l, A1
+010b6: 6000 0182            bra     $123a
+010ba: 4e73                 rte
+010bc: 226f 0004            movea.l ($4,A7), A1
+010c0: 4e40                 trap    #$0
+010c2: 4e75                 rts
+010c4: 4e41                 trap    #$1
+010c6: 4e75                 rts
+010c8: 226f 0004            movea.l ($4,A7), A1
+010cc: 4e42                 trap    #$2
+010ce: 4e75                 rts
+010d0: 302f 0006            move.w  ($6,A7), D0
+010d4: 4e43                 trap    #$3
+010d6: 4e75                 rts
+010d8: 302f 0006            move.w  ($6,A7), D0
+010dc: 4e44                 trap    #$4
+010de: 4e75                 rts
+010e0: 226f 0004            movea.l ($4,A7), A1
+010e4: 302f 000a            move.w  ($a,A7), D0
+010e8: 4e45                 trap    #$5
+010ea: 4e75                 rts
+010ec: 226f 0004            movea.l ($4,A7), A1
+010f0: 4e46                 trap    #$6
+010f2: 4e75                 rts

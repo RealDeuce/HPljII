@@ -1,0 +1,80 @@
+061e4: 4e56 0000                 link    A6, #$0
+061e8: 48e7 8404                 movem.l D0/D5/A5, -(A7)
+061ec: 2ebc 0000 b192            move.l  #$b192, (A7)
+061f2: 4eb9 0000 8c7a            jsr     $8c7a.l
+061f8: 4eba fc86                 jsr     ($5e80,PC)
+061fc: 4eba fd98                 jsr     ($5f96,PC)
+06200: 4eb9 0000 2d46            jsr     $2d46.l
+06206: 4eb9 0000 a16a            jsr     $a16a.l
+0620c: 4eb9 0000 15a6            jsr     $15a6.l
+06212: 08b9 0000 0078 21cd       bclr    #$0, $7821cd.l
+0621a: 4eb9 0000 15ac            jsr     $15ac.l
+06220: 4878 0015                 pea     $15.w
+06224: 4eb9 0000 10d8            jsr     $10d8.l
+0622a: 588f                      addq.l  #4, A7
+0622c: 13fc 0001 0078 0e3b       move.b  #$1, $780e3b.l
+06234: 08f9 0003 0078 0e66       bset    #$3, $780e66.l
+0623c: 4a39 0078 0e3b            tst.b   $780e3b.l
+06242: 676e                      beq     $62b2
+06244: 4878 0005                 pea     $5.w
+06248: 2f3c 0078 0242            move.l  #$780242, -(A7)
+0624e: 4eb9 0000 10e0            jsr     $10e0.l
+06254: 508f                      addq.l  #8, A7
+06256: 4eb9 0000 15a6            jsr     $15a6.l
+0625c: 4eb9 0000 3178            jsr     $3178.l
+06262: 42b9 0078 0e32            clr.l   $780e32.l
+06268: 23f9 0078 0e32 0078 0e2e  move.l  $780e32.l, $780e2e.l
+06272: 08b9 0000 0078 0e29       bclr    #$0, $780e29.l
+0627a: 02b9 ffff ff77 0078 0e2a  andi.l  #$ffffff77, $780e2a.l
+06284: 4eb9 0000 15ac            jsr     $15ac.l
+0628a: 2a7c 0078 0f02            movea.l #$780f02, A5
+06290: bbfc 0078 10b2            cmpa.l  #$7810b2, A5
+06296: 64a4                      bcc     $623c
+06298: 4287                      clr.l   D7
+0629a: 1e2d 0004                 move.b  ($4,A5), D7
+0629e: 0c47 0002                 cmpi.w  #$2, D7
+062a2: 6746                      beq     $62ea
+062a4: 4287                      clr.l   D7
+062a6: 1e2d 0004                 move.b  ($4,A5), D7
+062aa: 0c47 0004                 cmpi.w  #$4, D7
+062ae: 6652                      bne     $6302
+062b0: 6038                      bra     $62ea
+062b2: 2ebc 0078 0242            move.l  #$780242, (A7)
+062b8: 4eb9 0000 1104            jsr     $1104.l
+062be: 2a79 0078 0ea6            movea.l $780ea6.l, A5
+062c4: 4287                      clr.l   D7
+062c6: 1e2d 0004                 move.b  ($4,A5), D7
+062ca: 0c47 0001                 cmpi.w  #$1, D7
+062ce: 663a                      bne     $630a
+062d0: 422d 0004                 clr.b   ($4,A5)
+062d4: 2ebc 0000 0100            move.l  #$100, (A7)
+062da: 42a7                      clr.l   -(A7)
+062dc: 2f2d 0020                 move.l  ($20,A5), -(A7)
+062e0: 4eb9 0000 18b4            jsr     $18b4.l
+062e6: 508f                      addq.l  #8, A7
+062e8: 6020                      bra     $630a
+062ea: 422d 0004                 clr.b   ($4,A5)
+062ee: 2ebc 0000 0100            move.l  #$100, (A7)
+062f4: 42a7                      clr.l   -(A7)
+062f6: 2f2d 0020                 move.l  ($20,A5), -(A7)
+062fa: 4eb9 0000 18b4            jsr     $18b4.l
+06300: 508f                      addq.l  #8, A7
+06302: dbfc 0000 006c            adda.l  #$6c, A5
+06308: 6086                      bra     $6290
+0630a: 4eb9 0000 30e2            jsr     $30e2.l
+06310: 4287                      clr.l   D7
+06312: 1e39 0078 21a2            move.b  $7821a2.l, D7
+06318: 2e87                      move.l  D7, (A7)
+0631a: 4eb9 0000 6b5c            jsr     $6b5c.l
+06320: 13fc 0001 0078 0e3a       move.b  #$1, $780e3a.l
+06328: 4eb9 0000 15a6            jsr     $15a6.l
+0632e: 08f9 0000 0078 21cd       bset    #$0, $7821cd.l
+06336: 4eb9 0000 15ac            jsr     $15ac.l
+0633c: 4eb9 0000 70ca            jsr     $70ca.l
+06342: 13fc 0001 0078 21b0       move.b  #$1, $7821b0.l
+0634a: 4eb9 0000 15a6            jsr     $15a6.l
+06350: 4239 0078 0e68            clr.b   $780e68.l
+06356: 4eb9 0000 15ac            jsr     $15ac.l
+0635c: 4cdf 2021                 movem.l (A7)+, D0/D5/A5
+06360: 4e5e                      unlk    A6
+06362: 4e75                      rts

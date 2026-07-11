@@ -1,0 +1,6 @@
+031d6: 4e56 0000                 link    A6, #$0
+031da: 4279 0078 3ed2            clr.w   $783ed2.l
+031e0: 23fc 0078 3e92 0078 3ed4  move.l  #$783e92, $783ed4.l
+031ea: 23fc 0078 3e92 0078 3ed8  move.l  #$783e92, $783ed8.l
+031f4: 4e5e                      unlk    A6
+031f6: 4e75                      rts

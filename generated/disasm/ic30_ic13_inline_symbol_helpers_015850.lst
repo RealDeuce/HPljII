@@ -1,0 +1,68 @@
+15850: 41f9 0001 5868  lea     $15868.l, A0
+15856: 7013            moveq   #$13, D0
+15858: b258            cmp.w   (A0)+, D1
+1585a: 6708            beq     $15864
+1585c: 51c8 fffa       dbra    D0, $15858
+15860: 7e00            moveq   #$0, D7
+15862: 4e75            rts
+15864: 7e01            moveq   #$1, D7
+15866: 4e75            rts
+15868: 0015 0025       ori.b   #$25, (A5)
+1586c: 0006 0026       ori.b   #$26, D6
+15870: 0007 0027       ori.b   #$27, D7
+15874: 0009            dc.w    $0009; ILLEGAL
+15876: 000b            dc.w    $000b; ILLEGAL
+15878: 004b            dc.w    $004b; ILLEGAL
+1587a: 0073 0013 0033  ori.w   #$13, ($33,A3,D0.w)
+15880: 0053 00d3       ori.w   #$d3, (A3)
+15884: 0093 00b3 0004  ori.l   #$b30004, (A3)
+1588a: 0024 0005       ori.b   #$5, -(A4)
+1588e: 0055 226f       ori.w   #$226f, (A5)
+15892: 0004 7e00       ori.b   #$0, D4
+15896: 3e29 0022       move.w  ($22,A1), D7
+1589a: 6702            beq     $1589e
+1589c: 4e75            rts
+1589e: 3229 003c       move.w  ($3c,A1), D1
+158a2: 41f9 0001 592c  lea     $1592c.l, A0
+158a8: 701b            moveq   #$1b, D0
+158aa: b210            cmp.b   (A0), D1
+158ac: 670a            beq     $158b8
+158ae: 5888            addq.l  #4, A0
+158b0: 51c8 fff8       dbra    D0, $158aa
+158b4: 7e00            moveq   #$0, D7
+158b6: 4e75            rts
+158b8: 3e28 0002       move.w  ($2,A0), D7
+158bc: 4e75            rts
+158be: 226f 0004       movea.l ($4,A7), A1
+158c2: 7e00            moveq   #$0, D7
+158c4: 1229 0017       move.b  ($17,A1), D1
+158c8: 6606            bne     $158d0
+158ca: 3e29 0014       move.w  ($14,A1), D7
+158ce: 4e75            rts
+158d0: 41f9 0001 592c  lea     $1592c.l, A0
+158d6: 701b            moveq   #$1b, D0
+158d8: b210            cmp.b   (A0), D1
+158da: 6708            beq     $158e4
+158dc: 5888            addq.l  #4, A0
+158de: 51c8 fff8       dbra    D0, $158d8
+158e2: 6006            bra     $158ea
+158e4: 3e28 0002       move.w  ($2,A0), D7
+158e8: 4e75            rts
+158ea: 1001            move.b  D1, D0
+158ec: 0240 00f0       andi.w  #$f0, D0
+158f0: 1e01            move.b  D1, D7
+158f2: 0247 000f       andi.w  #$f, D7
+158f6: eb4f            lsl.w   #5, D7
+158f8: 0c40 00d0       cmpi.w  #$d0, D0
+158fc: 6606            bne     $15904
+158fe: 0647 0011       addi.w  #$11, D7
+15902: 4e75            rts
+15904: 0c40 00e0       cmpi.w  #$e0, D0
+15908: 6606            bne     $15910
+1590a: 0647 0015       addi.w  #$15, D7
+1590e: 4e75            rts
+15910: 0c40 00c0       cmpi.w  #$c0, D0
+15914: 6606            bne     $1591c
+15916: 0647 0018       addi.w  #$18, D7
+1591a: 4e75            rts
+1591c: 0c40 00f0       cmpi.w  #$f0, D0

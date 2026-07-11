@@ -1,0 +1,50 @@
+1bd64: 4e56 fff8            link    A6, #-$8
+1bd68: 4eb9 0001 b250       jsr     $1b250.l
+1bd6e: 4a87                 tst.l   D7
+1bd70: 6612                 bne     $1bd84
+1bd72: 4239 0078 289e       clr.b   $78289e.l
+1bd78: 4239 0078 289f       clr.b   $78289f.l
+1bd7e: 4eb9 0001 ad66       jsr     $1ad66.l
+1bd84: 2479 0078 28a0       movea.l $7828a0.l, A2
+1bd8a: 2e12                 move.l  (A2), D7
+1bd8c: 0287 00ff ffff       andi.l  #$ffffff, D7
+1bd92: 2d47 fffc            move.l  D7, (-$4,A6)
+1bd96: 2eae 000c            move.l  ($c,A6), (A7)
+1bd9a: 2f2e 0008            move.l  ($8,A6), -(A7)
+1bd9e: 4287                 clr.l   D7
+1bda0: 3e39 0078 28a4       move.w  $7828a4.l, D7
+1bda6: 2f07                 move.l  D7, -(A7)
+1bda8: 2f2e fffc            move.l  (-$4,A6), -(A7)
+1bdac: 4eb9 0001 9c70       jsr     $19c70.l
+1bdb2: 4fef 000c            lea     ($c,A7), A7
+1bdb6: 4e5e                 unlk    A6
+1bdb8: 4e75                 rts
+1bdba: 4e56 fffe            link    A6, #-$2
+1bdbe: 4eb9 0001 b250       jsr     $1b250.l
+1bdc4: 4a87                 tst.l   D7
+1bdc6: 670a                 beq     $1bdd2
+1bdc8: 1d79 0078 289f ffff  move.b  $78289f.l, (-$1,A6)
+1bdd0: 6004                 bra     $1bdd6
+1bdd2: 422e ffff            clr.b   (-$1,A6)
+1bdd6: 1e2e ffff            move.b  (-$1,A6), D7
+1bdda: 4887                 ext.w   D7
+1bddc: 48c7                 ext.l   D7
+1bdde: 4e5e                 unlk    A6
+1bde0: 4e75                 rts
+1bde2: 0001 bf74            ori.b   #$74, D1
+1bde6: 0000 0003            ori.b   #$3, D0
+1bdea: 0001 bf36            ori.b   #$36, D1
+1bdee: 0000 0002            ori.b   #$2, D0
+1bdf2: 0001 bf0a            ori.b   #$a, D1
+1bdf6: 0000 0001            ori.b   #$1, D0
+1bdfa: 0001 bed4            ori.b   #$d4, D1
+1bdfe: 0000 0000            ori.b   #$0, D0
+1be02: 0000 0000            ori.b   #$0, D0
+1be06: 0001 c034            ori.b   #$34, D1
+1be0a: 0001 c066            ori.b   #$66, D1
+1be0e: 0000 0058            ori.b   #$58, D0
+1be12: 0001 bec8            ori.b   #$c8, D1
+1be16: 0000 0040            ori.b   #$40, D0
+1be1a: 0000 0000            ori.b   #$0, D0
+1be1e: 0001 c0a4            ori.b   #$a4, D1
+1be22: 4e56 fff2            link    A6, #-$e

@@ -1,0 +1,433 @@
+1fa5c: 2039 0078 3a1c  move.l  $783a1c.l, D0
+1fa62: 41f9 0001 fa70  lea     $1fa70.l, A0
+1fa68: e54b            lsl.w   #2, D3
+1fa6a: 2070 3000       movea.l (A0,D3.w), A0
+1fa6e: 4ed0            jmp     (A0)
+1fa70: 0001 fe74       ori.b   #$74, D1
+1fa74: 0001 fe70       ori.b   #$70, D1
+1fa78: 0001 fe6c       ori.b   #$6c, D1
+1fa7c: 0001 fe68       ori.b   #$68, D1
+1fa80: 0001 fe64       ori.b   #$64, D1
+1fa84: 0001 fe60       ori.b   #$60, D1
+1fa88: 0001 fe5c       ori.b   #$5c, D1
+1fa8c: 0001 fe58       ori.b   #$58, D1
+1fa90: 0001 fe54       ori.b   #$54, D1
+1fa94: 0001 fe50       ori.b   #$50, D1
+1fa98: 0001 fe4c       ori.b   #$4c, D1
+1fa9c: 0001 fe48       ori.b   #$48, D1
+1faa0: 0001 fe44       ori.b   #$44, D1
+1faa4: 0001 fe40       ori.b   #$40, D1
+1faa8: 0001 fe3c       ori.b   #$3c, D1
+1faac: 0001 fe38       ori.b   #$38, D1
+1fab0: 0001 fe34       ori.b   #$34, D1
+1fab4: 0001 fe30       ori.b   #$30, D1
+1fab8: 0001 fe2c       ori.b   #$2c, D1
+1fabc: 0001 fe28       ori.b   #$28, D1
+1fac0: 0001 fe24       ori.b   #$24, D1
+1fac4: 0001 fe20       ori.b   #$20, D1
+1fac8: 0001 fe1c       ori.b   #$1c, D1
+1facc: 0001 fe18       ori.b   #$18, D1
+1fad0: 0001 fe14       ori.b   #$14, D1
+1fad4: 0001 fe10       ori.b   #$10, D1
+1fad8: 0001 fe0c       ori.b   #$c, D1
+1fadc: 0001 fe08       ori.b   #$8, D1
+1fae0: 0001 fe04       ori.b   #$4, D1
+1fae4: 0001 fe00       ori.b   #$0, D1
+1fae8: 0001 fdfc       ori.b   #$fc, D1
+1faec: 0001 fdf8       ori.b   #$f8, D1
+1faf0: 0001 fdf4       ori.b   #$f4, D1
+1faf4: 0001 fdf0       ori.b   #$f0, D1
+1faf8: 0001 fdec       ori.b   #$ec, D1
+1fafc: 0001 fde8       ori.b   #$e8, D1
+1fb00: 0001 fde4       ori.b   #$e4, D1
+1fb04: 0001 fde0       ori.b   #$e0, D1
+1fb08: 0001 fddc       ori.b   #$dc, D1
+1fb0c: 0001 fdd8       ori.b   #$d8, D1
+1fb10: 0001 fdd4       ori.b   #$d4, D1
+1fb14: 0001 fdd0       ori.b   #$d0, D1
+1fb18: 0001 fdcc       ori.b   #$cc, D1
+1fb1c: 0001 fdc8       ori.b   #$c8, D1
+1fb20: 0001 fdc4       ori.b   #$c4, D1
+1fb24: 0001 fdc0       ori.b   #$c0, D1
+1fb28: 0001 fdbc       ori.b   #$bc, D1
+1fb2c: 0001 fdb8       ori.b   #$b8, D1
+1fb30: 0001 fdb4       ori.b   #$b4, D1
+1fb34: 0001 fdb0       ori.b   #$b0, D1
+1fb38: 0001 fdac       ori.b   #$ac, D1
+1fb3c: 0001 fda8       ori.b   #$a8, D1
+1fb40: 0001 fda4       ori.b   #$a4, D1
+1fb44: 0001 fda0       ori.b   #$a0, D1
+1fb48: 0001 fd9c       ori.b   #$9c, D1
+1fb4c: 0001 fd98       ori.b   #$98, D1
+1fb50: 0001 fd94       ori.b   #$94, D1
+1fb54: 0001 fd90       ori.b   #$90, D1
+1fb58: 0001 fd8c       ori.b   #$8c, D1
+1fb5c: 0001 fd88       ori.b   #$88, D1
+1fb60: 0001 fd84       ori.b   #$84, D1
+1fb64: 0001 fd80       ori.b   #$80, D1
+1fb68: 0001 fd7c       ori.b   #$7c, D1
+1fb6c: 0001 fd78       ori.b   #$78, D1
+1fb70: 0001 fd74       ori.b   #$74, D1
+1fb74: 0001 fd70       ori.b   #$70, D1
+1fb78: 0001 fd6c       ori.b   #$6c, D1
+1fb7c: 0001 fd68       ori.b   #$68, D1
+1fb80: 0001 fd64       ori.b   #$64, D1
+1fb84: 0001 fd60       ori.b   #$60, D1
+1fb88: 0001 fd5c       ori.b   #$5c, D1
+1fb8c: 0001 fd58       ori.b   #$58, D1
+1fb90: 0001 fd54       ori.b   #$54, D1
+1fb94: 0001 fd50       ori.b   #$50, D1
+1fb98: 0001 fd4c       ori.b   #$4c, D1
+1fb9c: 0001 fd48       ori.b   #$48, D1
+1fba0: 0001 fd44       ori.b   #$44, D1
+1fba4: 0001 fd40       ori.b   #$40, D1
+1fba8: 0001 fd3c       ori.b   #$3c, D1
+1fbac: 0001 fd38       ori.b   #$38, D1
+1fbb0: 0001 fd34       ori.b   #$34, D1
+1fbb4: 0001 fd30       ori.b   #$30, D1
+1fbb8: 0001 fd2c       ori.b   #$2c, D1
+1fbbc: 0001 fd28       ori.b   #$28, D1
+1fbc0: 0001 fd24       ori.b   #$24, D1
+1fbc4: 0001 fd20       ori.b   #$20, D1
+1fbc8: 0001 fd1c       ori.b   #$1c, D1
+1fbcc: 0001 fd18       ori.b   #$18, D1
+1fbd0: 0001 fd14       ori.b   #$14, D1
+1fbd4: 0001 fd10       ori.b   #$10, D1
+1fbd8: 0001 fd0c       ori.b   #$c, D1
+1fbdc: 0001 fd08       ori.b   #$8, D1
+1fbe0: 0001 fd04       ori.b   #$4, D1
+1fbe4: 0001 fd00       ori.b   #$0, D1
+1fbe8: 0001 fcfc       ori.b   #$fc, D1
+1fbec: 0001 fcf8       ori.b   #$f8, D1
+1fbf0: 0001 fcf4       ori.b   #$f4, D1
+1fbf4: 0001 fcf0       ori.b   #$f0, D1
+1fbf8: 0001 fcec       ori.b   #$ec, D1
+1fbfc: 0001 fce8       ori.b   #$e8, D1
+1fc00: 0001 fce4       ori.b   #$e4, D1
+1fc04: 0001 fce0       ori.b   #$e0, D1
+1fc08: 0001 fcdc       ori.b   #$dc, D1
+1fc0c: 0001 fcd8       ori.b   #$d8, D1
+1fc10: 0001 fcd4       ori.b   #$d4, D1
+1fc14: 0001 fcd0       ori.b   #$d0, D1
+1fc18: 0001 fccc       ori.b   #$cc, D1
+1fc1c: 0001 fcc8       ori.b   #$c8, D1
+1fc20: 0001 fcc4       ori.b   #$c4, D1
+1fc24: 0001 fcc0       ori.b   #$c0, D1
+1fc28: 0001 fcbc       ori.b   #$bc, D1
+1fc2c: 0001 fcb8       ori.b   #$b8, D1
+1fc30: 0001 fcb4       ori.b   #$b4, D1
+1fc34: 0001 fcb0       ori.b   #$b0, D1
+1fc38: 0001 fcac       ori.b   #$ac, D1
+1fc3c: 0001 fca8       ori.b   #$a8, D1
+1fc40: 0001 fca4       ori.b   #$a4, D1
+1fc44: 0001 fca0       ori.b   #$a0, D1
+1fc48: 0001 fc9c       ori.b   #$9c, D1
+1fc4c: 0001 fc98       ori.b   #$98, D1
+1fc50: 0001 fc94       ori.b   #$94, D1
+1fc54: 0001 fc90       ori.b   #$90, D1
+1fc58: 0001 fc8c       ori.b   #$8c, D1
+1fc5c: 0001 fc88       ori.b   #$88, D1
+1fc60: 0001 fc84       ori.b   #$84, D1
+1fc64: 0001 fc80       ori.b   #$80, D1
+1fc68: 0001 fc7c       ori.b   #$7c, D1
+1fc6c: 0001 fc78       ori.b   #$78, D1
+1fc70: 0001 fc74       ori.b   #$74, D1
+1fc74: 129a            move.b  (A2)+, (A1)
+1fc76: d3c0            adda.l  D0, A1
+1fc78: 129a            move.b  (A2)+, (A1)
+1fc7a: d3c0            adda.l  D0, A1
+1fc7c: 129a            move.b  (A2)+, (A1)
+1fc7e: d3c0            adda.l  D0, A1
+1fc80: 129a            move.b  (A2)+, (A1)
+1fc82: d3c0            adda.l  D0, A1
+1fc84: 129a            move.b  (A2)+, (A1)
+1fc86: d3c0            adda.l  D0, A1
+1fc88: 129a            move.b  (A2)+, (A1)
+1fc8a: d3c0            adda.l  D0, A1
+1fc8c: 129a            move.b  (A2)+, (A1)
+1fc8e: d3c0            adda.l  D0, A1
+1fc90: 129a            move.b  (A2)+, (A1)
+1fc92: d3c0            adda.l  D0, A1
+1fc94: 129a            move.b  (A2)+, (A1)
+1fc96: d3c0            adda.l  D0, A1
+1fc98: 129a            move.b  (A2)+, (A1)
+1fc9a: d3c0            adda.l  D0, A1
+1fc9c: 129a            move.b  (A2)+, (A1)
+1fc9e: d3c0            adda.l  D0, A1
+1fca0: 129a            move.b  (A2)+, (A1)
+1fca2: d3c0            adda.l  D0, A1
+1fca4: 129a            move.b  (A2)+, (A1)
+1fca6: d3c0            adda.l  D0, A1
+1fca8: 129a            move.b  (A2)+, (A1)
+1fcaa: d3c0            adda.l  D0, A1
+1fcac: 129a            move.b  (A2)+, (A1)
+1fcae: d3c0            adda.l  D0, A1
+1fcb0: 129a            move.b  (A2)+, (A1)
+1fcb2: d3c0            adda.l  D0, A1
+1fcb4: 129a            move.b  (A2)+, (A1)
+1fcb6: d3c0            adda.l  D0, A1
+1fcb8: 129a            move.b  (A2)+, (A1)
+1fcba: d3c0            adda.l  D0, A1
+1fcbc: 129a            move.b  (A2)+, (A1)
+1fcbe: d3c0            adda.l  D0, A1
+1fcc0: 129a            move.b  (A2)+, (A1)
+1fcc2: d3c0            adda.l  D0, A1
+1fcc4: 129a            move.b  (A2)+, (A1)
+1fcc6: d3c0            adda.l  D0, A1
+1fcc8: 129a            move.b  (A2)+, (A1)
+1fcca: d3c0            adda.l  D0, A1
+1fccc: 129a            move.b  (A2)+, (A1)
+1fcce: d3c0            adda.l  D0, A1
+1fcd0: 129a            move.b  (A2)+, (A1)
+1fcd2: d3c0            adda.l  D0, A1
+1fcd4: 129a            move.b  (A2)+, (A1)
+1fcd6: d3c0            adda.l  D0, A1
+1fcd8: 129a            move.b  (A2)+, (A1)
+1fcda: d3c0            adda.l  D0, A1
+1fcdc: 129a            move.b  (A2)+, (A1)
+1fcde: d3c0            adda.l  D0, A1
+1fce0: 129a            move.b  (A2)+, (A1)
+1fce2: d3c0            adda.l  D0, A1
+1fce4: 129a            move.b  (A2)+, (A1)
+1fce6: d3c0            adda.l  D0, A1
+1fce8: 129a            move.b  (A2)+, (A1)
+1fcea: d3c0            adda.l  D0, A1
+1fcec: 129a            move.b  (A2)+, (A1)
+1fcee: d3c0            adda.l  D0, A1
+1fcf0: 129a            move.b  (A2)+, (A1)
+1fcf2: d3c0            adda.l  D0, A1
+1fcf4: 129a            move.b  (A2)+, (A1)
+1fcf6: d3c0            adda.l  D0, A1
+1fcf8: 129a            move.b  (A2)+, (A1)
+1fcfa: d3c0            adda.l  D0, A1
+1fcfc: 129a            move.b  (A2)+, (A1)
+1fcfe: d3c0            adda.l  D0, A1
+1fd00: 129a            move.b  (A2)+, (A1)
+1fd02: d3c0            adda.l  D0, A1
+1fd04: 129a            move.b  (A2)+, (A1)
+1fd06: d3c0            adda.l  D0, A1
+1fd08: 129a            move.b  (A2)+, (A1)
+1fd0a: d3c0            adda.l  D0, A1
+1fd0c: 129a            move.b  (A2)+, (A1)
+1fd0e: d3c0            adda.l  D0, A1
+1fd10: 129a            move.b  (A2)+, (A1)
+1fd12: d3c0            adda.l  D0, A1
+1fd14: 129a            move.b  (A2)+, (A1)
+1fd16: d3c0            adda.l  D0, A1
+1fd18: 129a            move.b  (A2)+, (A1)
+1fd1a: d3c0            adda.l  D0, A1
+1fd1c: 129a            move.b  (A2)+, (A1)
+1fd1e: d3c0            adda.l  D0, A1
+1fd20: 129a            move.b  (A2)+, (A1)
+1fd22: d3c0            adda.l  D0, A1
+1fd24: 129a            move.b  (A2)+, (A1)
+1fd26: d3c0            adda.l  D0, A1
+1fd28: 129a            move.b  (A2)+, (A1)
+1fd2a: d3c0            adda.l  D0, A1
+1fd2c: 129a            move.b  (A2)+, (A1)
+1fd2e: d3c0            adda.l  D0, A1
+1fd30: 129a            move.b  (A2)+, (A1)
+1fd32: d3c0            adda.l  D0, A1
+1fd34: 129a            move.b  (A2)+, (A1)
+1fd36: d3c0            adda.l  D0, A1
+1fd38: 129a            move.b  (A2)+, (A1)
+1fd3a: d3c0            adda.l  D0, A1
+1fd3c: 129a            move.b  (A2)+, (A1)
+1fd3e: d3c0            adda.l  D0, A1
+1fd40: 129a            move.b  (A2)+, (A1)
+1fd42: d3c0            adda.l  D0, A1
+1fd44: 129a            move.b  (A2)+, (A1)
+1fd46: d3c0            adda.l  D0, A1
+1fd48: 129a            move.b  (A2)+, (A1)
+1fd4a: d3c0            adda.l  D0, A1
+1fd4c: 129a            move.b  (A2)+, (A1)
+1fd4e: d3c0            adda.l  D0, A1
+1fd50: 129a            move.b  (A2)+, (A1)
+1fd52: d3c0            adda.l  D0, A1
+1fd54: 129a            move.b  (A2)+, (A1)
+1fd56: d3c0            adda.l  D0, A1
+1fd58: 129a            move.b  (A2)+, (A1)
+1fd5a: d3c0            adda.l  D0, A1
+1fd5c: 129a            move.b  (A2)+, (A1)
+1fd5e: d3c0            adda.l  D0, A1
+1fd60: 129a            move.b  (A2)+, (A1)
+1fd62: d3c0            adda.l  D0, A1
+1fd64: 129a            move.b  (A2)+, (A1)
+1fd66: d3c0            adda.l  D0, A1
+1fd68: 129a            move.b  (A2)+, (A1)
+1fd6a: d3c0            adda.l  D0, A1
+1fd6c: 129a            move.b  (A2)+, (A1)
+1fd6e: d3c0            adda.l  D0, A1
+1fd70: 129a            move.b  (A2)+, (A1)
+1fd72: d3c0            adda.l  D0, A1
+1fd74: 129a            move.b  (A2)+, (A1)
+1fd76: d3c0            adda.l  D0, A1
+1fd78: 129a            move.b  (A2)+, (A1)
+1fd7a: d3c0            adda.l  D0, A1
+1fd7c: 129a            move.b  (A2)+, (A1)
+1fd7e: d3c0            adda.l  D0, A1
+1fd80: 129a            move.b  (A2)+, (A1)
+1fd82: d3c0            adda.l  D0, A1
+1fd84: 129a            move.b  (A2)+, (A1)
+1fd86: d3c0            adda.l  D0, A1
+1fd88: 129a            move.b  (A2)+, (A1)
+1fd8a: d3c0            adda.l  D0, A1
+1fd8c: 129a            move.b  (A2)+, (A1)
+1fd8e: d3c0            adda.l  D0, A1
+1fd90: 129a            move.b  (A2)+, (A1)
+1fd92: d3c0            adda.l  D0, A1
+1fd94: 129a            move.b  (A2)+, (A1)
+1fd96: d3c0            adda.l  D0, A1
+1fd98: 129a            move.b  (A2)+, (A1)
+1fd9a: d3c0            adda.l  D0, A1
+1fd9c: 129a            move.b  (A2)+, (A1)
+1fd9e: d3c0            adda.l  D0, A1
+1fda0: 129a            move.b  (A2)+, (A1)
+1fda2: d3c0            adda.l  D0, A1
+1fda4: 129a            move.b  (A2)+, (A1)
+1fda6: d3c0            adda.l  D0, A1
+1fda8: 129a            move.b  (A2)+, (A1)
+1fdaa: d3c0            adda.l  D0, A1
+1fdac: 129a            move.b  (A2)+, (A1)
+1fdae: d3c0            adda.l  D0, A1
+1fdb0: 129a            move.b  (A2)+, (A1)
+1fdb2: d3c0            adda.l  D0, A1
+1fdb4: 129a            move.b  (A2)+, (A1)
+1fdb6: d3c0            adda.l  D0, A1
+1fdb8: 129a            move.b  (A2)+, (A1)
+1fdba: d3c0            adda.l  D0, A1
+1fdbc: 129a            move.b  (A2)+, (A1)
+1fdbe: d3c0            adda.l  D0, A1
+1fdc0: 129a            move.b  (A2)+, (A1)
+1fdc2: d3c0            adda.l  D0, A1
+1fdc4: 129a            move.b  (A2)+, (A1)
+1fdc6: d3c0            adda.l  D0, A1
+1fdc8: 129a            move.b  (A2)+, (A1)
+1fdca: d3c0            adda.l  D0, A1
+1fdcc: 129a            move.b  (A2)+, (A1)
+1fdce: d3c0            adda.l  D0, A1
+1fdd0: 129a            move.b  (A2)+, (A1)
+1fdd2: d3c0            adda.l  D0, A1
+1fdd4: 129a            move.b  (A2)+, (A1)
+1fdd6: d3c0            adda.l  D0, A1
+1fdd8: 129a            move.b  (A2)+, (A1)
+1fdda: d3c0            adda.l  D0, A1
+1fddc: 129a            move.b  (A2)+, (A1)
+1fdde: d3c0            adda.l  D0, A1
+1fde0: 129a            move.b  (A2)+, (A1)
+1fde2: d3c0            adda.l  D0, A1
+1fde4: 129a            move.b  (A2)+, (A1)
+1fde6: d3c0            adda.l  D0, A1
+1fde8: 129a            move.b  (A2)+, (A1)
+1fdea: d3c0            adda.l  D0, A1
+1fdec: 129a            move.b  (A2)+, (A1)
+1fdee: d3c0            adda.l  D0, A1
+1fdf0: 129a            move.b  (A2)+, (A1)
+1fdf2: d3c0            adda.l  D0, A1
+1fdf4: 129a            move.b  (A2)+, (A1)
+1fdf6: d3c0            adda.l  D0, A1
+1fdf8: 129a            move.b  (A2)+, (A1)
+1fdfa: d3c0            adda.l  D0, A1
+1fdfc: 129a            move.b  (A2)+, (A1)
+1fdfe: d3c0            adda.l  D0, A1
+1fe00: 129a            move.b  (A2)+, (A1)
+1fe02: d3c0            adda.l  D0, A1
+1fe04: 129a            move.b  (A2)+, (A1)
+1fe06: d3c0            adda.l  D0, A1
+1fe08: 129a            move.b  (A2)+, (A1)
+1fe0a: d3c0            adda.l  D0, A1
+1fe0c: 129a            move.b  (A2)+, (A1)
+1fe0e: d3c0            adda.l  D0, A1
+1fe10: 129a            move.b  (A2)+, (A1)
+1fe12: d3c0            adda.l  D0, A1
+1fe14: 129a            move.b  (A2)+, (A1)
+1fe16: d3c0            adda.l  D0, A1
+1fe18: 129a            move.b  (A2)+, (A1)
+1fe1a: d3c0            adda.l  D0, A1
+1fe1c: 129a            move.b  (A2)+, (A1)
+1fe1e: d3c0            adda.l  D0, A1
+1fe20: 129a            move.b  (A2)+, (A1)
+1fe22: d3c0            adda.l  D0, A1
+1fe24: 129a            move.b  (A2)+, (A1)
+1fe26: d3c0            adda.l  D0, A1
+1fe28: 129a            move.b  (A2)+, (A1)
+1fe2a: d3c0            adda.l  D0, A1
+1fe2c: 129a            move.b  (A2)+, (A1)
+1fe2e: d3c0            adda.l  D0, A1
+1fe30: 129a            move.b  (A2)+, (A1)
+1fe32: d3c0            adda.l  D0, A1
+1fe34: 129a            move.b  (A2)+, (A1)
+1fe36: d3c0            adda.l  D0, A1
+1fe38: 129a            move.b  (A2)+, (A1)
+1fe3a: d3c0            adda.l  D0, A1
+1fe3c: 129a            move.b  (A2)+, (A1)
+1fe3e: d3c0            adda.l  D0, A1
+1fe40: 129a            move.b  (A2)+, (A1)
+1fe42: d3c0            adda.l  D0, A1
+1fe44: 129a            move.b  (A2)+, (A1)
+1fe46: d3c0            adda.l  D0, A1
+1fe48: 129a            move.b  (A2)+, (A1)
+1fe4a: d3c0            adda.l  D0, A1
+1fe4c: 129a            move.b  (A2)+, (A1)
+1fe4e: d3c0            adda.l  D0, A1
+1fe50: 129a            move.b  (A2)+, (A1)
+1fe52: d3c0            adda.l  D0, A1
+1fe54: 129a            move.b  (A2)+, (A1)
+1fe56: d3c0            adda.l  D0, A1
+1fe58: 129a            move.b  (A2)+, (A1)
+1fe5a: d3c0            adda.l  D0, A1
+1fe5c: 129a            move.b  (A2)+, (A1)
+1fe5e: d3c0            adda.l  D0, A1
+1fe60: 129a            move.b  (A2)+, (A1)
+1fe62: d3c0            adda.l  D0, A1
+1fe64: 129a            move.b  (A2)+, (A1)
+1fe66: d3c0            adda.l  D0, A1
+1fe68: 129a            move.b  (A2)+, (A1)
+1fe6a: d3c0            adda.l  D0, A1
+1fe6c: 129a            move.b  (A2)+, (A1)
+1fe6e: d3c0            adda.l  D0, A1
+1fe70: 129a            move.b  (A2)+, (A1)
+1fe72: d3c0            adda.l  D0, A1
+1fe74: 4e75            rts
+1fe76: 2039 0078 3a1c  move.l  $783a1c.l, D0
+1fe7c: 41f9 0001 fe8a  lea     $1fe8a.l, A0
+1fe82: e54b            lsl.w   #2, D3
+1fe84: 2070 3000       movea.l (A0,D3.w), A0
+1fe88: 4ed0            jmp     (A0)
+1fe8a: 0002 028e       ori.b   #$8e, D2
+1fe8e: 0002 028a       ori.b   #$8a, D2
+1fe92: 0002 0286       ori.b   #$86, D2
+1fe96: 0002 0282       ori.b   #$82, D2
+1fe9a: 0002 027e       ori.b   #$7e, D2
+1fe9e: 0002 027a       ori.b   #$7a, D2
+1fea2: 0002 0276       ori.b   #$76, D2
+1fea6: 0002 0272       ori.b   #$72, D2
+1feaa: 0002 026e       ori.b   #$6e, D2
+1feae: 0002 026a       ori.b   #$6a, D2
+1feb2: 0002 0266       ori.b   #$66, D2
+1feb6: 0002 0262       ori.b   #$62, D2
+1feba: 0002 025e       ori.b   #$5e, D2
+1febe: 0002 025a       ori.b   #$5a, D2
+1fec2: 0002 0256       ori.b   #$56, D2
+1fec6: 0002 0252       ori.b   #$52, D2
+1feca: 0002 024e       ori.b   #$4e, D2
+1fece: 0002 024a       ori.b   #$4a, D2
+1fed2: 0002 0246       ori.b   #$46, D2
+1fed6: 0002 0242       ori.b   #$42, D2
+1feda: 0002 023e       ori.b   #$3e, D2
+1fede: 0002 023a       ori.b   #$3a, D2
+1fee2: 0002 0236       ori.b   #$36, D2
+1fee6: 0002 0232       ori.b   #$32, D2
+1feea: 0002 022e       ori.b   #$2e, D2
+1feee: 0002 022a       ori.b   #$2a, D2
+1fef2: 0002 0226       ori.b   #$26, D2
+1fef6: 0002 0222       ori.b   #$22, D2
+1fefa: 0002 021e       ori.b   #$1e, D2
+1fefe: 0002 021a       ori.b   #$1a, D2
+1ff02: 0002 0216       ori.b   #$16, D2
+1ff06: 0002 0212       ori.b   #$12, D2
+1ff0a: 0002 020e       ori.b   #$e, D2
+1ff0e: 0002 020a       ori.b   #$a, D2
+1ff12: 0002 0206       ori.b   #$6, D2
+1ff16: 0002 0202       ori.b   #$2, D2
+1ff1a: 0002 01fe       ori.b   #$fe, D2

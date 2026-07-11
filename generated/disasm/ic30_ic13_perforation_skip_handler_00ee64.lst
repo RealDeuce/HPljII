@@ -1,0 +1,30 @@
+0ee40: 0c85 0000 0002       cmpi.l  #$2, D5
+0ee46: 660a                 bne     $ee52
+0ee48: 13fc 0060 0078 318f  move.b  #$60, $78318f.l
+0ee50: 60e6                 bra     $ee38
+0ee52: 0c85 0000 0003       cmpi.l  #$3, D5
+0ee58: 66de                 bne     $ee38
+0ee5a: 13fc 00e0 0078 318f  move.b  #$e0, $78318f.l
+0ee62: 60d4                 bra     $ee38
+0ee64: 4e56 0000            link    A6, #$0
+0ee68: 48e7 8404            movem.l D0/D5/A5, -(A7)
+0ee6c: 2a79 0078 299e       movea.l $78299e.l, A5
+0ee72: 5d8d                 subq.l  #6, A5
+0ee74: 23cd 0078 299e       move.l  A5, $78299e.l
+0ee7a: 3a2d 0002            move.w  ($2,A5), D5
+0ee7e: 48c5                 ext.l   D5
+0ee80: 6c06                 bge     $ee88
+0ee82: 2e05                 move.l  D5, D7
+0ee84: 4487                 neg.l   D7
+0ee86: 2a07                 move.l  D7, D5
+0ee88: 4a85                 tst.l   D5
+0ee8a: 6608                 bne     $ee94
+0ee8c: 4239 0078 3191       clr.b   $783191.l
+0ee92: 6010                 bra     $eea4
+0ee94: 0c85 0000 0001       cmpi.l  #$1, D5
+0ee9a: 6608                 bne     $eea4
+0ee9c: 13fc 0001 0078 3191  move.b  #$1, $783191.l
+0eea4: 4cdf 2021            movem.l (A7)+, D0/D5/A5
+0eea8: 4e5e                 unlk    A6
+0eeaa: 4e75                 rts
+0eeac: 4e56 0000            link    A6, #$0

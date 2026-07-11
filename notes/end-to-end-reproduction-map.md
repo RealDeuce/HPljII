@@ -152,6 +152,23 @@ that owner note before claiming equivalent output.
   [font-context-metrics.md](font-context-metrics.md#byte-to-glyph-flow), and
   `Minimal End-To-End Example` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#minimal-end-to-end-example).
+- Underline/span output `ESC &d3D ! ESC &d@`: command bytes enter through `0xa904 ->
+  0xda9a -> 0x11774`; `ESC &d3D` dispatches to tokenizer/handler `0x12622`, which writes
+  underline/text-attribute selector `0x783185 = 1` and arms pending span state through
+  `0x126e2` in fields `0x783184`, `0x783186`, `0x783188`, and `0x78318a`. The printable
+  `!` follows the ordinary compact glyph path through `0xd04a -> 0x1393a -> 0xd550 ->
+  0xd824 -> 0x12f2e`, then span consumer `0xd8fc` updates pending bounds from
+  selected-context metric words `+0x16`, `+0x18`, and selector-dependent alternate
+  offset `+0x1a`. Final `ESC &d@` returns to `0x12622` and takes the terminal flush path
+  through `0x12714`; portrait orientation routes `0x12714 -> 0x13520 -> 0x1354a ->
+  0x135f0`, storing a class-`0x40` segment-list span object under page-root bucket
+  `+0x1c` with prefix `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`. Publication preserves
+  both the compact glyph and span object; bridge `0x1edc6` copies root `+0x1c` to render
+  `+0x18`; render dispatch `0x1ef6a -> 0x1efc2` sends the span to `0x1f812 -> 0x1f862`.
+  Evidence: `Minimal Span Flush Walkthrough` in this file,
+  [direct-control-codes.md](direct-control-codes.md#underline-and-span-outcome-matrix),
+  and `Worked Path: Text Span Flush And Fixed-Width Spans` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-text-span-flush-and-fixed-width-spans).
 - Transparent print data `ESC &p2X!!`: the command bytes enter through `0xa904 -> 0xda9a
   -> 0x11774` and dispatch to arming handler `0x11f5a`. Delayed setup `0x11f5a ->
   0x121cc` writes pending flag `0x782a1a = 1`, saved handler `0x782a1c = 0x12452`, and

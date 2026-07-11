@@ -804,6 +804,57 @@ After `ESC`, parser mode 1 maps bytes to command families:
 | `ESC z` | 0 | `0x00cd86` |
 | `ESC Y` | 0 | `0x012536` |
 
+The prefix handlers in this table are parser setup, not page-output commands.
+They write the callback field that `0xdaf0` / `0xdb74` uses while tokenizing
+the following parameterized byte sequence:
+
+- `0x11ea4` writes callback `0x11b8e` for mode-zero Control-Z setup.
+- `0x11eb6` writes callback `0x11ba6` for mode-zero `ESC` setup.
+- `0x11ec8` writes generic callback `0x11c6c`; top-level `ESC *` and
+  `ESC &` use it directly, and normal/alternate `ESC (` / `ESC )` wrappers
+  also call it before font-family tokenization.
+- `0x11eda` writes continuation callback `0x11d0c`.
+- `0x11eec` writes font-refreshing continuation callback `0x11dd2`.
+
+Normal font-designation prefixes add one more parser record before
+tokenization. `0x1201e` handles `ESC (` by calling `0x11ec8`, then
+`0x11f26`, which appends a synthetic six-byte record with byte `0x80` and
+word `+2 = 0` for the primary slot. `0x12008` handles `ESC )` by calling
+`0x11ec8`, then `0x11efe`, which appends the same synthetic byte with
+word `+2 = 1` for the secondary slot. Later terminal font handlers consume
+that derived record to decide whether parsed symbol/font attributes update
+the primary or secondary selected-font state.
+
+Alternate/data wrappers `0x11fe4` for `ESC (` and `0x11fd2` for `ESC )`
+call only `0x11ec8 -> 0xdaf0`. They intentionally skip the synthetic
+`0x11f26` / `0x11efe` slot record, so ordinary alternate/data font-family
+rows preserve syntax or stored bytes without immediately changing selected
+symbol words, selected maps, page-root font slots, source-object fields, or
+render inputs. The active exceptions are the delayed payload rows such as
+`ESC (s#W` / `ESC )s#W`, which schedule payload handlers through `0x11f96`
+and are owned by [downloaded-fonts.md](downloaded-fonts.md).
+
+Field classification for this prefix contract:
+
+- Canonical parser state:
+  parser mode byte `0x782999`, active six-byte record cursor `0x78299e`, and
+  derived six-byte records appended by `0x11f26` / `0x11efe`.
+- Parser scratch:
+  tokenizer callback pointer `0x78299a`, numeric/byte scratch used by
+  `0xdaf0` / `0xdb74`, and matched-byte scratch `0x783196..0x783199`.
+- Firmware bookkeeping:
+  wrapper control flow through `0x1201e`, `0x12008`, `0x11fe4`, `0x11fd2`,
+  and lowercase rewind helper `0x11f4c`.
+- Output effect:
+  no immediate page root, page object, or pixels. The effect is which
+  terminal handler later owns the parsed record and, for normal font
+  prefixes, which selected-font slot that terminal updates before later
+  printable bytes reach `0xd04a`.
+- Evidence:
+  `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`,
+  `generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst`, and
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` now traces `ESC E`
 beyond the top-level dispatch. `0x00cc52` calls `0x00cc70`, `0x00cbd4`,
 and `0x00e146`, then clears `0x782a93`. `0xcc70` flushes pending text

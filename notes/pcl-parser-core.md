@@ -115,6 +115,11 @@ Outcome classes:
   table handlers such as the model-ID path emit host response bytes through
   FIFO helpers, not page records.
 
+The reader-facing owner handoff for these classes is
+[Inbound Byte Outcome Classes](pcl-command-map.md#inbound-byte-outcome-classes):
+it names the source contract, parser wrapper, table outcome, and first
+semantic owner before jumping to command-family state or page/render notes.
+
 Field classification at this boundary:
 
 - Canonical parser state:

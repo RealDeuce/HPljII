@@ -505,6 +505,29 @@ owner; residuals are the exact owner-specific boundaries indexed in
 Every admitted byte from `0xa904` lands in one of these ROM-visible outcome
 classes before any page pixels can be derived:
 
+- Classify the byte source first:
+  `0xa904` returns `D7` from host, ring, pushback, direct hardware, or
+  data-chain replay state. The command map starts only after that source
+  contract has produced an admitted byte or `D7 = -1`; source priority and
+  no-byte behavior are owned by
+  [host-byte-fetch.md](host-byte-fetch.md#host-byte-source-outcome-matrix).
+- Classify the parser wrapper next:
+  syntax bytes use `0xda9a`, which returns ordinary bytes unchanged, returns
+  `ESC` after reporting the following non-`?` byte through `0x9ec0`, and
+  swallows private `ESC ? 0x11`. Counted payload readers use `0xdace`
+  instead, so their bytes are payload data, not parser-table syntax.
+- Classify the table outcome:
+  parser loop `0x11774` either takes the fast printable path, scans normal
+  table `0x112a4`, scans alternate/data table `0x116f6`, follows no-match or
+  callback state, runs a zero-handler terminal reset, or returns through
+  parser-external service state.
+- Stop at the first semantic owner:
+  once the route reaches `0xd04a`, a command-family handler, delayed restore
+  `0x12218 -> saved handler`, append sink `0xe002`, status FIFO writer, or an
+  explicit no-output terminal path, the command map's job is complete. The
+  named owner note documents RAM fields, consumers, page/output effect,
+  render route, evidence, and exact residual boundaries.
+
 - Printable byte:
   mode-zero normal parser loop `0x11774` routes bytes whose low seven bits are
   `>= 0x20` to `0xd04a` when alternate/data flag `0x782c18` is clear.

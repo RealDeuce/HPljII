@@ -383,6 +383,17 @@ write pixels.
   render-visible join: `0xff1e` resolves enabled overlay id `0x782a94`,
   re-enters parser replay before base-page publication, then bridges the
   resulting page roots through `0x1ed84 -> 0x1edc6`.
+- Host/status side channels:
+  `ESC *r#K` and `ESC *s#^` dispatch through `0x12034 -> 0x11efe ->
+  0x122be..0x12326`. Accepted query byte `0x11` with active record word
+  `1` or `-1` walks ROM literal `33440A\r\n` at `0x12280..0x12288` and
+  enqueues it through host-output helper `0xb090`. The page/render route is
+  intentionally empty for this family: the writers touch parser response
+  scratch, output FIFO storage `0x783e92..0x783ed1`, count/read/write fields
+  `0x783ed2/0x783ed4/0x783ed8`, and status workers `0xae2c` / `0xaece`,
+  not page roots, page objects, publication records, render helpers, or
+  pixels. A bidirectional host can only affect later pixels by sending later
+  host bytes after observing those response bytes.
 - Publication and copies:
   FF/reset/layout publication routes enter `0xf124` / `0xff1e`; copies use
   `0xeef0` before later publication. Current root `0x78297a` is copied into
@@ -404,6 +415,8 @@ writer, reader, and unresolved-boundary ledgers are in
 [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
 [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
 [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix),
+[errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix),
+[io-interfaces.md](io-interfaces.md),
 [page-record-storage.md](page-record-storage.md#page-assembly-decision-checkpoint),
 and [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
 

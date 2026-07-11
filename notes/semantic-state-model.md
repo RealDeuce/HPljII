@@ -44,7 +44,9 @@ Primary handoff:
   [errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint)
   covers model-ID commands `0x12034 -> 0x122be..0x12326`, FIFO helpers `0xb090` /
   `0xb0c0` / `0xb022`, worker `0xae2c`, status-byte builder `0xaece`, and
-  page-environment status helper `0x2888`.
+  page-environment status helper `0x2888`. Terminal report entries `0x1284` / `0x128c`
+  are the same no-page-output family: they consume two report bytes, select text through
+  `0x158c -> 0x8c7a`, and cache message bytes at `0x783ef0..0x783ef1`.
 - Boundary owners stop only at exact unknowns such as invalid downloaded-glyph
   helper targets, missing resource range `0x0c0000..0x0c0321`, hardware/MMIO
   identity, optional resource contents, or manual-facing names.
@@ -122,9 +124,10 @@ each checkpoint. The required behavior is:
   defines FIFO storage `0x783e92..0x783ed1`, pointers and count
   `0x783ed2` / `0x783ed4` / `0x783ed8`, wait object `0x7801e2`, model-ID
   literal `0x12280..0x12288`, status fields `0x780e12`, `0x780e90`,
-  `0x780e2a`, `0x780e0a`, and reason byte `0x783e60`. These paths can
-  affect later pixels only through host backchannel reaction or parser stalls;
-  they do not create page roots, publication records, render work, or calls to
+  `0x780e2a`, `0x780e0a`, reason byte `0x783e60`, and terminal report cache
+  `0x783ef0..0x783ef1`. These paths can affect later pixels only through host
+  backchannel reaction, parser stalls, or operator/external action; they do
+  not create page roots, publication records, render work, or calls to
   `0x1ef6a`.
 - Hardware/external state is a boundary unless the ROM has already copied it
   into a byte, word, page object, resource record, or render input. Physical
@@ -957,6 +960,10 @@ pending, and drains queued bytes to the interface selected by
     from `0xfffee005.7` and `0xfffee005.6`; other bridge and interface
     paths also OR status bits into it before `0x36e4` folds it into
     `0x780e12`.
+  - `0x783ef0..0x783ef1`: terminal report cache written by `0x128c` after
+    `0x1284` stack-entry or direct register-entry callers select report text
+    through `0x158c -> 0x8c7a`. These bytes are derived report/message state,
+    not page-object or render input.
 - Parser scratch:
   - none owned by the FIFO. The observed producer at
     `0x122be..0x12326` consumes parser/resource-payload scratch around

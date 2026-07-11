@@ -253,10 +253,17 @@ owner, and whether visible pixels can result.
   macro controls under `0xdd08`, data-chain builders `0xe418` / `0xe4f4`,
   and replay through `0xa904`; owner
   [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
-  That matrix covers macro definition storing bytes and suppressing normal
-  immediate handlers in alternate/data contexts. Execute, call, and overlay
-  frames later replay bytes through the same parser and can queue text, spans,
-  raster rows, rules, or publication effects.
+  Definition selector `0` changes parser source behavior: ordinary payload
+  bytes append through `0xe002` into macro chunks rooted at record pool
+  `0x782a98`, so handlers such as printable `0xd04a` or CR `0xf02c` do not
+  run while bytes are being defined. Execute/call selectors `2/3` build
+  data-chain frames through `0xe418`, set active frame pointer `0x782d76`,
+  and make `0xa904` return stored bytes to parser loop `0x11774` as ordinary
+  input. Overlay selectors `4/5` set publication state `0x782a92/0x782a94`;
+  `0xff1e` can build a non-replay frame through `0xe4f4` before finalizing
+  the page. Macro replay has no special page-object or pixel writer: replayed
+  bytes create text, spans, raster rows, rules, VFC moves, or publication
+  effects only by re-entering their normal command-family routes.
 - Downloaded fonts and characters:
   downloaded-font control writers `0x15a56`, `0x15a18`, and `0x16df6`,
   descriptor/character payload readers `0x15d0a` and `0x16c14`, plus active

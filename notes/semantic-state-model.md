@@ -11170,9 +11170,12 @@ High for render-root ownership, `0x1ef6a` call order, bucket class split,
 compact subdispatch, segment-list layout, encoded raster mode split,
 rule-list selector dispatch, fixed-list consumption, destination pointer
 arithmetic, row-copy table targets, raster expansion tables, and ROM-derived
-row output for the cited paths. Broader compact downloaded-glyph state
-combinations remain open only where they have not yet been tied to concrete
-byte streams and ROM row-construction branches.
+row output for the cited paths. The remaining compact downloaded-glyph limits
+are the exact boundaries named by the downloaded-font owner: short compact
+fallback row counts above valid `0x1fe76` table index `128`, wrapped low-width
+mode-0 target selection through `0x1f034 -> 0x1f08e`, segmented-wide span-31
+fallback source offset `+0xb50` after `0x1f264`, and the restored
+`ESC )s#W` payload-count cap before `0x16498` can install a glyph.
 
 ### Fixtures
 

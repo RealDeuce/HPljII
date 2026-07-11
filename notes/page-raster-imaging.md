@@ -206,6 +206,105 @@ specific object fields, selected-font state, publication fields, helper
 dispatch, or row-construction inputs, not from broad claims about live printer
 timing.
 
+## Render Selector Dispatch Checkpoint
+
+This checkpoint records the canonical selector fields that turn bridged page
+objects into pixel-writer families. It starts after `0x1edc6` has copied
+page-root object lists into render-record roots and after `0x1ef86` has
+derived current-band caches.
+
+Canonical selector inputs:
+
+- Bucket-chain root `+0x18` contains compact text/downloaded-glyph,
+  segment-list, and encoded-raster objects. Dispatcher `0x1efc2` selects the
+  active bucket from render work word `+0x10`, then reads object byte `+0x04`.
+- Compact objects use byte `+0x04 & 0x30` as the helper selector and byte
+  `+0x05 & 0x0f` as the render context slot copied from `+0x24 + 4*n` into
+  `0x783a2c` by `0x1effe`.
+- Encoded-raster objects use byte `+0x05 & 0x03` as the expansion-mode
+  selector, word `+0x06` as payload byte count, word `+0x08` as packed
+  coordinate, and payload bytes from `+0x0a`.
+- Rule-list root `+0x1c` contains bridged rule objects. Dispatcher `0x1f446`
+  uses `object[5] & 0x0f` as table index and consumes continuation word
+  `+0x0c` across bands.
+- Fixed-list root `+0x20` has no computed dispatch table in this checkpoint;
+  `0x1f756` consumes the bridged fixed-list fields directly on its five-band
+  cadence.
+
+Dispatch table facts:
+
+- Bucket class branch `0x1efdc..0x1eff2` masks object byte `+0x04` with
+  `0xc0`: class `0x00` calls compact dispatcher `0x1effe`, class `0x40`
+  calls segment-list renderer `0x1f812`, and classes with the high bit set
+  call encoded-raster renderer `0x1f88e`.
+- Compact table `0x1f024` maps selector bits to helper targets:
+  `0x00 -> 0x1f034`, `0x10 -> 0x1f0d2`, `0x20 -> 0x1f1f0`, and
+  `0x30 -> 0x1f264`.
+- Rule table `0x1f4a0` maps selector `7` to solid writer `0x1f596`; all
+  other low-nibble entries `0..15` in the ROM table point at patterned writer
+  `0x1f4e0`.
+- Encoded-raster table `0x1f8ca` maps mode `0` to literal helper `0x1f8da`,
+  mode `1` to two-row expansion `0x1f8e6`, mode `2` to three-row expansion
+  `0x1f920`, and mode `3` to four-row expansion `0x1f9c6`.
+
+Producer ownership:
+
+- Compact selector fields are written by `0x12f2e -> 0x1387c` from the
+  printable-text/downloaded-glyph queue path. The word stored at object
+  `+0x04` carries selector bits `0x1000` and `0x2000` into byte bits
+  `0x10` and `0x20`; word `+0x06` is the compact entry count and entries
+  start at `+0x08`.
+- Segment-list class objects are written by pending text-span flush paths
+  `0x12714 -> 0x13520/0x135f0` and later consumed as six-byte span entries by
+  `0x1f812 -> 0x1f862`.
+- Encoded-raster fields are written by `0x13070 -> 0x13250`: byte `+0x04`
+  is born as `0x80`, byte `+0x05` carries the low byte of the queued raster
+  mode argument, word `+0x06` is capacity/count, word `+0x08` is the packed
+  key, and payload bytes start at `+0x0a`.
+- Rule selector and continuation fields are written by `0x13386` /
+  `0x133aa` and normalized by bridge `0x1edc6`, which copies source word
+  `+0x0a` into render continuation word `+0x0c`.
+- Fixed-list fields are written by `0x136d2` and normalized by `0x1edc6`
+  before `0x1f756` consumes `+0x04..+0x0d`.
+
+Field grouping:
+
+- Canonical state: render roots `+0x18/+0x1c/+0x20`, context slots
+  `+0x24..+0x60`, object selector bytes `+0x04/+0x05`, object counts and
+  dimensions, packed coordinate/key words, payload bytes, and continuation
+  words copied by `0x1edc6`.
+- Derived/cache state: current-band caches `0x783a20`, `0x783a22`,
+  `0x783a28`, stride `0x783a1c`, offset table `0x7839f8..`, active compact
+  context cache `0x783a2c`, phase byte `$a001`, and fallback base
+  `0x7810b4`.
+- Parser scratch: none. Parser command records and payload cursors have
+  already been reduced to page objects before this checkpoint.
+- Firmware bookkeeping: linked-list next pointers, active bucket index,
+  rule/fixed continuation mutation, and computed table indexes.
+- Hardware/external state: physical consumption after the ROM has stored band
+  rows. No table entry above depends on live formatter timing evidence.
+- Unknown: only the exact helper boundaries named in this file, such as
+  compact invalid row-copy targets, missing external resource-window bytes,
+  or physical consumption after row buffers exist.
+
+Output effect:
+
+- The dispatch tables choose the pixel-writer family. Compact and
+  segment-list writers consume font/span source rows; encoded-raster writers
+  consume queued payload bytes; rule and fixed-list writers consume bridged
+  dimensions and pattern selectors.
+- Pixels are stored in ROM call order: bucket-chain objects first, rule-list
+  objects second, fixed-list objects third. The shared dispatch layer does not
+  imply a hidden destination blend mode.
+
+Evidence: `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`
+anchors `0x1ef6a`, `0x1efc2`, and compact table `0x1f024`;
+`generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst` anchors rule table
+`0x1f4a0`; `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`
+anchors encoded-raster table `0x1f8ca`; and
+`generated/analysis/ic30_ic13_render_dispatch_tables.md` records the
+producer-to-renderer mapping summarized here.
+
 ## Page Image Assembly Checkpoint
 
 This checkpoint composes the page-image lifetime used by the renderer. The ROM

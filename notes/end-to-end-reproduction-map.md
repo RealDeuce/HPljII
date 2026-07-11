@@ -336,6 +336,19 @@ write pixels.
   The render route is the same compact route as printable text. The remaining
   pixel-affecting boundary is the secondary segment-57 resource read at
   `0x0c0000..0x0c0321`, documented in `transparent-print-data.md`.
+- Display-functions direct reader:
+  `ESC Y ... ESC Z` dispatches normal reader `0x12536` or alternate/data
+  reader `0x12120`. Unlike delayed transparent data, these handlers fetch
+  loop bytes directly through `0xa904` until a local normalized `ESC Z` pair
+  or no-byte return. Normal `0x12536` routes normalized bytes through
+  `0xd04a` or fixed-space handler `0xd0f0`, so visible output reuses the
+  printable compact route under root `+0x1c`. Alternate/data `0x12120`
+  appends literal `ESC Y` and normalized loop bytes through `0xe002`; those
+  bytes become page-affecting only if later macro/data-chain replay feeds
+  them back through `0xa904`. Local Control-Z siblings `0x120d2` /
+  `0x1219e` can route printable variants, while `0x1210c` / `0x121b2`
+  append alternate/data variants; lowercase `ESC z` reaches status-only
+  `0xcd86 -> 0x9c2c`.
 - Raster graphics:
   `ESC *t#R` uses `0x10808`; `ESC *r#A/#B` use `0x1075a` / `0x107fa`;
   delayed `ESC *b#W` restores to `0x105d0`. The canonical raster block is
@@ -410,6 +423,7 @@ writer, reader, and unresolved-boundary ledgers are in
 [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
 [symbol-map-patching.md](symbol-map-patching.md#owner-summary),
 [transparent-print-data.md](transparent-print-data.md#owner-summary),
+[display-functions.md](display-functions.md#owner-summary),
 [vertical-forms-control.md](vertical-forms-control.md#owner-summary),
 [raster-graphics.md](raster-graphics.md#owner-summary),
 [rectangle-graphics.md](rectangle-graphics.md#owner-summary),

@@ -295,9 +295,19 @@ owner, and whether visible pixels can result.
   model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, and worker
   `0xae2c`; owner [Host/Status Outcome
   Matrix](errors-and-status.md#hoststatus-outcome-matrix). These paths produce
-  host-visible protocol bytes or panel/status state, not page pixels. Pixel
-  reproduction changes only if a bidirectional host sends different future
-  bytes or if FIFO fullness stalls a producer.
+  host-visible protocol bytes or panel/status state, not page pixels. Model
+  query commands `ESC *r#K` and `ESC *s#^` dispatch through
+  `0x12034 -> 0x11efe -> 0x122be..0x12326`; accepted query byte `0x11` with
+  active record word `+2 = 1` or `-1` emits literal `33440A\r\n` from
+  `0x12280..0x12288` through blocking FIFO helper `0xb090`. FIFO storage
+  `0x783e92..0x783ed1`, count/pointers
+  `0x783ed2/0x783ed4/0x783ed8`, service/status latches
+  `0x783e61/0x783e60`, and pending status count `0x780e22` are later consumed
+  by worker `0xae2c` and status builder `0xaece`. No page root, page object,
+  publication record, render record, or pixel helper is written by these
+  paths. Pixel reproduction changes only if a bidirectional host sends
+  different future bytes after observing the backchannel, or if FIFO fullness
+  stalls a producer.
 
 Common render convergence for pixel-producing rows is:
 page-root storage under `0x78297a`, publication `0xff1e`, active/render

@@ -44,6 +44,43 @@ The detailed owner boundaries are
 [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
 and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
 
+Page/image phase index:
+
+- Current page root: canonical fields are `0x78297a`, root `+0x1c/+0x20/+0x24/+0x28`,
+  and context slots `+0x2c..+0x68`. Writers are `0x10084`, `0x12f2e`, `0x1387c`,
+  `0x12714`, `0x13070`, `0x133aa`, `0x136d2`, and `0xc428`. Consumers are `0xff1e`, then
+  bridge `0x1ed84` / `0x1edc6` after publication. Output effect is page-scoped
+  display-list storage, with no band pixels yet. Evidence:
+  [page-record-storage.md](page-record-storage.md#page-object-lifetime-and-band-boundary).
+- Publication pool:
+  canonical fields are published source head `0x780ea6`, scheduler cursors
+  `0x780eaa`, `0x780eae`, `0x780eb2`, and publication flag `0x782996`.
+  Writers are `0xff1e`, `0x7ec6..0x7f90`, `0x7722..0x779a`, and
+  `0x1eb32..0x1eb50`. Consumers are work-record selector
+  `0x1ecd6..0x1ed76` and bridge `0x1ed84`. Output effect is selection of the
+  frozen page/control record that can be rendered. Evidence:
+  [publication-commands.md](publication-commands.md#publication-outcome-matrix)
+  and
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix).
+- Render work record:
+  canonical fields are active render pointer `0x783a18`, render roots
+  `+0x18/+0x1c/+0x20`, render context slots `+0x24..+0x60`, and active band
+  word `+0x10`. Writers are `0x1ecd6..0x1ed76`, `0x1ed84`, and `0x1edc6`.
+  Consumers are active loop `0x1eba4..0x1ecd2` and render entry `0x1ef6a`.
+  Output effect is the page-root graph frozen into one render work record.
+  Evidence:
+  [active-render-scheduler.md](active-render-scheduler.md#work-record-selector-branches)
+  and
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+- Band render caches:
+  derived fields are `0x783a20`, `0x783a22`, `0x783a28`, `0x783a1c`,
+  compact cache `0x783a2c`, and phase byte `0xa001`. Writers are
+  `0x1ef6a -> 0x1ef86` and object helpers. Consumers are `0x1efc2`,
+  `0x1effe`, `0x1f446`, `0x1f756`, `0x1f88e`, and row-copy helpers. Output
+  effect is selection of current-band and fallback destinations for
+  ROM-derived bitmap bytes. Evidence:
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+
 Every reproduction claim below requires a checked-in note that names the ROM
 address boundary and cites focused disassembly, ROM bytes/tables, static
 cross-reference analysis, or generated table extracts used as supporting

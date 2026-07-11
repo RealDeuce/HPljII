@@ -650,8 +650,10 @@ output class that a byte-stream reader should follow next.
   class: environment state, current-root publication, or no-publication reset
   clear.
 - Transparent and display reader bytes:
-  `ESC &p#X` arms `0x11f5a -> 0x121cc` and restores to payload reader
-  `0x12452`; `ESC Y ... ESC Z` uses readers `0x12536` or `0x12120`.
+  `ESC &p#X` arms `0x11f5a -> 0x121cc`; normal restore reaches payload
+  reader `0x12452`, while alternate/data restore reaches
+  `0x12358 -> 0xdace -> 0xe002`. `ESC Y ... ESC Z` uses readers `0x12536`
+  or `0x12120`.
   Continue in [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
   [display-functions.md](display-functions.md). Output class:
@@ -660,7 +662,9 @@ output class that a byte-stream reader should follow next.
 - Raster bytes:
   setup handlers `0x10808`, `0x1075a`, and `0x107fa` write raster
   resolution, origin, active, and end-state fields; delayed `ESC *b#W`
-  restores to transfer reader `0x105d0`. Continue in
+  restores to transfer reader `0x105d0` in normal mode, or to
+  `0x12358 -> 0xdace -> 0xe002` in alternate/data mode without writing raster
+  block or page-object state. Continue in
   [raster-graphics.md](raster-graphics.md) and
   [page-raster-imaging.md](page-raster-imaging.md). Output class:
   encoded raster bucket object, then `0x1f88e` render.
@@ -675,8 +679,9 @@ output class that a byte-stream reader should follow next.
   font selectors and symbol/designation rows route through `0xc390`,
   `0xc6ec..0xc930`, and `0x12046..0x120be`; downloaded-font controls
   `ESC *c#D/#E/#F` route to `0x15a56`, `0x15a18`, and `0x16df6`; payloads
-  use delayed setup `0x11f96`, descriptor `0x15d0a`, resource install
-  `0x16c14`, or character install `0x16498`. Continue in
+  use delayed setup `0x11f96`, normal descriptor handler `0x15d0a`, normal
+  resource handler `0x16c14`, character install `0x16498`, or alternate/data
+  restore `0x12358 -> 0xdace -> 0xe002` with no font install. Continue in
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [downloaded-fonts.md](downloaded-fonts.md). Output class:
@@ -1482,9 +1487,11 @@ Outcome owners:
   orientation, copies, and VFC terminals route to `0xfc74`, `0xcb00`,
   `0xc992`, `0xece2`, `0xea9e`, `0xef62`, `0xee64`, `0x10220`,
   `0xf9e8`, `0x1280a`, `0x11f6e`, and `0xeef0`. `ESC &l#W` is delayed:
-  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`, where the payload loads VFC
-  table state rooted at `0x782dde`. Page-size `0xfc74`, orientation `0x10220`,
-  and paper-source `0xef62` publish any current root through
+  `0x11f6e -> 0x121cc`, with normal restore to `0x12cfe` loading VFC table
+  state rooted at `0x782dde` and alternate/data restore through
+  `0x12358 -> 0xdace -> 0xe002` leaving that table unchanged. Page-size
+  `0xfc74`, orientation `0x10220`, and paper-source `0xef62` publish any
+  current root through
   `0xf34a -> 0xff1e` before changing the environment for later bytes.
   Page-size writes page code `0x782da2`, sets pending header byte
   `0x782997`, and rebuilds geometry; orientation writes `0x782da3` and
@@ -1554,20 +1561,24 @@ Outcome owners:
   pending byte `0x782a1a`, saved handler `0x782a1c = 0x12cfe`, saved command
   record `0x782a20..0x782a25`, and restored live record at `0x78299e`.
   Firmware bookkeeping is modified-layout flag `0x782ee1`, payload drain
-  reader `0xdace`, default-table builder `0x12b96`, line-cache helper
-  `0xfe54`, x reset `0xf06e`, span flush `0xf34a`, page-eject helper
-  `0xf124`, and publication boundary `0xff1e`.
+  reader `0xdace`, alternate/data redirect `0x12358`, append sink `0xe002`,
+  default-table builder `0x12b96`, line-cache helper `0xfe54`, x reset
+  `0xf06e`, span flush `0xf34a`, page-eject helper `0xf124`, and publication
+  boundary `0xff1e`.
 
   `ESC &l#W` is a delayed table-definition command. Handler
-  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe` restores the saved command
-  record, reads the absolute byte count, consumes payload bytes through
-  `0xdace`, writes accepted even-count payload bytes into
-  `0x782dde..0x782edd`, clears unused table words, derives `0x782dc2`, copies
-  it to `0x782dd2`, and clears `0x782ee1`. Count `0` takes the default-table
-  path through `0x12b96`; odd counts and counts beyond
+  `0x11f6e -> 0x121cc` restores to `0x12cfe` in normal mode. The handler reads
+  the absolute byte count, consumes payload bytes through `0xdace`, writes
+  accepted even-count payload bytes into `0x782dde..0x782edd`, clears unused
+  table words, derives `0x782dc2`, copies it to `0x782dd2`, and clears
+  `0x782ee1`. Count `0` takes the default-table path through `0x12b96`; odd
+  counts and counts beyond
   `2 * (0x782ede + 1)` are drained without installing table bytes. The
   lowercase `w...W` stream preserves the first pending delayed record until
   restore, so the restored lowercase count controls payload consumption.
+  Alternate/data restore diverts to `0x12358`; positive counts append through
+  `0xdace -> 0xe002`, and the VFC table, bottom caches, and modified-layout
+  flag are not written by that branch.
 
   `ESC &l#V` consumes that state through `0x1280a`. The handler reads the
   selector, VMI, current y, top offset, line-count caches, and channel table,
@@ -2437,7 +2448,9 @@ documented in the owner notes.
 - `ESC &l#P`, handler `0x00f9e8`: page length in lines; converts current
   VMI times line count into page extent `0x782dba`.
 - `ESC &l#W`, handler `0x011f6e`: vertical forms control payload
-  boundary; delayed handler `0x12cfe` loads table `0x782dde`.
+  boundary; normal delayed handler `0x12cfe` loads table `0x782dde`, while
+  alternate/data restore appends payload through `0x12358`, `0xdace`, and
+  `0xe002`.
 - `ESC &l#V`, handler `0x01280a`: vertical forms control channel jump;
   consumes table `0x782dde`.
 - `ESC &l#O`, handler `0x010220`: orientation; rebuilds page geometry
@@ -2482,7 +2495,9 @@ documented in the owner notes.
   in `0x783164`.
 - `ESC &f#X`, handler `0x00dd08`: macro control; selectors `0..10`
   dispatch through the macro record/data-chain table.
-- `ESC &p#X`, handler `0x011f5a`: transparent print data boundary.
+- `ESC &p#X`, handler `0x011f5a`: transparent print data boundary; normal
+  restore reaches `0x12452`, alternate/data restore appends through
+  `0x12358 -> 0xdace -> 0xe002`.
 - `ESC &d...`, handler `0x012622`: underline/text-attribute tokenizer;
   schedules `W/w` payloads, flushes pending span state for bit-2-clear
   terminal bytes, and writes selector `0x783185` before re-arming span
@@ -2495,7 +2510,9 @@ documented in the owner notes.
   The wrapper appends the `0x11efe` setup record and calls `0x122be`, which
   emits `33440A\r\n` through the interface-output FIFO only when the next
   parser byte is `0x11` and the active record word is `1` or `-1`.
-- `ESC *b#W`, handler `0x011f82`: transfer raster row bytes.
+- `ESC *b#W`, handler `0x011f82`: transfer raster row bytes; normal restore
+  reaches `0x105d0`, alternate/data restore appends through
+  `0x12358 -> 0xdace -> 0xe002`.
 - `ESC *p#X`, handler `0x00f48c`: horizontal dot position.
 - `ESC *p#Y`, handler `0x00f692`: vertical dot position.
 - `ESC *c#P`, handler `0x010898`: fill rectangle; consumes size state
@@ -2541,6 +2558,8 @@ documented in the owner notes.
   font/downloaded-character payload selector. Count `0` schedules
   `0x15d0a`; nonzero counts schedule `0x16c14`; successful glyph payloads
   later become printable page objects through `0x16498 -> 0x12f2e`.
+  Alternate/data restore appends payload through `0x12358`, `0xdace`, and
+  `0xe002` without descriptor validation or install.
 
 ## First Handler Observations
 
@@ -2619,11 +2638,13 @@ word `1`.
 
 `ESC &l#W` at `0x011f6e` is a delayed-payload boundary for vertical
 forms control. It snapshots the six-byte parsed record through `0x121cc`
-with delayed handler `0x12cfe`. The payload handler rewinds
-`0x78299e`, reads the absolute byte count, consumes data through
-`0xdace`, loads the VFC table rooted at `0x782dde`, derives bottom cache
-`0x782dc2`, copies it into text-length bottom `0x782dd2`, and clears
-modified-layout byte `0x782ee1`. The composed state model is in
+with delayed handler `0x12cfe`. Normal restore calls `0x12cfe`; that payload
+handler rewinds `0x78299e`, reads the absolute byte count, consumes data
+through `0xdace`, loads the VFC table rooted at `0x782dde`, derives bottom
+cache `0x782dc2`, copies it into text-length bottom `0x782dd2`, and clears
+modified-layout byte `0x782ee1`. Alternate/data restore calls `0x12358`
+instead; positive counts append through `0xdace -> 0xe002` and do not write
+VFC table state. The composed state model is in
 `notes/semantic-state-model.md`. For the combined stream
 `ESC &l4w4W 00 00 00 02 !`, lowercase `w` snapshots record
 `80 77 00 04 00 00`, uppercase `W` leaves the pending snapshot intact,
@@ -2789,12 +2810,15 @@ Printable prechecks `0xd28a` and `0xd6bc` test this flag and call
 `0xf054` for enabled-wrap horizontal recovery, so wrap mode is part of
 the page text-layout state rather than parser-only metadata.
 
-`ESC &p#X` at `0x011f5a` is a delayed transparent-print-data boundary. It saves handler
-`0x12452` through `0x121cc`; after `0x12218` restores the saved command record,
-`0x12452` consumes the absolute byte count from the host byte source, stops on `D7=-1`,
-normalizes `0x1a 0x58` to `0x7f`, sends printable bytes through `0xd04a`, and sends
-filtered control bytes through `0xd0f0` depending on the active symbol/high-byte state.
-See [Transparent Payload Decision
+`ESC &p#X` at `0x011f5a` is a delayed transparent-print-data boundary. It
+saves handler `0x12452` through `0x121cc`; after `0x12218` restores the saved
+command record in normal mode, `0x12452` consumes the absolute byte count from
+the host byte source, stops on `D7=-1`, normalizes `0x1a 0x58` to `0x7f`,
+sends printable bytes through `0xd04a`, and sends filtered control bytes
+through `0xd0f0` depending on the active symbol/high-byte state.
+Alternate/data restore calls `0x12358` and appends positive payload counts
+through `0xdace -> 0xe002` without calling `0x12452`. See
+[Transparent Payload Decision
 Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) for the
 tracked behavioral note and fixture evidence.
 
@@ -2805,9 +2829,11 @@ cursor `0x782c8a`; landscape raster origin seeds from vertical cursor
 
 `ESC *b#W` at `0x011f82` routes through `0x121cc` with handler
 `0x105d0`, so raster row byte transfer is tied into the same
-parsed-command/data chain used by macro/download payload handling. The
-full raster command/data, queue, and render-dispatch edge is documented
-in [raster-graphics.md](raster-graphics.md#owner-summary).
+parsed-command/data chain used by macro/download payload handling. Normal
+restore calls `0x105d0`; alternate/data restore calls `0x12358` and appends
+positive counts through `0xdace -> 0xe002` without touching the raster block or
+page-object queues. The full raster command/data, queue, and render-dispatch
+edge is documented in [raster-graphics.md](raster-graphics.md#owner-summary).
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving
 raster origin/baseline/mode/scale/limit state intact so later resolution

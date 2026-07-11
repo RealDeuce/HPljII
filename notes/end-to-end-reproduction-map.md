@@ -8571,7 +8571,13 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   pixel width before the row-copy helpers emit pixels.
   Firmware-generated sample pages enter the same path after `0x1e0b2`,
   `0x1c204`, resolver `0x1b50e`, installer `0x1c5e8`, row formatter
-  `0x1cabe`, and sample-run helper `0x1cf34`. Fixture
+  `0x1cabe`, and sample-run helper `0x1cf34`. Resolver `0x1b50e` is not a
+  linear record iterator: it applies ordinal `0xff` suppression, fast probe
+  `0x1b8ea`, mode-specific candidate windows, current-slot suppression, and
+  Roman-8 duplicate/substitution before any row reaches `0x1c5e8` or
+  `0x1cabe`; the branch contract is
+  [Candidate Resolver
+  Checkpoint](font-sample-page.md#candidate-resolver-checkpoint). Fixture
   `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
   pins eight class/source segments, render-bucket counts
   `[1, 6, 6, 65, 1, 5, 5, 50]`, and aggregate rendered-surface digest

@@ -9405,7 +9405,7 @@ shape, publication boundary, or render helper inputs.
    [Fixed-Record Render Decision
    Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint) and
    [Inline/Downloaded Compact Render
-   Path](downloaded-fonts.md#inline-downloaded-compact-render-path) in
+   Path](downloaded-fonts.md#inlinedownloaded-compact-render-path) in
    [downloaded-fonts.md](downloaded-fonts.md).
 
    Command and resource route:

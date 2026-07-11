@@ -191,7 +191,7 @@ Host and formatter/MMIO boundaries:
   board/register-to-connector evidence and physical timing evidence for the
   named MMIO registers and formatter/DC signals.
 
-Optional active-pool pattern helper caller:
+### Optional Active-Pool Pattern Helper Caller
 
 - Boundary class:
   ROM-local unresolved caller.

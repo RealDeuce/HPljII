@@ -2116,7 +2116,10 @@ Page setup and publication:
   [publication-commands.md](publication-commands.md),
   [reset-default-environment.md](reset-default-environment.md),
   `Reset And Default Environment`, and `FF Publication`; current roots publish
-  through `0xff1e`.
+  through `0xff1e`, setting publication flag `0x782996` and protected pool
+  head `0x780ea6`. The first render consumer after a valid publication is
+  scheduler source selection `0x780ea6 -> 0x780eaa -> 0x780eae`, bridge
+  `0x1ed84 -> 0x1edc6`, and render entry `0x1ef6a`.
 
 Transparent/display data:
 
@@ -2141,7 +2144,10 @@ VFC:
 - Owner and boundary:
   [vertical-forms-control.md](vertical-forms-control.md),
   `Vertical Forms Control`, and `VFC Table And Channel Branch Matrix`;
-  channel jumps consume table state before later text or publication.
+  channel jumps consume table state before either later compact text under
+  root `+0x1c` through `0xd04a -> 0x12f2e -> 0x1387c`, or old-root
+  publication through `0xf124 -> 0xff1e`, followed by bridge
+  `0x1ed84 -> 0x1edc6` and render entry `0x1ef6a`.
 
 Raster graphics:
 

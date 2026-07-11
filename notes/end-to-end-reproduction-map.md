@@ -542,6 +542,20 @@ that owner note before claiming equivalent output.
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`. Evidence:
   [direct-control-codes.md](direct-control-codes.md#direct-control-outcome-matrix)
   and [direct-control-codes.md](direct-control-codes.md#hmi-route-checkpoint).
+- Half-line feed placement `ESC = !`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`; parser dispatch reaches handler
+  `0xf176`. `0xf176..0xf1ca` ensures current root `0x78297a`, flushes
+  pending span state through `0xf34a`, reads VMI `0x783160`, converts it
+  through `0x104fe`, halves the signed subunit count, converts the half-step
+  back through `0x104d8`, adds it to vertical cursor `0x782c8e` through
+  `0x10518`, runs overflow/perforation helper `0xf36c`, and clears pending
+  text/cursor latch `0x782a6d`. The command queues no compact, raster, rule,
+  or span object unless the span flush path had pending state; the following
+  `!` is the visible consumer and queues through `0xd04a -> 0x12f2e ->
+  0x1387c` at compact coordinate `0x1001`. Later publication and render use
+  the ordinary compact path `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a ->
+  0x1effe`. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#half-line-feed-route-checkpoint).
 - Cursor and margin placement `ESC &a2c+1R!` / `ESC &a6l9M!`: command bytes enter
   through `0xa904 -> 0xda9a -> 0x11774` in `ESC &a` parser mode `12`. In the cursor
   stream, lowercase final `c` keeps the family active: `ESC &a2c` dispatches to

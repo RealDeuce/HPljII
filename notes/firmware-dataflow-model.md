@@ -2055,14 +2055,23 @@ Direct controls and placement:
 - Dispatch anchors:
   CR/LF/FF/HT/BS handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
   `0xf2a8`; `&a` handlers `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`,
-  `0xf560`, `0xf60a`; `&k` handlers `0xca8c`, `0xedf8`, and `0xc390`.
+  `0xf560`, `0xf60a`; `&k` handlers `0xca8c`, `0xedf8`, and `0xc390`;
+  SO/SI selected-context handlers `0xc6b8` / `0xc68a`; cursor-stack
+  handler `0xf75e`; underline/span handler `0x12622`; half-line-feed
+  handler `0xf176`; and margin-reset handler `0xe9ba`.
 - Immediate class:
   mostly state-only, with FF publication or span flush when predicates hit.
 - Owner and boundary:
   [direct-control-codes.md](direct-control-codes.md),
+  [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix),
+  [Selected Context Switch
+  Checkpoint](direct-control-codes.md#selected-context-switch-checkpoint),
+  [Cursor Stack State
+  Checkpoint](direct-control-codes.md#cursor-stack-state-checkpoint),
   `State-Only Command Dependency Map`, `Mixed Direct Controls`, and
-  `Cursor And Margin Placement`; later `0xd04a`, `0x12714`, or `0xff1e`
-  consumes the written state.
+  `Cursor And Margin Placement`; later `0xd04a`, `0x12714`, `0xf36c`,
+  graphics origin/clipping handlers, or `0xff1e` consumes the written state.
 
 Page setup and publication:
 
@@ -2262,9 +2271,11 @@ Command output-effect classes:
   CR/LF/HT/BS handlers `0xf02c`, `0xf08c`, `0xf1cc`, and `0xf2a8`,
   cursor/margin handlers `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf560`,
   `0xf60a`, `0xf48c`, and `0xf692`, HMI/VMI handlers `0xca8c`, `0xcb00`,
-  and `0xc992`, and wrap/perforation handlers `0xedb0` and `0xee64` mutate
-  state consumed by later printable text, span flushing, VFC, or raster
-  placement.
+  and `0xc992`, wrap/perforation handlers `0xedb0` and `0xee64`, SO/SI
+  handlers `0xc6b8` / `0xc68a`, cursor-stack handler `0xf75e`, underline
+  handler `0x12622`, half-line-feed handler `0xf176`, and margin-reset
+  handler `0xe9ba` mutate state consumed by later printable text, span
+  flushing, VFC, raster placement, rectangle clipping, or publication.
 - Publication/page-boundary commands:
   FF `0xf0f0`, reset `0xcc52`, page-size `0xfc74`, orientation `0x10220`,
   paper-source `0xef62`, and copy-count storage `0xeef0` converge on

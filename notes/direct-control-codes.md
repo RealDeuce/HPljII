@@ -27,6 +27,9 @@ renderer-facing documentation checkpoint.
 - `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`
 - `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`
 - `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`
+- `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+- `generated/disasm/ic30_ic13_text_span_flush_012714.lst`
+- `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`
 - `notes/pcl-command-map.md`
 - `notes/pcl-parser-firmware.md`
 - `notes/page-raster-imaging.md`

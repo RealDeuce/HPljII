@@ -767,6 +767,10 @@ Field classification:
 - Firmware bookkeeping: reported-byte helper `0x9ec0`, append sink `0xe002`,
   terminal restore helper `0x12218`, scratch flush helpers `0x123ae` /
   `0x123de`, no-byte latch `0x780e3b`, and macro/page state byte `0x782a92`.
+- Hardware/external state: none inside these parser-local routes after
+  `0xa904` has admitted or withheld a byte. Host-source MMIO, service
+  preemption, and any host-visible consequence of bytes reported through
+  `0x9ec0` are owned by the host-byte and status notes.
 - Canonical page/render state: none. These routes do not allocate page roots,
   write page objects, publish through `0xff1e`, bridge through `0x1ed84` /
   `0x1edc6`, or enter renderer `0x1ef6a`.
@@ -790,6 +794,24 @@ Writers, readers, and output effect:
   reset, append-only preserved input, a reported/pushed-back byte, or parser
   return. Pixel output can occur later only if appended or pushed-back bytes
   re-enter the normal parser path and then reach a downstream page producer.
+
+Stream consequences:
+
+- `00 !` in normal mode is not printable NUL. Byte `0x00` takes the
+  zero-handler path `0x119a6..0x119f4`, can trigger delayed restore
+  `0x12218`, resets parser scratch, and produces no page object. The following
+  `!` is the first byte that can reach printable handler `0xd04a`.
+- `ESC ? 11 !` consumes `ESC ? 0x11` wholly inside `0xda9a`; the parser loop
+  sees neither `ESC` nor `?` for that private sequence. The following `!`
+  becomes the next parser-visible byte.
+- `ESC ? X` with `X != 0x11` is not the same no-output case. `0xda9a` reports
+  or pushes the nonprivate lookahead through `0x9ec0` and returns `ESC`, so the
+  next parser state depends on the reported byte path rather than the private
+  swallow path.
+- Alternate/data blank C0 rows preserve input rather than ignoring it:
+  matched bytes take `0x11930..0x11ab8`, flush parser scratch, append the byte
+  through `0xe002`, and then rejoin terminal reset. Pixels can appear only if
+  later macro/data replay feeds that stored byte back through `0xa904`.
 
 Evidence:
 

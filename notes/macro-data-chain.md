@@ -640,6 +640,94 @@ frames:
   `0xf124`, restore cursor/layout state, call `0xe65c(0)`, and for non-replay
   frames write `0x782a92 = 0x63`.
 
+### Data-Chain Source-Equivalence Checkpoint
+
+This checkpoint is the exact boundary where macro storage stops being record
+state and becomes ordinary parser input again. It is the reproducer contract
+for stored byte streams: once `0xa904` selects an active data-chain frame, the
+returned payload bytes must be followed through the same `0xda9a` /
+`0x11774` parser and command-family owners as live host bytes.
+
+Decision route:
+
+- Definition bytes enter storage through append helper `0xe002..0xe0a2`.
+  `0xe002` refuses to append when the active frame kind byte at
+  `0x782d76 + 9` is nonzero or append-error byte `0x782c19` is already set.
+  Otherwise it uses current record pointer `0x782d7a`, current chunk pointer
+  `0x782c1a`, and raw count `record+0x04` to allocate/link 0x100-byte chunks
+  and store each byte at chunk offset `4 + ((record+0x04 & 0xff) - 4)`.
+- Execute and call frames are built by `0xe418..0xe4f2` only after selector
+  handler `0xdd08` has resolved a nonempty selected record. The frame copies
+  record head/count to `+0x00/+0x04`, stores byte-source offset `+0x08 = 4`,
+  stores frame kind `+0x09 = 2` for execute or `3` for call, stores snapshot
+  pointer `+0x0a`, and installs the frame by writing `0x782d76`.
+- Overlay frames are built by `0xe4f4..0xe5e0` from publication, not from a
+  direct parser terminal. They snapshot context, install fixed frame base
+  `0x782d4c` into `0x782d76`, copy the selected record head/count, store
+  `+0x08 = 4`, store frame kind `+0x09 = 4`, clear `+0x0a`, and set host gate
+  bit `0x780e66.1` when the frame count is positive.
+- Host byte source `0xa904` owns the source switch. The macro note's frame
+  contract starts before `0xa904` returns a payload byte and ends after that
+  byte has re-entered `0xda9a` / `0x11774`; parser outcomes then belong to
+  the same owner notes as live bytes. The exact source-priority behavior is in
+  [host-byte-fetch.md](host-byte-fetch.md#active-data-chain).
+- Frame-end cleanup `0xe22c..0xe408` is the return boundary. Execute frames
+  restore linked snapshot data and rewind `0x782d76`; call and overlay returns
+  restore flat/context state, can run `0xf124` or `0xe65c(0)`, and then push a
+  zero byte through `0x9ec0` at `0xe408..0xe410`. If the previous frame has no
+  remaining count, cleanup clears host gate bit `0x780e66.1`.
+
+State classification:
+
+- Canonical macro state:
+  record head/count/id/permanence fields `+0x00/+0x04/+0x08/+0x0a`, selected
+  record pointer `0x782d7a`, active frame pointer `0x782d76`, and frame fields
+  `+0x00/+0x04/+0x08/+0x09/+0x0a`.
+- Parser scratch:
+  definition routing byte `0x782c18`, append-error byte `0x782c19`, current
+  chunk cursor `0x782c1a`, replayed payload bytes returned by `0xa904`, and
+  the parser records built later by `0xdb74` / `0xdaf0` from those bytes.
+- Firmware bookkeeping:
+  host gate bit `0x780e66.1`, linked snapshot allocation/free through
+  `0xe8f0` / `0x18b4`, call-context pointer `0x782c6e`, overlay restore byte
+  `0x782a92`, context refresh `0xe65c`, and the `0x9ec0(0)` cleanup report.
+- Canonical page/render state:
+  none is written by the source switch itself. Page objects appear only after
+  replayed bytes dispatch to their ordinary owners, for example printable
+  `0xd04a`, CR `0xf02c`, raster delayed transfer `0x105d0`, transparent data
+  `0x12452`, or rectangle/rule handlers.
+- Unknown:
+  no ROM-local middle edge remains between stored macro payload bytes and the
+  parser source contract. Remaining macro uncertainties are manual names for
+  context/overlay latches and physical behavior after intentionally unsafe
+  over-deep context-stack use.
+
+Output effect:
+
+- Definition append has no page output. It creates stored input bytes only.
+- Execute and call output begins when `0xa904` returns the frame payload bytes
+  and parser loop `0x11774` dispatches them. The visible result is therefore
+  the same text, control, raster, rectangle, transparent, macro, or no-output
+  outcome that the identical live byte stream would take.
+- Overlay output is a publication-time mutation. `0xff1e` can build a kind-4
+  frame through `0xe4f4`, replay stored bytes into the current page context,
+  and then continue the normal publication/bridge/render route.
+
+Evidence:
+
+- Append and frame construction:
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`
+  ranges `0xe002..0xe0a2`, `0xe418..0xe4f2`, and `0xe4f4..0xe5e0`.
+- Frame cleanup:
+  the same listing range `0xe22c..0xe408`.
+- Source selection:
+  [host-byte-fetch.md](host-byte-fetch.md#active-data-chain) and the
+  host-byte source listing `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`.
+- Parser re-entry and downstream owners:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract),
+  and the execute/call replay fixtures named below.
+
 ## Execute/Call Replay To Page Objects Checkpoint
 
 This checkpoint composes the representative execute/call replay path from

@@ -592,7 +592,7 @@ controlling artifact.
 - Detailed command-family behavior:
   documented by the owner notes listed in the `Supported Stream Entry Points`
   section below. Each owner records parsed inputs, RAM writers, consumers,
-  side effects, output/page effects, field classification, confidence, and
+  side effects, output/page effects, field classification, cited evidence, and
   exact residual boundaries. High-volume families include font selection in
   the [Symbol/Font Designation Outcome
   Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix) and
@@ -9188,7 +9188,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
 ## Pixel-Perfect Coverage And Residual Risks
 
 These are the highest-value coverage areas and residual risks because each can
-change rendered pixels, byte-stream compatibility, or final confidence. Most
+change rendered pixels, byte-stream compatibility, or an evidence boundary. Most
 entries below are composed ROM contracts with bounded remaining variants rather
 than open middle edges.
 

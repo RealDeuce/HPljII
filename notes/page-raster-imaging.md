@@ -1295,14 +1295,14 @@ Output effect:
   `0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
   `0x782a76 = 0x00d05146`, followed by publication and compact rendering.
 
-Confidence:
+Evidence status:
 
-- High for page-root creation side effects, stream allocator accounting,
+- Page-root creation side effects, stream allocator accounting,
   bucket reuse/new-head behavior, rule/fixed insertion order, root
   publication, render-record field copies, active-record handoff, and
-  ROM-derived row construction.
-- Physical scheduler pacing is a hardware/MMIO boundary, not a lower
-  confidence statement about page-record storage. The ROM-visible scheduler
+  ROM-derived row construction are grounded in the cited ROM paths.
+- Physical scheduler pacing is a hardware/MMIO boundary, not a gap in the
+  page-record storage contract. The ROM-visible scheduler
   branch fields are owned by
   [active-render-scheduler.md](active-render-scheduler.md). The shared
   `0x170c` / `0x1710` / `0x18b4` heap contract is covered in
@@ -2373,26 +2373,27 @@ Output effect:
   `0x1f264 renders segmented wide inline compact payload row` cover the four
   compact glyph subrenderers.
 
-Confidence:
+Evidence status:
 
-- High for render-root ownership, `0x1ef6a` call order, bucket class split,
-  compact subdispatch, segment-list layout, encoded raster mode split,
-  rule-list selector dispatch, fixed-list consumption, and row-level output
-  for the cited fixtures.
-- High for parser-produced raster and rule objects because their command-family
-  checkpoints trace handlers to page-record objects and then to ROM-derived row
-  construction.
-- High for the documented compact downloaded-glyph producer families because
-  the downloaded-font matrices now carry normal, wide, segmented,
+- Render-root ownership, `0x1ef6a` call order, bucket class split, compact
+  subdispatch, segment-list layout, encoded raster mode split, rule-list
+  selector dispatch, fixed-list consumption, and row-level output are grounded
+  in the cited fixtures and ROM paths.
+- Parser-produced raster and rule objects are grounded in command-family
+  checkpoints that trace handlers to page-record objects and then to
+  ROM-derived row construction.
+- The documented compact downloaded-glyph producer families are grounded in
+  the downloaded-font matrices that carry normal, wide, segmented,
   segmented-wide, row-count, width-byte, row-byte, high-row, no-install,
   status-2, and FF-publication streams through parser install, page-record
   publication, `0x1ed84` / `0x1ef6a` dispatch, and documented row output where
   the helper target is valid. Remaining selected-font combinations are broader
-  ROM-local coverage work, not a reduced-confidence statement about the
+  ROM-local coverage work, not a reduced-evidence statement about the
   documented producer contracts.
-- Medium for hardware-facing timing because the bitmap bands are ROM-derived
-  before the engine-facing copy path. That timing is outside the pixel model
-  unless it changes ROM-visible scheduler, wait-object, or publication state.
+- Hardware-facing timing is a bounded external edge because the bitmap bands
+  are ROM-derived before the engine-facing copy path. That timing is outside
+  the pixel model unless it changes ROM-visible scheduler, wait-object, or
+  publication state.
 
 Fixture evidence:
 

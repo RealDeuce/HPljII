@@ -410,7 +410,7 @@ The handoff classes are:
 
 This section is intentionally a route join, not a duplicate proof. The
 command-family owner carries parsed inputs, RAM fields, writers/readers, output
-effect, evidence, confidence, and exact residuals; the end-to-end route table
+effect, cited evidence, and exact residuals; the end-to-end route table
 maps those owner outputs to compact, segment-list, encoded-raster, rule,
 fixed-list, and downloaded-glyph render consumers.
 
@@ -445,7 +445,7 @@ these ROM-defined boundaries before jumping to command-family notes:
 4. Terminal handlers in the matrix below are the handoff from syntax to semantics. From
    that point, use the owner note named by the row to find field writers,
    readers/consumers, page-object effects, publication effects, render effects,
-   confidence, and exact unresolved boundaries. Use `Command-Family To Render Route
+   cited evidence, and exact unresolved boundaries. Use `Command-Family To Render Route
    Table` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md)
    when the owner output needs to be followed into page-root storage, publication,
@@ -2678,8 +2678,8 @@ coord `0x3001`. Direct high-start VFC fixtures also pin the alternate
 start/recovery predicates away from the normal Letter page bottom:
 `0x12a02..0x12afc` no-hit recovery, `0x12a7a..0x12afc` wrapped line-70
 recovery, and selector-zero `0x12b5e..0x12b92` recovery. The composed
-field groups, writers, readers, output effects, confidence, and
-remaining ROM-local/external-boundary risk for this command family are tracked in
+field groups, writers, readers, output effects, cited evidence, and remaining
+ROM-local/external-boundary risk for this command family are tracked in
 `notes/vertical-forms-control.md`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values

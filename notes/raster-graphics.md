@@ -1004,7 +1004,7 @@ Field classification:
   `0x782996`, packed-key advance through `0x332ee`, bridge bucket roots, or
   mode-specific `0x1f88e` row-construction inputs.
 
-Evidence and confidence:
+Evidence and ROM-local status:
 
 - Disassembly:
   `generated/disasm/ic30_ic13_raster_object_queue_013070.lst` at
@@ -1016,8 +1016,8 @@ Evidence and confidence:
   the mode-`1` through mode-`3` row-object fixtures, `0x1381c stream allocator
   chunks display-list storage`, and `addressed page-record writers share
   0x1381c across chunk rollover`.
-- Confidence is high for the ROM-local split algorithm and object fields
-  because the branch boundaries, field writes, and static large-payload
+- The ROM-local split algorithm and object fields are grounded in the branch
+  boundaries, field writes, and static large-payload
   walkthrough are direct disassembly. Pixel output is documented by tracing the
   ROM render helpers and deriving rows from the queued object bytes. There is
   no external rendered-row image to compare against. Parser-fed fixtures are

@@ -1417,7 +1417,7 @@ ROM work needed:
   full-live reuse, full-live/no-match, selector-mismatch, dirty-2
   selector-match, and dirty-2 selector-mismatch outcomes are grouped into
   canonical fields, derived branch state, writers, readers, output effect,
-  confidence, fixtures, and unresolved edges. Remaining work is broader
+  cited evidence, fixtures, and unresolved edges. Remaining work is broader
   font-selection fallback/error combinations that produce different state in
   `0x13eb8` / `0x156de` / `0x14c64`, not the listed visible-output streams or
   the documented `0xc580` branch choices.

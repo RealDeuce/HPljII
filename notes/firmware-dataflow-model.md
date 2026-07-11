@@ -1240,7 +1240,7 @@ State classification:
   physical output-register names and timing for `0xfffe0001`, `0xfffe0003`,
   `0xfffee005`, and `0xfffee003`; physical sensor names behind service bits.
 
-Output effect and confidence:
+Output effect and evidence:
 
 - These paths do not allocate current page root `0x78297a`, queue page objects,
   publish through `0xff1e`, bridge through `0x1ed84` / `0x1edc6`, or dispatch
@@ -1248,8 +1248,8 @@ Output effect and confidence:
 - For a fixed host byte stream, the pixel effect is none. For a bidirectional
   host session, the backchannel bytes can change pixels only indirectly by
   causing the host to send different later bytes.
-- Confidence is high for the no-page-output boundary because the cited
-  handlers write FIFO/status/message state and have no calls into the
+- The no-page-output boundary is grounded in the cited handlers because they
+  write FIFO/status/message state and have no calls into the
   documented page-root, page-record, publication, or render-dispatch paths.
 
 Evidence and unresolved boundaries:
@@ -1379,14 +1379,14 @@ State classification:
   bytes being appended during definition and bytes replayed from data-chain
   frames before their command handlers commit durable state.
 
-Output effect and confidence:
+Output effect and evidence:
 
 - Definition-mode bytes create no immediate page objects unless an active
   exception command explicitly exits or resets the definition context.
 - Execute/call/overlay replay has no macro-specific renderer. Pixels arise
   only after replayed bytes pass through normal command-family owners and
   produce page objects consumed by the usual publication and render paths.
-- Confidence is high for the covered replay boundary because `macro-data-chain`
+- The covered replay boundary is grounded in `macro-data-chain`, which
   documents stored `! CR`, mixed-control, transparent, raster, margin/cursor,
   and overlay payloads from `0xe002` storage through `0xa904` replay and
   page-record/render handoff.
@@ -1491,7 +1491,7 @@ State classification:
   candidate active bits, downloaded payload allocation records, and resource
   scan windows.
 
-Output effect and confidence:
+Output effect and evidence:
 
 - Font-selection commands create no glyph pixels by themselves. Their visible
   effect begins when a later printable byte reaches `0xd04a` and source
@@ -1499,10 +1499,10 @@ Output effect and confidence:
 - Context-slot copying is a required pixel boundary: compact payload bytes
   alone are insufficient because `0x1f354` resolves glyph rows from the copied
   render context slot.
-- Confidence is high for the covered built-in, symbol-set, font-ID, pitch, and
-  downloaded-glyph routes because the cited notes follow command records into
-  `0xc580`, `0x13eb8`, `0x14c64`, `0x1393a`, `0x12f2e`, `0x1edc6`, and
-  compact render helpers.
+- The covered built-in, symbol-set, font-ID, pitch, and downloaded-glyph routes
+  are grounded in cited notes that follow command records into `0xc580`,
+  `0x13eb8`, `0x14c64`, `0x1393a`, `0x12f2e`, `0x1edc6`, and compact render
+  helpers.
 
 Evidence and unresolved boundaries:
 

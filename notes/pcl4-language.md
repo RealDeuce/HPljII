@@ -1370,8 +1370,8 @@ render effect. Evidence is in
   [active-render-scheduler.md](active-render-scheduler.md), and
   [page-record-storage.md](page-record-storage.md).
 
-Confidence is high for this index as a routing map because it is backed by the
+This index is evidence-backed as a routing map because it is grounded in the
 checked-in parser table audit in [pcl-command-map.md](pcl-command-map.md) and
-the owning command-family notes named in the table. Pixel confidence for any
-specific stream still belongs to the owner note that traces the concrete
-fields, page objects, bridge records, and render helpers.
+the owning command-family notes named in the table. Pixel claims for a
+specific stream belong to the owner note that traces the concrete fields, page
+objects, bridge records, and render helpers.

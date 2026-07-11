@@ -9,17 +9,18 @@ Evidence policy: firmware claims in this directory are grounded first in ROM
 bytes, disassembly, decoded tables, static cross-references, and RAM fields
 read or written by those instructions. Fixture scripts and generated reports
 are supporting checks for the documented interpretation; they do not represent
-runtime observation of a real printer or an executing ROM. When a note states
-confidence, read it as confidence in the static disassembly interpretation, not
-as hardware-emulation validation.
+runtime observation of a real printer or an executing ROM. When older notes
+describe evidence strength, read that as a statement about the cited static
+disassembly, field writes, and decoded data, not as hardware-emulation
+validation.
 
 Fixture row vectors are ROM-derived artifacts: they should be cited as
 documented consequences of decoded object fields, bitmap bytes, and render
 helpers. They are not comparisons against real printer output, an executed ROM,
 or any other external pixel reference. A fixture may prove that a byte stream
-reaches a documented branch or helper transcription, but it does not raise
-pixel confidence by comparison. Pixel claims must cite the ROM fields,
-handlers, and render helpers that produce those rows.
+reaches a documented branch or helper transcription, but it does not strengthen
+pixel claims by comparison. Pixel claims must cite the ROM fields, handlers,
+and render helpers that produce those rows.
 
 ## Controlling Documentation Spine
 
@@ -62,8 +63,8 @@ standalone deliverables.
   [macro-data-chain.md](macro-data-chain.md#owner-summary), and
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
   Those notes, not generated tables, own parsed inputs, RAM fields,
-  downstream consumers, page/output effects, confidence, and exact residual
-  boundaries for the selected terminal handler.
+  downstream consumers, page/output effects, cited evidence, and exact
+  residual boundaries for the selected terminal handler.
 - Manual PCL command names and syntax rows are indexed by
   [pcl4-language.md](pcl4-language.md#owner-summary). Its ROM Semantic Index maps PCL
   Level IV families to first parser handlers, representative byte streams, page-object

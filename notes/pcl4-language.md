@@ -312,7 +312,12 @@ owner, and whether visible pixels can result.
 Common render convergence for pixel-producing rows is:
 page-root storage under `0x78297a`, publication `0xff1e`, active/render
 record bridge `0x1ed84 -> 0x1edc6`, and bucket/list walking through
-`0x1ef6a`. Rows that say "no immediate page object" still matter to exact
+`0x1ef6a`. Bridge `0x1edc6` copies source bucket root `+0x1c` to render root
+`+0x18`, rule/list root `+0x24` to render root `+0x1c`, fixed-list root
+`+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to render
+slots `+0x24..+0x60`. Render entry then walks bucket objects through
+`0x1efc2`, rule objects through `0x1f446`, and fixed-list objects through
+`0x1f756`. Rows that say "no immediate page object" still matter to exact
 reproduction because they update fields consumed by a later row in this
 matrix.
 

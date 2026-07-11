@@ -218,6 +218,21 @@ that owner note before claiming equivalent output.
   data has no separate renderer. Evidence: `Minimal Transparent Payload Walkthrough` in
   this file and
   [transparent-print-data.md](transparent-print-data.md#transparent-payload-outcome-matrix).
+- Transparent filtered controls `ESC &p4X!\x05\x85!`: arming and delayed restore follow
+  the same `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452` path, but the restored command
+  record is `80 58 00 04 00 00` and the counted payload values are `21 05 85 21`. Reader
+  `0x12452` uses selected-context C0 filter byte `0x782eea + 0x10 * slot`, fallback
+  high-control filter byte `0x782efa`, high-character flags `0x783132/0x783133`, and
+  local filter word `A6-2` to route the values as `d04a d0f0 d0f0 d04a` under the
+  default zero filtering state. The two printable `0x21` values queue compact text
+  entries through `0xd04a -> 0x12f2e -> 0x1387c`; the C0 byte `0x05` and high-control
+  byte `0x85` route through fixed-space handler `0xd0f0`, substitute host space in
+  source state, advance cursor x from `pack12(28)` to `pack12(64)`, and queue no
+  page-record text object in the pinned flagged built-in path. The resulting compact
+  object prefix is `00 00 00 00 00 00 00 02 20 00 01 20 06 04`; publication/render is
+  still the ordinary compact route `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2
+  -> 0x1effe`. Evidence:
+  [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint).
 - Display functions `ESC Y ! 05 ! ESC Z`: command bytes enter through `0xa904 -> 0xda9a
   -> 0x11774`, and normal parser mode `1` dispatches final byte `Y` to direct reader
   `0x12536`. After dispatch, loop bytes are fetched directly through `0xa904` instead of

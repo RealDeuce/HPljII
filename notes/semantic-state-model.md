@@ -1408,6 +1408,10 @@ status names for the selected record bytes and the hardware bits behind
   `0xaf34..0xaf40` outbound status-byte bit-0 consumer.
 - `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`:
   `0x0d12..0x0d24` copied-stub `0x7839d3` consumer.
+- `0x9112..0x9182` formatted-message engine:
+  `0x9112` builds `0x78292c` from base and suffix strings before entering
+  `0x9182`; the installer compares desired text and wrapper flag against the
+  displayed shadow before deciding whether to enter physical output.
 
 ### Unresolved Middle Edges
 
@@ -1419,10 +1423,6 @@ status names for the selected record bytes and the hardware bits behind
   `0x78293d` / `0x78293e`. The remaining edge is the physical panel effect
   of the masks written through `0x949c`, table roots `0x782904` /
   `0x78290c`, and cursor `0x7828fe`.
-- `0x9112..0x9182`: formatted-message engine and table entries are lifted:
-  `0x9112` builds `0x78292c` from base and suffix strings before entering
-  `0x9182`. Remaining uncertainty is the user-facing reason names that select
-  each `0x780e98` value, not the suffix strings or formatter mechanics.
 - `0x6e32(0x1f)` and `0x6f32(0x2a)`: `0x8656` consumers and bit tests are
   pinned at `0x866c..0x86b2` and `0x89f0..0x8a3a`, but the physical
   sensors behind the returned bits still need composition.

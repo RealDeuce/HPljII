@@ -523,6 +523,71 @@ Unknown:
   from the first two shadow-message bytes, initializes words
   `0x78291c..0x78292a`, and points `0x782904` / `0x78290c` at those words.
 
+### Operator-Panel Message Formatter
+
+This checkpoint owns the ROM-local message-formatting edge between status
+selection and the physical panel-output boundary. It does not assign physical
+display wiring after `0x9406`; it documents the software state that decides
+which text and wrapper flag are presented to that boundary.
+
+Instruction route:
+
+- `0x9112..0x9130` clears the desired message buffer through `0x955a`. If the
+  caller's first one-based offset argument is zero, it substitutes current
+  display counter byte `0x78296d`.
+- `0x9132..0x9144` applies the same zero-substitution rule to the second
+  one-based offset argument.
+- `0x9144..0x9166` copies the first string into destination `A6+0x0c` and the
+  second string into destination `A6+0x14` by calling `0x95ae(offset - 1,
+  destination)`. Callers use this to assemble two-part strings such as
+  paper-feed messages from fixed ROM strings and variable suffix positions.
+- `0x9168..0x9178` calls `0x9182(0x78292c, flag)` with the caller's wrapper
+  flag from `A6+0x18`. The formatted buffer is therefore fed into the same
+  installer as direct display-message wrappers `0x8c7a` and `0x8c90`.
+- `0x9182..0x91a4` first checks whether the source pointer is already
+  `0x78292c`. External source strings are copied into the desired buffer by
+  clearing through `0x955a` and copying through `0x95ae(0, source)`.
+- `0x91a6..0x91b2` compares the requested wrapper flag and desired text against
+  the displayed shadow through `0x95fa`. If there is no change, `0x9182`
+  returns without rewriting the panel shadow or calling the physical-output
+  helper.
+- `0x91b4..0x91e8` is the changed-message path. It resets output state through
+  `0x952a`, writes mask `0xfffffeef` through `0x949c`, delays through
+  `0x8bea(5)`, clears the displayed shadow through `0x9584`, sets
+  `0x78296d = 1`, copies desired text to the shadow through `0x92f8`, and
+  stores requested flag byte in pending flag `0x78296e`.
+- `0x91f0..0x9206` calls physical-output helper `0x9406` only when the
+  requested flag is nonzero, then commits current flag byte `0x78296c`.
+
+State classification:
+
+- Canonical display state:
+  desired message buffer `0x78292c..0x78293c`, displayed shadow buffer
+  `0x78293d..0x78294d`, current wrapper flag `0x78296c`, display counter
+  `0x78296d`, and pending wrapper flag `0x78296e`.
+- Derived/cache state:
+  one-based string offsets supplied to `0x9112`, zero-offset substitution from
+  `0x78296d`, and comparison result from `0x95fa`.
+- Firmware bookkeeping:
+  clear/copy helpers `0x955a`, `0x95ae`, `0x9584`, `0x92f8`, output reset
+  `0x952a`, mask writer `0x949c`, and delay helper `0x8bea`.
+- Hardware/external state:
+  physical panel signaling after `0x9406`. The ROM-visible precondition for
+  that handoff is fully named here: changed text plus nonzero wrapper flag.
+- Parser scratch:
+  none. These routines are status/display side effects, not command-token
+  parser state.
+- Output effect:
+  no page object or pixels. A changed software message updates the displayed
+  shadow and, for wrapper flag `1`, enters `0x9406`; an unchanged message is a
+  no-output status/display event.
+- Evidence:
+  `generated/disasm/ic30_ic13_formatted_message_helper_009112.lst`,
+  `generated/disasm/ic30_ic13_display_message_core_009182.lst`, string
+  evidence in `generated/analysis/ic30_ic13_strings.txt`, and caller routing
+  in `generated/disasm/ic30_ic13_page_environment_message_008a48.lst` and
+  `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`.
+
 ### Readers And Consumers
 
 - `0xae2c` is the output worker. It sleeps only when FIFO count

@@ -4063,9 +4063,13 @@ Evidence and unresolved boundary:
   `0x2888 publishes environment mismatch or status-cache changes`,
   `0x7612 selects page-environment or normal service helper`, and
   `0x8a48 maps page environment bytes to media-feed messages`.
-- Exact unresolved middle edges are `0x9112..0x9182` for full message
-  formatter lifting, `0x9182..0x9406` for physical panel output, and
-  `0x6e32(0x1f)` / `0x6f32(0x2a)` for physical sensor naming.
+- The full message formatter edge through `0x9112..0x9182` is now ROM-local
+  documented in
+  [errors-and-status.md](errors-and-status.md#operator-panel-message-formatter):
+  formatted strings, buffer copies, wrapper-flag comparison, and
+  changed-message shadow updates are named before hardware output. Exact
+  unresolved middle edges are now limited to `0x9182..0x9406` for physical
+  panel output and `0x6e32(0x1f)` / `0x6f32(0x2a)` for physical sensor naming.
 
 ## Worked Path: External Ready Service Preemption
 

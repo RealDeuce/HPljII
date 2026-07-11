@@ -1136,7 +1136,15 @@ render effect. Evidence is in
   `0x782dde..0x782edd` and line caches; channel jumps consume VMI, current y,
   top offset, and channel masks; perforation skip writes `0x783191`. Output
   is cursor-only movement, page publication/recovery, later printable
-  placement, or later overflow page eject; no separate renderer exists.
+  placement, raster-origin/bounds state, rectangle clipping state, or later
+  overflow page eject; no separate renderer exists. The first concrete
+  page-image state is whichever later consumer fires: following printable bytes
+  queue compact objects under root `+0x1c` through
+  `0xd04a -> 0x12f2e -> 0x1387c`; overflow or VFC page-boundary paths publish
+  a page/control record through `0xf36c` or `0xf124 -> 0xff1e`; raster
+  consumers reach `0x1075a` or `0x105d0 -> 0x13070 -> 0x13250` before encoded
+  raster objects exist under root `+0x1c`; rectangle consumers reach `0x10b80`
+  and `0x13386 -> 0x133aa` before rule-list objects exist under root `+0x24`.
   Concrete stream
   `ESC &l4W 00 00 00 02 !` stores the four table bytes at `0x782dde`,
   derives VFC/text-bottom cache state before printable parsing resumes, and

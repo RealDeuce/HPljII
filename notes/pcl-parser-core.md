@@ -1197,6 +1197,18 @@ absolute value, and calls `0x12328`. `0x12328` consumes that many bytes through
 `0xdace`. It returns `D7 = -1` if `0xdace` reports `-1`; otherwise it returns `D7 = 1`
 when the count has been consumed.
 
+Instruction boundaries for the generic drain:
+
+- `0x1228a..0x122b0` rewinds `0x78299e` by one six-byte record, reads signed
+  word `record[+2]`, sign-extends it, negates negative values, and passes the
+  resulting absolute count to `0x12328`.
+- `0x12328..0x12336` loads the count argument into `D5`; counts `<= 0` return
+  `D7 = 1` immediately.
+- `0x12338..0x12356` loops while `D5 > 0`: it calls payload reader
+  `0xdace`, returns `D7 = -1` immediately if that reader reports end/no-byte,
+  otherwise decrements `D5` and continues. The helper never appends drained
+  bytes through `0xe002` and never calls a page producer.
+
 Alternate/data mode wrapper `0x12358` has two branches:
 
 - If saved handler `0x782a1c` equals the wrapper argument, `0x12358` calls
@@ -1207,6 +1219,20 @@ Alternate/data mode wrapper `0x12358` has two branches:
   word `+2`, and returns immediately for nonpositive counts. For positive
   counts it drains bytes through `0xdace` and echoes each normalized byte
   through `0xe002` until the count is consumed or `0xdace` returns `-1`.
+
+Instruction boundaries for the alternate/data wrapper:
+
+- `0x12358..0x12370` compares saved handler longword `0x782a1c` with the
+  wrapper argument. Equality calls `0x1228a` directly and returns with the
+  generic drain's `D7` result.
+- `0x12372..0x12388` is the non-wrapper path. It rewinds `0x78299e` by six,
+  reads signed word `record[+2]`, and exits without consuming payload when the
+  count is `<= 0`.
+- `0x1238a..0x123ac` drains positive counts one byte at a time through
+  `0xdace`, copies the returned byte to `D4`, exits immediately on `D4 = -1`,
+  and otherwise appends that normalized byte through `0xe002` before
+  decrementing the count. Completion returns without calling the saved
+  command-family handler.
 
 Thus alternate/data mode turns non-wrapper delayed payloads into echoed data
 rather than normal command-family effects. Raster `0x105d0`, transparent text

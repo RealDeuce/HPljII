@@ -2528,6 +2528,10 @@ Generic drain behavior:
   reader calls `0xa904`, treats fetch `D7 = -1` as an early negative return,
   and applies its local `0x1a 0x58` rule before the byte is counted as
   consumed.
+- Count `<= 0` returns from `0x12328` with `D7 = 1` and consumes no bytes.
+  Positive counts loop through `0x12338..0x12356`; each successful `0xdace`
+  byte decrements the remaining count, while a `-1` from `0xdace` returns
+  `D7 = -1` immediately. The drained bytes are deliberately not echoed.
 - Normal generic drains do not echo bytes through `0xe002`, do not call
   printable handler `0xd04a`, and do not call a command-family payload handler.
 
@@ -2543,6 +2547,11 @@ Alternate/data mode:
   immediately for nonpositive counts, and for positive counts drains bytes
   through `0xdace` while echoing each normalized byte through append helper
   `0xe002`.
+- The non-wrapper append loop is `0x1238a..0x123ac`: `0xdace` supplies the
+  normalized byte, `-1` stops the loop immediately, and every nonnegative byte
+  is appended through `0xe002` before the count is decremented. Completion
+  returns to the parser without invoking the saved handler such as `0x105d0`,
+  `0x12452`, `0x12cfe`, `0x15d0a`, or `0x16c14`.
 - That alternate/data branch is why raster, transparent-text, and font payload
   handlers do not run from alternate/data mode unless the parser returns to
   normal mode before delayed restore.
@@ -2569,8 +2578,8 @@ State classification:
 - Firmware bookkeeping:
   delayed-payload pending flag `0x782a1a`, saved handler `0x782a1c`, saved
   command record `0x782a20..0x782a25`, generic drain wrapper `0x1228a`, drain
-  helper `0x12328`, alternate/data dispatcher `0x12358`, and append helper
-  `0xe002`.
+  helper `0x12328`, drain return status `D7 = 1` or `D7 = -1`,
+  alternate/data dispatcher `0x12358`, and append helper `0xe002`.
 - Canonical page/render state:
   none. Any later page output must come from parser bytes after the drain or
   from separately replayed bytes appended through `0xe002`.

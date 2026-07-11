@@ -363,6 +363,33 @@ The firmware does not assemble a full-page bitmap while parsing host bytes.
 It assembles a page-root object graph, publishes that graph, then renders it in
 band-sized calls selected by the active scheduler.
 
+Page assembly audit result:
+
+- The page image is page-scoped display-list state until publication, not a
+  parser-time bitmap and not independent parser-time strips. The durable
+  current-page container is root pointer `0x78297a`; command-family producers
+  append typed objects under root `+0x1c`, `+0x24`, or `+0x28`, and preserve
+  selected font/resource context slots under `+0x2c..+0x68`.
+- Bands start only after publication and bridge. `0xff1e` snapshots the
+  current root into the page/control pool, `0x1ed84 -> 0x1edc6` copies source
+  roots into render roots, and active-loop `0x1eba4..0x1ecd2` presents render
+  work word `+0x10` to `0x1ef6a` as the current band selector.
+- Allocation and ordering are ROM-defined object rules, not renderer policy.
+  Shared stream allocator `0x1381c` backs variable-size objects; bucket
+  allocator `0x1387c` groups compact text, downloaded glyphs, portrait spans,
+  and encoded raster under root `+0x1c`; rule inserter `0x133aa` orders
+  rectangle/rule nodes under `+0x24`; fixed-list inserter `0x136d2` orders
+  landscape/fixed span nodes under `+0x28`.
+- Composition is per-band dispatch order. `0x1ef6a` calls bucket dispatcher
+  `0x1efc2`, then rule dispatcher `0x1f446`, then fixed-list dispatcher
+  `0x1f756`; helpers write destination rows directly from object payloads,
+  resource bytes, and band caches. There is no hidden page-wide blend step
+  between object classes.
+- The remaining boundary for this page-assembly contract is not a missing
+  page/strip model. New work belongs here only if a byte stream changes a
+  source-root field, allocator transition, object ordering rule, bridge field,
+  band-cache input, or `0x1ef6a` dispatch order.
+
 Canonical shape:
 
 - Current page root:

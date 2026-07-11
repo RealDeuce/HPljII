@@ -2819,6 +2819,12 @@ the first ROM field where each byte-stream family becomes page-image state.
   with class byte `+0x04` in `0x80..0xff`, mode byte `+0x05`, count `+0x06`,
   key `+0x08`, and payload `+0x0a`. The first render consumer is
   `0x1efc2 -> 0x1f88e`, with expansion mode from object byte `+0x05 & 3`.
+  In alternate/data mode, the same `ESC *b#W/w` syntax can still arm delayed
+  payload state, but restore uses `0x12358` instead of calling saved handler
+  `0x105d0`. Positive payload bytes are drained through `0xdace` and appended
+  through `0xe002`, so no raster block, page root, encoded object, bridge
+  field, or render input changes until stored bytes are replayed through the
+  normal parser route.
 - Raster setup before transfer:
   `ESC *t#R`, `ESC *r#A`, and `ESC *r#B` reach `0x10808`, `0x1075a`, and
   `0x107fa` before any payload row exists. They write raster state block

@@ -804,6 +804,16 @@ notes. The required ROM-visible behavior is:
   bridge `0x1ed84` / `0x1edc6`, and render entry `0x1ef6a`. The shared
   command-family-to-render join is indexed in `Command-Family To Render Route Table` in
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md).
+- After a command family queues page output, the reader should follow the ROM object
+  root, not the manual command name: root `+0x1c` bucket objects carry compact
+  text/downloaded glyphs, segment spans, and encoded raster rows; root `+0x24` carries
+  rectangle/rule objects; root `+0x28` carries fixed-list/landscape span objects; root
+  `+0x2c..+0x68` carries font context slots. Bridge `0x1edc6` copies those to render
+  roots `+0x18/+0x1c/+0x20` and context slots `+0x24..+0x60`; bucket class byte `+0x04`
+  then selects compact dispatch `0x1effe`, segment-list dispatch `0x1f812`, or
+  encoded-raster dispatch `0x1f88e`, while rule and fixed roots dispatch through
+  `0x1f446` and `0x1f756`. The render-owner lookup is [Render Helper Boundary
+  Index](page-raster-imaging.md#render-helper-boundary-index).
 - Unsupported or no-output rows are reproduced by consuming exactly the ROM
   syntax and then following the documented no-output path; they should not be
   treated as unknown imaging commands.

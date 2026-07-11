@@ -153,7 +153,10 @@ boundary outside these owners, the relevant owner note must be extended.
   owns prefix setup `0x11ea4..0x1201e`, normal font-designation synthetic
   slot records, delayed restore `0x121cc -> 0x12218`, and generic counted drains;
   [macro-data-chain.md](macro-data-chain.md#owner-summary) owns
-  `0xe418`, `0xe4f4`, and `0xe22c` replay frames.
+  `0xe418`, `0xe4f4`, and `0xe22c` replay frames. Replay is source-equivalent input:
+  execute/call and overlay frames live at `0x782d76`, `0xa904` gives those frame bytes
+  priority over live ring input, and returned bytes re-enter `0xda9a` / `0x11774` or the
+  active direct payload reader before any page-object or pixel effect exists.
 - Command dispatch tables and mapping from parsed forms to handlers:
   [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) owns
   dispatch classes, table rows, terminal handlers, explicit zero rows,

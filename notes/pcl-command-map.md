@@ -669,8 +669,11 @@ output class that a byte-stream reader should follow next.
   Continue in [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
   [display-functions.md](display-functions.md). Output class:
-  routed printable text, alternate/data append, display/status side effect, or
-  explicit reader termination.
+  routed printable text under current-root bucket `+0x1c` with short compact
+  fields `+0x04/+0x05/+0x06/+0x0a`, spacing-only fixed-space motion,
+  alternate/data append, display/status side effect, or explicit reader
+  termination. Routed objects cross `0xff1e -> 0x1ed84 -> 0x1edc6` before
+  compact render entry `0x1ef6a`.
 - Raster bytes:
   setup handlers `0x10808`, `0x1075a`, and `0x107fa` write raster
   resolution, origin, active, and end-state fields; delayed `ESC *b#W`
@@ -679,14 +682,21 @@ output class that a byte-stream reader should follow next.
   block or page-object state. Continue in
   [raster-graphics.md](raster-graphics.md) and
   [page-raster-imaging.md](page-raster-imaging.md). Output class:
-  encoded raster bucket object, then `0x1f88e` render.
+  encoded raster object under current-root bucket `+0x1c` with fields
+  `+0x04 = 0x80`, `+0x05` mode, `+0x06` count, `+0x08` packed key, and
+  payload `+0x0a..`; bridge `0x1edc6` copies bucket `+0x1c` to render
+  `+0x18`, then `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders it.
 - Rectangle/rule bytes:
   `ESC *c#A/#B/#H/#V/#G/#P` route to `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, `0x10dce`, and `0x10898`; fill reaches rule producer
   `0x13386 -> 0x133aa`. Continue in
   [rectangle-graphics.md](rectangle-graphics.md) and
   [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
-  Output class: rule-list page object, then rule render.
+  Output class: 14-byte rule-list object under current-root `+0x24` with
+  selector `+0x05`, packed key `+0x06`, width `+0x08`, height `+0x0a`, and
+  continuation `+0x0c`; bridge `0x1edc6` copies it to render list `+0x1c`,
+  ORs selector bit `+0x05.4`, initializes continuation, and render entry
+  `0x1ef6a -> 0x1f446` dispatches to solid/pattern helpers.
 - Font selection and downloaded-font bytes:
   font selectors and symbol/designation rows route through `0xc390`,
   `0xc6ec..0xc930`, and `0x12046..0x120be`; downloaded-font controls
@@ -697,16 +707,21 @@ output class that a byte-stream reader should follow next.
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md), and
   [downloaded-fonts.md](downloaded-fonts.md). Output class:
-  selected-font state, installed resources, later compact text, or exact
-  downloaded-glyph render boundary.
+  selected-font state, installed resources, later compact text under root
+  `+0x1c`, fixed records, or downloaded-glyph compact objects whose exact
+  helper/source stops are owned by the downloaded-font boundary notes. Visible
+  installed-glyph output uses the same `0xff1e -> 0x1ed84 -> 0x1edc6 ->
+  0x1ef6a` path after a printable byte selects the installed resource.
 - Macro and alternate/data bytes:
   macro id/control handlers `0xe112` and `0xdd08`, append sink `0xe002`,
   execute/call frame builder `0xe418`, and overlay frame builder `0xe4f4`
   store or replay byte streams through the same `0xa904` source contract.
   Continue in [Macro Replay Outcome
   Matrix](macro-data-chain.md#macro-replay-outcome-matrix). Output class:
-  stored input, replayed parser input, overlay publication mutation, or skip gate
-  with base publication.
+  stored input, replayed parser input, overlay publication mutation, or skip
+  gate with base publication. Replayed bytes become ordinary owner outputs:
+  compact text, transparent text, raster objects, rules, or span objects before
+  the same `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
 - Host/status side-channel commands:
   model/status queries use `0x12034 -> 0x122be` and FIFO helper `0xb090`.
   Continue in [Host/Status Outcome
@@ -1155,15 +1170,18 @@ Outcome owners:
   `0x105d0`, and transfer gate `0x138de` are owned by [Transfer Gate Outcome
   Matrix](raster-graphics.md#transfer-gate-outcome-matrix) and [Encoded Raster Object
   Outcome Matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Output
-  effects are raster bucket objects under page-root `+0x1c` consumed by the shared
-  publication and render bridge.
+  effects are class-`0x80` raster bucket objects under page-root `+0x1c`,
+  with mode/count/key/payload fields consumed after publication by
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1f88e`.
 - Rectangle and rule imaging:
   handlers `0x10898`, `0x10a40`, `0x10ae0`, `0x10dce`, `0x10e22`, and
   `0x10e68` are owned by
   [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix)
   and
   [Rule-List Outcome Matrix](page-record-storage.md#rule-list-outcome-matrix).
-  Output effects are rule-list objects under page-root `+0x24`.
+  Output effects are rule-list objects under page-root `+0x24`; bridge
+  `0x1ed84 -> 0x1edc6` normalizes them into render list `+0x1c`, and
+  `0x1ef6a -> 0x1f446` dispatches solid and pattern helpers.
 - Page-object storage and render handoff: compact, segment-list, fixed-list, rule-list,
   raster-bucket, publication, and render-bridge records are owned by [Page Object
   Storage Outcome Matrix](page-record-storage.md#page-object-storage-outcome-matrix),

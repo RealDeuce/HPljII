@@ -1318,8 +1318,14 @@ Command-family consequences:
   payload boundary before replay.
 - Alternate/data font-designation and font-selection rows do not write
   requested font fields, selected symbol/default words, selected maps, or
-  page-root context slots. Downloaded-font payload rows remain active only to
-  preserve payload bytes and counts for stored replay.
+  page-root context slots. The prefix rows still preserve syntax:
+  `0x11fe4` for `ESC (` and `0x11fd2` for `ESC )` call generic setup
+  `0x11ec8` and tokenizer `0xdaf0`, but do not call the normal slot-record
+  helpers `0x11f26` / `0x11efe` that make `0x120be` a primary or secondary
+  command. Ordinary final rows are blank in alternate/data mode, so the
+  stored stream reaches no immediate symbol/font owner until replay.
+  Downloaded-font payload rows remain active only to preserve payload bytes
+  and counts for stored replay.
 
 Macro definition and stored bytes:
 

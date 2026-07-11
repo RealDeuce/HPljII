@@ -6860,6 +6860,17 @@ Address-level cluster map:
   reset and `ESC &l#W/w` VFC payload storage. Evidence is
   [direct-control-codes.md](direct-control-codes.md#owner-summary) and
   [publication-commands.md](publication-commands.md#owner-summary).
+
+Font-prefix rows preserve syntax but do not select or refresh fonts: alternate/data `ESC
+(` reaches `0x11fe4`, alternate/data `ESC )` reaches `0x11fd2`, and both wrappers call
+`0x11ec8 -> 0xdaf0` without the normal primary/secondary slot-record helpers `0x11f26` /
+`0x11efe`. Because the alternate/data ordinary final rows are blank instead of
+`0x120be`, requested symbol words, selected maps, page-root context slots, and glyph
+render inputs remain unchanged until stored bytes replay through the normal table.
+Evidence is
+[symbol-set-selection.md](symbol-set-selection.md#symbolfont-designation-outcome-matrix)
+and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint).
+
   Related parser artifacts are bounded separately: `ESC ?` is consumed in
   wrapper `0xda9a`, `ESC Z` terminates the direct display-functions reader,
   and `ESC &lT/t` has no standalone page-output effect.

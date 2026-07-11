@@ -524,6 +524,19 @@ that owner note before claiming equivalent output.
   [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint)
   and `State-Only Command Dependency Map` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#state-only-command-dependency-map).
+- HMI to printable placement `ESC &k6H!!`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`; `ESC &k6H` dispatches to HMI handler
+  `0xca8c`. `0xca8c..0xcaf2` rewinds the six-byte parser record at
+  `0x78299e`, reads integer word `+2` and fraction word `+4`, rejects
+  integer values above `0x348`, scales accepted values as HMI units, converts
+  the result through `0x104d8`, and stores packed HMI `0x78315c = 15` for the
+  documented selector `6`. The command queues no page object; the first
+  following `!` uses the current cursor position and advances by the new HMI,
+  while the second `!` consumes `0x78315c` through `0xd04a -> 0x1393a ->
+  0x12f2e` and queues at compact coordinate `0x0501`. HT `0xf1cc`, BS
+  `0xf2a8`, margin writers `0xeb58` / `0xec0c`, and column handler `0xf39e`
+  are sibling consumers of the same HMI field. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#hmi-route-checkpoint).
 - HT/BS cursor placement `ESC &k0G HT BS !`: command bytes enter through
   `0xa904 -> 0xda9a -> 0x11774`. `ESC &k0G` dispatches to line-termination
   handler `0xedf8`, which rewinds the six-byte parser record and clears mode
@@ -573,6 +586,22 @@ that owner note before claiming equivalent output.
   `0x1075a` and rectangle clip helper `0x10b80` are sibling consumers of the
   same restored cursor fields. Evidence:
   [direct-control-codes.md](direct-control-codes.md#cursor-stack-state-checkpoint).
+- SO/SI selected context `! SO ! SI !`: bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`. The first printable `!` queues through the
+  current selected slot. SO byte `0x0e` reaches `0xc6b8..0xc6e2`, sets
+  dirty-map byte `0x782f2d = 1`, calls `0xc428(1)` when the selected slot is
+  not already secondary, and writes selected text slot `0x782f06 = 1` only
+  after the install succeeds. Helper `0xc428..0xc57e` reads secondary context
+  longword `0x782ef6`, scans page-root context slots `+0x2c..+0x68`, writes
+  selected page-root slot byte `0x78297e`, and may refresh HMI `0x78315c`.
+  The following printable consumes secondary map/context state through
+  `0xd04a -> 0x1393a -> 0x12f2e`, so the compact object records selector
+  slot `1`. SI byte `0x0f` reaches `0xc68a..0xc6b6`, mirrors the install path
+  for `0xc428(0)`, and clears `0x782f06` only after primary-slot install
+  succeeds; the final printable queues with selector slot `0`. Publication and
+  bridge carry the compact objects and root context slots through
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#selected-context-switch-checkpoint).
 - Cursor and margin placement `ESC &a2c+1R!` / `ESC &a6l9M!`: command bytes enter
   through `0xa904 -> 0xda9a -> 0x11774` in `ESC &a` parser mode `12`. In the cursor
   stream, lowercase final `c` keeps the family active: `ESC &a2c` dispatches to

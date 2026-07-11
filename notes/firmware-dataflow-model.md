@@ -2962,16 +2962,30 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0xa904` and reach the normal VFC owner.
 - Downloaded character and descriptor payloads used by later printable bytes:
   `0x11f96 -> 0x121cc -> 0x12218` dispatches either downloaded characters
-  through `0x16498` or descriptor/resource payloads through
-  `0x16c14 -> 0x16fae -> 0x1719c`. The first persistent image input is installed
-  font resource/candidate state; later printable bytes create compact bucket
-  objects under root `+0x1c`. Renderer `0x1effe` dispatches downloaded compact
-  helpers `0x1f0d2`, `0x1f1f0`, or `0x1f264` according to object selector
-  bits. In alternate/data mode, the same delayed `W/w` forms restore through
-  `0x12358` instead of calling descriptor handler `0x15d0a` or resource/glyph
-  handler `0x16c14`; positive payload bytes append through `0xe002`, and no
-  downloaded-font records, installed glyph tables, page-root context slots, or
-  compact render inputs change until replay reaches the normal owner route.
+  through `0x16498`, zero-count descriptors through `0x15d0a`, or
+  nonzero resource payloads through `0x16c14 -> 0x16fae -> 0x1719c`.
+  The offset-table glyph route installs candidate/resource records and
+  downloaded glyph objects through `0x16498`. The bit-30-clear fixed-record
+  sibling starts at `0x15d0a`: current-record descriptors enter
+  `0x15e42 -> 0x16606`, continuation descriptors enter
+  `0x15e64 -> 0x15c4c`, and successful paths mutate fixed-record table
+  entries, bitmap bytes, continuation fields, and selected map/cache state
+  through `0x16770..0x16870` / `0x14c64` / `0x14e24`.
+  The first persistent image input is installed font resource/candidate state,
+  not a page object. Later printable bytes consume that state through
+  `0xd04a -> 0x1393a`, then create compact bucket objects under root `+0x1c`
+  through `0x12f2e`; fixed-record examples queue selector `0x0003` on the
+  same compact route. Renderer `0x1effe` dispatches selector `0x0003`
+  through the compact mode-0 helper path for the documented fixed-record
+  examples, and dispatches downloaded compact-wide, segmented, or
+  segmented-wide helpers `0x1f0d2`, `0x1f1f0`, or `0x1f264` when object
+  selector bits and map/source state select those forms. In
+  alternate/data mode, the same delayed `W/w` forms restore through `0x12358`
+  instead of calling descriptor handler `0x15d0a` or resource/glyph handler
+  `0x16c14`; positive payload bytes append through `0xe002`, and no
+  downloaded-font records, fixed-record entries, installed glyph tables,
+  page-root context slots, or compact render inputs change until replay
+  reaches the normal owner route.
 - Pending span flush from CR, cursor/margin movement, or printable low-water
   branches:
   `0xf02c`, `0xeb58`, `0xf560`, `0xd4ac`, or `0xd8fc` reach `0xf34a` /

@@ -177,6 +177,10 @@ checked-in ROM model:
 4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
    index. After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.
+   If the owner classifies the route as host/status, explicit no-output,
+   generic drain, append-only storage, or status-only behavior, preserve the
+   named FIFO/status/parser/append state and stop page-image traversal until a
+   later admitted byte reaches a page-producing owner.
    The parser command-dispatch anchors in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the common
    terminal-handler handoffs before the full flattened table. The `Command Family Owner

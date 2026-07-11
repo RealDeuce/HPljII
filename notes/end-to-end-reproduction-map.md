@@ -551,6 +551,20 @@ that owner note before claiming equivalent output.
   helper `0xf054`, retries from recovered x `0`, and reaches the ordinary
   compact text route only if the retried placement fits. Evidence:
   [direct-control-codes.md](direct-control-codes.md#wrap-mode-route-checkpoint).
+- Perforation skip state `ESC &l1L !`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`; `ESC &l1L` dispatches to handler
+  `0xee64`. `0xee64..0xeeaa` rewinds the six-byte parser record at
+  `0x78299e`, reads word `+2`, takes its absolute value, sets perforation byte
+  `0x783191` for selector `1`, clears it for selector `0`, and leaves it
+  unchanged for other selectors. The command queues no object itself, so the
+  following `!` still uses the ordinary printable route
+  `0xd04a -> 0x12f2e -> 0x1387c` at the current origin. The state becomes
+  visible later through overflow helper `0xf36c`: it reads cursor y
+  `0x782c8e`, derived text/perforation limit `0x782dc2`, and byte
+  `0x783191`; only the nonzero-limit, beyond-limit, enabled-skip case calls
+  page-eject helper `0xf124` and returns `D7 = 0`. Below-limit, zero-limit,
+  or disabled-skip cases return without publication. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#layout-state-to-output-checkpoint).
 - HT/BS cursor placement `ESC &k0G HT BS !`: command bytes enter through
   `0xa904 -> 0xda9a -> 0x11774`. `ESC &k0G` dispatches to line-termination
   handler `0xedf8`, which rewinds the six-byte parser record and clears mode

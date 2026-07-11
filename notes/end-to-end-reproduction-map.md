@@ -832,6 +832,42 @@ sections that currently carry the proof. It is a navigation contract, not a
 completion claim: if a stream changes a field, object byte, render input, or
 boundary outside these owners, the relevant owner note must be extended.
 
+Current completion-audit state:
+
+- The checked-in route is broad enough to trace supported streams through
+  byte admission, parser records, command-family owners, page-object classes,
+  publication, scheduler handoff, and render-helper dispatch. The controlling
+  route is the spine in [README.md](README.md#stream-trace-workflow), the
+  [Inbound Byte Route Matrix](firmware-dataflow-model.md#inbound-byte-route-matrix),
+  the [Command-Family To Page-Object
+  Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk),
+  the [Page Object Shape Route
+  Index](firmware-dataflow-model.md#page-object-shape-route-index), and the
+  [Band Scheduling Route
+  Index](firmware-dataflow-model.md#band-scheduling-route-index).
+- The exact residual pixel-affecting stops are not generic blockers or hardware asks.
+  They are the named entries in
+  [unresolved-boundaries.md](unresolved-boundaries.md#unresolved-boundary-outcome-matrix):
+  downloaded-glyph invalid render targets/sources at `0x1fe76..0x1fe88`, `0x1f034 ->
+  0x1f08e`, and `0x1f264`; the secondary segment-57 resource continuation
+  `0x0c0000..0x0c0321`; and the exact parser payload-count stop through `0xdb74`,
+  `0x121cc -> 0x12218`, and budget `0x783140`.
+- Hardware/MMIO and physical timing entries are completion blockers only for
+  physical device naming or timing correlation. They are not blockers for the
+  ROM-local byte-to-page-to-pixel model once a normalized byte stream has been
+  admitted through `0xa904` and a published page/control record has reached
+  `0x1ed84 -> 0x1ef6a`.
+- A final goal-completion claim still requires an audit pass over the supported
+  stream and owner indexes, not another isolated handler trace: every supported
+  row in [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
+  and every manual-family row in
+  [pcl4-language.md](pcl4-language.md#rom-semantic-index-for-quick-reference)
+  must have a checked-in owner route that names parsed inputs, RAM writers,
+  downstream consumers, page/output effect, evidence, and any exact boundary.
+  Any row that is still table-only, generated-only, or fixture-only must be
+  promoted into its owner note before the active documentation goal can be
+  marked complete.
+
 - Host input handling and parser state transitions:
   [host-byte-fetch.md](host-byte-fetch.md#owner-summary) owns `0xa904..0xab8a`, source
   priority, data-chain replay, direct hardware fetches, and the `D7` caller contract.

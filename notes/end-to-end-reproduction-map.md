@@ -9692,13 +9692,15 @@ shape, publication boundary, or render helper inputs.
 
 ## Next Documentation Targets
 
-The next work should add checked-in explanation for byte-stream dataflow, not
-standalone fixture output and not isolated handler traces. A new trace is worth
-opening only when it changes a named parser field, command-family state field,
-page/image object byte, publication or bridge field, render-helper input, or an
-exact unresolved boundary. The low-level ledger can grow underneath that work,
-but the checkpoint is complete only when the owner note and this map let a
-reader follow what the ROM does.
+The top-level route indexes now name the supported command-family owners and
+their first page/render boundary. Start new work from a concrete byte stream
+only when it changes a named parser field, command-family state field,
+page/image object byte, publication or bridge field, render-helper input, or
+an exact unresolved boundary. The next work should add checked-in explanation
+for that byte-stream dataflow, not standalone fixture output and not isolated
+handler traces. The low-level ledger can grow underneath that work, but the
+checkpoint is complete only when the owner note and this map let a reader
+follow what the ROM does.
 
 Priority ROM-local documentation targets:
 

@@ -935,6 +935,11 @@ Evidence:
 
 - `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst` documents
   `0xda9a..0xdacc`, including `ESC ? 0x11` and `0x9ec0` report behavior.
+- `generated/disasm/ic30_ic13_pushback_report_helper_009ec0.lst` documents
+  the reported-byte helper itself: no-byte gate `0x780e3b`, first/second
+  pushback stack selection from data-chain frame byte `+0x09`, stack counts
+  `0x783e8c` / `0x783e76`, stack capacity `0x10`, and pending-source flags
+  `0x780e66.2` / `0x780e66.0`.
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` documents
   `0x117d2..0x11818`, `0x118b2..0x11900`, `0x11930..0x11ab8`, and
   `0x119a6..0x119f4`.

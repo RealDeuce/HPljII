@@ -14,6 +14,7 @@ renderer-facing macro checkpoint.
 
 - `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`
 - `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`
+- `generated/disasm/ic30_ic13_data_chain_byte_reader_009f6a.lst`
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
 - `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`
@@ -152,8 +153,10 @@ Writers and readers:
   record count/head fields.
 - `0xe418` writes execute/call data-chain frames; `0xe4f4` writes non-replay
   overlay frames; `0xe22c` consumes and unwinds ended frames.
-- `0xa904` reads active data-chain frames as a byte source and feeds replayed
-  bytes into the same parser wrapper and dispatch loop as live host bytes.
+- `0xa904` reads active data-chain frames as a byte source; helper `0x9f6a`
+  consumes frame `+0x00/+0x04/+0x08` one payload byte at a time and feeds
+  replayed bytes into the same parser wrapper and dispatch loop as live host
+  bytes.
 - `0xff1e` consumes overlay state during publication; downstream page-record,
   scheduler, and pixel owners consume the objects produced by replayed bytes.
 
@@ -671,6 +674,22 @@ Decision route:
   byte has re-entered `0xda9a` / `0x11774`; parser outcomes then belong to
   the same owner notes as live bytes. The exact source-priority behavior is in
   [host-byte-fetch.md](host-byte-fetch.md#active-data-chain).
+- Data-chain byte reader `0x9f6a` is the byte-level consumer for the active
+  frame after caller `0xa904` has proved frame count `+0x04` is nonzero and
+  not the `-1` end marker. Range `0x9f72..0x9f84` loads current frame pointer
+  `0x782d76`, reads chunk pointer `+0x00`, adds unsigned offset byte `+0x08`,
+  and returns the payload byte from that chunk address in `D7`.
+- Reader range `0x9f88..0x9fa8` advances the replay cursor. Offset `+0x08`
+  increments while below `0xff`; when it reaches `0xff`, the helper resets
+  `+0x08` to `4` and replaces frame `+0x00` with the longword stored at the
+  start of the current chunk. That longword is therefore the next-chunk link,
+  and payload bytes are the chunk bytes at offsets `4..0xff`.
+- Reader range `0x9fac..0x9fb4` decrements remaining count `+0x04` after the
+  byte has been fetched. A transition to zero writes `-1` back to `+0x04`
+  instead of calling cleanup directly; the following `0xa904` pass clears that
+  marker, calls `0xe22c`, and restarts source selection. Range
+  `0x9fb8..0x9fca` reports literal payload `0x1a` through `0x9ec0` while
+  preserving the same `0x1a` return byte in `D7`.
 - Frame-end cleanup `0xe22c..0xe408` is the return boundary. Execute frames
   restore linked snapshot data and rewind `0x782d76`; call and overlay returns
   restore flat/context state, can run `0xf124` or `0xe65c(0)`, and then push a
@@ -688,7 +707,8 @@ State classification:
   chunk cursor `0x782c1a`, replayed payload bytes returned by `0xa904`, and
   the parser records built later by `0xdb74` / `0xdaf0` from those bytes.
 - Firmware bookkeeping:
-  host gate bit `0x780e66.1`, linked snapshot allocation/free through
+  host gate bit `0x780e66.1`, chunk-link longword at payload chunk offset
+  `0`, end marker `frame+0x04 = -1`, linked snapshot allocation/free through
   `0xe8f0` / `0x18b4`, call-context pointer `0x782c6e`, overlay restore byte
   `0x782a92`, context refresh `0xe65c`, and the `0x9ec0(0)` cleanup report.
 - Canonical page/render state:
@@ -723,6 +743,11 @@ Evidence:
 - Source selection:
   [host-byte-fetch.md](host-byte-fetch.md#active-data-chain) and the
   host-byte source listing `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`.
+- Byte-level replay:
+  `generated/disasm/ic30_ic13_data_chain_byte_reader_009f6a.lst`, covering
+  chunk pointer/offset reads at `0x9f72..0x9f84`, chunk advancement at
+  `0x9f88..0x9fa8`, count/end-marker update at `0x9fac..0x9fb4`, and
+  literal-`0x1a` reporting at `0x9fb8..0x9fca`.
 - Parser re-entry and downstream owners:
   `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract),

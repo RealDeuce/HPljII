@@ -784,7 +784,12 @@ command-family and page-image structure:
    in the owner note, capture the canonical fields written by the handler,
    parser scratch consumed, derived/cache fields, firmware bookkeeping,
    readers/consumers, and no-output side effects. State-only commands remain
-   in this step until a later byte consumes their changed fields.
+   in this step until a later byte consumes their changed fields. Host/status
+   side channels, explicit no-output parser rows, generic drains, and
+   status-only commands also terminate here for page-image purposes: preserve
+   their FIFO/status/parser or append state, but do not continue into page
+   object, publication, bridge, or render steps unless a later admitted byte
+   reaches a page-producing owner.
 5. Map page/image objects: when a command creates page content, use `Command-Family To
    Render Route Table` in this file plus [Page Assembly Decision
    Checkpoint](page-record-storage.md#page-assembly-decision-checkpoint) and its

@@ -233,6 +233,22 @@ that owner note before claiming equivalent output.
   still the ordinary compact route `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2
   -> 0x1effe`. Evidence:
   [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint).
+- Secondary transparent high-control `SO ESC &p3X!\x80!`: SO byte `0x0e` reaches
+  `0xc6b8`, calls `0xc428(1)`, installs secondary context `0xc00ae122`, and sets
+  selected slot `0x782f06 = 1`. `ESC &p3X` then arms transparent reader `0x12452`
+  through `0x11f5a -> 0x121cc -> 0x12218`; restored record `80 58 00 03 00 00` consumes
+  payload bytes `21 80 21`. With secondary filtering active, all three values route
+  through `0xd04a`: the two `!` bytes map to glyph `0` and queue short selector-1
+  entries, while high-control byte `0x80` maps through secondary context `0xc00ae122` to
+  glyph `0x5f`, queues segmented compact objects with selector `0x2001`, and bridges
+  context slots `(0x440946b4, 0xc00ae122)`. Selected bucket `0` begins `00 00 00 00 20
+  01 00 01 5f 00 1c 01 00 00 00 00`. Render path `0x1ef6a -> 0x1efc2 -> 0x1effe ->
+  0x1f354 -> 0x1f1f0` resolves glyph entry file offset `0x02e122`, segment `0x39`, and
+  firmware source `0x0bfe22..0x0c0321`; bytes `0x0c0000..0x0c0321` are the exact missing
+  external resource range. Evidence:
+  [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint)
+  and
+  [unresolved-boundaries.md](unresolved-boundaries.md#secondary-segment-57-resource-source).
 - Display functions `ESC Y ! 05 ! ESC Z`: command bytes enter through `0xa904 -> 0xda9a
   -> 0x11774`, and normal parser mode `1` dispatches final byte `Y` to direct reader
   `0x12536`. After dispatch, loop bytes are fetched directly through `0xa904` instead of

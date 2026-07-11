@@ -201,6 +201,104 @@ Derived/cache state:
 - Page-record bucket sets and object hashes are derived render-facing
   artifacts, not canonical firmware fields.
 
+## Candidate Resolver Checkpoint
+
+This checkpoint owns resolver `0x1b50e` as the source-row selector for the
+font sample page. It starts with a source mode and row ordinal from the
+`0x1c334..0x1c5e4` row loop, and it ends with either no row or a selected
+candidate slot plus caller-visible symbol word for later normalization,
+context install, row formatting, and printable output. It does not emit text
+or queue page objects directly.
+
+Route:
+
+- `0x1b516..0x1b558` handles the requested ordinal. Ordinal `0xff`
+  disables lookup, clears the caller output word, and returns no resource.
+  Otherwise the resolver tries fast probe `0x1b8ea(mode, ordinal)` first.
+  On fast-probe success, selected slot `0x7828a0` and output word
+  `0x7828a4` become the row candidate returned to the caller.
+- `0x1b568..0x1b5a4` selects the first scan window when fast probe misses:
+  mode `3` uses `0x7827ac` / `0x78279a`, modes `1` and `2` use
+  `0x7827b0` / `0x78279c`, mode `0` uses `0x7827b4` / `0x78279e`, and other
+  modes miss.
+- `0x1b5a4..0x1b60c` sets Roman-8 substitution flag `0x7828ac = 1` unless
+  requested symbol word `0x7821a0` is one of `0x0115`, `0x0175`,
+  `0x0155`, or `0x000e`.
+- `0x1b61a..0x1b650` scans first-window candidates. Each candidate word is
+  read through `0x1bbfe`, classified by `0x1b750(mode, slot, word)`, and
+  skipped while the classifier returns zero.
+- `0x1b650..0x1b74e` selects the second scan window after first-window
+  exhaustion: mode `3` uses `0x7827a0` / `0x782792`, modes `1` and `2` use
+  `0x7827a4` / `0x782794`, and mode `0` uses `0x7827a8` / `0x782796`.
+- `0x1b66e..0x1b706` owns the Roman-8 duplicate/substitution decision.
+  Classifier return `2` marks a pending duplicate Roman-8 candidate.
+  When the requested ordinal is reached, a Roman-8 candidate with
+  substitution enabled and duplicate pending returns requested symbol word
+  `0x7821a0`; otherwise it returns the candidate word.
+- `0x1b6b2..0x1b706` lets non-selected Roman-8 candidates count twice for
+  non-special requested symbols, except when current selected slot
+  `0x7828a0` is the same slot.
+- `0x1b750..0x1b7ac` accepts only candidates that pass admissibility helper
+  `0x1b7b2` and current-Roman-8 suppression `0x1b8b6`. It returns `2` for
+  the current selected slot in modes `1` or `2`, and `1` for other accepted
+  candidates.
+- `0x1b7b2..0x1b8b4` is mode-specific admissibility: mode `3` accepts the
+  built-in symbol words above, mode `1` accepts optional window
+  `0x200000..0x3ffffe`, mode `2` accepts optional window
+  `0x400000..0x5ffffe`, and mode `0` accepts downloaded records whose
+  `0x170be` record flags include bit `30`.
+- `0x1b8ea..0x1b98c` is the fast probe. It clears `0x7828a0`; mode `3`
+  searches fallback through `0x1ae7e`, while modes `1` and `2` call
+  `0x1adaa` first with primary selector `0x78289f = 0` and then with
+  secondary selector `0x78289f = 1`. It succeeds only for requested ordinal
+  zero and a nonzero selected slot.
+
+State grouping:
+
+- Canonical sample/resource state:
+  candidate window pointer/count pairs `0x7827a0..0x7827b4` and
+  `0x782792..0x78279e`, selected candidate slot `0x7828a0`, caller-visible
+  output word `0x7828a4`, requested symbol word `0x7821a0`, and the accepted
+  downloaded-record state tested through `0x170be`.
+- Derived/cache state:
+  current source mode, requested ordinal, classifier return, pending duplicate
+  Roman-8 marker, Roman-8 substitution flag `0x7828ac`, fast-probe selector
+  scratch `0x78289f`, and the final candidate slot/word pair handed back to
+  the row loop.
+- Parser scratch:
+  none. The font sample generator is firmware-produced; resolver inputs come
+  from row-loop state, not host parser records.
+- Firmware bookkeeping:
+  scan window cursors and counts, duplicate/suppression decisions, and
+  optional-window/downloaded-record predicate calls.
+- Hardware/external state:
+  optional cartridge bytes for modes `1` and `2` remain external data if a
+  physical optional window is present; the base ROM-local resolver route is
+  still fully defined.
+- Unknown:
+  no ROM-local resolver branch remains unnamed for the documented source
+  modes. Optional cartridge contents can change which candidates exist, but
+  not the `0x1b50e` scan and substitution rules.
+
+Output effect:
+
+- A successful resolver result selects which candidate enters
+  `0x1c746` / `0x1c766` / `0x1c7a8` / `0x1c710`, then context install
+  `0x1c5e8`, row formatter `0x1cabe`, sample-run helper `0x1cf34`, and the
+  ordinary compact text path. A miss suppresses that row before any printable
+  byte, page object, publication record, bridge root, or render input exists.
+
+Evidence:
+
+- `generated/analysis/ic30_ic13_font_sample_page.md`, section
+  `Candidate Resolver 0x1b50e`.
+- `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`, covering
+  `0x1b50e`, classifier `0x1b750`, admissibility helper `0x1b7b2`, and fast
+  probe `0x1b8ea`.
+- Fixtures `font sample resolver carries first two Courier rows`,
+  `font sample non-internal source groups follow modes 0..2`, and
+  `font sample full printout rows reuse ROM sample byte runs`.
+
 ## Multi-Probe Continuation Preflight
 
 `0x1dcf2` is the later font-sample fit gate used before selected row output is

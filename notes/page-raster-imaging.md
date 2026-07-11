@@ -240,8 +240,8 @@ Dispatch table facts:
 - Compact table `0x1f024` maps selector bits to helper targets:
   `0x00 -> 0x1f034`, `0x10 -> 0x1f0d2`, `0x20 -> 0x1f1f0`, and
   `0x30 -> 0x1f264`.
-- Rule table `0x1f4a0` maps selector `7` to solid writer `0x1f596`; all
-  other low-nibble entries `0..15` in the ROM table point at patterned writer
+- Rule table `0x1f4a0` maps selector `7` to solid writer `0x1f596`; every
+  other low-nibble entry in the ROM table points at patterned writer
   `0x1f4e0`.
 - Encoded-raster table `0x1f8ca` maps mode `0` to literal helper `0x1f8da`,
   mode `1` to two-row expansion `0x1f8e6`, mode `2` to three-row expansion

@@ -908,6 +908,10 @@ boundary outside these owners, the relevant owner note must be extended.
   bridge `0x1ed84 -> 0x1edc6`, render dispatch `0x1ef6a`, compact text/downloaded-glyph
   helpers, segment-list and fixed-list helpers, rule/rectangle helpers, encoded raster
   helper `0x1f88e`, destination buffers, and ROM-defined pixel composition.
+  [Render Selector Dispatch
+  Checkpoint](page-raster-imaging.md#render-selector-dispatch-checkpoint) owns the
+  object selector fields and dispatch tables `0x1f024`, `0x1f4a0`, and `0x1f8ca`
+  that choose the first pixel-writer family.
 - Field and state classification:
   [semantic-state-model.md](semantic-state-model.md#owner-summary) is the
   canonical field-classification ledger. Owner notes repeat local groups as
@@ -1281,6 +1285,8 @@ to bitmap writes. Its common entry is
 `0x1ef6a -> 0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`, with detailed evidence
 in [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summary),
 [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint),
+[Render Selector Dispatch
+Checkpoint](page-raster-imaging.md#render-selector-dispatch-checkpoint),
 [page-raster-imaging.md](page-raster-imaging.md#renderbanding-bridge),
 `Bitmap Render Dispatch Contract` in
 [semantic-state-model.md](semantic-state-model.md), and listings
@@ -1291,7 +1297,11 @@ in [Render Entry Owner Summary](page-raster-imaging.md#render-entry-owner-summar
 Field grouping for this render layer is explicit. Canonical inputs are the
 render-record roots copied by `0x1edc6`: bucket root `+0x18`, rule root
 `+0x1c`, fixed root `+0x20`, context slots `+0x24..+0x60`, and the object
-fields under those roots. Derived/cache state is render stride `0x783a1c`,
+fields under those roots. Selector bytes under those roots are canonical
+render inputs: bucket byte `+0x04`, compact context byte `+0x05`,
+encoded-raster mode byte `+0x05`, and rule selector byte `+0x05` choose
+dispatch tables `0x1f024`, `0x1f4a0`, and `0x1f8ca`. Derived/cache state is
+render stride `0x783a1c`,
 band caches `0x783a20/0x783a22/0x783a28`, compact context cache `0x783a2c`,
 destination phase `$a001`, fallback base `0x7810b4 + byte_pair_offset`, row
 tables `0x1f08e` / `0x1f1ac`, chunk helper table `0x2f2ac`, and raster
@@ -1474,8 +1484,10 @@ controlling artifact.
   for `0xff1e` publication, source selection `0x780eaa -> 0x780eae`, work-record
   alternation, active pointer `0x783a18`, band-loop no-pixel exits, and the
   capacity-approved handoff into `0x1ef6a`. Pixel row construction is documented in
-  [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint)
-  and [Render Helper Boundary
+  [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint),
+  [Render Selector Dispatch
+  Checkpoint](page-raster-imaging.md#render-selector-dispatch-checkpoint), and
+  [Render Helper Boundary
   Index](page-raster-imaging.md#render-helper-boundary-index): `0x1ef86`
   derives band caches `0x783a20`, `0x783a22`, `0x783a28`, and stride
   `0x783a1c`; destination helpers `0x1f3d4`, `0x1f414`, and `0x1f626`

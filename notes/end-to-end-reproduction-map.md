@@ -172,9 +172,9 @@ handler addresses, fields, consumers, evidence, and unresolved boundaries.
 
 Use this index when the input is a concrete supported byte stream and the
 question is "where do the pixels come from?" Each row names the parser/handler
-route, the first page-image state, the first render consumer, and the checked-in
-owner evidence. If a new stream changes one of the named fields, continue in
-that owner note before claiming equivalent output.
+route, the first page-image state, the render consumer, the row-store owner,
+and the checked-in owner evidence. If a new stream changes one of the named
+fields, continue in that owner note before claiming equivalent output.
 
 - Printable text `!!`:
   bytes are fetched through `0xa904`, reach parser wrapper `0xda9a` and loop
@@ -416,8 +416,10 @@ that owner note before claiming equivalent output.
   through `0x10084 -> 0x13070 -> 0x13250 -> 0x138de` as an encoded raster object under
   root `+0x1c` with class byte `+0x04 = 0x80`, mode byte `+0x05 = 0`, count `+0x06 = 4`,
   key `+0x08 = 0x0001`, and payload at `+0x0a`. Bridge copies root `+0x1c` to render
-  `+0x18`; first render consumer is `0x1ef6a -> 0x1efc2 -> 0x1f88e`, with mode selected
-  by `+0x05 & 3`. Evidence: [raster-graphics.md](raster-graphics.md#owner-summary),
+  `+0x18`; render consumer is `0x1ef6a -> 0x1efc2 -> 0x1f88e`, with mode selected by
+  `+0x05 & 3`. Mode `0` stores literal payload words through `0x1f8da`, after
+  destination setup by `0x1f3d4` / `0x1f414`. Evidence:
+  [raster-graphics.md](raster-graphics.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint), and
   `Worked Path: Raster Transfer Gates And Modes` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-raster-transfer-gates-and-modes).
@@ -505,9 +507,10 @@ that owner note before claiming equivalent output.
   `+0x24` with selector `+0x05`, packed key `+0x06`, width `+0x08`, height
   `+0x0a`, and continuation `+0x0c`. Bridge `0x1ed84 -> 0x1edc6` copies root
   `+0x24` to render `+0x1c`, sets `+0x05.4`, and copies height into
-  continuation `+0x0c`; first render consumer is rule walker `0x1f446`, then
-  solid helper `0x1f596` for selector `7` or pattern helper `0x1f4e0` for
-  documented non-solid selectors. Evidence:
+  continuation `+0x0c`; render consumer is rule walker `0x1f446`, then solid
+  helper `0x1f596` for selector `7` or pattern helper `0x1f4e0` for
+  documented non-solid selectors, with destination and clipping through
+  `0x1f626`. Evidence:
   [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix) and
   [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
 - Gray and patterned rules `! ESC *c12a5b50g2P` / `! ESC *c12a5b2g3P`: host bytes enter
@@ -1531,6 +1534,8 @@ controlling artifact.
   `0x1fa5c..0x207ac`, wide helper `0x2f27c`, segment helper `0x1f862`,
   encoded-raster helpers `0x1f8da`, `0x1f8e6`, `0x1f920`, and `0x1f9c6`,
   and rule/fixed helpers write ROM-derived row words or bytes directly.
+  The compact route index for those final stores is
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
   The overlap rule is dispatch order, not an implicit hidden raster operation:
   bucket-chain stores run before rule-list stores, and fixed-list stores are
   last. Formatter/DC timing after those ROM fields is covered by the

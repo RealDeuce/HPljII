@@ -640,6 +640,122 @@ frames:
   `0xf124`, restore cursor/layout state, call `0xe65c(0)`, and for non-replay
   frames write `0x782a92 = 0x63`.
 
+## Execute/Call Replay To Page Objects Checkpoint
+
+This checkpoint composes the representative execute/call replay path from
+stored macro bytes into visible page objects. It covers stored `!\r` and
+stored `ESC &k1G!\r!`, which are broad enough to cross macro definition,
+execute/call frame construction, replay byte fetch, line-termination state,
+printable text, carriage return, page-record storage, publication bridge, and
+render entry.
+
+Byte streams:
+
+- `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X` selects macro id `123`,
+  starts definition, stores bytes `21 0d`, stops definition, executes the
+  selected record, and replays the payload as parser input.
+- The call sibling replaces final selector `2` with selector `3`; it uses the
+  same stored payload and page-object route after the call frame is active.
+- `ESC &f125Y ESC &f0X ESC &k1G ! CR ! ESC &f1X ESC &f2X` stores a mixed
+  line-termination payload, executes it, and replays it through both a
+  state-only text-mode command and printable/CR handlers.
+
+Writers:
+
+- `0xe112` writes current macro id `0x783164` from `ESC &f#Y`.
+- `0xdd08 -> 0xdd86` starts definition mode, assigns the selected record under
+  `0x782d7a`, and allows alternate/data parser routing to append payload bytes.
+- `0xe002` writes stored bytes into linked chunks, updates record head `+0x00`
+  and raw byte count `+0x04`, and leaves those bytes invisible until replay.
+- `0xdd08 -> 0xddfc` stops definition mode and normalizes the retained payload
+  count.
+- `0xdd08 -> 0xde7c` and `0xdd08 -> 0xdea2` build execute and call frames
+  through `0xe418`, copying record head/count into frame `+0x00/+0x04` and
+  writing source byte `+0x08 = 4`, frame kind `+0x09 = 2` or `3`, and snapshot
+  pointer `+0x0a`.
+- For call mode, `0xe418` also pushes one macro context record under
+  `0x782c6e`; that context may later affect selected font state through
+  `0xe65c`, but it does not create the page object for the covered stored
+  `!\r` text by itself.
+
+Readers and consumers:
+
+- `0xa904` consumes active frame `0x782d76` before live host bytes, returns the
+  stored payload bytes, and calls `0xe22c` at frame end.
+- Parser loop `0x11774` treats replay bytes as normal parser input. For `!\r`,
+  it dispatches printable `0x21` through `0xd04a` and CR through `0xf02c`.
+- For `ESC &k1G!\r!`, `0x11774` reaches line-termination handler `0xedf8`,
+  then dispatches printable, CR, and printable bytes through `0xd04a`,
+  `0xf02c`, and `0xd04a`.
+- Page-record consumers are the ordinary text pipeline:
+  `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e`, followed by page publication
+  `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, and render entry `0x1ef6a`.
+
+Output effect:
+
+- Definition selectors store bytes only. No page object or pixel is produced
+  until selector `2`, selector `3`, or overlay publication replays the stored
+  payload through `0xa904`.
+- Execute replay of stored `!\r` queues the same compact text object and CR
+  state transition as direct host bytes `21 0d`. The render route is the
+  shared compact-text path; macro replay contributes no separate renderer.
+- Call replay uses the same visible text route after the call frame has become
+  the active data-chain source. Its additional context stack write is delayed
+  font/context state, not a page-object writer for this payload.
+- Mixed-control replay first changes line-termination state through `0xedf8`,
+  then queues compact text from the replayed printable bytes and applies CR
+  through the same page-record route as live input.
+
+Field classification:
+
+- Canonical state: current macro id `0x783164`, macro record pool
+  `0x782a98`, selected record pointer `0x782d7a`, record head/count/id fields
+  `+0x00/+0x04/+0x08`, active frame pointer `0x782d76`, frame fields
+  `+0x00/+0x04/+0x08/+0x09/+0x0a`, line-termination mode written by `0xedf8`,
+  page-root bucket/context fields consumed by `0x12f2e`, and published record
+  fields copied by `0x1ed84` / `0x1edc6`.
+- Derived/cache state: normalized payload count from selector `1`, replayed
+  compact object coordinates, selected glyph/context cache, bridge-local
+  render roots, and row products derived by compact text render helpers.
+- Parser scratch: mode-17 `ESC &f` command records, alternate/data append
+  routing, definition bytes `0x782c18` / `0x782c19`, command-record cursor
+  `0x78299e`, replay bytes returned by `0xa904`, and the temporary command
+  records for replayed `ESC &k1G`.
+- Firmware bookkeeping: append allocation state, host gate bit
+  `0x780e66.1`, snapshot chain pointer `+0x0a`, frame cleanup through
+  `0xe22c`, and call-context push/pop bookkeeping.
+- Hardware/external state: none for the ROM-local replay-to-page-object
+  handoff. Physical host timing is upstream of stored bytes, and physical
+  engine output is downstream of the ROM render entries named here.
+- Unknown: no ROM-local middle edge remains for the documented `!\r` and
+  `ESC &k1G!\r!` execute/call payloads. New work in this subpath must change
+  a specific stored byte sequence, replay parser handler, page-object byte,
+  publication/bridge field, context refresh input, or render helper input.
+
+Evidence:
+
+- Macro selector, definition, and frame disassembly:
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`.
+- Replay source and parser loop evidence:
+  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst` and parser-table
+  rows in `generated/analysis/ic30_ic13_parser_dispatch_tables.md`.
+- Font/context unwind evidence for the call-side delayed state:
+  `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`.
+- Page-object and render bridge evidence:
+  [page-record-storage.md](page-record-storage.md),
+  [page-raster-imaging.md](page-raster-imaging.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Byte-stream evidence:
+  `macro execute frame payload feeds 0xa904 data-chain bytes`,
+  `macro execute data-chain parser trace feeds page-record stream`,
+  `macro call data-chain parser trace feeds page-record stream`,
+  `macro execute payload queues printable glyph then applies CR`,
+  `macro execute payload page-record bridge renders queued glyph`,
+  `macro execute mixed control payload replays through page-record stream`,
+  `macro execute page-record layer composes with rule and raster band`,
+  `host-fetched macro replay payloads preserve 0x1edc6 bridge contract`, and
+  `host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a`.
+
 Macro font-context refresh at `0xe65c` is the bridge from replay bookkeeping
 back to the normal selected-font and printable-glyph model:
 

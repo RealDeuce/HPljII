@@ -128,6 +128,49 @@ Output effect:
 - Non-publishing recovery branches only rewrite cursor state and leave the
   current page root active.
 
+### VFC State To Visible Consumer Map
+
+This map makes the delayed VFC effects explicit. VFC commands either install
+state for a later consumer, move the following printable position, or split the
+page at `0xff1e`; they do not write final rows while the VFC handler runs.
+
+- Table definition `ESC &l#W/w`:
+  parser final `0x11f6e` schedules delayed handler `0x12cfe` through
+  `0x121cc`; normal restore `0x12218 -> 0x12cfe` writes table words
+  `0x782dde..0x782edd`, VFC limit `0x782dc2`, text-bottom cache
+  `0x782dd2`, and modified-layout flag `0x782ee1`. Consumers are channel
+  handler `0x1280a`, vertical overflow helper `0xf36c`, and later printable
+  placement through `0xd04a`. No page object exists until one of those
+  consumers reaches `0xd04a`, `0xf124 -> 0xff1e`, raster setup, or rectangle
+  clipping.
+- Default layout refresh:
+  `0xe5e2 -> 0x12b96` writes the same canonical VFC table and line caches
+  while also refreshing top offset, margins, cursor y, and static font
+  context. The visible consumers are the same as explicit table load:
+  `0x1280a`, `0xf36c`, following printable text, macro replay, and
+  publication paths.
+- Non-publishing channel movement:
+  `0x1280a` paths such as forward hit, before-top normalization, selector-zero
+  target-equal, and non-publishing recovery write cursor state through
+  `0xf06e` / `0xf34a` without calling `0xf124`. The following printable byte
+  consumes the committed cursor through `0xd04a -> 0x1393a -> 0x12f2e` and
+  queues a compact object under root `+0x1c`; compact row stores later run
+  through `0x1ef6a -> 0x1efc2 -> 0x1effe` and the compact helper selected by
+  that object.
+- Publishing channel movement:
+  selector-zero page eject, wrap-hit, wrap-no-hit, and publishing
+  target-after-text branches call `0xf124 -> 0xff1e` before committing the
+  next printable position. The old page root is published as a page/control
+  record, then rendered through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`; the
+  post-VFC printable queues on the fresh root and renders only when that page
+  is later published.
+- Alternate/data table payload:
+  restore `0x12218` diverts through `0x12358(0x1228a)` while
+  `0x782c18` is set. Positive payload bytes are consumed through `0xdace` and
+  appended through `0xe002`; VFC table words, bottom caches, cursor state,
+  page roots, bridge fields, and render inputs remain unchanged until replayed
+  bytes re-enter the normal parser owner route.
+
 Evidence and boundaries:
 
 - Disassembly evidence is in

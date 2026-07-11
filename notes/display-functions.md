@@ -101,6 +101,13 @@ Output effect:
 - Normal `ESC Y` can create compact text objects because its routed bytes enter
   `0xd04a`; default-filtered control ranges can instead enter fixed-space
   handler `0xd0f0`.
+- The normal routed-text page-image boundary is the shared compact path:
+  `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0x12f2e -> 0x1387c` queues a
+  compact bucket object under current root `+0x1c`. The compact object carries
+  selector/context/count fields in `+0x04/+0x05/+0x06/+0x08` and payload
+  entries beginning at `+0x0a`; bridge `0x1ed84 -> 0x1edc6` later copies root
+  `+0x1c` to render root `+0x18`, and render entry `0x1ef6a -> 0x1efc2 ->
+  0x1effe` selects the compact glyph/fixed-space helper.
 - Alternate/data `ESC Y` creates no immediate pixels. It preserves bytes in
   the append sink for later macro/data-chain replay.
 - Local Control-Z terminals are table-dependent; they are not one global
@@ -187,8 +194,11 @@ Writers, readers, and output effect:
 - Visible output comes only from normal routed values that reach `0xd04a` or
   from fixed-space effects through `0xd0f0`; alternate/data paths store bytes
   for later replay, and `ESC z` is status-only.
-- Page objects and pixels are downstream of `0xd04a -> 0x1393a -> 0x12f2e`
-  and the shared `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` path.
+- Page objects and pixels are downstream of the compact route
+  `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, publication `0xff1e`, bridge
+  `0x1ed84 -> 0x1edc6`, and render dispatch `0x1ef6a -> 0x1efc2 ->
+  0x1effe`. Alternate append paths do not touch those roots until replayed
+  bytes re-enter the normal parser route through `0xa904`.
 
 Evidence and unresolved boundary:
 

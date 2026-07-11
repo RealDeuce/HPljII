@@ -131,6 +131,71 @@ the language map names the route, this file composes the route into the
 host-byte-to-pixel model, and the owner note carries the low-level ledger with
 handler addresses, fields, consumers, evidence, and unresolved boundaries.
 
+## Minimal Trace Index
+
+Use this index when the input is a concrete supported byte stream and the
+question is "where do the pixels come from?" Each row names the parser/handler
+route, the first page-image state, the first render consumer, and the checked-in
+owner evidence. If a new stream changes one of the named fields, continue in
+that owner note before claiming equivalent output.
+
+- Printable text `!!`:
+  bytes are fetched through `0xa904`, reach parser wrapper `0xda9a` and loop
+  `0x11774`, then dispatch as unmatched mode-zero printable bytes to `0xd04a`.
+  Source setup `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c` writes compact
+  bucket state under current root `+0x1c`: selector/class byte `+0x04`, entry
+  count `+0x06`, packed coordinate/key `+0x08`, and compact payload entries
+  at `+0x0a`. Publication/bridge uses `0xff1e -> 0x1ed84 -> 0x1edc6`; first
+  render consumer is `0x1ef6a -> 0x1efc2 -> 0x1effe`, then compact helper
+  `0x1f034` for the documented short object. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#printable-source-outcome-matrix),
+  [font-context-metrics.md](font-context-metrics.md#byte-to-glyph-flow), and
+  `Minimal End-To-End Example` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#minimal-end-to-end-example).
+- Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
+  resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
+  0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue
+  through `0x10084 -> 0x13070 -> 0x13250 -> 0x138de` as an encoded raster object under
+  root `+0x1c` with class byte `+0x04 = 0x80`, mode byte `+0x05 = 0`, count `+0x06 = 4`,
+  key `+0x08 = 0x0001`, and payload at `+0x0a`. Bridge copies root `+0x1c` to render
+  `+0x18`; first render consumer is `0x1ef6a -> 0x1efc2 -> 0x1f88e`, with mode selected
+  by `+0x05 & 3`. Evidence: [raster-graphics.md](raster-graphics.md#owner-summary),
+  [raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint), and
+  `Worked Path: Raster Transfer Gates And Modes` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-raster-transfer-gates-and-modes).
+- Rectangle/rule `ESC *c12a5b0P`:
+  parser dispatch reaches width/height/fill handlers
+  `0x10e68 -> 0x10e22 -> 0x10898`. Fill clips through `0x10b80`, then
+  `0x13386 -> 0x133aa` writes a 14-byte rule-list node under page-root
+  `+0x24` with selector `+0x05`, packed key `+0x06`, width `+0x08`, height
+  `+0x0a`, and continuation `+0x0c`. Bridge `0x1ed84 -> 0x1edc6` copies root
+  `+0x24` to render `+0x1c`, sets `+0x05.4`, and copies height into
+  continuation `+0x0c`; first render consumer is rule walker `0x1f446`, then
+  solid helper `0x1f596` for selector `7` or pattern helper `0x1f4e0` for
+  documented non-solid selectors. Evidence:
+  [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix) and
+  [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
+- Mixed page image `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`:
+  the same current page root receives compact text/raster bucket objects under
+  `+0x1c` and a rectangle rule-list node under `+0x24`. FF reaches
+  publication through `0xf0f0 -> 0xf124 -> 0xff1e`; render bridge
+  `0x1ed84 -> 0x1edc6` copies bucket root `+0x1c`, rule root `+0x24`, fixed
+  root `+0x28`, and context slots `+0x2c..+0x68` into the render record.
+  Render entry `0x1ef6a` dispatches bucket-chain objects through `0x1efc2`
+  before rule-list objects through `0x1f446`; this is the documented ordering
+  for composing text, encoded raster rows, and rules into one band. Evidence:
+  `Mixed Page-Image Composition` in this file and
+  [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+- State-only line termination `ESC &k1G!\r!`: `ESC &k1G` writes line-termination byte
+  `0x78318f = 0x80` through handler `0xedf8`. The first `!` follows the ordinary compact
+  text path. CR handler `0xf02c` consumes bit `0x78318f.7`, resets x through `0xf06e`,
+  flushes any pending span through `0xf34a`, and applies LF/VMI movement through
+  `0xf0b2`. The second `!` is the visible consumer: it reaches `0xd04a -> 0x12f2e` with
+  changed cursor state and queues a compact object at the new coordinate. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint)
+  and `State-Only Command Dependency Map` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#state-only-command-dependency-map).
+
 ## Objective Coverage Index
 
 This index maps the active documentation objective to the checked-in owner

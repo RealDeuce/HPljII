@@ -625,6 +625,108 @@ The canonical output effects for the named VFC streams are:
   selector-zero start-after-text, and the alternate high-start entries without
   adding a new page-root publication edge.
 
+## VFC State-To-Pixel Checkpoint
+
+This checkpoint composes the state-only VFC command family into the normal
+page-object and render path. It is the local owner for the statement that VFC
+does not draw by itself, but can still change pixels by changing the cursor,
+table state, or page root consumed by the next printable byte.
+
+Covered streams:
+
+- `ESC &l4W 00 00 00 02 !`
+- `ESC &l2V!`
+- `!\x1b&l0V!`
+- `!\x1b&l2V!` wrap-hit, wrap-no-hit, and target-after-text variants
+
+State writers:
+
+- `0x11f6e -> 0x121cc` arms delayed `ESC &l#W` handler `0x12cfe`; restore
+  `0x12218` replays the saved six-byte command record before the following
+  printable byte can be parsed.
+- `0x12cfe` consumes accepted table payload bytes through `0xdace`, writes
+  VFC table `0x782dde..0x782edd`, updates bottom caches `0x782dc2` /
+  `0x782dd2`, and clears modified-layout flag `0x782ee1`.
+- `0x1280a` consumes selector `#`, table words, VMI `0x783160`, top offset
+  `0x782dce`, cursor y `0x782c8e`, and line-bound fields `0x782ede` /
+  `0x782edf` / `0x782ee0`.
+- Cursor-only VFC branches write x/y through `0xf06e`, `0xf34a`, and the
+  `0x12aa6..0x12b92` commit paths; page-boundary branches also call
+  `0xf124 -> 0xff1e` before the next printable byte.
+
+Downstream consumers:
+
+- Following printable byte `!` enters `0xd04a`, builds source scratch
+  `0x782d7e` through `0x1393a`, and queues compact text through `0xd824` /
+  `0x12f2e` / `0x1387c` under current page root `0x78297a`.
+- Publication and render consume the resulting root through
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Compact text then dispatches
+  through bucket root `+0x18`, `0x1efc2`, and compact renderer `0x1effe`.
+- Page-boundary VFC branches split the stream: objects queued before the VFC
+  command are published on the old root, while the following printable queues
+  on a fresh root after `0xff1e` clears `0x78297a`.
+
+Output effects:
+
+- Table-load stream `ESC &l4W 00 00 00 02 !` changes VFC table prefix
+  `00 00 00 02` and text-bottom cache before `!` queues compact coord
+  `0x9001`; no page object exists for the VFC payload itself.
+- Channel-jump stream `ESC &l2V!` searches the table for selector bit
+  `0x0002`, writes y `176`, resets x through `0xf06e`, and the following
+  printable queues compact coord `0xb001` on the same current page root.
+- Selector-zero page-eject stream `!\x1b&l0V!` publishes the old compact-text
+  root through `0xf124 -> 0xff1e`, resets to top-of-form x/y, and queues the
+  second `!` at compact coord `0x9001` on the fresh root.
+- Wrap-hit, wrap-no-hit, and target-after-text variants differ in the
+  `0x1280a` branch that calls or skips `0xf124`; their pixel effect is the
+  root split plus the post-VFC compact coordinate named in `Output Effect`.
+
+State classification:
+
+- Canonical state:
+  VFC table `0x782dde..0x782edd`, VMI `0x783160`, top offset `0x782dce`,
+  x/y cursor `0x782c8a/0x782c8e`, line-bound fields
+  `0x782ede/0x782edf/0x782ee0`, page root `0x78297a`, and compact text object
+  records produced after VFC commits cursor or publication state.
+- Derived/cache state:
+  selector mask `1 << (selector - 1)`, computed VFC start/target lines,
+  bottom caches `0x782dc2` / `0x782dd2`, compact coordinates such as
+  `0x9001`, `0xb001`, and `0x3001`, and render-record root `+0x18` copied by
+  `0x1edc6`.
+- Parser scratch:
+  delayed `ESC &l#W` command record at `0x782a20..0x782a25`, live parser
+  cursor `0x78299e`, VFC payload bytes consumed by `0xdace`, and the
+  following printable byte before it enters `0xd04a`.
+- Firmware bookkeeping:
+  delayed pending flag/handler `0x782a1a/0x782a1c`, modified-layout flag
+  `0x782ee1`, pending cursor/text latches `0x782a58/0x782a6d`, span flush
+  state `0x783184`, and publication bookkeeping in `0xf124 -> 0xff1e`.
+- Hardware/external state:
+  none for the documented VFC-to-printable route. Physical formatter/DC
+  consumption begins after compact renderers have written ROM-derived band
+  rows; it does not alter VFC table words, cursor fields, page-root identity,
+  compact object coordinates, or render dispatch.
+- Unknown:
+  manual-facing names for `0x782ede`, `0x782edf`, and `0x782ee0`; no
+  ROM-local state-to-page-object or page-object-to-render middle edge remains
+  for the streams listed above.
+
+Evidence:
+
+- VFC parser/table/jump listing:
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`.
+- Printable/page-record listings:
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+  `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+- Fixtures:
+  `mixed VFC definition stream consumes payload before printable page-record
+  queue`, `mixed VFC channel jump stream moves cursor before printable
+  page-record queue`, `mixed VFC selector-zero page-eject publishes old page
+  before fresh printable`, `mixed VFC wrap-hit publishes old page before fresh
+  printable`, `mixed VFC wrap-no-hit publishes old page and returns to top`,
+  and `mixed VFC target-after-text recovers near top before fresh printable`.
+
 ## Confidence
 
 High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase

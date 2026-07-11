@@ -965,6 +965,13 @@ Writers:
   `0x78287c` / count `0x7827b8`, skips nonnegative entries, compares active
   negative entries through `0x13c06`, and writes selected slot pointer
   `0x7828a8`.
+- Comparator route:
+  `0x13c06` masks each candidate longword to a 24-bit record address, assigns
+  the candidate resource class, and delegates same-class tuple ordering to
+  `0x13fc6`, `0x140a4`, `0x14198`, or `0x1428c`. The helper return is the
+  chooser decision: `D7 = 1` makes the challenger replace the current best,
+  `D7 = -1` keeps the current best, and `D7 = 0` leaves equal tuples
+  unchanged.
 - `0x144d2` reads selected slot `0x7828a8`, copies the selected candidate
   longword into primary context record `0x782ee6` or secondary context record
   `0x782ef6`, and writes adjacent flag bytes from selected-longword bits 30
@@ -984,6 +991,13 @@ Writers:
 
 Readers and consumers:
 
+- `0x13fc6` compares fixed-form records by tuple
+  `+0x20`, unsigned `+0x26`, signed `+0x27`, and unsigned `+0x18`.
+- `0x1428c` compares offset-table records by decoded height
+  `0x13bca(+0x28,+0x2a)`, unsigned `+0x2f`, signed `+0x30`, and unsigned
+  `+0x31`.
+- Mixed-form helpers `0x140a4` and `0x14198` compare the same fixed tuple
+  against the same decoded offset-table tuple in opposite argument orders.
 - `0x13a48` reads selected slot `0x7828a8`, active symbol word `0x783144` or
   `0x783146`, and snapshot record `0x783148` or `0x783152` to decide whether
   `0x14c64` can keep the existing map.
@@ -1027,13 +1041,15 @@ Field classification:
   high-character flags `0x783132` / `0x783133`.
 - Derived/cache state:
   selected-font snapshots `0x783148` / `0x783152`, map bytes rebuilt by
-  `0x14d9c` or `0x14e24`, and Roman-8 patch results from `0x14f16`.
+  `0x14d9c` or `0x14e24`, Roman-8 patch results from `0x14f16`, and
+  comparator tuple products from `0x13bca`.
 - Parser scratch:
   parsed font-selection request records and dirty flags that have already
   driven `0xc580` before this checkpoint runs.
 - Firmware bookkeeping:
-  active-object comparator locals, `0x14ba4` signature tuple cursor `A2`, and
-  the `D7` cache/compatibility return values.
+  active-object comparator locals, `0x13c06` class-selection state, same-class
+  helper locals, `0x14ba4` signature tuple cursor `A2`, and the `D7`
+  cache/compatibility return values.
 - Unknown:
   no ROM-local writer or reader inside `0x14398 -> 0x144d2 -> 0x14c64` is
   unknown for the documented built-in, inline/downloaded, final-`X`, and
@@ -1045,6 +1061,7 @@ Evidence:
 
 - Disassembly:
   `generated/disasm/ic30_ic13_active_object_scan_014398.lst`,
+  `generated/disasm/ic30_ic13_object_compare_helpers_013fc6.lst`,
   `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`,
   `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`,
   `generated/disasm/ic30_ic13_font_context_install_00c428.lst`, and

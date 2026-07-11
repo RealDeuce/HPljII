@@ -2802,16 +2802,22 @@ the first ROM field where each byte-stream family becomes page-image state.
   saved id `0x782a94`, and page-root retry flag `+0x14.0`, then `0xe4f4`
   builds a non-replay frame before the same parser/page-object/render owners
   run. Macro replay has no macro-specific page-object class or renderer.
-- SI/SO, font selection, pitch mode, and downloaded-font selection before
-  printable bytes:
-  `0xc68a` / `0xc6b8` select primary or secondary text context. Attribute
-  wrappers `0x12046`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, and
-  `0x1205a` write font request fields before common refresh `0xc580`.
-  Compatibility pitch-mode handler `0xc390` rewrites synthetic pitch records
-  for accepted `ESC &k#S/s` selectors and rejoins `0xc89c -> 0xc580`.
-  Font-ID and downloaded-font selection routes use `0x17708`, `0x14c64`, and
-  `0xc428` / `0xc4fc`. The first page-image state is still not a glyph
-  object: it is page-root context slots `+0x2c..+0x68`, selected slot
+- SI/SO, symbol-set/font-designation, font selection, pitch mode, and
+  downloaded-font selection before printable bytes:
+  `0xc68a` / `0xc6b8` select primary or secondary text context. Symbol-set
+  and font-designation terminals route through `0x120be -> 0x1be22`, write
+  requested words `0x782ef4` / `0x782f04`, then use common refresh `0xc580`.
+  The refresh path resolves requested, remembered, or fallback symbol words
+  through `0x156de`, writes current-font contexts `0x782ee6` / `0x782ef6`,
+  rebuilds maps `0x782f32` / `0x783032` through `0x14c64`, and applies
+  Roman-8-compatible patch rules through `0x14f16`. Attribute wrappers
+  `0x12046`, `0x1206e`, `0x12082`, `0x12096`, `0x120aa`, and `0x1205a` write
+  font request fields before the same refresh gate. Compatibility pitch-mode
+  handler `0xc390` rewrites synthetic pitch records for accepted `ESC &k#S/s`
+  selectors and rejoins `0xc89c -> 0xc580`. Font-ID and downloaded-font
+  selection routes use `0x17708`, `0x14c64`, and `0xc428` / `0xc4fc`. The
+  first page-image state is still not a glyph object: it is selected
+  context/map state plus page-root context slots `+0x2c..+0x68`, selected slot
   `0x78297e`, and live-slot flags. Later printable bytes reach `0xd04a` /
   `0x1393a`, consume the selected context/map state, and queue compact
   objects under root `+0x1c`. The compact renderer resolves glyph resources

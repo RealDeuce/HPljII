@@ -208,12 +208,17 @@ checked-in ROM model:
    Reader Boundary` before crossing into text output, alternate/data append, or status
    behavior. For layout routes, use `Page Geometry And Layout State Boundary` to connect
    page-length, VMI, LPI, top-margin, text-length, wrap, and perforation commands to
-   later placement, overflow, publication, and render effects. For raster and rectangle
-   routes, use `Raster And Rectangle Graphics Object Boundary` to connect graphics setup
-   and payload commands to page objects and render helpers. Dispatch handoff should be
-   concrete: [publication-commands.md](publication-commands.md#owner-summary) owns
-   reset, FF, page-size, page-length zero/default, orientation, paper-source, copies,
-   and the `0xff1e` publication boundary;
+   later placement, overflow, publication, and render effects. For VFC routes, use [VFC
+   State To Visible Consumer
+   Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map) to connect table
+   load, default refresh, cursor-only movement, page-splitting movement, and
+   alternate/data payload storage to later page objects or no-output outcomes. For
+   raster and rectangle routes, use `Raster And Rectangle Graphics Object Boundary` to
+   connect graphics setup and payload commands to page objects and render helpers.
+   Dispatch handoff should be concrete:
+   [publication-commands.md](publication-commands.md#owner-summary) owns reset, FF,
+   page-size, page-length zero/default, orientation, paper-source, copies, and the
+   `0xff1e` publication boundary;
    [display-functions.md](display-functions.md#owner-summary) owns `ESC Y`, local
    Control-Z variants, alternate/data append, and `ESC z` status behavior;
    [errors-and-status.md](errors-and-status.md#owner-summary) owns `ESC *r#K`, `ESC

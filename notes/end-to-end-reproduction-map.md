@@ -317,8 +317,9 @@ fields, continue in that owner note before claiming equivalent output.
   x/y to `10`/`126`, and let the next `!` queue on a fresh root at compact coordinate
   `0x9001`. Published pre-VFC rows render through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`;
   post-VFC rows render when the fresh page is later published. Evidence: `Minimal VFC
-  Walkthrough` in this file, [vertical-forms-control.md](vertical-forms-control.md), and
-  `Worked Path: VFC Table And Channel Branch Matrix` in
+  Walkthrough` in this file, [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map), and `Worked Path:
+  VFC Table And Channel Branch Matrix` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-vfc-table-and-channel-branch-matrix).
 - Reset/page boundary `! ESC E !`: the first `!` enters through `0xa904 -> 0xda9a ->
   0x11774` and queues the compact object `00 00 00 00 00 00 00 01 20 00 01` through the

@@ -2799,8 +2799,12 @@ Evidence for this route is
 [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint).
 Key disassembly listings are `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
 `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+`generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,
 `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+`generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`,
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+`generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`,
 `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`.
 
 Reproduction rule:

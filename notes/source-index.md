@@ -32,6 +32,28 @@ Evidence boundary:
   bytes, signal names, dimensions, and message text against the PDF image or
   ROM evidence before promoting them into a semantic owner note.
 
+Evidence audit result:
+
+- This source index is not a behavioral proof for parser, page-object, or
+  pixel claims. A semantic claim is documented only when a checked-in firmware
+  owner cites ROM bytes, handler addresses, focused disassembly, decoded
+  tables, RAM fields, static cross-references, or resource bytes for that
+  claim.
+- Generated reports and fixture outputs are supporting evidence. They can
+  prove that a branch driver reaches the documented ROM state or that a helper
+  transcription is internally consistent, but they do not replace an owner note
+  that explains what the ROM instructions do.
+- Manual and service sources may close naming or physical-label boundaries
+  only after the ROM owner note has already reached the relevant command,
+  field, register, status bit, connector signal, or panel message. If that
+  ROM-local route is missing, the work belongs in the firmware owner note
+  before this source index can be used for labels.
+- Exact unresolved evidence gaps remain in
+  [unresolved-boundaries.md](unresolved-boundaries.md), not in the source
+  inventory. When a missing PDF, board, resource, or physical-correlation item
+  is needed, the owning boundary entry must name the address, range, field, or
+  physical identity that the source would close.
+
 ## Local PDFs
 
 ### `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`

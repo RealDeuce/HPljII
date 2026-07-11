@@ -3218,6 +3218,28 @@ traces:
 - odd byte widths copy the trailing byte from `A3`, while even byte
   widths are word copies from `A2`.
 
+Generated reference-lead classification:
+
+- `generated/analysis/ic30_ic13_render_path_references.md` uses
+  "unclassified alias/reference lead" for some references that land inside a
+  helper body or jump-table tail instead of at a named routine entry. These
+  are not separate command-family or render-route gaps once the owning helper
+  is known.
+- Examples in `0x1f626` and the encoded-raster helpers are interior field
+  reads: `0x1f6e2` is the fallback-buffer branch of destination helper
+  `0x1f626`, `0x1f8ec` is mode-1 stride use inside `0x1f8e6`, and
+  `0x1f926`, `0x1f9cc`, `0x1f9fc`, `0x1fa0a`, and `0x1fa18` are setup or
+  row-pointer branches inside mode-2/mode-3 encoded-raster helpers.
+- Examples in the compact row-copy range are row-helper table interiors:
+  `0x1fa5e`, `0x1fe78`, `0x20292`, `0x207ae`, and later entries through
+  `0x2f294` are reached through tables `0x1f08e`, `0x1f1ac`, row-count
+  subtables, or the wide helper `0x2f27c`. Their semantic owners are the
+  compact glyph row-copy tables below, not standalone parser or page-object
+  paths.
+- A new gap should therefore start from a changed selector, span, row count,
+  band split, or invalid target/source boundary. A generated alias/reference
+  lead alone is only evidence to map back to the owning helper.
+
 ### Compact Glyph Row-Copy Semantic Checkpoint
 
 This checkpoint covers the compact glyph pixel-copy layer under the compact

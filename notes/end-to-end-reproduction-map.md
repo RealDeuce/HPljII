@@ -13,6 +13,7 @@ current coverage/evidence map for that pipeline; detailed ledgers remain in
 host bytes
   -> 0xa904 normalized byte fetch
   -> 0xda9a / 0xdaf0 / 0xdb74 parser and six-byte command records
+  -> 0x11ea4..0x1201e parser-prefix setup and synthetic slot records
   -> 0x11774 dispatch classes over tables 0x112a4 / 0x116f6
   -> command handlers and delayed payload handlers
   -> page-root/display-list objects
@@ -137,7 +138,8 @@ boundary outside these owners, the relevant owner note must be extended.
   termination; [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix)
   owns ESC parsing, no-output rows, and parser artifacts;
   [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix)
-  owns delayed restore `0x121cc -> 0x12218` and generic counted drains;
+  owns prefix setup `0x11ea4..0x1201e`, normal font-designation synthetic
+  slot records, delayed restore `0x121cc -> 0x12218`, and generic counted drains;
   [macro-data-chain.md](macro-data-chain.md#owner-summary) owns
   `0xe418`, `0xe4f4`, and `0xe22c` replay frames.
 - Command dispatch tables and mapping from parsed forms to handlers:
@@ -1559,10 +1561,17 @@ Normal printable and direct table dispatch:
 - A matching row with no handler writes the row's next mode and may take the
   terminal reset path. It is still a real parser decision, not an unknown
   command.
-- Prefix handlers such as `0x11eb6`, `0x11ec8`, `0x11eda`, and `0x11eec`
-  update parser mode and callback helper state. Terminal handlers such as
-  `0xf9e8`, `0xedb0`, `0x10898`, or `0x11f82` are the handoff from syntax to
-  semantic command-family documentation.
+- Prefix handlers update parser mode and callback helper state before any command-family
+  effect. `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, and `0x11eec` install callback
+  helpers through `0x78299a` for the tokenizer path documented in
+  [pcl-parser-firmware.md#top-level-esc-dispatch](pcl-parser-firmware.md#top-level-esc-dispatch).
+  Normal `ESC (` / `ESC )` wrappers `0x1201e` / `0x12008` then append a synthetic
+  six-byte slot record through `0x11f26` / `0x11efe` before terminal font handlers read
+  the command-record stream. Alternate/data wrappers `0x11fe4` / `0x11fd2` call only
+  `0x11ec8 -> 0xdaf0`; they skip the synthetic slot record, so ordinary stored
+  font-prefix rows do not change selected symbol words, maps, page-root context slots,
+  or render inputs. Terminal handlers such as `0xf9e8`, `0xedb0`, `0x10898`, or
+  `0x11f82` are the handoff from syntax to semantic command-family documentation.
 
 Command-record and delayed-payload behavior:
 
@@ -1606,7 +1615,8 @@ State classification:
 
 - Canonical:
   parser mode `0x782999`, command-record cursor `0x78299e`, normal versus
-  alternate/data selector `0x782c18`, active command records, and terminal
+  alternate/data selector `0x782c18`, active command records, derived
+  primary/secondary slot records from `0x11f26` / `0x11efe`, and terminal
   handler ownership chosen from the parser tables.
 - Derived/cache:
   table scan bounds, callback helper pointer `0x78299a`, and local lookahead
@@ -1633,6 +1643,7 @@ Evidence:
 
 - Checked-in explanations:
   [pcl-parser-core.md](pcl-parser-core.md),
+  [pcl-parser-firmware.md](pcl-parser-firmware.md#top-level-esc-dispatch),
   [pcl-command-map.md](pcl-command-map.md),
   `Worked Path: Command Record And Payload Dispatch` and
   `Worked Path: Explicit No-Output Parser Rows` in

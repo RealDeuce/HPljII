@@ -1234,10 +1234,11 @@ A byte-stream reproduction must preserve these behaviors:
 - `0x10898..0x133aa`: no unresolved software-visible middle edge remains for
   the covered selector-7, gray-selector, pattern-selector, landscape-remap,
   clipping, no-room retry, addressed-storage, publication, and mixed
-  text/rule/raster streams listed in `Covered Boundary`. Remaining ROM-local
-  work is limited to byte streams that change clipping output, `0x1381c`
-  rollover/allocation state, retry publication fields, rule object bytes,
-  bridge state, render dispatch, or ROM-derived row construction.
+  text/rule/raster streams listed in `Covered Boundary`. New ROM-local
+  rectangle work is useful only when a byte stream changes a clipped source
+  field, `0x1381c` allocation/rollover outcome, retry publication field, rule
+  object byte, bridge field, render dispatch, or ROM-derived row construction
+  outside the documented rectangle and rule-list outcome matrices.
 - Pattern rendering is documented through selector routing, mask derivation,
   shifted-row addressing, continuation mutation, and active/fallback band
   writes in `0x1f446..0x1f590`. The initial mixed text/rule/raster/FF byte
@@ -1253,7 +1254,8 @@ A byte-stream reproduction must preserve these behaviors:
   raster objects in the bucket chain. Checked-in notes also document
   font-selection streams, downloaded-glyph FF publication, geometry-changing
   publication streams, and a parser-driven downloaded-glyph/rule/raster page.
-  Remaining rectangle work is limited to cross-feature full-page combinations
+  Future rectangle work is limited to cross-feature full-page combinations
   that expose new ROM-derived page-object fields, bridge state, render
   dispatch, continuation mutation, or rows; it is not the software-visible
-  rectangle selector ids or landscape remap logic.
+  rectangle selector ids, no-room retry route, allocation/list route, or
+  landscape remap logic.

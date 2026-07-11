@@ -7394,9 +7394,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   No unresolved software-visible middle edge remains for the covered
   selector-7, gray, pattern, landscape-remap, clipping, no-room, addressed
   storage, publication, and mixed text/rule/raster streams.
-  Remaining work is limited to byte streams that change clipping output,
-  `0x1381c` rollover/allocation state, retry publication fields, rule object
-  bytes, bridge state, render dispatch, or ROM-derived row construction.
+  New rectangle work is useful only when a byte stream changes a clipped source
+  field, `0x1381c` allocation/rollover outcome, retry publication field, rule
+  object byte, bridge field, render dispatch, or ROM-derived row construction
+  outside the documented rectangle and rule-list outcome matrices.
 - Raster producers:
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
@@ -8726,9 +8727,11 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   No unresolved software-visible middle edge remains for the covered
   selector-7, gray-selector, pattern-selector, landscape-remap, clipping,
   no-room retry, addressed-storage, publication, and mixed text/rule/raster
-  streams. Remaining work is limited to byte streams that change clipping
-  output, `0x1381c` rollover/allocation state, retry publication fields, rule
-  object bytes, bridge state, render dispatch, or ROM-derived row construction.
+  streams. New rectangle work is useful only when a byte stream changes a
+  clipped source field, `0x1381c` allocation/rollover outcome, retry
+  publication field, rule object byte, bridge field, render dispatch, or
+  ROM-derived row construction outside the documented rectangle and rule-list
+  outcome matrices.
 - Reset, FF, page-size, page-length zero/default, orientation, paper-source,
   copies, and VFC publication paths are covered through `0xff1e` for current
   modeled page records. Page length is the publication-adjacent sibling:
@@ -9750,13 +9753,15 @@ Priority ROM-local documentation targets:
    object bytes, bridge continuation fields, selector dispatch, or row construction
    beyond the [rule-list outcome
    matrix](page-record-storage.md#rule-list-outcome-matrix). Rectangle streams should
-   start only when they change the boundaries named in [Remaining
-   Edges](rectangle-graphics.md#remaining-edges): clipping output, `0x1381c`
-   rollover/allocation state, retry publication fields, rule object bytes, bridge state,
-   render dispatch, continuation mutation, or row construction. Publication examples for
-   reset, FF, page-size, orientation, paper-source, and copies are now owned by [Page
-   Environment Outcome Matrix](publication-commands.md#page-environment-outcome-matrix);
-   new publication work should start only from streams that change pool-header fields,
+   start only when they change a clipped source field, allocation/rollover outcome,
+   retry publication field, rule object byte, bridge field, render dispatch,
+   continuation mutation, or row construction beyond the [rectangle outcome
+   matrix](rectangle-graphics.md#rectangle-outcome-matrix), [rule-list outcome
+   matrix](page-record-storage.md#rule-list-outcome-matrix), and [remaining-edge owner
+   note](rectangle-graphics.md#remaining-edges). Publication examples for reset, FF,
+   page-size, orientation, paper-source, and copies are now owned by [Page Environment
+   Outcome Matrix](publication-commands.md#page-environment-outcome-matrix); new
+   publication work should start only from streams that change pool-header fields,
    source-record selection, bridge values, or a render helper input. The allocator
    rollover path across `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now
    owned by [page-record-storage.md](page-record-storage.md#output-effect), including

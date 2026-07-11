@@ -9659,9 +9659,10 @@ State classification for this path:
   cursors, and render-work progress words.
 - Unknown:
   no unresolved ROM-local selector-7 rule object or solid dispatch edge
-  remains for this path. Remaining rectangle work is byte streams that change
-  clipping, allocation rollover, retry publication, selector mapping, bridge
-  fields, or rendered rows.
+  remains for this path. The broader rectangle checkpoint below covers
+  clipping, allocation/no-room retry, selector mapping, bridge fields, and
+  solid/pattern rendered rows; new rectangle work must change a field or
+  object beyond those owner matrices.
 
 Evidence for this path is in
 [rectangle-graphics.md](rectangle-graphics.md),
@@ -9810,9 +9811,10 @@ State classification:
   no unresolved software-visible middle edge remains for the covered
   selector-7, gray-selector, pattern-selector, landscape-remap, clipping,
   no-room retry, addressed-storage, publication, and mixed text/rule/raster
-  streams. Remaining rectangle work is limited to byte streams that change
-  clipping output, allocation rollover, retry publication fields, rule object
-  bytes, bridge state, render dispatch, or rendered rows.
+  streams. New rectangle work is useful only when a byte stream changes a
+  clipped source field, `0x1381c` allocation/rollover outcome, retry
+  publication field, rule object byte, bridge field, render dispatch, or
+  ROM-derived row construction outside the documented outcome matrices.
 
 Output effect:
 

@@ -202,6 +202,12 @@ Primary route:
 - Nonzero `W` route:
   `0x11f96 -> 0x121cc -> 0x12218 -> 0x16c14 -> 0x16fae -> 0x17026
   -> 0x1719c -> current-record/candidate install`.
+- Alternate/data `W` route:
+  `0x11f96 -> 0x121cc -> 0x12218 -> 0x12358 -> 0xdace -> 0xe002` for
+  positive delayed counts when `0x782c18` is set. This branch does not call
+  `0x15d0a` or `0x16c14`, so it performs no descriptor validation,
+  downloaded-character copy, current-record install, candidate insert, or
+  selected-map refresh until appended bytes are replayed later.
 - Downloaded-character bitmap route:
   `0x16498 -> 0x16874 -> 0x168dc/0x16942 -> glyph table entry
   -> bitmap record and payload bytes`.
@@ -238,8 +244,9 @@ Field groups:
   and bitmap parse fields `0x7827be`, `0x7827c2`, and `0x7827c4`.
 - Firmware bookkeeping: candidate insertion `0x1bc38`, release helpers
   `0x1887a`, `0x18b92`, `0x18bf2`, `0x17a24`, and `0x17d7c`, dirty context
-  refresh, default refresh `0x1b04c`, and continuation cleanup on no-install
-  or failed-resume exits.
+  refresh, default refresh `0x1b04c`, delayed alternate/data redirect
+  `0x12358`, append sink `0xe002`, and continuation cleanup on no-install or
+  failed-resume exits.
 - Unknown: exact HP manual labels for some validation-table fields and
   remaining row/span cross-products are not named. The ROM-local boundaries
   that matter for those unknowns are listed in `Remaining Edges`.
@@ -436,6 +443,14 @@ Command and parser routing:
   payloads route through `0x121cc -> 0x12218 -> 0x15d0a`, while nonzero
   payloads route through `0x121cc -> 0x12218 -> 0x16c14 -> 0x16fae
   -> 0x17026 -> 0x1719c`.
+- If alternate/data flag `0x782c18` is set when `0x12218` restores the delayed
+  `ESC )s#W` / `ESC (s#W` record, restore calls `0x12358(0x1228a)` instead
+  of the saved font handler. Saved handlers `0x15d0a` and `0x16c14` differ
+  from wrapper argument `0x1228a`, so `0x12358` consumes positive payload
+  counts through `0xdace` and appends each normalized byte through `0xe002`;
+  nonpositive counts return without consuming payload. This branch leaves
+  descriptor staging, current records, candidates, installed glyphs, selected
+  maps, and page output unchanged.
 - Downloaded-character payload bytes enter `0x16498`, choose linear or
   split-plane copy through `0x16874`, and are copied by `0x168dc` or
   `0x16942` into the installed glyph record and bitmap.
@@ -457,7 +472,9 @@ Payload-count budget:
   handler `0x16c14` both rewind `0x78299e` by six bytes, read record word
   `+2`, take its absolute value, and store the byte budget in `0x783140`.
   This makes `0x783140` parser payload bookkeeping, not installed font
-  state.
+  state. In alternate/data mode, `0x12218` does not call either handler; the
+  `0x12358` non-wrapper branch consumes positive counts through `0xdace` and
+  appends bytes through `0xe002`, so `0x783140` is not written by that branch.
 - Descriptor handler `0x15d0a` drains any budget left after local descriptor
   work at `0x15dcc -> 0x12328`. Resource handler `0x16c14` does the same at
   `0x16c68 -> 0x12328` for skip, validation-failure, no-slot, and
@@ -1082,8 +1099,12 @@ twelve bytes, and tests the preceding count record word at `+2`:
 
 Both routes call delayed-payload scheduler `0x121cc`. Parser terminal restore
 `0x12218` later reinstalls the saved six-byte command record before calling
-the selected handler, so `0x15d0a` and `0x16c14` see the original parsed
-`W` count and consume the following host payload bytes.
+the selected handler in normal parser mode, so `0x15d0a` and `0x16c14` see
+the original parsed `W` count and consume the following host payload bytes.
+In alternate/data mode, `0x12218` redirects to `0x12358(0x1228a)` instead;
+because neither selected font handler equals wrapper `0x1228a`, positive
+counts are drained through `0xdace` and appended through `0xe002` without
+descriptor/resource side effects.
 
 The parser trace fixtures show the same dispatch path for `ESC )s0W`,
 `ESC )s80W`, and `ESC )s2193W`: handlers
@@ -3951,6 +3972,10 @@ A byte-stream renderer must preserve:
 - candidate counters/cursors affected by `0x16c14` and `0x1bc38`;
 - payload byte budget `0x783140` and payload control normalization
   `1a 58 -> 0x00`;
+- alternate/data delayed-payload restoration for font `W` records:
+  `0x12358 -> 0xdace -> 0xe002` stores positive-count payload bytes as
+  macro/data-chain input and bypasses `0x15d0a`, `0x16c14`, descriptor
+  validation, current-record/candidate install, and selected-map refresh;
 - staged descriptor fields copied by `0x16fae` and `0x1719c`;
 - continuation state for partial payload reads;
 - the `0x15c4c` resume contract for saved payload, glyph/table index,

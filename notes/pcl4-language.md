@@ -880,9 +880,20 @@ State-only consumer index:
   consumers are printable prechecks `0xd28a` and `0xd6bc`.
 - `ESC &l#L`: writer `0xee64` stores perforation byte `0x783191`. First
   visible consumer is overflow helper `0xf36c` before page eject.
+- `ESC 9`: writer `0xe9ba` resets left/right margin state
+  `0x782dd6` / `0x782dda`. First visible consumers are CR reset, HT,
+  printable placement, and margin/cursor limit checks.
+- `ESC =`: writer `0xf176` advances vertical cursor `0x782c8e` by a half-line
+  step derived from VMI `0x783160`. First visible consumers are following
+  printable placement, raster origin, rectangle clipping, VFC, and overflow
+  helper `0xf36c`.
 - `SI` / `SO`: writers `0xc68a` and `0xc6b8` store selected slot
   `0x782f06`. First visible consumer is printable source capture
   `0xd04a -> 0x1393a`.
+- `ESC &a#L/#M`: writers `0xeb58` and `0xec0c` store margin fields
+  `0x782dd6` / `0x782dda` and may move horizontal cursor `0x782c8a`. First
+  visible consumers are CR, printable placement, span flush, raster origin,
+  and rectangle clipping.
 - `ESC &a#C/#H/#R/#V` and `ESC *p#X/#Y`: cursor handlers store
   `0x782c8a` / `0x782c8e`. First visible consumers are printable placement,
   raster origin, rectangle clipping, VFC, or publication.

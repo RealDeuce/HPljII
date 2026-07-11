@@ -1117,12 +1117,14 @@ Outcome owners:
   Matrix](page-record-storage.md#page-object-storage-outcome-matrix). Output effects
   are compact text, fixed-space advances, span flushes, cursor changes, or publication
   through the shared page-root path.
-- Cursor, margin, text-motion, underline, and dot-position commands:
-  handlers `0xeb58`, `0xec0c`, `0xedb0`, `0xedf8`, `0xf39e`, `0xf416`,
-  `0xf48c`, `0xf560`, `0xf60a`, `0xf692`, and `0x12622` are owned by
+- Cursor, margin, text-motion, cursor-stack, underline, and dot-position
+  commands:
+  handlers `0xe9ba`, `0xeb58`, `0xec0c`, `0xedb0`, `0xedf8`, `0xf176`,
+  `0xf39e`, `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, `0xf692`, `0xf75e`,
+  and `0x12622` are owned by
   [direct-control-codes.md](direct-control-codes.md). Their visible effects
   are delayed until later printable text, span flush, raster start, rectangle
-  start, VFC, or publication consumes cursor/span state.
+  start, VFC, overflow/page-eject, or publication consumes cursor/span state.
 - Page environment, VFC, and publication: handlers `0xfc74`, `0xcb00`, `0xc992`,
   `0xece2`, `0xea9e`, `0xef62`, `0xee64`, `0xeef0`, `0xf9e8`, `0x10220`, `0x1280a`, and
   delayed VFC reader `0x12cfe` are owned by [Page Environment Outcome

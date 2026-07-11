@@ -239,9 +239,16 @@ owner, and whether visible pixels can result.
   owners [VFC Outcome Matrix](vertical-forms-control.md#vfc-outcome-matrix) and the
   shared geometry refresh consumer in
   [publication-commands.md](publication-commands.md#shared-geometry-refresh-consumer-checkpoint).
-  These commands update VMI, top/text limits, VFC table bytes, and vertical cursor
-  consumers. They create pixels only when following printable, raster, rectangle, or
-  publication paths consume the refreshed coordinates.
+  `ESC &l#W` schedules delayed payload handler `0x12cfe` through `0x11f6e -> 0x121cc ->
+  0x12218`; normal restore consumes bytes through `0xdace`, writes VFC table
+  `0x782dde..0x782edd`, and updates bottom caches `0x782dc2/0x782dd2`, while
+  alternate/data restore diverts through `0x12358 -> 0xdace -> 0xe002` and leaves the
+  table unchanged. `ESC &l#V` handler `0x1280a` consumes selector, VMI `0x783160`, top
+  offset `0x782dce`, cursor `0x782c8a/0x782c8e`, line caches, and table masks; it either
+  rewrites cursor state for a following printable object or publishes the old page
+  through `0xf124 -> 0xff1e` before the next printable creates a fresh root. Perforation
+  skip `0xee64` writes `0x783191`; later overflow helper `0xf36c` consumes it with VFC
+  limit `0x782dc2` to decide whether to publish.
 - Macros and alternate/data replay:
   macro controls under `0xdd08`, data-chain builders `0xe418` / `0xe4f4`,
   and replay through `0xa904`; owner

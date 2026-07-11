@@ -318,6 +318,13 @@ write pixels.
   later text, span, raster, rectangle, or publication consumers read the
   mutated fields. Span flush `0x12714` can create class-`0x40` segment-list
   objects rendered by `0x1f812`.
+  SO/SI handlers `0xc68a` / `0xc6b8` are selected-context writers: their
+  first render-visible consumer is later `0xd04a -> 0x1393a`, which reads
+  selected slot, map, and context state before compact object creation.
+  Cursor-stack handler `0xf75e` is also state-only until a later consumer:
+  selector `0` stores cursor/offset state in `0x782c96..0x782d36`, selector
+  `1` restores it and clears pending flags, and the next printable, raster,
+  rectangle, or publication path observes the restored fields.
 - Vertical forms control:
   `ESC &l#W` schedules delayed table load through
   `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` reaches channel

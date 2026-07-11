@@ -518,14 +518,6 @@ write pixels.
   not page roots, page objects, publication records, render helpers, or
   pixels. A bidirectional host can only affect later pixels by sending later
   host bytes after observing those response bytes.
-- Publication and copies:
-  FF/reset/layout publication routes enter `0xf124` / `0xff1e`; copies use
-  `0xeef0` before later publication. Current root `0x78297a` is copied into
-  page/control pool record `0x780ea6`; copy count and header fields are
-  preserved; current root is cleared. The active scheduler selects source
-  `0x780eae`; `0x1ed84 -> 0x1edc6` bridges roots into render
-  `+0x18/+0x1c/+0x20` and context slots before `0x1eba4 -> 0x1ef6a` renders
-  band words.
 
 Evidence: the handler-to-owner mapping is in
 [pcl-command-map.md](pcl-command-map.md#semantic-owners). Detailed state,

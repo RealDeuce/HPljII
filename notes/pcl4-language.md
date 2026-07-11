@@ -1004,6 +1004,39 @@ render effect. Evidence is in
 [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), and
 [publication-commands.md](publication-commands.md#page-environment-outcome-matrix).
 
+Delayed state-to-output resolution:
+
+- Placement, margin, HMI, and selected-context rows resolve at the next text
+  producer when `0xd04a -> 0x1393a` reads cursor fields `0x782c8a` /
+  `0x782c8e`, HMI `0x78315c`, selected slot `0x782f06`, current-font records,
+  and page-root context slots. The text path then queues compact bucket objects
+  through `0xd3b2` or `0xd824` into `0x12f2e -> 0x1387c`, publishes through
+  `0xff1e`, bridges through `0x1ed84 -> 0x1edc6`, and renders through
+  `0x1ef6a -> 0x1efc2 -> 0x1effe`.
+- Pending span and underline rows resolve when a terminal consumer calls
+  `0xf34a`. If span flag `0x783184` is set, `0xf34a -> 0x12714 -> 0x126e2`
+  materializes a selector-`0x4000` segment-list object under page-root `+0x1c`;
+  bridge `0x1ed84 -> 0x1edc6` copies that root to render `+0x18`, and
+  `0x1ef6a -> 0x1efc2 -> 0x1f812` renders the span object.
+- Vertical-layout, perforation, and VFC rows resolve through the same cursor
+  and publication consumers. `0xf36c` reads cursor y `0x782c8e`, bottom limit
+  `0x782dc2`, and perforation byte `0x783191` before page eject
+  `0xf124 -> 0xff1e`; VFC channel consumer `0x1280a` reads VFC table words
+  with VMI `0x783160`, top offset `0x782dce`, and current y before deciding
+  cursor movement or page-boundary publication.
+- Raster and rectangle commands consume the delayed placement fields before
+  page-object storage. Raster setup and transfer use the current cursor/raster
+  block before delayed reader `0x105d0 -> 0x13070 -> 0x13250` queues class
+  `0x80` bucket objects. Rectangle setup and fill use the same layout bounds
+  before `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa` queues rule-list objects.
+  Those objects then follow the common bridge/render routes named in the page
+  object handoff matrix.
+- Macro state rows resolve by replay, not by a separate imaging path. `0xdd08`
+  / `0xe112` create macro records and frames; replay feeds bytes back through
+  `0xa904`, so the visible output is whatever owner receives the replayed
+  bytes, including printable `0xd04a`, direct controls, raster payloads,
+  rectangle handlers, or publication commands.
+
 - Host byte source and parser admission:
   byte-source multiplexer `0xa904..0xab8a` reduces live host input, LIFO
   buffers, data-chain replay frames, ring input, and direct hardware modes to

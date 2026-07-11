@@ -164,6 +164,13 @@ boundary outside these owners, the relevant owner note must be extended.
   ignored from `0x118b2..0x11900`; nonzero no-match delegates to callback
   `0x78299a`; and parser-external service/return stops at
   `0x117d2..0x11818` before command-family state is touched.
+  Counted binary payloads use the shared delayed handoff documented in
+  [Binary Payload Lifecycle](firmware-dataflow-model.md#binary-payload-lifecycle):
+  arming helper `0x121cc` snapshots handler `0x782a1c` and record
+  `0x782a20..0x782a25`; restore `0x12218` later calls transparent `0x12452`,
+  VFC `0x12cfe`, raster `0x105d0`, or downloaded-font handlers `0x15d0a` /
+  `0x16c14`, while alternate/data restore redirects through
+  `0x12358 -> 0xdace -> 0xe002` instead of producing immediate page objects.
 - Command dispatch tables and mapping from parsed forms to handlers:
   [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) owns
   dispatch classes, table rows, terminal handlers, explicit zero rows,

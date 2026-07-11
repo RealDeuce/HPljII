@@ -231,6 +231,21 @@ that owner note before claiming equivalent output.
   [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint)
   and `State-Only Command Dependency Map` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#state-only-command-dependency-map).
+- Explicit no-output parser rows `NUL BEL VT`: bytes `00 07 0b` enter through `0xa904 ->
+  0xda9a -> 0x11774` and match normal mode-zero table rows with next mode `0` and no
+  handler longword. They do not reach printable fallback `0x118d6..0x11900`, adjacent C0
+  handlers such as `0xf2a8` / `0xf1cc` / `0xf08c` / `0xf0f0` / `0xf02c`, page-root
+  allocation, publication, scheduler, or render entry. Their effect is parser state
+  only: the terminal zero-handler path `0x119a6..0x119f4` writes parser mode `0`, can
+  call delayed-payload restore `0x12218`, then resets command and numeric scratch fields
+  including `0x78299e`, `0x782a26`, `0x782a3e`, `0x782a56`, and the local matched-byte
+  buffer. If the same C0 rows are seen in alternate/data mode, the counterpart path
+  `0x11930..0x11ab8` preserves bytes through `0xe002` before reset; those bytes become
+  visible only if later macro/data-chain replay feeds them back through `0xa904`.
+  Evidence: `Minimal Ignored/No-Output Parser Walkthrough` in this file,
+  [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and `Worked
+  Path: Explicit No-Output Parser Rows` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-explicit-no-output-parser-rows).
 
 ## Objective Coverage Index
 

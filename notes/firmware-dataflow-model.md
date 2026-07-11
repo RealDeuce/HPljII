@@ -3274,6 +3274,9 @@ Renderer-facing examples:
   the `0x1f88e` renderer family.
 - Rectangles/rules converge through `0x133aa`, bridge list `+0x1c`, and
   renderer `0x1f446`.
+- Portrait segment-list spans converge through `0x12714 -> 0x13520 ->
+  0x135f0`, bridge bucket root `+0x18`, and renderer `0x1f812 ->
+  0x1f862`.
 - Landscape/fixed-width span output converges through `0x136d2`, bridge list
   `+0x20`, and renderer `0x1f756`.
 
@@ -6123,6 +6126,12 @@ State classification for this path:
   for `0x13520` / `0x135f0` / `0x136d2`, retry/finalization bit in page-root
   flag word `+0x14`, publication flag `0x782996`, scheduler cursors, and
   render-work progress words.
+- Hardware/external state:
+  none inside the documented span-to-page-object-to-render route after bytes
+  are visible to parser `0x11774`. Physical formatter/DC consumption starts
+  after `0x1f812` / `0x1f862` or `0x1f756` has written ROM-derived band
+  rows, and does not change the pending span fields, page-root objects,
+  bridge roots, or render helper inputs listed above.
 - Unknown:
   no unresolved ROM-local middle edge remains for the documented underline
   stream, CR/margin/vertical-cursor span flushes, portrait split, landscape

@@ -144,11 +144,12 @@ checked-in ROM model:
    contents are boundaries unless they change one of those ROM-visible fields.
 1. If starting from a manual command name, use the ROM Semantic Index in
    [pcl4-language.md](pcl4-language.md#owner-summary) to find the command-family route
-   and concrete stream anchor. If starting from raw bytes, use `Reader Entry Points` and
-   `Stream Trace Procedure` in
-   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). For the compact
-   route through the current spine, start with `Inbound Byte Route Matrix` and `Minimal
-   End-To-End Example` in [firmware-dataflow-model.md](firmware-dataflow-model.md).
+   and concrete stream anchor. If starting from raw bytes, use
+   [Reader Entry Points](end-to-end-reproduction-map.md#reader-entry-points) and
+   [Stream Trace Procedure](end-to-end-reproduction-map.md#stream-trace-procedure). For
+   the compact route through the current spine, start with
+   [Inbound Byte Route Matrix](firmware-dataflow-model.md#inbound-byte-route-matrix) and
+   [Minimal End-To-End Example](firmware-dataflow-model.md#minimal-end-to-end-example).
 2. Start with byte admission in [host-byte-fetch.md](host-byte-fetch.md#owner-summary):
    classify each byte source at `0xa904` as live/ring input, pushback,
    macro/data-chain replay, or a payload reader's direct fetch. Then use its
@@ -157,23 +158,23 @@ checked-in ROM model:
    a direct display/transparent byte, raster data, downloaded-glyph bitmap
    data, or replayed input. The state-model counterpart is
    [D7 Caller Return Checkpoint](semantic-state-model.md#d7-caller-return-checkpoint).
-3. Classify the parser outcome in `Admitted Byte Outcome Bridge` in
-   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#admitted-byte-outcome-bridge),
-   then [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` /
-   `0xdaf0` / `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`,
-   six-byte records at `0x78299e..`, alternate/data flag `0x782c18`, and delayed restore
-   `0x121cc -> 0x12218`. For counted binary payload commands, use `Binary Payload
-   Lifecycle` in [firmware-dataflow-model.md](firmware-dataflow-model.md) and the
-   `Stream Trace Procedure` in
-   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#stream-trace-procedure)
-   to split normal restore from alternate/data restore: normal restore calls saved
-   handlers such as `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`, while
-   alternate/data restore routes positive payload bytes through `0x12358 -> 0xdace ->
-   0xe002` as stored macro/data-chain input with no immediate page-object or render
-   effect. For definition-mode or replayed bytes, use `Alternate/Data And Macro Replay
-   Boundary` in the same file before jumping to the family owner. For explicit ignored
-   rows, wrapper artifacts, or generic counted drains, use `Parser Artifact And
-   No-Output Boundary`.
+3. Classify the parser outcome in [Admitted Byte Outcome
+   Bridge](end-to-end-reproduction-map.md#admitted-byte-outcome-bridge), then
+   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` / `0xdaf0` /
+   `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`, six-byte
+   records at `0x78299e..`, alternate/data flag `0x782c18`, and delayed restore `0x121cc
+   -> 0x12218`. For counted binary payload commands, use [Binary Payload
+   Lifecycle](firmware-dataflow-model.md#binary-payload-lifecycle) and [Stream Trace
+   Procedure](end-to-end-reproduction-map.md#stream-trace-procedure) to split normal
+   restore from alternate/data restore: normal restore calls saved handlers such as
+   `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, or `0x16c14`, while alternate/data
+   restore routes positive payload bytes through `0x12358 -> 0xdace -> 0xe002` as stored
+   macro/data-chain input with no immediate page-object or render effect. For
+   definition-mode or replayed bytes, use [Alternate/Data And Macro Replay
+   Boundary](firmware-dataflow-model.md#alternatedata-and-macro-replay-boundary) before
+   jumping to the family owner. For explicit ignored rows, wrapper artifacts, or generic
+   counted drains, use [Parser Artifact And No-Output
+   Boundary](firmware-dataflow-model.md#parser-artifact-and-no-output-boundary).
 4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
    index. After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.

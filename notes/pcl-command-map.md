@@ -1206,15 +1206,16 @@ Outcome owners:
 - Transparent, display, macro/data append, and host/status side channels: delayed
   transparent reader `0x12452`, display readers `0x12536` and `0x12120`, local Control-Z
   handlers `0x120d2`, `0x1210c`, `0x1219e`, `0x121b2`, guarded status handler `0xcd86`,
-  and macro handlers `0xdd08` / `0xe112` are owned by [Transparent Payload Decision
+  terminal report sinks `0x1284` / `0x128c`, and macro handlers `0xdd08` / `0xe112`
+  are owned by [Transparent Payload Decision
   Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint),
   [Display Functions Decision
   Checkpoint](display-functions.md#display-functions-decision-checkpoint), [Host/Status
   Side-Channel Decision
   Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint), and
   [macro-data-chain.md](macro-data-chain.md#owner-summary). Output effects are normal
-  text routing, append-only stored bytes, macro replay, or host status bytes rather than
-  direct page objects in the parser itself.
+  text routing, append-only stored bytes, macro replay, host status bytes, or terminal
+  panel/MMIO report state rather than direct page objects in the parser itself.
 - Parser-only or no-output rows:
   blank rows, `ESC ?`, `ESC Z`, setup rows, and invalid/error exits are owned
   by [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix).
@@ -2408,15 +2409,28 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   effect is host-visible bytes only. `0xb090` waits through
   `0x10c8(0x7801e2)` when the FIFO is full; `0xae2c` drains queued bytes
   according to interface selector `0x780e40`, and mode `0` can also emit
-  service/status bytes built by `0xaece`. No FIFO consumer feeds `0xda9a`,
-  page roots, page objects, `0xff1e`, `0x1ed84`, or bitmap renderers.
+  service/status bytes built by `0xaece`.
+
+  Terminal report sinks share the same no-page-output owner. Stack-entry
+  `0x1284` and register-entry `0x128c` consume a two-byte report code from
+  callers such as retained-record load, resource scan, font selection,
+  host-output retry, or bitmap error exits. `0x128c` masks the report bytes,
+  selects a status string through `0x158c`, displays it through wrapper
+  `0x8c7a`, caches the first two message bytes in `0x783ef0..0x783ef1`, and
+  enters the hardware-facing report loop at `0x12d4..0x13b0`. This is
+  panel/MMIO report state, not a page object or render request.
+
+  No FIFO consumer or terminal report path feeds `0xda9a`, page roots, page
+  objects, `0xff1e`, `0x1ed84`, or bitmap renderers.
   Evidence is [Host/Status Side-Channel Decision
   Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
   [host-byte-fetch.md](host-byte-fetch.md),
   `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
   `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
   `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
-  `generated/disasm/ic30_ic13_page_environment_status_002888.lst`, fixtures
+  `generated/disasm/ic30_ic13_page_environment_status_002888.lst`,
+  `generated/disasm/ic30_ic13_error_report_entry_001284.lst`,
+  `generated/disasm/ic30_ic13_error_report_00128c.lst`, fixtures
   `0x12034/0x122be model-ID response emits FIFO literal`,
   `0xb0c0/0xb022 output FIFO wraps and preserves order`,
   `0xb090 waits on full FIFO then enqueues after drain`, `0xaece emits service
@@ -2424,8 +2438,9 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   mode`, and `0x2888 sets page-environment status consumed by 0xaece`. No ROM
   object or rendering edge remains in these side-channel paths; unresolved
   items are physical signal names for MMIO status/data registers,
-  user-facing names for folded status categories, and the external protocol
-  name for query byte `0x11`. Owner note: [Host/Status Side-Channel Decision
+  user-facing names for folded status categories, report-loop electrical
+  behavior after `0x1492`, and the external protocol name for query byte
+  `0x11`. Owner note: [Host/Status Side-Channel Decision
   Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
 
 ## High-Value Normal-Mode Handlers

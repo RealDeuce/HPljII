@@ -2776,16 +2776,19 @@ the first ROM field where each byte-stream family becomes page-image state.
   create a special page-object class. Their first page-image state exists only
   when a routed value calls `0xd04a` or fixed-space helper `0xd0f0` and then
   rejoins the compact text path under current root `+0x1c`. Alternate/data
-  display and Control-Z siblings `0x12120`, `0x1210c`, and `0x121b2` instead
-  append normalized bytes through `0xe002` into macro/data-chain stored input.
-  That stored input is canonical macro/data-chain state, not page-image state:
-  no page root, object field, bridge field, or render input changes at append
-  time. The first possible page-image state is deferred until a later
-  execute/call selector reaches `0xdd08 -> 0xe418`, builds an active frame at
-  `0x782d76`, and byte source `0xa904` replays the stored bytes into ordinary
-  parser owners. Overlay publication is the related special case:
-  `0xff1e -> 0xe4f4` builds a non-replay data-chain frame before the same
-  `0xa904 -> 0x11774` parser/page-object owners run.
+  transparent payload restore does not call `0x12452`: `0x12218` diverts to
+  `0x12358`, which drains positive payload bytes through `0xdace` and appends
+  them through `0xe002`. Alternate/data display and Control-Z siblings
+  `0x12120`, `0x1210c`, and `0x121b2` also append normalized bytes through
+  `0xe002` into macro/data-chain stored input. That stored input is canonical
+  macro/data-chain state, not page-image state: no page root, object field,
+  bridge field, or render input changes at append time. The first possible
+  page-image state is deferred until a later execute/call selector reaches
+  `0xdd08 -> 0xe418`, builds an active frame at `0x782d76`, and byte source
+  `0xa904` replays the stored bytes into ordinary parser owners. Overlay
+  publication is the related special case: `0xff1e -> 0xe4f4` builds a
+  non-replay data-chain frame before the same `0xa904 -> 0x11774`
+  parser/page-object owners run.
 - Host/status side-channel commands:
   model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
   `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.

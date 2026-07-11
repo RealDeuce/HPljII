@@ -367,7 +367,13 @@ write pixels.
   `0xd0f0`; any compact objects are ordinary text objects under root `+0x1c`.
   The render route is the same compact route as printable text. The remaining
   pixel-affecting boundary is the secondary segment-57 resource read at
-  `0x0c0000..0x0c0321`, documented in `transparent-print-data.md`.
+  `0x0c0000..0x0c0321`, documented in `transparent-print-data.md`. In
+  alternate/data mode, the same delayed `ESC &p#X/x` syntax restores through
+  `0x12218` but diverts to `0x12358`; positive payload bytes are drained
+  through `0xdace` and appended through `0xe002` instead of calling
+  `0x12452`. No transparent text value, compact object, bridge root, or
+  render input exists until stored bytes replay through `0xa904` and reach
+  the normal transparent owner.
 - Display-functions direct reader:
   `ESC Y ... ESC Z` dispatches normal reader `0x12536` or alternate/data
   reader `0x12120`. Unlike delayed transparent data, these handlers fetch

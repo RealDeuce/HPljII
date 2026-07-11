@@ -1240,6 +1240,12 @@ Service/status producers and consumers:
 - Display-functions-off `ESC z` routes through `0xcd86 -> 0x9c2c` only under
   the documented active data-chain predicate. It is a status/service side
   effect, not a page-object producer.
+- Terminal report sinks `0x1284` and `0x128c` consume a two-byte report from
+  stack arguments or registers, select a message through `0x158c -> 0x8c7a`,
+  cache the first two message bytes in `0x783ef0..0x783ef1`, and then enter
+  the hardware-facing report loop. These paths are reached by resource,
+  font-selection, host-output retry, service, and bitmap error exits; they do
+  not create page-image state.
 
 State classification:
 
@@ -1252,11 +1258,13 @@ State classification:
 - Derived/cache status:
   `0x780e22`, `0x783e61`, `0x783e60`, `0x780e62`, aggregate status fields
   `0x780e12` and `0x780e0a`, warning/status accumulator `0x780e2a`,
-  page-environment flag `0x780e90`, and media/status cache `0x780e98`.
+  page-environment flag `0x780e90`, media/status cache `0x780e98`, and
+  terminal report cache bytes `0x783ef0..0x783ef1`.
 - Firmware bookkeeping:
   wait object `0x7801e2`, FIFO blocking helper `0xb090`, output worker
-  `0xae2c`, service selectors `0x7612`, `0x8656`, and `0x8a48`, and display
-  message helpers `0x8c7a`, `0x8c90`, `0x9112`, and `0x9182`.
+  `0xae2c`, terminal report entries `0x1284` / `0x128c`, service selectors
+  `0x7612`, `0x8656`, and `0x8a48`, and display message helpers `0x8c7a`,
+  `0x8c90`, `0x9112`, and `0x9182`.
 - Hardware/external state:
   physical output-register names and timing for `0xfffe0001`, `0xfffe0003`,
   `0xfffee005`, and `0xfffee003`; physical sensor names behind service bits.
@@ -1272,6 +1280,9 @@ Output effect and evidence:
 - The no-page-output boundary is grounded in the cited handlers because they
   write FIFO/status/message state and have no calls into the
   documented page-root, page-record, publication, or render-dispatch paths.
+- Terminal report paths end at report/message state and the hardware-facing
+  loop after `0x1284` / `0x128c`; for reproduction they are status output
+  unless a host or operator action causes different later input bytes.
 
 Evidence and unresolved boundaries:
 
@@ -1280,10 +1291,12 @@ Evidence and unresolved boundaries:
   [host-byte-fetch.md](host-byte-fetch.md), and
   [io-interfaces.md](io-interfaces.md).
 - Controlling worked paths are `Host Interface Output FIFO And Model-ID
-  Backchannel`, `Page Environment Status Bridge`, and `External Ready Service
-  Preemption`.
+  Backchannel`, `Page Environment Status Bridge`, `Terminal Error/Status
+  Report Sink`, and `External Ready Service Preemption`.
 - Key listings are `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`,
   `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`,
+  `generated/disasm/ic30_ic13_error_report_entry_001284.lst`,
+  `generated/disasm/ic30_ic13_error_report_00128c.lst`,
   `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`,
   `generated/disasm/ic30_ic13_page_environment_status_002888.lst`, and
   `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
@@ -2216,14 +2229,17 @@ Host/status side channels:
 - Dispatch anchors:
   model-ID/status `0x12034 -> 0x122be`, output FIFO `0xb090`, worker
   `0xae2c`, status helper `0xaece`, page-status helper `0x2888`, and guarded
-  `ESC z` `0xcd86`.
+  `ESC z` `0xcd86`; terminal report exits use stack-entry `0x1284` or
+  register-entry `0x128c`.
 - Immediate class:
   host-visible bytes or service state, no page object.
 - Owner and boundary:
   [errors-and-status.md](errors-and-status.md),
   [host-byte-fetch.md](host-byte-fetch.md), and
   `Host/Status Side-Channel Boundary`; effects are FIFO/status/message state
-  unless a host reacts with later bytes.
+  unless a host reacts with later bytes. Terminal reports stop at
+  `0x1284` / `0x128c -> 0x158c -> 0x8c7a` and cached bytes
+  `0x783ef0..0x783ef1`.
 
 Parser artifacts and no-output rows:
 
@@ -2843,9 +2859,13 @@ the first ROM field where each byte-stream family becomes page-image state.
 - Host/status side-channel commands:
   model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
   `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.
+  Terminal report exits from resource, font, service, host-output retry, and
+  bitmap-error paths use `0x1284` or `0x128c`, then select report strings
+  through `0x158c -> 0x8c7a`.
   Their durable state is host/status state, not page-image state: FIFO bytes
   under `0x783e92..0x783ed8`, backend selector `0x780e40`, status fields such
-  as `0x780e2a`, `0x7821cc`, and `0x7822db`, and wait object `0x7801e2`.
+  as `0x780e2a`, `0x7821cc`, and `0x7822db`, terminal report cache bytes
+  `0x783ef0..0x783ef1`, and wait object `0x7801e2`.
   These routes have no first page object and no render consumer unless their
   host-visible response causes a bidirectional host to send different later
   bytes.

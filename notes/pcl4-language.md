@@ -951,10 +951,25 @@ State-only consumer index:
 - `ESC &l#C/#D`: writers `0xcb00` and `0xc992` store VMI word `0x783160`.
   First visible consumers are LF/FF, `ESC =`, VFC jumps, row positioning,
   and page-length conversion.
+- `ESC &l#P`: writer `0xf9e8` stores page length/vertical extent
+  `0x782dba` for nonzero selectors and refreshes derived geometry. First
+  visible consumers are printable placement, vertical overflow, raster bounds,
+  rectangle clipping, and publication/page-control branches. Selector `0`
+  can publish an existing root through `0xff1e` while restoring default page
+  state.
+- `ESC &l#E/#F`: writers `0xece2` and `0xea9e` store top offset
+  `0x782dce` and text-bottom state `0x782dd2`. First visible consumers are
+  printable placement, LF/FF, `ESC =`, VFC channel jumps, overflow helper
+  `0xf36c`, raster origin/bounds, and rectangle clipping.
 - `ESC &s#C`: writer `0xedb0` stores wrap byte `0x783190`. First visible
   consumers are printable prechecks `0xd28a` and `0xd6bc`.
 - `ESC &l#L`: writer `0xee64` stores perforation byte `0x783191`. First
   visible consumer is overflow helper `0xf36c` before page eject.
+- `ESC &l#W/#V`: table writer `0x12cfe` stores VFC words
+  `0x782dde..0x782edd` plus bottom caches `0x782dc2` / `0x782dd2`; channel
+  consumer `0x1280a` reads those fields with VMI, top offset, and current y.
+  First visible effects are cursor movement before the next printable object
+  or a page-boundary publication through `0xf124 -> 0xff1e`.
 - `ESC 9`: writer `0xe9ba` resets left/right margin state
   `0x782dd6` / `0x782dda`. First visible consumers are CR reset, HT,
   printable placement, and margin/cursor limit checks.

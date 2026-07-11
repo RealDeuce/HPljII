@@ -3043,19 +3043,25 @@ State classification:
   selected font/context slots, current page root `0x78297a`, root
   `+0x1c/+0x24/+0x28`, published page/control records, macro record pool
   `0x782a98`, selected macro record pointer `0x782d7a`, payload chunks rooted
-  at record `+0x00`, payload count at record `+0x04`, and active data-chain
-  frame pointer `0x782d76`.
+  at record `+0x00`, payload count at record `+0x04`, active data-chain
+  frame pointer `0x782d76`, downloaded-font/current-record pool
+  `0x782640..0x782776`, current downloaded id `0x782f2e`, current character
+  `0x782f30`, installed payload pointers, fixed-record table entries, and
+  fixed bitmap bytes.
 - Derived/cache state:
   selected-map rebuild products, `0x12f2e` source fields, bucket/key fields
-  `0x782a7a..0x782a7e`, pending span bounds, raster row limits, bridge render
-  roots, and render context slots.
+  `0x782a7a..0x782a7e`, downloaded candidate windows, fixed-record table
+  index and side-table cursor, pending span bounds, raster row limits, bridge
+  render roots, and render context slots.
 - Parser scratch:
   six-byte command records, delayed payload snapshots, transparent/direct-reader
   loop bytes, replayed bytes after `0xa904` returns them, and payload budgets
   before the producing handler writes page-image state.
 - Firmware bookkeeping:
-  allocation cursors, retry bits, publication flag `0x782996`, installed-resource
-  candidate bookkeeping, and scheduler source/work-record selection.
+  allocation cursors, retry bits, publication flag `0x782996`,
+  installed-resource candidate bookkeeping, downloaded payload drain state
+  `0x12328`, fixed-record release/rewrite helpers such as `0x17d7c`, and
+  scheduler source/work-record selection.
 - Hardware/external state:
   none is an input to the crosswalk after host bytes, replay bytes, or payload
   bytes have become parser-visible input. Physical host-interface timing is

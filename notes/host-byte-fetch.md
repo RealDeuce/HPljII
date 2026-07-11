@@ -367,6 +367,52 @@ Frame `+0x00/+0x04` hold the payload/chunk pointer and byte count consumed by
 environment-snapshot pointer for execute/call frames and zero for the
 non-replay frame.
 
+### Data-Chain Byte Reader
+
+Helper `0x9f6a` is the byte-level consumer for active data-chain frames. The
+caller `0xa904` has already proved frame count `+0x04` is nonzero and not
+`-1`; `0x9f6a` turns the frame state into one returned `D7` byte.
+
+Instruction route:
+
+- `0x9f72..0x9f84` loads active frame pointer `0x782d76`, reads current chunk
+  pointer from frame `+0x00`, adds unsigned offset byte `+0x08`, and reads one
+  payload byte from that address into `D5`.
+- `0x9f88..0x9fa8` advances the payload cursor. If offset byte `+0x08` is
+  below `0xff`, it increments `+0x08`. If offset byte is already `0xff`, it
+  resets `+0x08` to `4`, reloads the current chunk pointer, and replaces frame
+  `+0x00` with the longword at the start of that chunk. The chunk longword is
+  therefore the next-chunk link, while payload bytes occupy offsets
+  `4..0xff`.
+- `0x9fac..0x9fb4` decrements frame byte count `+0x04`. When the decremented
+  count becomes zero, it writes `-1` to `+0x04` instead of calling cleanup
+  immediately. The next `0xa904` data-chain check sees the `-1` end marker,
+  clears it, calls `0xe22c`, and restarts source selection.
+- `0x9fb8..0x9fca` reports literal payload byte `0x1a` through `0x9ec0` but
+  preserves the returned byte. `0x9fca..0x9fd2` copies `D5` back to `D7` and
+  returns to `0xa904`.
+
+State classification:
+
+- Canonical data-chain state:
+  active frame pointer `0x782d76`, frame current chunk pointer `+0x00`,
+  remaining byte count `+0x04`, offset byte `+0x08`, frame kind `+0x09`, and
+  snapshot pointer `+0x0a`.
+- Firmware bookkeeping:
+  chunk link longword at current chunk offset `0`, end marker `+0x04 = -1`,
+  frame unwinder `0xe22c`, and report/pushback helper `0x9ec0`.
+- Parser scratch:
+  none inside `0x9f6a`. The returned byte becomes parser or payload-reader
+  input only after control returns through `0xa904`.
+- Output effect:
+  no page object or pixel. The helper preserves source equivalence by returning
+  one stored byte in the same `D7` channel used for ring, pushback, and direct
+  hardware bytes.
+- Evidence:
+  `generated/disasm/ic30_ic13_data_chain_byte_reader_009f6a.lst`,
+  [macro-data-chain.md](macro-data-chain.md#data-chain-source-equivalence-checkpoint),
+  and the fixture `macro execute frame payload feeds 0xa904 data-chain bytes`.
+
 ### Second LIFO Source
 
 Branch `0xa980..0xa99e` is the same shape as the first LIFO source but
@@ -1012,6 +1058,8 @@ Disassembly evidence:
 
 - `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
   `0xa904..0xab8a`.
+- `generated/disasm/ic30_ic13_data_chain_byte_reader_009f6a.lst`:
+  `0x9f6a..0x9fd2`.
 - `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
   `0xa1b0..0xa23c` mode-0 and alternate-mode output-register writes.
 - `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`:

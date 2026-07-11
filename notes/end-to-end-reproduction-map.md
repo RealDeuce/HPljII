@@ -317,6 +317,24 @@ that owner note before claiming equivalent output.
   [raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint), and
   `Worked Path: Raster Transfer Gates And Modes` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-raster-transfer-gates-and-modes).
+- Dense raster split `ESC *t300R ESC *r1A ESC *b300W <300 bytes>`: parser and delayed
+  transfer setup are the same as the simple raster row through
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. The transfer handler writes accepted count
+  `+0x04`, overflow count `+0x06`, row word `+0x02`, and active byte `+0x12` in raster
+  state block `0x783170`, then calls producer `0x13070` for accepted rows. `0x13070`
+  computes bucket index `0x782a7c`, packed key `0x782a7e`, requested object size, and
+  render mode before calling `0x13250`; `0x13250` links each returned object at the head
+  of page-root bucket `+0x1c` and writes class byte `+0x04 = 0x80` plus mode byte
+  `+0x05`. For the documented `0x012c` accepted-count case, the new-chunk oversized
+  branch caps the first object at capacity `+0x06 = 0x00f2`; `0x1319e..0x131d0`
+  subtracts that capacity, advances the packed key through `0x332ee(0x00f2, 1)`, and
+  loops to create the remaining `0x003a` object, which becomes the bucket head pointing
+  back to the earlier object. Publication/bridge preserve the split chain through
+  `0xff1e -> 0x1ed84 -> 0x1edc6`; render dispatch is still
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e`, so pixel provenance comes from the ordered
+  class-`0x80` object chain, object payloads, packed keys, and selected encoded-raster
+  mode helper. Evidence: `Minimal Dense Raster Split Walkthrough` in this file and
+  [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint).
 - Rectangle/rule `ESC *c12a5b0P`:
   parser dispatch reaches width/height/fill handlers
   `0x10e68 -> 0x10e22 -> 0x10898`. Fill clips through `0x10b80`, then

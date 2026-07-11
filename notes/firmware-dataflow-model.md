@@ -2643,7 +2643,18 @@ model into the full host-byte-to-render spine.
 published state, sets `0x782996`, and clears `0x78297a`. Publication separates
 parser-time object assembly from render-time consumption.
 
-The render bridge then copies a published source into an active render work
+Render scheduling chooses when that published source becomes pixels. The
+published pool head is `0x780ea6`; candidate selection `0x7ec6..0x7f90` and
+cursor advance `0x7722..0x779a` move a selectable record into scheduler cursor
+`0x780eaa`; scheduler entry `0x1eb32..0x1eb50` copies it to active source
+`0x780eae`. Work-record selector `0x1ecd6..0x1ed76` chooses paired render
+record `0x7820c4` or `0x782128`, writes active render pointer `0x783a18`,
+and calls `0x1ed84`. Active loop `0x1eba4..0x1ecd2` uses render word `+0x10`
+as the current band word; only its capacity-approved branch calls `0x1ef6a`.
+Wait, throttle, stale-work, and cleanup exits change scheduler bookkeeping but
+do not interpret page-object roots.
+
+The render bridge then copies the active source into the selected render work
 record:
 
 - `0x1ed84`: active page-record copy entry; seeds render header words from the
@@ -2665,6 +2676,7 @@ Rule and fixed-width lists are not simple pass-through roots. Bridge helper
 Compact bucket roots and context slots are mostly pass-through. The bridge
 contract is documented in
 [page-record-storage.md](page-record-storage.md),
+[active-render-scheduler.md](active-render-scheduler.md),
 [Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix),
 and
 `generated/analysis/ic30_ic13_page_record_bridge.md`.

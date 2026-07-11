@@ -242,11 +242,19 @@ Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
   `00 00 00 00 01 17 4a 00 00 0c 00 05 00 05`.
 - Publication and render consumers:
   `0xff1e` snapshots page-root buckets, lists, context slots, and header
-  fields into a page/control pool record. `0x1ed84` selects an active source
-  record, `0x1edc6` copies source `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render
-  record `+0x18/+0x1c/+0x20/+0x24..+0x60`, and `0x1ef6a` dispatches the active
-  band through bucket, rule, fixed-list, compact, segment-list, and raster
-  helpers. The checked-in outcome contract for that join is
+  fields into a page/control pool record rooted at `0x780ea6`. Scheduler
+  selection `0x7ec6..0x7f90`, cursor advance `0x7722..0x779a`, and entry
+  `0x1eb32..0x1eb50` promote a source through `0x780eaa` into active source
+  `0x780eae`; work-record selector `0x1ecd6..0x1ed76` writes active render
+  pointer `0x783a18` for one of the paired work records. `0x1ed84` and
+  `0x1edc6` then copy source `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render
+  record `+0x18/+0x1c/+0x20/+0x24..+0x60`. Active loop `0x1eba4..0x1ecd2`
+  presents render word `+0x10` as the band word and calls `0x1ef6a` only on
+  the capacity-approved render branch; `0x1ef6a` dispatches that band through
+  bucket, rule, fixed-list, compact, segment-list, and raster helpers. The
+  checked-in outcome contracts are
+  [Scheduler To Renderer
+  Ownership](active-render-scheduler.md#scheduler-to-renderer-ownership) and
   [Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
 
 Context-slot handoff: `0x10110` and `0xc428 -> 0xc4fc` copy selected context/resource

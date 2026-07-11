@@ -1414,12 +1414,59 @@ Evidence: `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`
 fixture `host-fetched FF geometry and paper-source publications preserve
 0xff1e pool header defaults`.
 
-`ESC &l#X` enters `0xeef0`. `0xeef8..0xef14` rewinds the parser record by six
-bytes, reads word `+2`, sign-extends it, and converts negative counts to their
-absolute value. `0xef16..0xef32` clamps counts above `99` to `99`, ignores
-zero, and writes nonzero in-range counts to `0x782da4`. The handler returns at
-`0xef32..0xef38` without publishing; `0xff1e` later copies `0x782da4` into the
-published page-root header word `+0x0c`.
+### Copy-Count Delayed Header Checkpoint
+
+`ESC &l#X` is a state-only command until a later publication consumes its
+result. The parser dispatch reaches `0xeef0`; the handler rewinds the
+six-byte parser record and reads parameter word `+2` from the restored record.
+
+Handler behavior:
+
+- `0xeef8..0xef06` rewinds `0x78299e` by six bytes and loads parsed word
+  `+2` into `D5`.
+- `0xef0a..0xef14` sign-extends the parsed word and converts negative values
+  to their absolute value.
+- `0xef16..0xef26` clamps values above `99` by writing literal `99` to
+  `0x782da4`.
+- `0xef28..0xef32` leaves value `0` as no-change and writes nonzero in-range
+  values to `0x782da4`.
+- `0xef32..0xef38` returns without calling `0xff1e`, so no page object,
+  publication, bridge, or row render happens at the copy-count command.
+
+Consumers and output effect:
+
+- `0xff1e` later accepts an active current root and reaches
+  `0x10044..0x1005a`; writer `0x10052` copies `0x782da4` into published
+  root header word `+0x0c`.
+- `0x1ed84` copies published header words into the render work record before
+  `0x1edc6` copies bucket/list/context roots.
+- Render entry `0x1ef6a` still derives pixels only from page objects. Copy
+  count is page/control metadata carried beside those objects; it does not
+  change compact text, raster, rule, fixed-list, or glyph row helpers.
+
+State grouping:
+
+- Canonical page-control state: `0x782da4`, written by `0xeef0` and consumed
+  by `0xff1e`.
+- Canonical published state: root header word `+0x0c`, written by `0x10052`
+  from `0x782da4`.
+- Parser scratch: rewound six-byte command record at `0x78299e - 6`; parsed
+  word `+2`; scratch register `D5`.
+- Firmware bookkeeping: parser-record cursor `0x78299e`; publication helper
+  critical section and current-root acceptance around `0xff1e`.
+- Derived/cache state: render-work header copies made after `0x1ed84`; no
+  pixel row cache derives from the copy count itself.
+- Hardware/external state: physical copy-production behavior after the ROM
+  publishes root word `+0x0c`.
+- Unknown: no ROM-local middle edge remains for `ESC &l#X` to published
+  header word `+0x0c`. Remaining uncertainty is physical engine behavior for
+  multiple copies, not parser, page-object, bridge, or pixel-helper state.
+
+Evidence: `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`
+`0xeef0..0xef38`, `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`
+`0x10044..0x1005a`, fixtures `0xeef0 ESC &l#X stores absolute clamped copy
+count`, `mixed printable/copies/FF stream publishes copy count`, and
+`host-fetched copies publication preserves 0xeef0 pool header word`.
 
 ## Writers
 

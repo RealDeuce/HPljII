@@ -10611,7 +10611,12 @@ The root-header part of this boundary is composed in
 it ties page-control writers for `0x782997`, `0x780e99`, `0x782998`,
 `0x782da6`, and `0x782da4` to the exact `0xff1e` copies into root bytes
 `+0x07`, `+0x08`, `+0x0a`, word `+0x0c`, published pool head `0x780ea6`,
-and publication flag `0x782996`.
+and publication flag `0x782996`. The copy-count delayed edge is composed in
+[Copy-Count Delayed Header
+Checkpoint](publication-commands.md#copy-count-delayed-header-checkpoint):
+`0xeef0` writes canonical `0x782da4` only for nonzero absolute values,
+clamps above `99`, and leaves pixels unchanged until a later `0xff1e` copy at
+`0x10052`.
 
 ### Field Groups
 
@@ -10709,10 +10714,13 @@ and publication flag `0x782996`.
     packed `5`, cursor y at packed `92.1`, clears the current page root, and
     sets paper-source output/control bytes `0x780e8f = 0x80` and
     `0x780e26 = 1`.
-  - copies selector `2` stores copy count `2` in `0x782da4`, then FF
-    publication copies that value to pool-header word `+0x0c`; the addressed
-    variant leaves cursor x/y at packed `28`/`21`, clears the current page
-    root, keeps `page_root_present = 1`, and leaves `0x782990 = 0`.
+  - copies selector `2` stores copy count `2` in canonical field
+    `0x782da4`, then FF publication copies that value to pool-header word
+    `+0x0c`; the addressed variant leaves cursor x/y at packed `28`/`21`,
+    clears the current page root, keeps `page_root_present = 1`, and leaves
+    `0x782990 = 0`. The direct `0xeef0` boundary treats `0` as no-change,
+    stores the absolute value of negative inputs, and clamps values above
+    `99` before any later publication reads the field.
   - page-length zero/default `ESC &l0P` flushes pending text through `0xf34a`,
     publishes through `0xff1e`, waits through `0x9ac2`, mirrors changed
     paper-source state from `0x782da6` to `0x780e8f`, signals `0x780e26`
@@ -10721,7 +10729,8 @@ and publication flag `0x782996`.
   - `0xeef0 ESC &l#X stores absolute clamped copy count` pins the direct
     copy-count write rules: parameter `0` leaves the prior count unchanged,
     negative parameter `-3` stores absolute count `3`, and parameter `150`
-    clamps to `99`.
+    clamps to `99`. This is page/control metadata, not a page-object or pixel
+    producer.
   Evidence: fixtures `addressed page geometry publications render page
   records`, `host-fetched FF geometry and paper-source publications preserve
   0xff1e pool header defaults`,

@@ -348,13 +348,14 @@ write pixels.
   normal unmatched printable bytes, transparent/display routed bytes, and
   replayed printable bytes reach `0xd04a`. Source setup uses `0x1393a`,
   `0xd140` / `0xd550`, and `0xd3b2` / `0xd824`. The canonical page object is
-  a compact bucket under root `+0x1c` from `0x12f2e -> 0x1387c`; context
-  slots under root `+0x2c..+0x68` select built-in or downloaded resources.
-  Bridge `0x1edc6` copies root `+0x1c` to render `+0x18`, and
-  `0x1efc2 -> 0x1effe` selects `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
-  `0x1f264`. Pixels come from compact object entries and copied context
-  slots; the glyph identity is the mapped source byte `+0x0b` plus the copied
-  context longword, as documented in
+  a compact bucket under root `+0x1c` from `0x12f2e -> 0x1387c`; short compact
+  objects carry class/context/count in `+0x04/+0x05/+0x06` and glyph/coordinate
+  entries from `+0x0a`. Context slots under root `+0x2c..+0x68` select built-in
+  or downloaded resources. Bridge `0x1ed84 -> 0x1edc6` copies root `+0x1c` to
+  render `+0x18`, and `0x1ef6a -> 0x1efc2 -> 0x1effe` selects `0x1f034`,
+  `0x1f0d2`, `0x1f1f0`, or `0x1f264`. Pixels come from compact object entries
+  and copied context slots; the glyph identity is the mapped source byte `+0x0b`
+  plus the copied context longword, as documented in
   [Byte-To-Glyph Flow](font-context-metrics.md#byte-to-glyph-flow).
 - Symbol/font selection:
   `ESC (` / `ESC )` rows reach `0x120be -> 0x1be22 -> 0xc580`. They write
@@ -420,10 +421,12 @@ write pixels.
   `0x12452`, while alternate/data restore reaches
   `0x12358 -> 0xdace -> 0xe002`. Counted payload bytes on the normal branch
   route to `0xd04a` or fixed-space `0xd0f0`; any compact objects are ordinary
-  text objects under root `+0x1c`.
-  The render route is the same compact route as printable text. The remaining
-  pixel-affecting boundary is the secondary segment-57 resource read at
-  `0x0c0000..0x0c0321`, documented in `transparent-print-data.md`. In
+  text objects under root `+0x1c` with the same
+  `+0x04/+0x05/+0x06/+0x0a` short-object contract as printable text.
+  Publication and bridge cross `0xff1e -> 0x1ed84 -> 0x1edc6`, and compact
+  rendering starts at `0x1ef6a`. The remaining pixel-affecting boundary is the
+  secondary segment-57 resource read at `0x0c0000..0x0c0321`, documented in
+  `transparent-print-data.md`. In
   alternate/data mode, the same delayed `ESC &p#X/x` syntax restores through
   `0x12218` but diverts to `0x12358`; positive payload bytes are drained
   through `0xdace` and appended through `0xe002` instead of calling
@@ -469,11 +472,12 @@ write pixels.
   `0x12358 -> 0xdace -> 0xe002` in alternate/data mode. The canonical raster
   block is `0x783170`. Accepted transfers on the normal branch queue
   encoded-raster bucket objects through `0x13070 -> 0x13250 -> 0x138de` under
-  root `+0x1c`, with class byte
-  `+4 = 0x80` and payload at `+0x0a`. Bridge `0x1edc6` copies root `+0x1c`
-  to render `+0x18`; `0x1efc2 -> 0x1f88e` selects `0x1f8da`, `0x1f8e6`,
-  `0x1f920`, or `0x1f9c6` from object byte `+5 & 3`. Pixels come from queued
-  payload bytes and expansion tables `0x30914` / `0x30b14`. In
+  root `+0x1c`. The encoded object fields are class byte `+0x04 = 0x80`, mode
+  byte `+0x05`, count `+0x06`, packed key `+0x08`, and payload at `+0x0a`.
+  Bridge `0x1ed84 -> 0x1edc6` copies root `+0x1c` to render `+0x18`;
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e` selects `0x1f8da`, `0x1f8e6`, `0x1f920`,
+  or `0x1f9c6` from object byte `+0x05 & 3`. Pixels come from queued payload
+  bytes and expansion tables `0x30914` / `0x30b14`. In
   alternate/data mode, `ESC *t#R` and `ESC *r#A/#B` have no raster-block or
   page-object side effect, while delayed `ESC *b#W/w` still restores through
   `0x12218` but diverts to `0x12358`; positive payload bytes are drained
@@ -483,11 +487,13 @@ write pixels.
 - Rectangle/rule graphics:
   `ESC *c` size/fill handlers write `0x78316a`, `0x783166`, and `0x78316e`;
   fill `#P` runs `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`. Clipped source
-  `0x782a88` becomes a 14-byte rule object under page-root `+0x24`; bridge
-  `0x1edc6` sets selector bit `+5.4` and continuation word `+0x0c`. It then
-  copies root `+0x24` to render `+0x1c`. `0x1f446` dispatches solid selector
-  `7` to `0x1f596` and other selectors through pattern helper `0x1f4e0`.
-  Pixels come from width, height, selector, and pattern tables.
+  `0x782a88` becomes a 14-byte rule object under page-root `+0x24` with
+  selector `+0x05`, packed key `+0x06`, width `+0x08`, height `+0x0a`, and
+  continuation `+0x0c`. Bridge `0x1ed84 -> 0x1edc6` copies root `+0x24` to
+  render `+0x1c`, sets selector bit `+0x05.4`, and initializes continuation
+  word `+0x0c`. `0x1ef6a -> 0x1f446` dispatches solid selector `7` to
+  `0x1f596` and other selectors through pattern helper `0x1f4e0`. Pixels come
+  from width, height, selector, and pattern tables.
 - Text spans and underline:
   direct-control span state is kept in `0x783184..0x78318a`; flush enters
   `0x12714`. Portrait spans queue class-`0x40` segment-list objects under

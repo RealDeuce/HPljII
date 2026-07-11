@@ -430,6 +430,24 @@ write pixels.
   `0x1219e` can route printable variants, while `0x1210c` / `0x121b2`
   append alternate/data variants through the same storage boundary; lowercase
   `ESC z` reaches status-only `0xcd86 -> 0x9c2c`.
+- Publication and page-control commands:
+  reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
+  orientation `0x10220`, paper-source `0xef62`, and copies `0xeef0` are
+  publication-adjacent, not bitmap writers. Reset, FF, page-size, orientation,
+  paper-source, and page-length-zero/default paths can publish an existing
+  current root `0x78297a` through `0xf34a -> 0xff1e`; `0xff1e` marks root
+  byte `+0x04 = 2`, writes pool head `0x780ea6`, sets publication flag
+  `0x782996`, and clears `0x78297a`. Page-size, page-length, orientation, and
+  paper-source paths also write canonical environment fields such as
+  orientation byte `0x782da3`, paper-source byte `0x782da6`, pending header
+  bytes `0x782997/0x782998`, and geometry caches for later objects. Copies
+  `0xeef0` is state-only until a later publication copies count `0x782da4`
+  into root header word `+0x0c`. A missing-root reset is an explicit
+  no-publication exit, not an empty rendered page. The shared render consumer
+  after a valid publication is scheduler promotion through
+  `0x780ea6 -> 0x780eaa -> 0x780eae`, bridge `0x1ed84 -> 0x1edc6`, and render
+  entry `0x1ef6a`; the branch contract is
+  [Publication Outcome Matrix](publication-commands.md#publication-outcome-matrix).
 - Raster graphics:
   `ESC *t#R` uses `0x10808`; `ESC *r#A/#B` use `0x1075a` / `0x107fa`;
   delayed `ESC *b#W` restores to `0x105d0` in normal mode or to

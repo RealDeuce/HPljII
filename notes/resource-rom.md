@@ -200,19 +200,27 @@ Font selection and context install:
 Printable compact object path:
 
 - ROM path:
-  `0x1393a -> 0xd04a -> 0x12f2e -> 0x1387c`.
+  `0xd04a -> 0x1393a -> 0xd3b2/0xd824 -> 0x12f2e -> 0x1387c`.
 - State category:
   canonical page/text state and derived/cache state.
 - Writers:
-  compact source objects containing the mapped glyph index, selected resource
-  context, and object prefix consumed by later publication and render stages.
+  `0xd04a` admits the printable host byte; `0x1393a` captures the selected
+  context, active map result, and mapped glyph into source object `0x782d7e`;
+  `0xd3b2` or `0xd824` positions that source, copies selected page-root slot
+  `0x78297e` into source byte `+0x16`, marks live flag
+  `0x78297f + slot`, and calls `0x12f2e`; `0x12f2e -> 0x1387c` queues the
+  compact object under current page-root `+0x1c`.
 - Readers / consumers:
-  page publication, render-record bridge, active render scheduler, and compact
-  object dispatcher `0x1ef6a -> 0x1efc2 -> 0x1effe`.
+  page publication `0xff1e`, render-record bridge `0x1ed84 -> 0x1edc6`,
+  active render entry `0x1ef6a`, compact object dispatcher
+  `0x1efc2 -> 0x1effe`, and built-in glyph resolver `0x1f354`.
 - Output effect:
-  turns selected resource state and printable host bytes into page/image
-  structures that can later emit text pixels.
+  turns selected resource state and printable host bytes into compact
+  page-object fields. The renderer later uses the copied render context slot,
+  compact glyph index, source-class flag, and resource glyph-entry fields to
+  emit built-in text pixels.
 - Evidence:
+  [font-context-metrics.md](font-context-metrics.md#printable-source-capture),
   [page-record-storage.md](page-record-storage.md),
   [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
   `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and

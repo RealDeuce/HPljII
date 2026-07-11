@@ -2897,13 +2897,27 @@ the first ROM field where each byte-stream family becomes page-image state.
   origin, rectangle clipping, or VFC channel movement consumes fields such as
   page extent `0x782dba`, top offset `0x782dce`, text limit `0x782dc2`,
   VMI `0x783160`, perforation byte `0x783191`, and VFC table
-  `0x782dde..0x782edd`. In alternate/data mode, immediate layout/table rows
-  have no normal canonical-state write, while delayed `ESC &l#W/w` can still
-  restore through `0x12218`; wrapper `0x12358` consumes positive payload bytes
-  through `0xdace` and appends them through `0xe002` instead of calling
-  `0x12cfe`. The VFC table, layout caches, page roots, and render inputs stay
-  unchanged until replayed bytes return through `0xa904` and reach the normal
-  VFC owner.
+  `0x782dde..0x782edd`. The first concrete page-image state depends on the
+  consumer: following printable placement queues a compact object under root
+  `+0x1c` through `0xd04a -> 0x12f2e -> 0x1387c`, with compact object fields
+  `+0x04/+0x05/+0x06/+0x08` and payload entries at `+0x0a`; enabled overflow
+  or VFC page-boundary paths publish a page/control record through
+  `0xf36c` or `0xf124 -> 0xff1e`, protected head `0x780ea6`, and flag
+  `0x782996`; raster origin/bounds consumers reach `0x1075a` or
+  `0x105d0 -> 0x13070 -> 0x13250` before an encoded raster object under root
+  `+0x1c` exists, with class/mode/count/key/payload fields
+  `+0x04/+0x05/+0x06/+0x08/+0x0a`; rectangle clipping reaches `0x10b80` and
+  then `0x13386 -> 0x133aa` before a rule-list node under root `+0x24`
+  exists, with selector/key/width/height/continuation fields
+  `+0x05/+0x06/+0x08/+0x0a/+0x0c`.
+  VFC cursor-only movement has no object until the following printable byte
+  queues through the compact path. In alternate/data mode, immediate
+  layout/table rows have no normal canonical-state write, while delayed
+  `ESC &l#W/w` can still restore through `0x12218`; wrapper `0x12358`
+  consumes positive payload bytes through `0xdace` and appends them through
+  `0xe002` instead of calling `0x12cfe`. The VFC table, layout caches, page
+  roots, and render inputs stay unchanged until replayed bytes return through
+  `0xa904` and reach the normal VFC owner.
 - Downloaded character and descriptor payloads used by later printable bytes:
   `0x11f96 -> 0x121cc -> 0x12218` dispatches either downloaded characters
   through `0x16498` or descriptor/resource payloads through

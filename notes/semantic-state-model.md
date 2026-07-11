@@ -13037,8 +13037,10 @@ state, scheduler band words, or rendered rows.
 
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and
   second-chunk rollover are fixture-backed for the documented object layouts.
-  Remaining work is new byte-stream variants that expose different allocator
-  or object state, not repeating the same addressed fixture as a live trace.
+  New ROM-local work starts from byte-stream variants that expose different
+  root topology, allocator state, object bytes, publication fields, bridge
+  fields, or render inputs, not from repeating the same addressed fixture as a
+  live trace.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed in `Raster
   Transfer Gate And Encoded Rows` and address-aware stream allocation is
   composed in this shared allocator checkpoint. Parser scratch through the

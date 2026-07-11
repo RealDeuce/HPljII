@@ -1527,5 +1527,8 @@ This is not a remaining software-visible page-record edge.
   accounting, compact/raster bucket object layout, rule/fixed list layout,
   local no-room returns, `0xff1e` publication fields, or `0x1ed84` /
   `0x1edc6` bridge fields.
-- Remaining work is new byte-stream variants that expose different page-record
-  state, plus physical engine/scheduler pacing after the render-record bridge.
+- New ROM-local page-record work starts only from byte-stream variants that
+  expose different root topology, object bytes, allocator state, publication
+  fields, bridge fields, or render inputs. Physical engine/MMIO pacing after
+  the documented render-record bridge is a hardware boundary, not a
+  page-record storage or publication gap.

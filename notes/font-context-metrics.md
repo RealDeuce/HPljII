@@ -293,6 +293,53 @@ The same selected resource record also supplies the metric bytes used by
 are visible because they determine the segment-list or fixed-width span that
 is eventually rendered by `0x1f812` or `0x1f756`.
 
+## Byte-To-Glyph Flow
+
+This is the ROM-local text path a reproduction has to preserve after the
+parser has delivered an ordinary printable byte to `0xd04a`.
+
+1. `0xd04a` treats the byte as a candidate character code, stores source base
+   `0x782d7e`, and normalizes special cases before source capture. Bytes above
+   `0xff` call `0xd99a`; a nonzero return exits without source capture, while
+   a zero return substitutes `0x7f`. Bytes `0x80..0xff` with both
+   high-character flags clear
+   (`0x783132 == 0` and `0x783133 == 0`) can be masked to seven bits and
+   temporarily routed through secondary selection by calling `0xc6b8`, then
+   restored to primary through `0xc68a` after placement.
+2. `0x1393a` selects the active map and context from selected slot
+   `0x782f06`: primary uses `0x782f32` plus `0x782ee6`, secondary uses
+   `0x783032` plus `0x782ef6`. The original or normalized host byte indexes
+   that 256-byte map; the resulting mapped glyph byte is stored as source
+   word `+0x0a`, whose low byte `+0x0b` becomes compact payload byte 0.
+3. The same `0x1393a` call copies the selected context/resource longword into
+   source `+0x00`, copies the context flag into source `+0x10`, and writes
+   source `+0x04` as the metric/render record. For bit-30 resource contexts,
+   `+0x04` is an offset-table glyph entry selected by the mapped glyph byte.
+   For bit-30-clear fixed records, it is `context_base + 0x40 + 8 * glyph`.
+4. `0xd04a` branches on source byte `+0x10`. Nonzero reaches
+   `0xd550 -> 0xd824 -> 0xd8fc`; zero reaches
+   `0xd140 -> 0xd3b2 -> 0xd4ac`. The paired placement helpers write
+   positioned source fields `+0x12/+0x14`, copy selected page-root font slot
+   `0x78297e` into source `+0x16`, mark live flag `0x78297f + slot`, and call
+   `0x12f2e`.
+5. `0x12f2e` derives the compact selector from source `+0x10`, source
+   `+0x16`, width/row fields behind source `+0x04`, and source coordinates.
+   It appends source byte `+0x0b` to compact payload entries at `0x1302a` or
+   `0x1304e`. From this point, the page object contains the mapped glyph byte
+   and the page-root font slot, not the original host byte or the parser
+   record.
+6. Publication `0xff1e` and bridge `0x1edc6` copy the compact bucket and
+   page-root font slots into a render record. Compact render dispatch
+   `0x1ef6a -> 0x1efc2 -> 0x1effe` loads the copied context slot into
+   `0x783a2c`; helper `0x1f354` resolves bitmap rows from
+   `(copied context longword, compact mapped glyph byte)`.
+
+Evidence:
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+`0xd04a..0xd0e8`, `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+`0x12f2e..0x1306e`, and
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md` steps 5 through 11.
+
 ## Field Groups
 
 Canonical selection state:

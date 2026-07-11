@@ -307,6 +307,15 @@ What the ROM does:
   at `0x1fa5c` to write ROM-derived rows into the active band or fallback
   buffer.
 
+The key semantic contract is documented in
+[font-context-metrics.md](font-context-metrics.md#byte-to-glyph-flow):
+`0xd04a` may normalize the host byte, `0x1393a` converts it through the active
+primary/secondary map into source byte `+0x0b`, `0x12f2e` copies that mapped
+byte into the compact page object, and `0x1f354` later resolves rows from the
+copied render context plus that mapped byte. The renderer is therefore keyed
+by `(context longword, mapped glyph byte)`, not by the original host byte or a
+parser command record.
+
 Why this example matters:
 
 - It is the reference spine for state-only command families. Commands such as

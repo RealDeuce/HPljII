@@ -206,6 +206,52 @@ Output effect:
   later replay, except for active command families owned elsewhere such as
   macro control.
 
+### Delayed State To Visible Consumer Map
+
+This map is the direct-control answer to "what does the command actually do?"
+for commands that do not draw immediately. It names the canonical field, the
+writer family, the later consumer, the page/image object produced, and the
+row-store endpoint when the state becomes visible.
+
+- Text cursor `0x782c8a` / `0x782c8e`:
+  written by CR/LF/HT/BS, half-line feed `0xf176`, margin and cursor handlers
+  `0xeb58`, `0xec0c`, `0xf39e`, `0xf416`, `0xf560`, `0xf60a`, `0xf48c`, and
+  `0xf692`. Printable consumer `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`
+  derives compact coordinates and queues root `+0x1c` objects. After
+  publication and bridge, `0x1ef6a -> 0x1efc2 -> 0x1effe` reaches compact
+  row-store helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+- Margin and motion fields:
+  left/right margins `0x782dd6` / `0x782dda`, HMI `0x78315c`, VMI
+  `0x783160`, line-termination byte `0x78318f`, wrap byte `0x783190`, and
+  perforation byte `0x783191` are written by `0xe9ba`, `0xeb58`, `0xec0c`,
+  `0xca8c`, `0xcb00`, `0xc992`, `0xedf8`, `0xedb0`, and `0xee64`. Consumers
+  are later CR/LF/FF/HT/BS handlers, printable prechecks `0xd28a` / `0xd6bc`,
+  overflow helper `0xf36c`, and publication path `0xf124 -> 0xff1e`; they
+  eventually produce either compact root `+0x1c` objects, segment-list span
+  objects, or a published page/control record.
+- Selected text context:
+  SI/SO handlers `0xc68a` / `0xc6b8` call `0xc428(slot)` and update selected
+  slot `0x782f06`, page-root selected slot `0x78297e`, and context slots.
+  Later printable bytes consume the selected map/context through `0x1393a`;
+  bridge `0x1edc6` copies root `+0x2c..+0x68` to render slots
+  `+0x24..+0x60`, and compact resolver `0x1f354` reads the selected context
+  before row-copy helpers write pixels.
+- Span and underline state:
+  `ESC &d` handler `0x12622` and span helpers write `0x783184..0x78318a`.
+  CR, margins, vertical cursor changes, terminal `&d@`, or printable
+  low-water paths can call `0xf34a -> 0x12714`. Portrait spans become
+  segment-list root `+0x1c` objects consumed by
+  `0x1ef6a -> 0x1efc2 -> 0x1f812 -> 0x1f862`; landscape spans become fixed
+  root `+0x28` objects consumed by `0x1f756 -> 0x1f7b0`.
+- Raster and rectangle placement consumers:
+  raster start `0x1075a` can seed raster origin from the active cursor, and
+  delayed transfer `0x105d0 -> 0x13070 -> 0x13250` later queues encoded raster
+  root `+0x1c` objects consumed by `0x1f88e` mode helpers. Rectangle fill
+  `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa` consumes cursor, margin, and
+  page-extent state while clipping, queues rule-list root `+0x24` nodes, and
+  renders through `0x1f446 -> 0x1f596/0x1f4e0` with destination helper
+  `0x1f626`.
+
 Evidence and boundaries:
 
 - Disassembly evidence is in

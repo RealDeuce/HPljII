@@ -10092,7 +10092,8 @@ shape, publication boundary, or render helper inputs.
    visible span output. The producer side is documented in
    [downloaded-fonts.md](downloaded-fonts.md); the selected-context and
    consumer side is documented in
-   [font-context-metrics.md](font-context-metrics.md) and
+   [route](font-context-metrics.md#selected-font-residual-routing-checkpoint),
+   [span consumers](font-context-metrics.md#span-metric-consumers), and
    `Text Span Flush And Fixed-Width Spans` in
    [semantic-state-model.md](semantic-state-model.md).
    `0x1719c` copies accepted type-0, type-1, and type-2 descriptor fields into

@@ -1022,6 +1022,20 @@ State-only consumer index:
 - `ESC &f#Y/#X`: writers `0xe112` and `0xdd08` store macro id, records, and
   frames. First visible consumers are replay byte source `0xa904` and overlay
   publication `0xff1e`.
+- `ESC *t#R`: writer `0x10808` stores raster mode/scale state in the raster
+  block `0x783170..0x783182`, including mode byte `+0x08`, scale word
+  `+0x0e`, and row limit `+0x10` when raster is inactive. First visible
+  consumer is delayed raster transfer `0x105d0 -> 0x13070 -> 0x13250`, whose
+  encoded object mode later selects renderer `0x1f88e`.
+- `ESC *r#A/#B`: start writer `0x1075a` seeds raster origin/bounds and sets
+  active byte `0x783182`; end writer `0x107fa` clears that active byte. First
+  visible consumer is a later `ESC *b#W` transfer through `0x105d0`, or a
+  later `ESC *t#R` accepted only after active state is clear.
+- `ESC *c#A/#B/#H/#V/#G`: writers `0x10e68`, `0x10e22`, `0x10a40`,
+  `0x10ae0`, and `0x10dce` store rectangle width, height, and area-fill state
+  in `0x78316a`, `0x783166`, and `0x78316e`. First visible consumer is fill
+  handler `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`, which clips the stored
+  rectangle source and queues a rule-list object under root `+0x24`.
 
 These rows are delayed-output routes, not no-ops. A stream reproduces them
 only when the named writer field reaches the listed consumer with the same
@@ -1029,7 +1043,9 @@ value and the owner note documents any later page-object, publication, or
 render effect. Evidence is in
 [direct-control-codes.md](direct-control-codes.md#direct-control-outcome-matrix),
 [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), and
-[publication-commands.md](publication-commands.md#page-environment-outcome-matrix).
+[publication-commands.md](publication-commands.md#page-environment-outcome-matrix),
+[raster-graphics.md](raster-graphics.md#owner-summary),
+and [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix).
 
 Delayed state-to-output resolution:
 

@@ -371,12 +371,14 @@ write pixels.
   or no-byte return. Normal `0x12536` routes normalized bytes through
   `0xd04a` or fixed-space handler `0xd0f0`, so visible output reuses the
   printable compact route under root `+0x1c`. Alternate/data `0x12120`
-  appends literal `ESC Y` and normalized loop bytes through `0xe002`; those
-  bytes become page-affecting only if later macro/data-chain replay feeds
-  them back through `0xa904`. Local Control-Z siblings `0x120d2` /
+  appends literal `ESC Y` and normalized loop bytes through `0xe002` into
+  macro/data-chain stored input. That stored input is canonical
+  macro/data-chain state, not page-image state; it becomes page-affecting only
+  when `0xdd08 -> 0xe418` or `0xff1e -> 0xe4f4` makes `0xa904` replay the
+  bytes through ordinary parser owners. Local Control-Z siblings `0x120d2` /
   `0x1219e` can route printable variants, while `0x1210c` / `0x121b2`
-  append alternate/data variants; lowercase `ESC z` reaches status-only
-  `0xcd86 -> 0x9c2c`.
+  append alternate/data variants through the same storage boundary; lowercase
+  `ESC z` reaches status-only `0xcd86 -> 0x9c2c`.
 - Raster graphics:
   `ESC *t#R` uses `0x10808`; `ESC *r#A/#B` use `0x1075a` / `0x107fa`;
   delayed `ESC *b#W` restores to `0x105d0`. The canonical raster block is
@@ -385,7 +387,13 @@ write pixels.
   `+4 = 0x80` and payload at `+0x0a`. Bridge `0x1edc6` copies root `+0x1c`
   to render `+0x18`; `0x1efc2 -> 0x1f88e` selects `0x1f8da`, `0x1f8e6`,
   `0x1f920`, or `0x1f9c6` from object byte `+5 & 3`. Pixels come from queued
-  payload bytes and expansion tables `0x30914` / `0x30b14`.
+  payload bytes and expansion tables `0x30914` / `0x30b14`. In
+  alternate/data mode, `ESC *t#R` and `ESC *r#A/#B` have no raster-block or
+  page-object side effect, while delayed `ESC *b#W/w` still restores through
+  `0x12218` but diverts to `0x12358`; positive payload bytes are drained
+  through `0xdace` and appended through `0xe002` instead of calling
+  `0x105d0`. No encoded raster object or render input exists until later
+  macro/data-chain replay returns those stored bytes through `0xa904`.
 - Rectangle/rule graphics:
   `ESC *c` size/fill handlers write `0x78316a`, `0x783166`, and `0x78316e`;
   fill `#P` runs `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`. Clipped source
@@ -942,9 +950,13 @@ Outcome classes:
   [vertical-forms-control.md](vertical-forms-control.md).
 - Alternate/data or macro replay byte:
   alternate/data mode uses flag `0x782c18`, table `0x116f6`, append helper
-  `0xe002`, and delayed alternate restore `0x12358`. Macro and overlay replay
-  feed `0xa904` through active data-chain frame `0x782d76`, frame fields
-  `+0x00/+0x04/+0x08/+0x09`, and frame builders `0xe418` / `0xe4f4`.
+  `0xe002`, and delayed alternate restore `0x12358`. Bytes written through
+  `0xe002` are canonical macro/data-chain stored input, not page-image state:
+  no root, object, bridge, or render field changes until replay. Macro
+  execute/call and overlay replay feed `0xa904` through active data-chain
+  frame `0x782d76`, frame fields `+0x00/+0x04/+0x08/+0x09`, and frame
+  builders `0xe418` / `0xe4f4`, after which the replayed bytes re-enter the
+  normal parser and whichever command-family owner they select.
   Owner: [macro-data-chain.md](macro-data-chain.md).
 - Host/status side channel:
   commands such as `ESC *r#K` and `ESC *s#^` parse like normal command

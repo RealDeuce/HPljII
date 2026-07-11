@@ -329,6 +329,66 @@ The low-level ledger remains in `notes/semantic-state-model.md` under
 The external-ready/service loop and retained-storage `68 SERVICE` path are
 documented in [external-ready-service.md](external-ready-service.md#owner-summary).
 
+### Error Report Helper
+
+Helper `0x1284` is the stack-argument entry and `0x128c` is the register-entry
+body for two-byte error/status reports. This is the sink reached by startup,
+resource, font, and service paths when they report a terminal code such as
+`67 SERVICE`, a resource checksum error, or a font-selection error. It is a
+panel/MMIO status path, not a page-object or renderer path.
+
+Route and behavior:
+
+- `0x1284` copies byte arguments from stack offsets `+7` and `+0x0b` into
+  `D0` and `D1`, then falls into `0x128c`.
+- `0x128c..0x1298` masks both bytes into words `D2` and `D3` and starts from
+  string-table base `0xb44b`.
+- `0x12a2..0x12b0` snapshots the current stack pointer in `0x783eea`, clears
+  byte `0x7821a5`, and calls selector helper `0x158c`.
+- `0x12b4..0x12c2` displays the selected message through wrapper `0x8c7a`.
+- `0x12c6..0x12ce` copies the first two selected message bytes into
+  `0x783ef0..0x783ef1`; the later loop reuses that two-byte buffer as the
+  visible status source.
+- `0x12d4..0x1354` loops on `$8000.w & 0x44`, output helper `0x1492`, and
+  delay helper `0x14c6`. After more than four idle samples it calls
+  `0x1356`.
+- `0x1356..0x13b0` writes `0xffff` to `$ffff3800`, splits the two report bytes
+  into nibbles, and indexes hex string `0x163a` to emit the code digits.
+
+Field grouping:
+
+- Canonical report inputs:
+  byte pair `(D0,D1)` at entry `0x128c`, or the stack bytes consumed by
+  `0x1284`.
+- Derived/cache state:
+  masked words `D2/D3`, selected message pointer `A1`, two-byte message copy
+  `0x783ef0..0x783ef1`, and hex nibbles derived at `0x135e..0x136a`.
+- Firmware bookkeeping:
+  saved stack pointer `0x783eea`, gate byte `0x7821a5`, loop counter `D4`, and
+  sentinel byte `D6`.
+- Hardware/external:
+  `$8000.w`, `$ffff3800`, and the physical destination driven by helper
+  `0x1492`.
+- Unknown:
+  exact physical protocol for the repeated `0x1492` writes and the manual name
+  for `0x7821a5`. The ROM-local input bytes, display wrapper, cached message
+  bytes, and no-page-output boundary are documented.
+
+Output effect:
+
+- The helper does not allocate page roots, page records, render work, or row
+  buffers.
+- The helper can change visible panel/service state and can enter a repeated
+  hardware-output loop. A closed byte-stream renderer should record the
+  reported byte pair and selected string boundary, then stop at the hardware
+  output loop unless the surrounding model explicitly includes panel/MMIO
+  behavior.
+- Known upstream examples include startup retained-record failure
+  `0x56c2 -> 0x1284(0xe2, 0x21)` selecting string `0xb44b`
+  (`67 SERVICE`), resource checksum failure `0x128c(0xe0, 0x10)`, and
+  font-selection reports such as `0x1284(0xe3, 0x34)` and
+  `0x128c(0xe7, 0x91)`.
+
 ### Field Groups
 
 Canonical host-output state:
@@ -813,6 +873,8 @@ Fixture evidence:
 
 Disassembly evidence:
 
+- `generated/disasm/ic30_ic13_error_report_entry_001284.lst`
+- `generated/disasm/ic30_ic13_error_report_00128c.lst`
 - `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`
 - `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`
 - `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`

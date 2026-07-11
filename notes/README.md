@@ -269,7 +269,10 @@ checked-in ROM model:
    `Render Helper Boundary Index` in
    [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) names the
    common helper order, buffer destinations, and exact ROM-local render
-   boundaries. The `Pixel composition contract` in
+   boundaries. The
+   [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map)
+   names the compact, segment-list, encoded-raster, rule, and fixed-list store
+   primitives that derive ROM-local rows. The `Pixel composition contract` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarizes render
    call order, active-band and fallback buffers, object-class handoff, and
    direct-store composition.

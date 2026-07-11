@@ -640,7 +640,7 @@ Output effect:
 - Segment-list and fixed-list pixels come from their bridged object fields and
   continuation counters.
 
-Row-store primitive map:
+### Row-Store Primitive Map
 
 - Compact text / downloaded glyph mode `0x00`:
   `0x1effe -> 0x1f034` uses destination helpers `0x1f3d4` /

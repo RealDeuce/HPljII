@@ -7034,23 +7034,30 @@ Address-level cluster map:
   `0x78219b/0x78219c` plus local `A6-0x02` to `0x1b50e`, and only resolver
   `D7 == 0` reaches `0x6364`.
 - Host/status side channels: ROM evidence is `0x12034`, `0x122be..0x12326`,
-  `0xb022..0xb0c0`, `0xae2c..0xaece`, and `0x2888..0x2c3a`. Checked-in documentation is
+  `0xb022..0xb0c0`, `0xae2c..0xaece`, `0x2888..0x2c3a`, and terminal report
+  entries `0x1284` / `0x128c`. Checked-in documentation is
   [Host/Status Side-Channel Decision
   Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint),
   [io-interfaces.md](io-interfaces.md), [host-byte-fetch.md](host-byte-fetch.md), and
   the semantic checkpoints `Host Interface Output FIFO` and `Page Environment Status And
-  Pool Cursor Gate` in [semantic-state-model.md](semantic-state-model.md), surfaced
-  first as `Worked Path: Host Interface Output FIFO And Model-ID Backchannel` and
-  `Worked Path: Page Environment Status Bridge` in
+  Pool Cursor Gate` in [semantic-state-model.md](semantic-state-model.md), plus terminal
+  report state `0x783ef0..0x783ef1` classified in the same semantic model. These routes
+  surface first as `Worked Path: Host Interface Output FIFO And Model-ID Backchannel`,
+  `Worked Path: Page Environment Status Bridge`, and `Host/Status Side-Channel Boundary`
+  in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). This cluster has no direct
   page-object or pixel effect: `ESC *r1K 0x11` and the `ESC *s#^` sibling enqueue
   literal `33440A\r\n` through host-output FIFO helpers, and status producers such as
-  `0x2888` feed outbound status bytes through `0xaece`. Fixture `0x12034/0x122be
+  `0x2888` feed outbound status bytes through `0xaece`; terminal report callers use
+  `0x1284` or `0x128c`, select text through `0x158c -> 0x8c7a`, and cache the first two
+  report bytes in `0x783ef0..0x783ef1`. Fixture `0x12034/0x122be
   model-ID response emits FIFO literal` now pins both command entries, the `0x11efe`
   synthetic record, accepted query byte `0x11`, reject paths, and FIFO literal bytes. It
   still belongs in byte-stream reproduction because a full FIFO can stall producer
-  `0xb090`, and a bidirectional host can react to the backchannel bytes by sending
-  different future input.
+  `0xb090`, terminal reports can enter hardware/operator-facing loops, and a
+  bidirectional host can react to the backchannel bytes by sending different future
+  input. None of these side-channel paths queue page objects, publish page records,
+  bridge render roots, or call `0x1ef6a`.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   The checked-in contracts are

@@ -556,6 +556,23 @@ that owner note before claiming equivalent output.
   the ordinary compact path `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a ->
   0x1effe`. Evidence:
   [direct-control-codes.md](direct-control-codes.md#half-line-feed-route-checkpoint).
+- Cursor stack restore `ESC &f0S ESC &a2C ESC &f1S !`: command bytes enter
+  through `0xa904 -> 0xda9a -> 0x11774`. Parser mode `17` for `ESC &f`
+  dispatches `S/s` to cursor-stack handler `0xf75e`; selector `0` rewinds the
+  six-byte parser record, reads word `+2`, and pushes horizontal cursor
+  `0x782c8a` plus vertical cursor `0x782c8e + (0x782dbe << 16)` as an
+  eight-byte entry under stack storage `0x782c96..0x782d36`. The intervening
+  `ESC &a2C` reaches `0xf39e` and commits a new x through `0xf4ca`. The later
+  `ESC &f1S` returns to `0xf75e`, pops the saved entry, subtracts
+  `0x782dbe << 16` from stored y, clamps x/y to current extents, clears
+  right-limit and pending-cursor latches, and restores cursor
+  `0x782c8a/0x782c8e`. Cursor-stack commands queue no page object by
+  themselves; the following `!` is the visible consumer and queues through
+  `0xd04a -> 0x1393a -> 0x12f2e` at compact coordinate `0x0001`, so the
+  intervening cursor move is not visible in that text object. Raster start
+  `0x1075a` and rectangle clip helper `0x10b80` are sibling consumers of the
+  same restored cursor fields. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#cursor-stack-state-checkpoint).
 - Cursor and margin placement `ESC &a2c+1R!` / `ESC &a6l9M!`: command bytes enter
   through `0xa904 -> 0xda9a -> 0x11774` in `ESC &a` parser mode `12`. In the cursor
   stream, lowercase final `c` keeps the family active: `ESC &a2c` dispatches to

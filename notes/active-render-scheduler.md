@@ -797,14 +797,16 @@ register-to-signal names are still board-level evidence.
 - `0xff1e..0x1ed84`: no unresolved software-visible middle edge remains for
   publication-to-active-render selection, render-work alternation, bridge
   fields, or scheduler-produced band words in the covered fixtures.
-- `0x247c..0x2746`: helper semantics are decoded, but entry provenance is not.
-  Current evidence stops at the absence of a `0x0000247c` target in
-  `generated/analysis/ic30_ic13_long_reference_scan.md`, local returns at
-  `0x2330` and `0x247a` before the separate helper body in
-  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, and the expanded
-  helper body in
-  `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. The broader
-  decoded-search result does not add a caller: hits outside the helper body
-  are unrelated opcodes or data values, not control-flow entries. Closing this
-  edge requires a static caller, computed target, trap/vector entry, or
-  scheduler-entry proof into `0x247c`, `0x26de`, or `0x270c`.
+- `0x247c..0x2746`: helper semantics are decoded, but entry provenance is not. This is
+  the ROM-local unresolved-caller boundary named in
+  [unresolved-boundaries.md](unresolved-boundaries.md#optional-active-pool-pattern-helper-caller),
+  not a page-object, bridge, or ordinary render-route gap. Current evidence stops at the
+  absence of a `0x0000247c` target in
+  `generated/analysis/ic30_ic13_long_reference_scan.md`, local returns at `0x2330` and
+  `0x247a` before the separate helper body in
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, and the expanded helper body
+  in `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. The broader
+  decoded-search result does not add a caller: hits outside the helper body are
+  unrelated opcodes or data values, not control-flow entries. Closing this edge requires
+  a static caller, computed target, trap/vector entry, or scheduler-entry proof into
+  `0x247c`, `0x26de`, or `0x270c`.

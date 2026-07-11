@@ -217,6 +217,22 @@ that owner note before claiming equivalent output.
   Walkthrough` in this file, [vertical-forms-control.md](vertical-forms-control.md), and
   `Worked Path: VFC Table And Channel Branch Matrix` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-vfc-table-and-channel-branch-matrix).
+- Reset/page boundary `! ESC E !`: the first `!` enters through `0xa904 -> 0xda9a ->
+  0x11774` and queues the compact object `00 00 00 00 00 00 00 01 20 00 01` through the
+  ordinary printable path under current root `0x78297a`. `ESC E` dispatches to reset
+  handler `0xcc52`; helper `0xcc70` flushes pending span state through `0xf34a`, then
+  publishes a valid current root through `0xff1e` before environment rebuild. The reset
+  path continues through `0xcda2` to consume default fields `0x78219d`, `0x78219e`, and
+  `0x7821a2`, through `0xcbd4` to refresh HMI and active symbol snapshots, and through
+  `0xe146` to clear parser/data-chain state. Publication preserves the pre-reset page in
+  pool state `0x780ea6`, sets publication flag `0x782996`, and clears current root
+  `0x78297a`; bridge/render uses `0x1ed84 -> 0x1edc6 -> 0x1ef6a`. The post-reset `!` is
+  parsed only after HMI/VMI, page environment, parser state, raster state, and
+  font/context snapshots are rebuilt, so its page-object fields come from the
+  reset-derived defaults. Missing-root `ESC E` takes the no-publication reset branch and
+  creates no page record. Evidence:
+  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix)
+  and `Minimal Reset Default Environment Walkthrough` in this file.
 - Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
   resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
   0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue

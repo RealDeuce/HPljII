@@ -496,6 +496,25 @@ write pixels.
   descriptor/resource/glyph payload bytes append through `0xe002`, so no
   downloaded-font record, installed glyph, page-root context slot, or compact
   render input exists until replay returns those bytes through `0xa904`.
+- Built-in resource ROM and glyph rows: this is not a separate parser command family.
+  Startup/font-resource scan `0x1a2e4 -> 0x1a616 -> 0x1a9be` maps verified IC32/IC15
+  resource bytes into candidate state before later PCL font-selection commands consume
+  them. Canonical resource bytes occupy firmware addresses `0x080000..0x0bffff`; scan
+  seed state writes bounds `0x78288c = 0x080000`, `0x782890 = 0x0ffffe`, stride
+  `0x782888 = 0x40000`, candidate count `0x78278e`, candidate pointer list `0x782324`,
+  class windows `0x782790..0x78279e`, and class list roots `0x7827a0..0x7827b4`.
+  Font-selection consumers `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, `0x14398`,
+  `0x144d2`, `0x14c64`, and `0xc428` install selected context and map state. Printable
+  `0x1393a` copies that selected context and mapped glyph byte into compact objects;
+  publication/bridge preserve the context slots; render path `0x1ef6a -> 0x1efc2 ->
+  0x1effe -> 0x1f354` resolves glyph rows from active render context cache `0x783a2c`.
+  The pixel provenance is selected IC32/IC15 record bytes plus host printable bytes, not
+  the resource scanner alone. The unresolved external/resource boundary is the optional
+  continuation or cartridge region after the verified built-in image:
+  `0x0c0000..0x0c0321` and external windows `0x200000..0x5ffffe`. This boundary can
+  affect future selectable resources, but it is not a parser, page-object, or
+  render-scheduler edge for the verified built-in streams documented in [Minimal
+  Built-In Glyph Resource Walkthrough](#minimal-built-in-glyph-resource-walkthrough).
 - Macro definition, execute/call, and overlay replay:
   alternate/data mode stores macro bytes through append sink `0xe002`. Macro
   controls `0xe112` / `0xdd08` create, clear, execute, call, or overlay
@@ -531,6 +550,9 @@ writer, reader, and unresolved-boundary ledgers are in
 [raster-graphics.md](raster-graphics.md#owner-summary),
 [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
 [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
+[resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
+[built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+[font-context-metrics.md](font-context-metrics.md#byte-to-glyph-flow),
 [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix),
 [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix),
 [io-interfaces.md](io-interfaces.md),

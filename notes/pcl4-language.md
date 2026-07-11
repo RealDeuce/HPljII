@@ -927,15 +927,21 @@ Field groups for this index:
   `0x782dd2`, `0x782dd6`, `0x782dda`, copy count `0x782da4`, paper source
   byte `0x782da6`, wrap/perforation flags `0x783190` / `0x783191`, page root
   `0x78297a`, font contexts and maps rooted around `0x782ee6`,
-  `0x782f32`, and `0x783032`, raster state `0x783170..0x783182`,
-  rectangle state `0x783166..0x78316e`, and macro state
+  `0x782f32`, and `0x783032`, downloaded-font/current-record state
+  `0x782640..0x782776`, current downloaded-font id `0x782f2e`,
+  current character word `0x782f30`, selected bit-30-clear payload pointer
+  `0x78285e`, fixed-record entries under `payload + 0x40`, fixed bitmap
+  bytes, raster state `0x783170..0x783182`, rectangle state
+  `0x783166..0x78316e`, and macro state
   `0x783164`, `0x782a92`, `0x782a94`, `0x782a98`, and `0x782d76`.
 - Derived/cache state:
   compact bucket/key state `0x782a7a..0x782a7e`, selected context slot
   `0x78297e`, pending span watermarks `0x783184..0x78318a`, raster
-  mode/scale/capacity fields, rule-pattern selector state, render-band words
-  rooted at `0x783a20`, and row-helper products consumed by
-  `0x1effe`, `0x1f446`, `0x1f756`, `0x1f812`, and `0x1f88e`.
+  mode/scale/capacity fields, fixed-record table index and side-table cursor
+  `0x78286a`, rebuilt map bytes from `0x14c64` / `0x14e24`, rule-pattern
+  selector state, render-band words rooted at `0x783a20`, and row-helper
+  products consumed by `0x1effe`, `0x1f446`, `0x1f756`, `0x1f812`, and
+  `0x1f88e`.
 - Parser scratch:
   numeric scratch and matched-byte buffers used by `0xdb74` / `0xdaf0`,
   lowercase chaining records rewound by `0x11f4c`, delayed binary-payload
@@ -943,7 +949,8 @@ Field groups for this index:
 - Firmware bookkeeping:
   current parser callback `0x78299a`, page-root retry flag `+0x14.0`,
   allocator cursors `0x782a70`, `0x782a72`, `0x782a76`, publication/copy-stop
-  flag `0x782996`, macro heap chunks, data-chain frames, `0x12328` drain
+  flag `0x782996`, downloaded allocation/free, `0x17d7c` fixed-record
+  release/rewrite, macro heap chunks, data-chain frames, `0x12328` drain
   state, and scheduler/work-record state after publication.
 - Hardware/external:
   live host bus, direct host modes, host-output FIFO, retained-storage,

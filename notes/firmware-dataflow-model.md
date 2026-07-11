@@ -5313,9 +5313,16 @@ Entry and setup:
 
 Candidate and row selection:
 
-- Resolver `0x1b50e` consumes source mode and row ordinal. It first tries fast
-  probe `0x1b8ea`, then scans mode-specific first and second candidate
-  windows.
+- Resolver `0x1b50e` consumes source mode and row ordinal. Ordinal `0xff`
+  suppresses the row before any printable bytes exist; other ordinals first
+  try fast probe `0x1b8ea`, then scan mode-specific first and second
+  candidate windows. Built-in source mode `3`, optional-window modes `1` and
+  `2`, and downloaded mode `0` each use distinct candidate pointer/count
+  pairs, and the resolver applies current-slot suppression plus Roman-8
+  duplicate/substitution state before returning a selected candidate slot and
+  caller-visible symbol word. The branch-level contract is
+  [Candidate Resolver
+  Checkpoint](font-sample-page.md#candidate-resolver-checkpoint).
 - Candidate classifiers `0x1b750` and `0x1b7b2` feed the resolver;
   `0x1c746`, `0x1c766`, `0x1c7a8`, and `0x1c710` normalize records and test
   class/orientation before visible row emission.

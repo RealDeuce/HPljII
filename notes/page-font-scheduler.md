@@ -188,6 +188,58 @@ Optional-window scan:
   [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
   and [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix).
 
+Optional-resource signature filter:
+
+- ROM path:
+  `0x1ba40..0x1ba6a`.
+- State category:
+  hardware/external state and firmware bookkeeping.
+- Writers:
+  no RAM fields. The helper only returns `D7 = 0` for optional-resource
+  signatures `TABL`, `tabl`, or `DUMY`, and returns `D7 = -1` for all other
+  longwords at the caller-supplied cursor.
+- Readers / consumers:
+  optional-resource scan and lookup callers use the return value as a
+  ROM-local record classifier before resource-window state is promoted into
+  candidate or canonical scheduler state.
+- Output effect:
+  no page object or pixels. The helper gates which optional-resource records
+  can affect later candidate/resource state.
+- Evidence:
+  `generated/disasm/ic30_ic13_font_default_update_01ba40.lst` and
+  `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`.
+
+Page-root font-slot publication refresh:
+
+- ROM path:
+  `0x196c4..0x19730 -> 0x1ba6c`.
+- State category:
+  canonical page-root state, canonical selected font state, and firmware
+  bookkeeping.
+- Writers:
+  `0x196c4` writes no RAM fields itself. It masks the caller context/resource
+  longword to 24 bits, walks page-root font slots at root `+0x2c + 4*n`,
+  requires live flag `0x78297f+n == 1`, and calls `0x1ba6c` only for the
+  first live masked match. `0x1ba6c` runs the publication/default-refresh
+  sequence `0xf34a -> 0xff1e -> 0xf8fc -> 0xf34a -> 0x9ac2`.
+- Readers / consumers:
+  current downloaded-font and fixed-record release paths call `0x196c4` after
+  resource-context changes. The helper consumes the current page root
+  `0x78297a`, page-root context slots, and live flags; the downstream
+  publication/default helpers consume pending text/page-root state and the
+  current default/font environment.
+- Output effect:
+  a live page-root match can flush pending text and publish the current root
+  before default/font state is refreshed. Missing root, no masked match, or a
+  non-live matching slot falls through to `0x9ac2` without calling `0x1ba6c`.
+  The route does not create a new page object; it publishes or refreshes state
+  that existing parser/page paths have already built.
+- Evidence:
+  `generated/disasm/ic30_ic13_page_root_font_slot_scan_0196c4.lst`,
+  `generated/disasm/ic30_ic13_font_default_update_01ba40.lst`,
+  `generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`, and
+  `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`.
+
 Caller contracts:
 
 - ROM path:
@@ -231,8 +283,9 @@ State grouping for this matrix:
   optional resource-window contents and gate bits `$8000.14` / `$8000.15`.
 - Unknown:
   optional physical resource bytes and manual-facing status names. No
-  ROM-local page-object, publication, render, or bitmap-write edge starts in
-  this scheduler.
+  ROM-local new-page-object, render, or bitmap-write edge starts in this
+  scheduler. The separate `0x196c4 -> 0x1ba6c` edge can publish an existing
+  page root after a live font-slot match.
 
 ## Evidence
 
@@ -268,6 +321,11 @@ Canonical state:
 - `0x7828b6..0x7828dd`: two 20-byte canonical resource-window table slots.
   `0x1a042` and `0x19f08` compare these against the fresh scratch slots;
   `0x1a900` replaces them from the scratch block.
+- `0x78297a`: current page root consumed by the `0x196c4` page-root
+  font-slot scan.
+- Page-root font slots at root `+0x2c + 4*n` and live flags
+  `0x78297f+n`: canonical page-root font context state consumed by
+  `0x196c4` before publication/default refresh.
 - `0x780e2e`: status longword root. The status branch raises mask
   `0x00000200` through `0x9bee`.
 - `0x780e8d`: byte copy of the canonical-side mismatch predicate on the
@@ -315,6 +373,10 @@ Firmware bookkeeping:
   `0x782288`, `0x78228c`, `0x782290`, and `0x7822de`.
 - Return `D7`: `1` for unchanged and long-refresh paths; `0` for the
   status-return branch after `0x72a2 == 0` and first predicate nonzero.
+- `0x1ba40` return `D7`: `0` for optional-resource signatures `TABL`,
+  `tabl`, and `DUMY`; `-1` for all other longwords tested by the caller.
+- `0x1ba6c` helper sequencing: `0xf34a`, `0xff1e`, `0xf8fc`, `0xf34a`,
+  and `0x9ac2` after a live `0x196c4` page-root font-slot match.
 - Stack argument slot `(A7)`: reused for predicate arguments to `0x19fb8`,
   `0x1ba92`, `0x178fa`, and `0x1a4fa`.
 
@@ -369,6 +431,15 @@ Unknown:
 - `0x1a2e4..0x1a3c2` is a caller-side setup path: it initializes built-in
   candidate scan state, reports `0xe7/0x39` when no candidates are found,
   snapshots `0x78278e` to `0x782780`, then calls `0x19dd2`.
+- `0x1ba40..0x1ba6a` writes no RAM fields; it classifies caller-supplied
+  optional-resource signatures by returning `D7 = 0` for `TABL`, `tabl`, or
+  `DUMY`, otherwise `D7 = -1`.
+- `0x196c4..0x19730` writes no RAM fields; it scans current page-root font
+  slots by masked low-24-bit context and calls `0x1ba6c` only for a live
+  match.
+- `0x1ba6c..0x1ba90` writes through callees: `0xf34a` flushes pending spans,
+  `0xff1e` publishes current-root state, `0xf8fc` refreshes default/page-font
+  state, the second `0xf34a` flushes again, and `0x9ac2` waits or services.
 
 ## Readers And Consumers
 
@@ -397,6 +468,16 @@ Unknown:
 - Font-resource scan caller `0x1a2e4 -> 0x1a3c2` ignores scheduler `D7`, then
   passes `0x78219b`, `0x78219c`, and `A6-0x02` to `0x1b50e`; only resolver
   `D7 == 0` calls `0x6364`.
+- `0x1ba40` consumes the optional-resource longword at the caller cursor.
+  Its signature return controls whether the caller treats that record as a
+  recognized optional-resource boundary.
+- `0x196c4` consumes caller context/resource longword `(A6+8)`, current page
+  root `0x78297a`, page-root font slots, and live flags `0x78297f+n`.
+  Current downloaded-font and fixed-record release paths call it after
+  resource-context changes.
+- `0x1ba6c` consumes existing pending text/root/default state through helpers
+  `0xf34a`, `0xff1e`, `0xf8fc`, and `0x9ac2`; it has no direct parser-record
+  input.
 
 ## Output Effect
 

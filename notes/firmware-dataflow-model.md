@@ -4139,6 +4139,14 @@ Refresh side effects:
   and `0x782ef6` through `0x1b4c0`, calls `0x179aa(0/1)` when a context is
   missing or not bit-27 marked, and copies ten longwords from scratch
   `0x782894` into canonical table `0x7828b6`.
+- `0x196c4..0x19730` is the page-root font-slot publication edge reached by
+  resource release paths after context/resource changes. It masks the caller
+  context to 24 bits, scans current root `0x78297a` font slots at
+  root `+0x2c + 4*n`, requires live flag `0x78297f+n == 1`, and calls
+  `0x1ba6c` only for a live match. The helper sequence
+  `0xf34a -> 0xff1e -> 0xf8fc -> 0xf34a -> 0x9ac2` flushes pending text,
+  publishes current-root state, refreshes default/page-font state, flushes
+  again, and then waits or services.
 
 Scheduler branch-to-consumer matrix:
 
@@ -4195,7 +4203,9 @@ Caller contracts:
 State classification:
 
 - Canonical state: resource-window table `0x7828b6..0x7828dd`, status root
-  `0x780e2e`, and status predicate byte `0x780e8d`.
+  `0x780e2e`, status predicate byte `0x780e8d`, current page root
+  `0x78297a`, page-root font slots at root `+0x2c + 4*n`, and live flags
+  `0x78297f+n`.
 - Derived/cache state: scratch pointer `0x782894`, scan pointer `0x782884`,
   active optional-window base `0x78288c`, active optional-window limit
   `0x782890`, terminal byte `0x782898`, and candidate-list pointers/counts
@@ -4245,7 +4255,10 @@ Evidence and unresolved boundary:
   `generated/disasm/ic30_ic13_font_resource_refresh_helpers_0178fa.lst`,
   `generated/disasm/ic30_ic13_font_scheduler_commit_01a4fa.lst`,
   `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`,
+  `generated/disasm/ic30_ic13_page_root_font_slot_scan_0196c4.lst`,
   `generated/disasm/ic30_ic13_font_default_update_01ba40.lst`,
+  `generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`,
+  `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`,
   `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`,
   `generated/disasm/ic30_ic13_host_scheduler_caller_004700.lst`,
   `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`,

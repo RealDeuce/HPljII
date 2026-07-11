@@ -393,6 +393,23 @@ that owner note before claiming equivalent output.
   [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix) and `Worked
   Path: Macro Execute Replay` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-macro-execute-replay).
+- Overlay publication replay
+  `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X` plus a later page boundary: live setup
+  bytes enter through `0xa904 -> 0xda9a -> 0x11774`. `ESC &f123Y` writes current macro
+  id `0x783164`; selector `0` starts definition through `0xdd08 -> 0xe0a4`; payload
+  bytes `21 0d` append through `0xe002`; selector `1` stops definition; selector `4`
+  enables overlay by writing overlay state `0x782a92` and saved overlay id `0x782a94`.
+  On a later `0xff1e` publication, the overlay detour reselects id `0x782a94` through
+  `0xe0a4`, calls non-replay frame builder `0xe4f4`, writes frame fields at
+  `0x782d4c`, installs active frame pointer `0x782d76`, and sets host gate bit 1 in
+  `0x780e66` when replay bytes exist. `0xa904` then prioritizes the frame over live
+  host input, returning stored bytes `21 0d` to parser loop `0x11774`; replayed `!`
+  queues the ordinary compact object through `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`,
+  and replayed CR routes through `0xf02c`. Frame-end helper `0xe22c` restores
+  page/parser state and resumes publication, so `0x1ed84 -> 0x1edc6 -> 0x1ef6a`
+  renders the composed base page plus overlay objects with no overlay-specific pixel
+  writer. Evidence: `Minimal Overlay Publication Walkthrough` in this file and
+  [macro-data-chain.md](macro-data-chain.md#owner-summary).
 - State-only line termination `ESC &k1G!\r!`: `ESC &k1G` writes line-termination byte
   `0x78318f = 0x80` through handler `0xedf8`. The first `!` follows the ordinary compact
   text path. CR handler `0xf02c` consumes bit `0x78318f.7`, resets x through `0xf06e`,

@@ -524,6 +524,24 @@ that owner note before claiming equivalent output.
   [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint)
   and `State-Only Command Dependency Map` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#state-only-command-dependency-map).
+- HT/BS cursor placement `ESC &k0G HT BS !`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`. `ESC &k0G` dispatches to line-termination
+  handler `0xedf8`, which rewinds the six-byte parser record and clears mode
+  byte `0x78318f`. HT byte `0x09` reaches `0xf1cc`: `0xf1cc..0xf24c` reads
+  HMI `0x78315c`, left margin `0x782dd6`, and current x `0x782c8a`, computes
+  the next eight-column tab-stop candidate, and `0xf24e..0xf2a4` clamps it to
+  right margin `0x782dda` or page width `0x782db8` before writing
+  `0x782c8a`. BS byte `0x08` reaches `0xf2a8`: it ensures current root
+  `0x78297a`, subtracts either latched previous width
+  `0x782a5a/0x78318e` or HMI `0x78315c`, clamps against left margin/zero, and
+  writes the committed x back to `0x782c8a` while setting previous-width latch
+  `0x782a58`. Neither control queues a page object; the following `!` is the
+  visible consumer, reaching `0xd04a -> 0x12f2e -> 0x1387c` with the committed
+  cursor and queuing a compact object at coordinate `0x0a01`. Later
+  publication and render use the ordinary compact path
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#direct-control-outcome-matrix)
+  and [direct-control-codes.md](direct-control-codes.md#hmi-route-checkpoint).
 - Cursor and margin placement `ESC &a2c+1R!` / `ESC &a6l9M!`: command bytes enter
   through `0xa904 -> 0xda9a -> 0x11774` in `ESC &a` parser mode `12`. In the cursor
   stream, lowercase final `c` keeps the family active: `ESC &a2c` dispatches to

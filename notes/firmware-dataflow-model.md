@@ -2717,6 +2717,14 @@ listing.
   Canonical fields are object link `+0x00`, selector byte `+0x04`,
   context-selector byte `+0x05`, entry count/capacity word `+0x06`, packed
   coordinate/key word `+0x08`, and compact entries beginning at `+0x0a`.
+  Offset-table downloaded glyphs and bit-30-clear fixed-record resources
+  differ before this producer, not after it: `0x16498` installs offset-table
+  glyph records, while `0x16606` / `0x15c4c` install or resume fixed-record
+  payload entries and rebuild maps through `0x14c64` / `0x14e24`. Once a
+  later printable byte reaches `0x1393a`, both routes queue compact page
+  objects through `0x12f2e`; the fixed-record current-record example queues
+  selector `0x0003` from map/object state rather than creating a separate
+  page root or renderer.
   Publication and bridge copy root `+0x1c` to render root `+0x18`; render
   entry `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches selector bits to
   `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`, resolving glyph resources
@@ -2797,6 +2805,9 @@ Evidence for this route is
 [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix),
 [direct-control-codes.md](direct-control-codes.md#printable-source-outcome-matrix), and
 [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint).
+The fixed-record compact-object sibling is in
+[downloaded-fonts.md](downloaded-fonts.md#fixed-record-render-decision-checkpoint) and
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#minimal-trace-index).
 Key disassembly listings are `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
 `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
 `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`,

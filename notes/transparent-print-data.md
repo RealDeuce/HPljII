@@ -67,8 +67,10 @@ Field groups:
 - Canonical text/page state: selected context slot `0x782f06`, selected C0
   filter byte `0x782eea + 0x10 * slot`, fallback high-control filter byte
   `0x782efa`, high-character flags `0x783132` / `0x783133`, text cursor
-  `0x782c8a`, and downstream page-record roots consumed by `0x12f2e`,
-  `0x1387c`, and `0xff1e`.
+  `0x782c8a`, current page root `0x78297a`, compact bucket root `+0x1c`,
+  short compact object fields `+0x04` class, `+0x05` context slot, `+0x06`
+  entry count, payload entries from `+0x0a`, and downstream publication /
+  bridge fields consumed by `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
 - Derived/cache state: local filter word `A6-2`, normalized payload value
   `D5`, selected-slot scale result from `0x332ee`, text source scratch
   `0x782d7e`, compact coordinates such as `0x0001` and `0x0604`, and renderer
@@ -102,10 +104,14 @@ Writers:
   byte `0x782eea` from font/sample-page setup paths.
 - `0x12452..0x12534` decrements payload count `D4`, applies the local probe,
   and selects `0xd04a` or `0xd0f0`.
-- `0xd04a` / `0xd824` write compact page-record text objects.
+- `0xd04a` / `0xd824` write compact page-record text objects; `0x12f2e` and
+  `0x1387c` allocate or merge those records under current root bucket `+0x1c`.
 - `0xd0f0` writes the source object for substituted host space; the flagged
   built-in path clears source `+4` before `0xd550`, while the unflagged
   fixed-record path continues through `0xd140` / `0xd3b2`.
+- `0xff1e` publishes the current root, `0x1ed84` selects the render source
+  through `0x780eae`, and `0x1edc6` copies the source bucket root into render
+  record `+0x18`.
 
 Readers and consumers:
 
@@ -116,8 +122,9 @@ Readers and consumers:
   context, source record, and cursor state.
 - `0xd0f0` consumes filtered control/high-control bytes as substituted host
   space under the current source class.
-- `0x12f2e`, `0x1387c`, `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a` consume
-  queued text objects for publication, bridge, and compact text rendering.
+- `0x12f2e` and `0x1387c` consume compact source/object state and current root
+  topology. `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a` consume queued text
+  objects for publication, bridge, and compact text rendering.
 
 Output effect:
 
@@ -126,7 +133,10 @@ Output effect:
 - `0x1a 0x58` consumes two host bytes and contributes routed value `0x7f`;
   `0x1a xx` with `xx != 0x58` contributes `xx`.
 - Printable payload values use the same compact text object and render path as
-  normal printable host bytes.
+  normal printable host bytes. In the pinned short compact cases, object byte
+  `+0x04` is compact class `0`, `+0x05` is the selected context slot, `+0x06`
+  is the entry count, and entries from `+0x0a` pair glyph bytes with compact
+  coordinates such as `0x0001`, `0x0202`, or `0x0604`.
 - Default-filtered C0 and `0x80..0x9f` values enter `0xd0f0`. In the flagged
   built-in path they advance spacing without compact glyph entries; in the
   unflagged fixed-record path the substituted host space can queue a compact
@@ -134,8 +144,9 @@ Output effect:
 - Nonzero filtered C0 and `0x80..0x9f` values enter `0xd04a` and become normal
   mapped text entries.
 - Secondary-context high-control bytes use the same `0x12452` decision point
-  after `SO`; the documented `SO ESC &p3X!\x80!` path reaches a segmented
-  compact object and the exact external resource boundary below.
+  after `SO`; the documented `SO ESC &p3X!\x80!` path changes the compact
+  selector to segmented class `0x2001`, bridges the secondary context roots,
+  and stops only at the exact external resource boundary below.
 
 Evidence strength:
 
@@ -219,9 +230,10 @@ state is read or written, and what page or pixel effect follows.
   `0x12452..0x12534` sends values outside the filtered control ranges, and
   filtered controls with nonzero filter state, to `0xd04a`. Consumers
   continue through `0x1393a -> 0x12f2e -> 0x1387c` under the current page
-  root. Output effect: payload values queue compact text objects and render
-  through the same compact path as normal printable host bytes,
-  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  root. Output effect: payload values queue compact text objects whose short
+  form carries class/context/count in `+0x04/+0x05/+0x06` and glyph/coordinate
+  pairs from `+0x0a`; publication copies current root bucket `+0x1c` through
+  `0xff1e -> 0x1ed84 -> 0x1edc6`, and compact rendering begins at `0x1ef6a`.
 
 - Fixed-space payload:
   Default-filtered C0 and `0x80..0x9f` values call `0xd0f0`. In a flagged
@@ -247,7 +259,8 @@ State grouping:
   `0x782a1c`, and saved record `0x782a20..0x782a25`.
 - Canonical text/page state: `0x782f06`, `0x782eea + 0x10 * slot`,
   `0x782efa`, `0x783132`, `0x783133`, `0x782c8a`, page root `0x78297a`,
-  and downstream page-root buckets consumed by `0x12f2e`, `0x1387c`,
+  page-root bucket `+0x1c`, short compact object fields
+  `+0x04/+0x05/+0x06/+0x0a`, and downstream bridge/render roots consumed by
   `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
 - Derived/cache state: local filter word `A6-2`, routed value `D5`,
   selected-slot scale result from `0x332ee`, source scratch `0x782d7e`,
@@ -309,13 +322,17 @@ Decision route:
   `0x7f`; `0x1a xx` with `xx != 0x58` contributes the probe byte `xx`.
 - Printable branch: payload values outside the filtered control ranges, or
   filtered controls with nonzero filter state, call `0xd04a`; text then flows
-  through `0x1393a -> 0x12f2e -> 0x1387c` under page-root `+0x1c`.
+  through `0x1393a -> 0x12f2e -> 0x1387c` under page-root `+0x1c`. The short
+  compact object contract is the ordinary text contract: `+0x04` is compact
+  class, `+0x05` is context slot, `+0x06` is entry count, and payload entries
+  from `+0x0a` hold glyph/coordinate pairs.
 - Fixed-space branch: default-filtered C0 or `0x80..0x9f` values call
   `0xd0f0`. In flagged built-in contexts this advances spacing without a
   compact object; in unflagged fixed-record contexts the substituted host-space
   source can continue through `0xd140` / `0xd3b2` and queue a compact object.
 - Render branch: any queued compact object publishes through `0xff1e`, bridges
-  through `0x1ed84 -> 0x1edc6`, and renders through `0x1ef6a -> 0x1efc2 ->
+  through `0x1ed84 -> 0x1edc6` by copying current-root bucket `+0x1c` to
+  render-record `+0x18`, and renders through `0x1ef6a -> 0x1efc2 ->
   0x1effe` using the same compact renderer contracts as ordinary printable
   bytes.
 
@@ -326,8 +343,9 @@ State classification:
   record `0x782a20..0x782a25`.
 - Canonical text/page state: selected context slot `0x782f06`, filter bytes
   `0x782eea + 0x10 * slot` and `0x782efa`, high-character flags `0x783132` /
-  `0x783133`, text cursor `0x782c8a`, page root `0x78297a`, and page-root
-  bucket `+0x1c`.
+  `0x783133`, text cursor `0x782c8a`, page root `0x78297a`, page-root bucket
+  `+0x1c`, short compact object fields `+0x04/+0x05/+0x06/+0x0a`, and render
+  bucket `+0x18`.
 - Derived/cache state: local selected filter word, normalized payload value,
   source object scratch `0x782d7e`, compact keys `0x782a7a..0x782a7e`, copied
   render bucket root `+0x18`, and compact render segment/bucket caches.
@@ -346,8 +364,9 @@ Writers, readers, and output effect:
 
 - Writers are `0x11f5a` / `0x121cc` for delayed handler state, `0x12218` for
   restored parser records, `0x12452` for local payload normalization and
-  routing, `0xd04a` / `0xd0f0` for text or fixed-space source state, and
-  `0x12f2e` / `0x1387c` for compact page objects.
+  routing, `0xd04a` / `0xd0f0` for text or fixed-space source state,
+  `0x12f2e` / `0x1387c` for compact page objects, and `0x1edc6` for the
+  render-record bucket copy.
 - Readers and consumers are `0xa904` for payload bytes, `0x12452` for the
   restored count and filter fields, `0xd04a` / `0xd0f0` for text-state
   consumers, `0xff1e` / `0x1ed84` / `0x1edc6` for page publication and bridge,

@@ -288,6 +288,24 @@ that owner note before claiming equivalent output.
   `+0x0c`; render still consumes the page objects through the ordinary bridge
   path. Evidence: `Minimal Paper Source And Copies Walkthrough` in this file
   and [publication-commands.md](publication-commands.md).
+- Page layout to visible placement `ESC &l66P !` / `ESC &l1L !`: command bytes enter
+  through `0xa904 -> 0xda9a -> 0x11774`. `ESC &l66P` dispatches to page-length handler
+  `0xf9e8`, rewinds the six-byte parser record at `0x78299e`, reads parsed word `+2`,
+  multiplies the line count by VMI `0x783160`, selects internal page code `0x782da2`,
+  writes page extent `0x782dba`, and refreshes derived geometry and placement fields
+  including active extents `0x782db6/0x782db8`, top offset `0x782dce`, text-bottom cache
+  `0x782dd2`, margins, cursor `0x782c8a/0x782c8e`, and VFC caches. The command itself
+  creates no page object; the following printable `!` consumes the refreshed placement
+  through `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c` and queues a one-entry compact object
+  at documented coordinate `0x9001`, later rendered through the ordinary `0xff1e ->
+  0x1ed84 -> 0x1edc6 -> 0x1ef6a` path. The sibling `ESC &l1L !` routes through
+  perforation handler `0xee64`, writes perforation-skip byte `0x783191`, and leaves
+  visibility to later consumers such as vertical overflow helper `0xf36c` or the
+  following printable/page-record path. Evidence: `Minimal Page Layout Walkthrough` in
+  this file, `Page-Length Nonzero Placement Checkpoint` in
+  [publication-commands.md](publication-commands.md#page-length-nonzero-placement-checkpoint),
+  and `Layout State To Output Checkpoint` in
+  [direct-control-codes.md](direct-control-codes.md#layout-state-to-output-checkpoint).
 - Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
   resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
   0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue

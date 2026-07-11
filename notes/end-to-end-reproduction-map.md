@@ -574,6 +574,25 @@ that owner note before claiming equivalent output.
   [downloaded-fonts.md](downloaded-fonts.md#end-to-end-downloaded-glyph-path)
   and `Worked Path: Downloaded Glyph` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-downloaded-glyph).
+- Bit-30-clear fixed-record downloaded resource `ESC )s0W <current-record payload> !
+  FF`: the zero-count descriptor route is separate from the normal downloaded-glyph
+  bitmap route. Parser dispatch still uses `0xa904 -> 0xda9a -> 0x11774 -> 0x11f96 ->
+  0x121cc -> 0x12218`, but `0x15d0a` selects bit-30-clear current-record handler
+  `0x15e42 -> 0x16606`. Handler `0x16606` clears stale continuation fields
+  `0x7827c6..0x7827d8`, admits character `0x21`, writes fixed-record table entry `02 03
+  04 00 00 00 02 00` at payload `+0x48`, copies bitmap bytes `aa 55 f0 0f c3 3c` at
+  payload delta `0x0200`, and returns through `0x15dcc -> 0x12328` with zero drained
+  bytes. The command itself draws nothing; later printable `!` consumes the rebuilt
+  fixed-record map through `0x14c64 -> 0x14e24 -> 0x14eb6`, source builder `0x1393a`,
+  and queue `0x12f2e`, producing compact object prefix `00 00 00 00 00 03 00 01 01 66
+  01`. FF then publishes and renders through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a ->
+  0x1effe`, yielding three mode-0 fixed-record rows beginning at x `22`, y `6`.
+  Continuation siblings use `0x15e64 -> 0x15c4c` to finish or release the same
+  fixed-record state; they are documented in the fixed-record checkpoint rather than
+  treated as a separate pixel renderer. Evidence:
+  [downloaded-fonts.md](downloaded-fonts.md#fixed-record-render-decision-checkpoint) and
+  `Worked Path: Fixed-Record Resource Object` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-fixed-record-resource-object).
 - Macro execute replay `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`: live bytes enter
   through `0xa904 -> 0xda9a -> 0x11774`. In parser mode `17`, `ESC &f#Y` reaches
   `0xe112` and writes current macro id `0x783164`; `ESC &f#X` reaches `0xdd08`, calls

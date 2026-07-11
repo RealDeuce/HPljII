@@ -348,8 +348,9 @@ write pixels.
   rectangle, or publication path observes the restored fields.
 - Vertical forms control:
   `ESC &l#W` schedules delayed table load through
-  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` reaches channel
-  consumer `0x1280a`. Canonical VFC state is table
+  `0x11f6e -> 0x121cc`; normal restore reaches `0x12cfe`, while
+  alternate/data restore reaches `0x12358 -> 0xdace -> 0xe002`. `ESC &l#V`
+  reaches channel consumer `0x1280a`. Canonical VFC state is table
   `0x782dde..0x782edd`, line-bound caches `0x782dc2`, `0x782dd2`,
   `0x782ede`, `0x782edf`, and `0x782ee0`, plus cursor fields
   `0x782c8a` / `0x782c8e`. Table loads have no immediate pixels. Channel
@@ -362,9 +363,11 @@ write pixels.
   calling `0x12cfe`. The VFC table and layout caches therefore do not change
   until those stored bytes replay through `0xa904` and the normal VFC owner.
 - Transparent print data:
-  `ESC &p#X` arms `0x11f5a -> 0x121cc`; restore `0x12218` calls payload
-  reader `0x12452`. Counted payload bytes route to `0xd04a` or fixed-space
-  `0xd0f0`; any compact objects are ordinary text objects under root `+0x1c`.
+  `ESC &p#X` arms `0x11f5a -> 0x121cc`; normal restore calls payload reader
+  `0x12452`, while alternate/data restore reaches
+  `0x12358 -> 0xdace -> 0xe002`. Counted payload bytes on the normal branch
+  route to `0xd04a` or fixed-space `0xd0f0`; any compact objects are ordinary
+  text objects under root `+0x1c`.
   The render route is the same compact route as printable text. The remaining
   pixel-affecting boundary is the secondary segment-57 resource read at
   `0x0c0000..0x0c0321`, documented in `transparent-print-data.md`. In
@@ -391,9 +394,11 @@ write pixels.
   `ESC z` reaches status-only `0xcd86 -> 0x9c2c`.
 - Raster graphics:
   `ESC *t#R` uses `0x10808`; `ESC *r#A/#B` use `0x1075a` / `0x107fa`;
-  delayed `ESC *b#W` restores to `0x105d0`. The canonical raster block is
-  `0x783170`. Accepted transfers queue encoded-raster bucket objects through
-  `0x13070 -> 0x13250 -> 0x138de` under root `+0x1c`, with class byte
+  delayed `ESC *b#W` restores to `0x105d0` in normal mode or to
+  `0x12358 -> 0xdace -> 0xe002` in alternate/data mode. The canonical raster
+  block is `0x783170`. Accepted transfers on the normal branch queue
+  encoded-raster bucket objects through `0x13070 -> 0x13250 -> 0x138de` under
+  root `+0x1c`, with class byte
   `+4 = 0x80` and payload at `+0x0a`. Bridge `0x1edc6` copies root `+0x1c`
   to render `+0x18`; `0x1efc2 -> 0x1f88e` selects `0x1f8da`, `0x1f8e6`,
   `0x1f920`, or `0x1f9c6` from object byte `+5 & 3`. Pixels come from queued

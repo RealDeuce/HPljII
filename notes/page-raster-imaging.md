@@ -1043,7 +1043,8 @@ the clipped maximum byte count for subsequent row transfers.
 `ESC *b#W` does not call the transfer routine immediately. Handler
 `0x011f82` stores delayed handler pointer `0x0105d0` through `0x0121cc`;
 the later payload dispatcher restores the parsed six-byte command record
-and calls the saved handler when the data is ready. The executable
+and either calls the saved handler in normal mode or diverts alternate/data
+payloads through `0x12358 -> 0xdace -> 0xe002`. The executable
 harness now pins the standalone `0x121cc` snapshot bytes for a parsed
 `ESC *b4W` record and the `0x12218` restore/dispatch contract. It also
 walks the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` byte stream

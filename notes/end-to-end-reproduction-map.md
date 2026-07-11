@@ -267,6 +267,27 @@ that owner note before claiming equivalent output.
   `0x782da3` and extents `0x782db8/0x782db6`. Evidence:
   `Minimal Page Geometry Walkthrough` in this file and
   [publication-commands.md](publication-commands.md).
+- Paper source and copies `! ESC &l2H` / `! ESC &l2X FF`: both streams enter
+  through `0xa904 -> 0xda9a -> 0x11774`, and the leading `!` queues the
+  ordinary one-entry compact text object under current root `0x78297a`.
+  `ESC &l2H` dispatches to paper-source handler `0xef62`, which rewinds the
+  six-byte parser record at `0x78299e - 6`, reads parsed word `+2`, flushes
+  pending text through `0xf34a`, publishes the current root through `0xff1e`,
+  refreshes cursor state through `0xf8fc`, then takes selector-2 path
+  `0xefe8 -> 0xefc0 -> 0xf010`. That path writes paper-source byte
+  `0x782da6 = 0x80`, mirrors the selected byte to ROM-visible output byte
+  `0x780e8f`, signals output control word `0x780e26`, and sets pending
+  refresh byte `0x782998 = 1`. The page pixels for this stream come from the
+  pre-change compact object already published through
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`; the new paper-source state is
+  consumed by later page/control headers, not by a separate pixel renderer.
+  `ESC &l2X` dispatches to copies handler `0xeef0`, which rewinds the same
+  parser-record shape, stores copy count `0x782da4 = 2`, and returns without
+  publication. The following FF reaches `0xf0f0 -> 0xff1e`, publishes the
+  queued compact object, and copies `0x782da4` into published root header word
+  `+0x0c`; render still consumes the page objects through the ordinary bridge
+  path. Evidence: `Minimal Paper Source And Copies Walkthrough` in this file
+  and [publication-commands.md](publication-commands.md).
 - Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
   resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
   0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue

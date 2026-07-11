@@ -32,6 +32,8 @@ renderer-facing documentation checkpoint.
 - `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`
 - `notes/pcl-command-map.md`
 - `notes/pcl-parser-firmware.md`
+- `notes/raster-graphics.md`
+- `notes/rectangle-graphics.md`
 - `notes/page-raster-imaging.md`
 - `notes/semantic-state-model.md`
 
@@ -989,8 +991,8 @@ they support the route above rather than defining it.
 
 This checkpoint composes `ESC &k#H` as a state-only horizontal-motion command.
 It starts when parser dispatch reaches handler `0xca8c`, and it ends when a
-later printable, HT, BS, margin, or cursor-position command consumes the stored
-HMI.
+later printable, HT, BS, margin, cursor-position, raster-origin, or
+rectangle-clipping path consumes state derived from the stored HMI.
 
 Route summary:
 
@@ -1004,19 +1006,30 @@ Route summary:
   `word(+2) * 30`, fractional contribution `word(+4) * 30 / 10000`, then
   helper `0x104d8` converts the sum before `0xcae4` stores packed HMI
   `0x78315c`.
-- The command queues no page object. Its visible effect is delayed until
-  consumers use `0x78315c`: printable source capture and placement in
-  `0xd04a`, HT `0xf1cc`, BS `0xf2a8`, left/right margin writers
-  `0xeb58` / `0xec0c`, and column-position handlers such as `0xf39e`.
+- The command queues no page object. Its immediate consumers use `0x78315c`:
+  printable source capture and placement in `0xd04a`, HT `0xf1cc`, BS
+  `0xf2a8`, left/right margin writers `0xeb58` / `0xec0c`, and column-position
+  handlers such as `0xf39e`.
+- Cross-family imaging consumers see HMI only after one of those immediate
+  consumers has committed placement state. `0xf39e`, `0xeb58`, or `0xec0c`
+  can rewrite horizontal cursor/margin fields `0x782c8a`, `0x782dd6`, and
+  `0x782dda`; raster start `0x1075a` later uses cursor state as the raster
+  origin for selector `1`, and rectangle fill clipper `0x10b80` later uses
+  the same cursor/margin/page-extent state to build clipped rule source record
+  `0x782a88`. HMI is therefore a delayed placement input, not a raster object
+  byte or rule object byte by itself.
 
 State classification for this route:
 
 - Canonical state: HMI/default horizontal motion word `0x78315c`, current
   horizontal cursor `0x782c8a`, margins `0x782dd6` / `0x782dda`, selected font
-  context, and current page root `0x78297a` consumed later by printable text.
+  context, current page root `0x78297a` consumed later by printable text, and
+  raster/rectangle command state that reads cursor-derived placement only
+  after a later `ESC *r#A` or `ESC *c#P`.
 - Derived/cache state: compact coordinates produced by the next printable
   `0xd04a`, tab-stop candidates from `0xf1cc`, BS candidate x from `0xf2a8`,
-  margin/cursor candidates from `0xeb58`, `0xec0c`, and `0xf39e`, and
+  margin/cursor candidates from `0xeb58`, `0xec0c`, and `0xf39e`, raster origin
+  copied by `0x1075a`, clipped rectangle source fields in `0x782a88`, and
   render-record copies after publication.
 - Parser scratch: the six-byte `ESC &k#H/h` record and the parsed integer and
   fraction words consumed by `0xca8c`.
@@ -1034,6 +1047,18 @@ Named byte-stream outcome:
   stores packed advance `15` in `0x78315c`; the second printable consumes that
   HMI and queues at compact coordinate `0x0501` through the ordinary compact
   text path.
+
+Cross-family outcome:
+
+- `ESC &k#H` can change later raster or rectangle pixels only through an
+  intervening cursor or margin consumer. The ROM evidence chain is:
+  `0xca8c -> 0x78315c`, then `0xf39e` / `0xeb58` / `0xec0c` uses `0x78315c`
+  to write `0x782c8a` or margin fields, then raster start `0x1075a` copies the
+  cursor-derived origin into raster block `0x783170+0x0a`, or rectangle fill
+  `0x10b80` clips from cursor/page fields into source record `0x782a88`.
+  Page-object creation still belongs to `0x105d0 -> 0x13070` for raster and
+  `0x10898 -> 0x10b80 -> 0x133aa` for rectangles; the HMI handler itself
+  creates no bucket, rule, bridge, render-root, or pixel output.
 
 `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`. HT
 advances x to `21`, BS backs it up to `20`, and the printable glyph queues at

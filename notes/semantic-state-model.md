@@ -1645,12 +1645,17 @@ lowercase delayed record can remain pending until the uppercase terminator
 restores it, and why payload readers see the original byte count/final byte
 instead of whatever command record the tokenizer has parsed since then.
 
-The downstream consumer decides the output class after restore. Raster delayed
-transfer restores to `0x105d0` before raster object storage; transparent data
-restores to `0x12452` before text/fixed-space routing; downloaded-font payloads
-restore to `0x16c14` or related font payload handlers before installed glyph
-records can later affect printable output. The delayed snapshot itself creates
-no page object and no pixels.
+The downstream consumer decides the output class after restore. In normal
+parser mode, raster delayed transfer restores to `0x105d0` before raster
+object storage; transparent data restores to `0x12452` before text/fixed-space
+routing; VFC table data restores to `0x12cfe` before table/cache writes; and
+downloaded-font payloads restore to `0x15d0a`, `0x16c14`, or related font
+payload handlers before installed glyph records can later affect printable
+output. In alternate/data mode, those non-wrapper saved handlers are not
+called: `0x12358` drains positive counts through `0xdace` and appends
+normalized bytes through `0xe002`, while nonpositive counts return without
+consuming payload. The delayed snapshot itself creates no page object and no
+pixels.
 
 Supporting delayed-payload anchors:
 
@@ -2562,10 +2567,13 @@ spacing, and rendered rows. The low-level ledger remains in
 
 Concept: transparent print data is a counted byte-stream splice, not an opaque
 skip. Handler `0x11f5a` arms delayed handler `0x12452` through `0x121cc`.
-When `0x12218` restores the saved six-byte `X` record, `0x12452` consumes the
-following payload bytes through `0xa904`, normalizes its local `1a` probe
-syntax, then routes each normalized value through printable handler `0xd04a`
-or fixed-space helper `0xd0f0`.
+When `0x12218` restores the saved six-byte `X` record in normal parser mode,
+`0x12452` consumes the following payload bytes through `0xa904`, normalizes
+its local `1a` probe syntax, then routes each normalized value through
+printable handler `0xd04a` or fixed-space helper `0xd0f0`. In alternate/data
+mode, `0x12218` calls `0x12358(0x1228a)` instead; since saved handler
+`0x12452` is not wrapper `0x1228a`, positive counts append through
+`0xdace -> 0xe002` and do not reach text/page state until replay.
 
 ### Field Groups
 
@@ -2714,9 +2722,12 @@ or fixed-space helper `0xd0f0`.
 
 `ESC &p#X` is a delayed counted text-data route. Parser dispatch reaches
 arming stub `0x11f5a`, which schedules restored handler `0x12452` through
-`0x121cc`. `0x12218` restores the saved six-byte command record before
-payload consumption, so `0x12452` rereads the absolute count from record word
-`+2` and then fetches payload bytes from the current `0xa904` source.
+`0x121cc`. In normal parser mode, `0x12218` restores the saved six-byte
+command record before payload consumption, so `0x12452` rereads the absolute
+count from record word `+2` and then fetches payload bytes from the current
+`0xa904` source. In alternate/data mode, `0x12218` reaches `0x12358` instead;
+positive counts append through `0xdace -> 0xe002` and do not enter the
+transparent reader.
 
 The transparent reader owns byte routing, not the outer parser. A normal
 printable payload byte routes to `0xd04a`; default-filtered C0 and high-control
@@ -6592,8 +6603,12 @@ Unresolved middle edges:
   descriptor handler `0x15d0a`, while nonzero counts schedule resource or
   downloaded-character payload handler `0x16c14`. In both cases it uses
   `0x121cc`, so the parser stores the six-byte `W` record in
-  `0x782a20..0x782a25` and later `0x12218` restores that record before the
-  selected handler consumes descriptor or payload bytes. Evidence:
+  `0x782a20..0x782a25`. In normal parser mode, `0x12218` later restores that
+  record before the selected handler consumes descriptor or payload bytes. In
+  alternate/data mode, `0x12218` instead reaches `0x12358(0x1228a)`; positive
+  counts append through `0xdace -> 0xe002`, and descriptor staging, payload
+  budget `0x783140`, current records, candidate state, installed glyphs, and
+  selected maps remain unchanged. Evidence:
   `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`, fixtures
   `0x15a18/0x11f96-modeled font payload command edge` and `0x11774 ROM
   dispatch table routes font W streams to delayed handlers`.
@@ -9586,8 +9601,9 @@ the semantic state model needed by byte-stream reproduction.
 
 Concept: raster commands update a state block at `0x783170`, but raster data
 does not render directly. `0x11f82` stores a delayed transfer handler
-`0x105d0` through `0x121cc`; `0x12218` later restores the six-byte
-`ESC *b#W` record and calls `0x105d0` when payload bytes are available.
+`0x105d0` through `0x121cc`; in normal parser mode, `0x12218` later restores
+the six-byte `ESC *b#W` record and calls `0x105d0` when payload bytes are
+available.
 `0x105d0` gates the row, drains skipped payload through `0xdace`, ensures a
 page root for queued rows, and passes the state block to `0x13070` /
 `0x13250`, which builds encoded-span objects consumed later by `0x1f88e`.
@@ -14255,10 +14271,14 @@ In the lowercase VFC definition fixture, the stream
 `ESC &l4w4W 00 00 00 02 !` first schedules delayed handler `0x12cfe`
 with snapshot bytes `01 00 01 2c fe 80 77 00 04 00 00` for lowercase
 record `80 77 00 04 00 00`. The following uppercase `W` reaches
-`0x11f6e` but does not reschedule while pending, then `0x12218` restores
-the lowercase record, consumes the four payload bytes starting after the
-uppercase `W`, loads the same table prefix, and queues the following `!`
-at compact coord `0x9001`.
+`0x11f6e` but does not reschedule while pending, then normal-mode `0x12218`
+restores the lowercase record, consumes the four payload bytes starting after
+the uppercase `W`, loads the same table prefix, and queues the following `!`
+at compact coord `0x9001`. If the same delayed record is restored with
+alternate/data flag `0x782c18` set, `0x12218` calls `0x12358` instead of
+`0x12cfe`; positive counts append through `0xdace -> 0xe002`, and
+`0x782dde..0x782edd`, `0x782dc2`, `0x782dd2`, and `0x782ee1` are not written
+by that branch.
 
 In the channel-jump fixture, the same table state receives `ESC &l2V!`.
 Handler `0x1280a` uses cached line bounds `0x782ee0 = 62` and

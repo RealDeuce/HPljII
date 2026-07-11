@@ -1369,11 +1369,16 @@ A byte-stream reproduction must preserve these behaviors:
   record, snapshot, payload offset, and drained payload bytes; firmware
   bookkeeping is the modeled allocation result and
   stream-storage cursor.
-- `0x13250..0x1381c` addressed storage is documented by the mixed
-  text/rule/raster publication fixture. The allocator result is a modeled
-  addressed fixture result, which is acceptable for the documented ROM contract
-  unless a later byte stream exposes a conflicting allocation or row-output
-  behavior.
+- `0x13250..0x1381c` addressed storage is owned by the page-record storage
+  contract, not by a fixture-only assertion. `0x13250` calls allocator helper
+  `0x132b6`, links each returned object at the selected root `+0x1c` bucket
+  head, and fills object class/mode/count/key fields before `0x138de` copies
+  accepted payload bytes. The shared stream allocator `0x1381c` owns updates to
+  `0x782a70`, `0x782a72`, and `0x782a76`; page-record bridge `0x1ed84` /
+  `0x1edc6` then copies root `+0x1c` to render `+0x18`, where `0x1efc2`
+  dispatches class `0x80..0xff` objects to `0x1f88e`. Mixed text/rule/raster
+  fixtures are supporting checks for that documented owner route, not the
+  primary explanation.
 - Page-image coverage is no longer missing only because the raster fixture is
   isolated: checked-in fixtures now include mixed text/rule/raster publication,
   geometry-changing publication streams, font-selection streams, downloaded

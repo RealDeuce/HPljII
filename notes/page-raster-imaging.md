@@ -962,8 +962,25 @@ landscape threshold sequence `2175, 2550, 2480, 2550`.
 
 The coordinate helper group at `0x0104d8..0x010550` converts between
 whole coordinates and a packed fixed-point form with 12 subunits per
-whole unit. `0x10518` adds signed whole/fraction pairs and clamps the
-whole part to `0x7ffe`.
+whole unit. `0x104d8` clamps signed subunits to `-0x5ffff..0x5ffff`,
+divides by `12`, and normalizes negative remainders into packed
+whole/fraction form. `0x104fe` reverses that representation by multiplying
+the whole word by `12` and adding the fraction word. `0x10510` subtracts
+packed pairs by negating the second pair before entering `0x10518`; `0x10518`
+adds whole/fraction pairs, clamps the whole part through `0x104f0` with limit
+`0x7ffe`, carries fractions `>= 12`, and borrows negative fractions through
+the `0x10548` fixup. `0x10550` is derived projection math used by HMI/default
+advance code; it does not read parser state or page objects directly.
+
+These helpers write no RAM by themselves. Their return values become pixel-affecting
+only when callers store them into canonical placement fields: cursor x/y `0x782c8a` /
+`0x782c8e`, HMI/VMI `0x78315c` / `0x783160`, rectangle and raster-origin fields such as
+`0x783170+0x0a`, or page-layout bounds used by later queueing. Direct-control formulas
+and caller evidence are owned by
+[direct-control-codes.md](direct-control-codes.md#cursor-and-dot-position-route-checkpoint).
+The raster owner consumes the same packed-coordinate contract when `0x1075a` seeds
+raster origin from the current cursor and when `0x105d0` advances the active row
+position before `0x13070` queues encoded raster objects.
 
 ## Raster Graphics State
 

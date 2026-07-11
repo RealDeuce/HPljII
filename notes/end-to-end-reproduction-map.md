@@ -402,6 +402,22 @@ that owner note before claiming equivalent output.
   [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint)
   and `State-Only Command Dependency Map` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#state-only-command-dependency-map).
+- Cursor and margin placement `ESC &a2c+1R!` / `ESC &a6l9M!`: command bytes enter
+  through `0xa904 -> 0xda9a -> 0x11774` in `ESC &a` parser mode `12`. In the cursor
+  stream, lowercase final `c` keeps the family active: `ESC &a2c` dispatches to
+  horizontal column handler `0xf39e`, converts through HMI `0x78315c`, commits x through
+  `0xf4ca`, then `+1R` dispatches to vertical row handler `0xf560`, converts through VMI
+  `0x783160`, commits y through `0xf6e2`, and leaves the following printable `!` to
+  queue a compact object at coordinate `0x1a02` through `0xd04a -> 0xd824 -> 0x12f2e ->
+  0x1387c`. In the margin stream, lowercase final `l` keeps the same parser family
+  active: `ESC &a6l` reaches left-margin handler `0xeb58` and writes left margin
+  `0x782dd6`, then `9M` reaches right-margin handler `0xec0c` and writes right margin
+  `0x782dda`; the following printable queues at compact coordinate `0x0207`. These
+  commands create no pixels directly; pixels come from the later compact object after
+  ordinary publication and render `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
+  Evidence: `Minimal Direct-Control Walkthrough` in this file,
+  [direct-control-codes.md](direct-control-codes.md#cursor-and-dot-position-route-checkpoint),
+  and [direct-control-codes.md](direct-control-codes.md#margin-route-checkpoint).
 - Explicit no-output parser rows `NUL BEL VT`: bytes `00 07 0b` enter through `0xa904 ->
   0xda9a -> 0x11774` and match normal mode-zero table rows with next mode `0` and no
   handler longword. They do not reach printable fallback `0x118d6..0x11900`, adjacent C0

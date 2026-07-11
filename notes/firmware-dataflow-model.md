@@ -582,8 +582,10 @@ Wrapper artifacts and unimplemented rows:
 
 - `ESC ?` is consumed by wrapper `0xda9a`. After `ESC`, fetch `0xdaa6` checks
   for `?`; fetch `0xdab2` consumes a third byte. Third byte `0x11` is
-  swallowed and the wrapper restarts; other third bytes follow the parser
-  reporting/pushback behavior documented in `pcl-parser-core.md`.
+  swallowed and the wrapper restarts; other third bytes rejoin the wrapper's
+  first-byte comparison at `0xdaa0`, so non-ESC values can become parser
+  bytes and ESC values re-enter the ordinary ESC lookahead/report path
+  documented in `pcl-parser-core.md`.
 - `ESC Z` is local terminator input for display-functions readers `0x12536`
   and `0x12120`. It is consumed inside their direct `0xa904` loops, not as a
   standalone page-output command.

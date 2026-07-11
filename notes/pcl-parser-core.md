@@ -920,10 +920,12 @@ Stream consequences:
 - `ESC ? 11 !` consumes `ESC ? 0x11` wholly inside `0xda9a`; the parser loop
   sees neither `ESC` nor `?` for that private sequence. The following `!`
   becomes the next parser-visible byte.
-- `ESC ? X` with `X != 0x11` is not the same no-output case. `0xda9a` reports
-  or pushes the nonprivate lookahead through `0x9ec0` and returns `ESC`, so the
-  next parser state depends on the reported byte path rather than the private
-  swallow path.
+- `ESC ? X` with `X != 0x11` is not the same no-output case. `0xdab2..0xdabe`
+  branches back to the wrapper comparison at `0xdaa0`: a non-ESC `X` can
+  return as the parser byte, while an ESC `X` re-enters normal ESC lookahead
+  and can report the following non-`?` byte through `0x9ec0` before returning
+  `ESC`. The next parser state therefore depends on the reclassified third
+  byte rather than the private swallow path.
 - Alternate/data blank C0 rows preserve input rather than ignoring it:
   matched bytes take `0x11930..0x11ab8`, flush parser scratch, append the byte
   through `0xe002`, and then rejoin terminal reset. Pixels can appear only if

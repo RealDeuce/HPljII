@@ -778,7 +778,10 @@ direct absolute `JSR 0xa904` sites in the verified firmware image:
     directly to the main parser loop.
   - `0xdaa6`: second fetch after ESC, used by the display-functions probe.
   - `0xdab2`: third fetch after `ESC ?`; loops on byte `0x11`, otherwise
-    reports the byte through `0x9ec0` and returns ESC to the wrapper.
+    rejoins the wrapper's first-byte comparison at `0xdaa0`. A non-ESC third
+    byte can therefore return as the parser byte; an ESC third byte re-enters
+    the normal ESC lookahead path, where a following non-`?` byte is reported
+    through `0x9ec0` before `ESC` is returned.
   - These callers do not locally stop on `D7 = -1`; the parser loop or
     higher wrapper state decides what the negative return means.
 - Shared `0x1a 0x58` probe:

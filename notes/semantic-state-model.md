@@ -614,9 +614,11 @@ data.
   `0xedf8`, and raster/font command finals.
 - Parser wrapper `0xda9a` fetches the first normal byte. Its siblings
   `0xdaa6` and `0xdab2` inspect the bytes after `ESC` and `ESC ?`; `0xdab2`
-  loops over `0x11`, otherwise reports the byte through `0x9ec0` and returns
-  `ESC`. These wrappers do not locally stop on `D7 = -1`; the surrounding
-  parser state owns that decision.
+  loops over `0x11`, otherwise rejoins the wrapper comparison at `0xdaa0`.
+  A non-ESC third byte can return as the parser byte, while an ESC third byte
+  re-enters ordinary ESC lookahead and can report the following non-`?` byte
+  through `0x9ec0` before returning `ESC`. These wrappers do not locally stop
+  on `D7 = -1`; the surrounding parser state owns that decision.
 - Control probe `0xdace` fetches one byte and, only for `0x1a`, fetches a
   second byte at `0xdada`; exact pair `0x1a 0x58` calls `0xd99a` and returns
   normalized zero. Raster and font payload readers reuse this family behavior

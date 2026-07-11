@@ -267,9 +267,11 @@ undocumented imaging commands:
 - `ESC ?` is handled inside the ESC-aware byte-fetch wrapper. After `0xda9a`
   sees `ESC`, wrapper fetch `0xdaa6` checks the next byte; when it is `?`,
   `0xdab2` fetches a third byte. Third byte `0x11` is swallowed and the wrapper
-  loops; any other third byte is reported through `0x9ec0` and the wrapper
-  returns `ESC` to the parser. The detailed caller classification is in
-  [host-byte-fetch.md](host-byte-fetch.md).
+  loops; any other third byte rejoins the wrapper's first-byte comparison at
+  `0xdaa0`. A non-ESC third byte can return as the parser byte, while an ESC
+  third byte re-enters normal ESC lookahead and can report the next non-`?`
+  byte through `0x9ec0` before returning `ESC`. The detailed caller
+  classification is in [host-byte-fetch.md](host-byte-fetch.md).
 - `ESC Z` is the local terminator for the `ESC Y ... ESC Z`
   display-functions readers, not a normal parser-table terminal. Normal handler
   `0x12536` and alternate/data handler `0x12120` both consume the terminating

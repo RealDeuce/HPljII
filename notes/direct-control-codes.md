@@ -34,6 +34,8 @@ renderer-facing documentation checkpoint.
 - `notes/pcl-parser-firmware.md`
 - `notes/raster-graphics.md`
 - `notes/rectangle-graphics.md`
+- `notes/vertical-forms-control.md`
+- `notes/publication-commands.md`
 - `notes/page-raster-imaging.md`
 - `notes/semantic-state-model.md`
 
@@ -1936,9 +1938,22 @@ Downstream consumers:
   `0x782dc2`, and perforation-skip byte `0x783191`. Enabled overflow with a
   nonzero exceeded limit calls page-eject helper `0xf124`; disabled or
   below-limit cases return without publication.
-- Cursor, VFC, and printable-placement paths read `0x783160`, `0x782dce`,
-  `0x782dd2`, and `0x782dc2` when converting later command values into page
-  coordinates.
+- VMI writer-to-consumer matrix:
+  `0xcb00` and `0xc992` write canonical line advance `0x783160`; later ROM
+  paths consume that same field in distinct output families rather than
+  drawing at VMI-handler time. LF helper `0xf0b2` and page-eject helper
+  `0xf124` read `0x783160` to advance or reset vertical cursor state;
+  half-line feed `0xf176` reads it at `0xf186`; vertical row positioning
+  `0xf560` reads it at `0xf588`; page-length `0xf9e8` reads it at `0xfa14`
+  to compute page extent; VFC table/jump code reads it at `0x12812`,
+  `0x12d24`, and through `0x1280a` branch logic; text-span/VFC helpers can
+  derive segment-list or cursor state from it before later printable output.
+  Raster start `0x1075a` and rectangle clipper `0x10b80` do not read VMI
+  directly in their documented paths; they see its effect only after one of
+  the cursor consumers has updated `0x782c8e` or related layout fields.
+  Output effects are therefore delayed placement, page-boundary decisions,
+  VFC cursor movement, raster origin, or rectangle source clipping, never a
+  VMI-handler page object.
 
 Output boundary:
 

@@ -152,6 +152,20 @@ that owner note before claiming equivalent output.
   [font-context-metrics.md](font-context-metrics.md#byte-to-glyph-flow), and
   `Minimal End-To-End Example` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#minimal-end-to-end-example).
+- Transparent print data `ESC &p2X!!`: the command bytes enter through `0xa904 -> 0xda9a
+  -> 0x11774` and dispatch to arming handler `0x11f5a`. Delayed setup `0x11f5a ->
+  0x121cc` writes pending flag `0x782a1a = 1`, saved handler `0x782a1c = 0x12452`, and
+  saved command record `80 58 00 02 00 00` at `0x782a20..0x782a25`; terminal restore
+  `0x12218` later calls `0x12452`. The transparent reader treats command-record word
+  `+2` as the absolute count, fetches two payload bytes directly through `0xa904`, and
+  routes both `0x21` values to printable handler `0xd04a`. From that point the
+  page/image path is ordinary compact text: `0xd04a -> 0x1393a -> 0xd550 -> 0xd824 ->
+  0x12f2e -> 0x1387c` queues the two-entry compact object under current page-root bucket
+  `+0x1c`, prefix `00 00 00 00 00 00 00 02 20 00 01 20 02 02`. Publication/render uses
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`; transparent print
+  data has no separate renderer. Evidence: `Minimal Transparent Payload Walkthrough` in
+  this file and
+  [transparent-print-data.md](transparent-print-data.md#transparent-payload-outcome-matrix).
 - Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
   resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
   0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue

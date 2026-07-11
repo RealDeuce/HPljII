@@ -4918,6 +4918,16 @@ Reproduction rule:
   object bytes. The selected slot is represented by `0x782f06` and
   page-root slot byte `0x78297e`, then consumed as compact object context slot
   `+0x05` and render context cache `0x783a2c`.
+- Default-font helpers are state producers on the same route. `0x1b04c`
+  rebuilds fallback and default-symbol tables through `0x1af36` and
+  `0x1ac0a`; those write `0x782f0c..0x782f18` and
+  `0x782f1c..0x782f28`. Current-default lookup `0x1b250` writes scratch
+  candidate pointer `0x7828a0`, scratch word `0x7828a4`, and selector byte
+  `0x78289f`. Current-context install
+  `0x1acb0 -> 0x1b332 -> 0x1b2fe -> 0x1b36e/0x1b440 -> 0x14c64` writes
+  active symbol words, selected target, selected candidate pointer, current
+  context records, and rebuilt maps before later printable bytes consume
+  them.
 
 State classification for this path:
 
@@ -4934,8 +4944,10 @@ State classification for this path:
 - Derived/cache state:
   candidate survivor marks/lists, snapshot records `0x783148` / `0x783152`,
   transient selected context `0x782992`, current font ID `0x782f2e`,
-  default-symbol tables `0x782f1c`, `0x782f20`, `0x782f24`, and `0x782f28`,
-  compact coordinates, glyph-entry pointers, and render-band fields.
+  fallback/default-symbol tables `0x782f0c..0x782f28`, current-default scratch
+  `0x7828a0` / `0x7828a4`, temporary selector bytes
+  `0x78289e` / `0x78289f`, compact coordinates, glyph-entry pointers, and
+  render-band fields.
 - Parser scratch:
   setup records from `0x1201e` / `0x12008`, mode-13 font-selection command
   records, and the following printable bytes.
@@ -4964,6 +4976,8 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
 `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`,
+`generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`,
 `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
 `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`, and
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.

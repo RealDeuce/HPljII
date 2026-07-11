@@ -18,6 +18,8 @@ Evidence:
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
 - `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
+- `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`
+- `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`
 - `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
@@ -1366,6 +1368,116 @@ is to flush pending text, publish the current root when applicable, refresh
 page/font defaults, flush again, and wait/service. It does not inspect compact
 buckets or render glyph rows directly, but it can decide when page-root
 context-slot state is finalized before later rendering.
+
+## Default Font Table And Current-Context Helpers
+
+This checkpoint covers the default-font helper cluster that supplies fallback
+symbol words and installs default current-font contexts. It is a producer of
+font-selection state, not a page-object producer. Later printable bytes consume
+the resulting context and map through the ordinary
+`0xd04a -> 0x1393a -> 0x12f2e` text path.
+
+Default table rebuild:
+
+- ROM path:
+  `0x1b04c -> 0x1af36 -> 0x1ac0a`.
+- State category:
+  derived/cache font-selection state and firmware bookkeeping.
+- Writers:
+  `0x1af36` writes candidate fallback words at `0x782f0c`, `0x782f10`,
+  `0x782f14`, and `0x782f18`. `0x1ac0a` writes default-font command words at
+  `0x782f1c`, `0x782f20`, `0x782f24`, and `0x782f28`.
+- Readers / consumers:
+  `0x156de` consumes the `0x782f0c..0x782f18` fallback table when remembered
+  active words do not satisfy the current selection. Final-`@` command
+  handling at `0x1be22` consumes `0x782f1c..0x782f28`.
+- Output effect:
+  no page object or pixels. The table words change which font candidate or
+  default word a later selection path can expose before printable bytes run.
+- Evidence:
+  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`,
+  `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`, and
+  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+
+Current-default lookup:
+
+- ROM path:
+  `0x1b250 -> 0x1b50e -> 0x1b4c0`.
+- State category:
+  canonical candidate state plus parser/default scratch.
+- Writers:
+  disabled selector `0x78219c == 0xff` clears `0x7828a0`, `0x78289f`, and
+  `0x7828a4`. Successful lookup writes canonical candidate slot pointer
+  `0x7828a0`, symbol/default word `0x7828a4`, and orientation/list selector
+  byte `0x78289f`.
+- Readers / consumers:
+  `0x1ac0a`, `0x1af36`, and `0x1acb0` consume the scratch result. The
+  resolver reads default selector bytes `0x78219b` / `0x78219c`, candidate
+  windows, current default word output, and maps low-24-bit resource addresses
+  back to canonical candidate slots through `0x1b4c0`.
+- Output effect:
+  no page output. A miss clears the scratch candidate; a hit supplies the
+  candidate and word used by table rebuilds or by the current-context install
+  route below.
+- Evidence:
+  `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`,
+  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`, and
+  fixture notes in `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
+
+Current-context install:
+
+- ROM path:
+  `0x1acb0 -> 0x1b332 -> 0x1b2fe -> 0x1b36e/0x1b440 -> 0x14c64`.
+- State category:
+  canonical selected font context, canonical active symbol word, and derived
+  map cache state.
+- Writers:
+  `0x1b332` writes active symbol word `0x783144` or `0x783146`, selected
+  target `0x7828de`, selected candidate pointer `0x7828a8`, then dispatches
+  by selected context form. `0x1b36e` writes bit-30 offset-table context
+  records at `0x782ee6` or `0x782ef6`; `0x1b440` writes bit-30-clear
+  fixed-record contexts. Both clear marker byte `0x78287b` after handling its
+  metric-preservation gate and both feed `0x14c64` map rebuild.
+- Readers / consumers:
+  `0x1b2fe` reads `0x7828a8` and dispatches on selected longword bit 30.
+  Printable source capture later reads `0x782ee6` / `0x782ef6`,
+  `0x783144` / `0x783146`, `0x782f32` / `0x783032`, and selected slot
+  `0x782f06`.
+- Output effect:
+  still no page object. The route makes a default/current font visible to the
+  later printable text path; compact text output begins only when `0xd04a`
+  consumes the rebuilt context/map and `0x12f2e` queues the source.
+- Evidence:
+  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`,
+  `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`,
+  `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`, and
+  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+
+State grouping for this checkpoint:
+
+- Canonical state:
+  candidate slots under `0x782324..`, current contexts `0x782ee6` /
+  `0x782ef6`, selected target `0x7828de`, selected candidate `0x7828a8`,
+  active symbol words `0x783144` / `0x783146`, and rebuilt maps
+  `0x782f32` / `0x783032`.
+- Derived/cache state:
+  fallback tables `0x782f0c..0x782f18`, default command tables
+  `0x782f1c..0x782f28`, current-default scratch pointer `0x7828a0`, scratch
+  word `0x7828a4`, and orientation/list selector bytes `0x78289e` /
+  `0x78289f`.
+- Parser scratch:
+  final-`@` command state and default selector bytes `0x78219b` / `0x78219c`
+  when this route is reached from symbol/default commands.
+- Firmware bookkeeping:
+  marker byte `0x78287b`, candidate-window cursors/counts, and table-builder
+  temporary selector toggles.
+- Hardware/external state:
+  none for the ROM-local default/current-font route.
+- Unknown:
+  no ROM-local middle edge remains for the table writes, lookup result
+  plumbing, or context/map install path documented here. Remaining work starts
+  only from candidate-window contents that select different records or from a
+  later printable/page/render path that consumes the resulting context.
 
 ## Printable Source Capture
 

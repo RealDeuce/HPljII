@@ -1383,6 +1383,8 @@ A byte-stream reproduction must preserve these behaviors:
   isolated: checked-in fixtures now include mixed text/rule/raster publication,
   geometry-changing publication streams, font-selection streams, downloaded
   glyph FF publication, and a parser-driven downloaded-glyph/rule/raster page.
-  The remaining page-image gap is new byte-stream variants that expose
-  different ROM state, not the
-  software-visible raster object layout or render dispatch.
+  New ROM-local raster/page-image work should start only from byte-stream
+  variants that expose different raster state fields, page-root bucket/object
+  bytes, allocator or bridge fields, or `0x1f88e` row-construction inputs. It is
+  not a gap in the software-visible raster object layout or render dispatch
+  documented above.

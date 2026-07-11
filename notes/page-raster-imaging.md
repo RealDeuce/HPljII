@@ -1361,8 +1361,9 @@ Unresolved middle edges:
 
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and second-chunk
   rollover are documented from the disassembly and exercised by fixtures.
-  Remaining work here is dense byte streams that expose a new page-root field,
-  stream-allocation transition, or object shape.
+  New ROM-local page-record work here starts only from byte streams that expose
+  a new page-root topology, allocator transition, object byte shape,
+  publication field, bridge field, or render input.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
   [raster-graphics.md](raster-graphics.md). Parser dispatch, delayed record
   restore, gate outcomes, addressed `0x13250` storage, and render-entry rows
@@ -1386,18 +1387,19 @@ Unresolved middle edges:
   `0x13386` / `0x133aa` is composed in
   [rectangle-graphics.md](rectangle-graphics.md) for selector-7, gray,
   pattern, landscape-remap, clipping, no-room retry, addressed storage,
-  publication, and mixed text/rule/raster streams. Remaining ROM-local work
-  starts only from byte streams that change list ordering, `0x1381c`
-  rollover/allocation state, retry publication fields, bridge state, render
-  dispatch, or ROM-derived row construction.
+  publication, and mixed text/rule/raster streams. New ROM-local rectangle/list
+  work starts only from byte streams that change clipped source fields, list
+  ordering, object bytes, `0x1381c` rollover/allocation state, retry
+  publication fields, bridge fields, render dispatch, or ROM-derived row
+  construction beyond the documented selector matrices.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, and the
   scheduler-produced multi-band render loop are modeled. Fixture
   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers render,
   capacity-wait, throttle, and cleanup branches around `0x1eba4..0x1ecd2`, and
   fixture `0x1eba4 scheduler band words render published downloaded glyph` feeds
-  scheduler-produced band words `0..9` into `0x1ef6a`. The remaining scheduler
-  work is physical engine pacing and board-level MMIO correlation for the
-  events that wake or stall those modeled branches.
+  scheduler-produced band words `0..9` into `0x1ef6a`. Residual scheduler work
+  is hardware/MMIO event source and pacing correlation for the events that wake
+  or stall those modeled branches, not a render-record bridge gap.
 
 `0x13070` converts the raster state block into bucket coordinates:
 

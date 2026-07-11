@@ -1330,6 +1330,46 @@ The skip exits are three distinct ROM states, not one generic failure:
   current-record slot, the old payload has already been released through
   `0x1887a` at `0x16c80..0x16c92` before this count-full test runs.
 
+The current-record scanner at `0x172c0` is the shared lookup/allocation gate
+for that install route. It is not a font selector and does not inspect glyph
+metrics. Its first pass walks 10-byte records from `0x782640` through
+`0x782776`, compares record word `+0x00` against current downloaded-font id
+`0x782f2e`, and requires a nonzero payload pointer at record `+0x06`. On a
+match it stores the record address through the caller pointer and returns
+`D7 = 0`, meaning that `0x16c14` must release the old payload before the new
+resource can replace it. If no existing live record matches, the second pass
+walks the same pool looking for record word `+0x00 == 0` and payload pointer
+`+0x06 == 0`; it stores that free record and returns `D7 = 1`. If neither
+pass finds a usable record, it clears the caller pointer and returns `D7 = 2`,
+which makes `0x16c14` drain the host payload without installing a candidate.
+
+State classification for this gate:
+
+- Canonical inputs:
+  current downloaded-font id `0x782f2e` and the 32 current-record rows
+  `0x782640..0x782776`, including record id word `+0x00` and payload pointer
+  longword `+0x06`.
+- Derived/cache output:
+  the caller-owned record pointer written by `0x172f6..0x172fa`,
+  `0x1732a..0x1732e`, or cleared by `0x17342..0x17346`.
+- Firmware bookkeeping:
+  local scan cursor `A6-0x04` and return status `D7`.
+- Output effect:
+  no immediate page object or pixels. The returned status selects whether
+  `0x16c14` releases and replaces an existing payload, installs into a free
+  current-record row, or drains the binary payload while preserving following
+  printable output through the previously selected font path.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_font_resource_classify_0172c0.lst`:
+  `0x172c0..0x17356` two-pass current-record scan and status returns.
+- Fixture `0x172c0-modeled font resource record scan statuses` pins the three
+  return classes consumed by `0x16c14`.
+- Fixture `0x16c14 routes installed font resource through 0x1bc38 slot`
+  connects a successful scan result to candidate insertion, current-record
+  update, later selected context, and visible downloaded-glyph output.
+
 The host-fetched `ESC )s80W` parser-to-install boundary is:
 
 - parsed record `80 57 00 50 00 00`.
@@ -1804,8 +1844,9 @@ Unresolved middle edges:
   fields already named by ROM effect in the table above.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
-`+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
-`0x100`; invalid type `3` returns failure.
+`+0x0c = 0` and units `0x80`; type `1` writes byte `+0x0c = 1` and units
+`0x100`; type `2` writes byte `+0x0c = 2` and units `0x100`; invalid type
+`3` returns failure.
 
 `0x17026` writes staged long `+0 = 0x15`, computes allocation size
 `((0x7827ba << 2) + 0x9b) >> 6`, allocates class `1` with `0x40` alignment,

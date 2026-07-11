@@ -340,6 +340,23 @@ that owner note before claiming equivalent output.
   for composing text, encoded raster rows, and rules into one band. Evidence:
   `Mixed Page-Image Composition` in this file and
   [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+- Published record to active bands `! FF`: the printable byte queues the ordinary
+  compact object under current root `0x78297a`; FF reaches `0xf0f0 -> 0xf124 -> 0xff1e`,
+  writes the published pool head `0x780ea6`, sets publication flag `0x782996`, and
+  clears current root `0x78297a`. Scheduler setup and selection move a selectable pool
+  record through scheduler cursor `0x780eaa` into active source pointer `0x780eae`;
+  active scheduler entry `0x1eb32..0x1eb50` performs the active-source copy. Work-record
+  selection at `0x1ecd6..0x1ed76` alternates render records `0x7820c4` / `0x782128`,
+  writes active render pointer `0x783a18`, and calls `0x1ed84`. The bridge `0x1ed84 ->
+  0x1edc6` copies published roots and context slots into render roots `+0x18`, `+0x1c`,
+  `+0x20`, and `+0x24..+0x60`, then initializes rule/fixed continuation fields. Active
+  band loop `0x1eba4..0x1ecd2` calls `0x1ef6a` only on the render branch after cleanup,
+  throttle, and capacity predicates; `0x1ef86` derives band caches `0x783a20`,
+  `0x783a22`, `0x783a28`, and stride `0x783a1c` before object dispatch. The scheduler
+  changes which published objects reach a band render call; it does not reparse host
+  bytes or create new page objects. Evidence: `Minimal Render Scheduler Walkthrough` in
+  this file, [active-render-scheduler.md](active-render-scheduler.md), and
+  [page-raster-imaging.md](page-raster-imaging.md#active-render-scheduler-semantic-checkpoint).
 - Downloaded glyph payload
   `ESC *c4660d37e5F ESC )s2193W <0x0891 payload> % FF`:
   font-control bytes route through `0x11eb6 -> 0x11ec8 -> 0x11eda`.

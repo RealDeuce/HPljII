@@ -2777,9 +2777,15 @@ the first ROM field where each byte-stream family becomes page-image state.
   when a routed value calls `0xd04a` or fixed-space helper `0xd0f0` and then
   rejoins the compact text path under current root `+0x1c`. Alternate/data
   display and Control-Z siblings `0x12120`, `0x1210c`, and `0x121b2` instead
-  append normalized bytes through `0xe002`, so no page root, object field,
-  bridge field, or render input changes until later macro/data replay feeds
-  those stored bytes back through `0xa904`.
+  append normalized bytes through `0xe002` into macro/data-chain stored input.
+  That stored input is canonical macro/data-chain state, not page-image state:
+  no page root, object field, bridge field, or render input changes at append
+  time. The first possible page-image state is deferred until a later
+  execute/call selector reaches `0xdd08 -> 0xe418`, builds an active frame at
+  `0x782d76`, and byte source `0xa904` replays the stored bytes into ordinary
+  parser owners. Overlay publication is the related special case:
+  `0xff1e -> 0xe4f4` builds a non-replay data-chain frame before the same
+  `0xa904 -> 0x11774` parser/page-object owners run.
 - Host/status side-channel commands:
   model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
   `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.
@@ -2907,15 +2913,18 @@ State classification:
 - Canonical state:
   parser-visible command handlers, cursor/layout/raster/rectangle state,
   selected font/context slots, current page root `0x78297a`, root
-  `+0x1c/+0x24/+0x28`, and published page/control records.
+  `+0x1c/+0x24/+0x28`, published page/control records, macro record pool
+  `0x782a98`, selected macro record pointer `0x782d7a`, payload chunks rooted
+  at record `+0x00`, payload count at record `+0x04`, and active data-chain
+  frame pointer `0x782d76`.
 - Derived/cache state:
   selected-map rebuild products, `0x12f2e` source fields, bucket/key fields
   `0x782a7a..0x782a7e`, pending span bounds, raster row limits, bridge render
   roots, and render context slots.
 - Parser scratch:
-  six-byte command records, delayed payload snapshots, transparent/macro replay
-  bytes, and payload budgets before the producing handler writes page-image
-  state.
+  six-byte command records, delayed payload snapshots, transparent/direct-reader
+  loop bytes, replayed bytes after `0xa904` returns them, and payload budgets
+  before the producing handler writes page-image state.
 - Firmware bookkeeping:
   allocation cursors, retry bits, publication flag `0x782996`, installed-resource
   candidate bookkeeping, and scheduler source/work-record selection.

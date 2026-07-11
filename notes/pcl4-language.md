@@ -270,11 +270,19 @@ owner, and whether visible pixels can result.
   object dispatch around `0x14ba4`; owner
   [Downloaded-Font Outcome
   Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix).
-  `ESC *c#D/#E/#F` sets current id, character, and control state; descriptor
-  and bitmap payloads install resources. Printable bytes later select
-  installed glyphs through current font/map state and render through
-  compact/downloaded-glyph helpers including `0x1f0d2`, `0x1f1f0`, and
-  `0x1f264`.
+  `ESC *c#D/#E/#F` sets current id `0x782f2e`, current character
+  `0x782f30`, and current-record control state. `ESC (s#W` / `ESC )s#W`
+  schedule delayed descriptor or resource handlers through `0x11f96 ->
+  0x121cc -> 0x12218`; zero-count payloads call `0x15d0a`, while nonzero
+  character/resource payloads restore into `0x16c14`. Successful downloaded
+  characters pass through `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, where
+  `0x16498` writes the canonical glyph record, glyph-table entry, and bitmap
+  payload. No pixels appear at install time. A later printable byte must reach
+  `0xd04a`, select the installed glyph through active map/context state, and
+  queue compact objects through `0xd824 -> 0x12f2e -> 0x1387c`; publication
+  and bridge then expose bucket root `+0x1c` as render root `+0x18`, where
+  `0x1efc2 -> 0x1effe` selects short, wide, segmented, or segmented-wide
+  helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
 - Host/status side channels:
   model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, and worker
   `0xae2c`; owner [Host/Status Outcome

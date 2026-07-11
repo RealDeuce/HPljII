@@ -220,17 +220,21 @@ owner, and whether visible pixels can result.
   `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
   producer `0x13070`; owner [Raster Transfer Decision
   Checkpoint](raster-graphics.md#raster-transfer-decision-checkpoint). Raster
-  commands set resolution/mode and queue encoded raster row objects. Pixel generation
-  happens later when bucket walkers dispatch encoded rows to `0x1f88e`, after
-  page-record publication and render-record bridge.
+  commands set resolution/mode state and queue encoded raster row objects under
+  page-root bucket `+0x1c` through `0x13070 -> 0x13250 -> 0x138de`. Publication
+  and bridge preserve that bucket chain as render-record root `+0x18`; bucket
+  walker `0x1efc2` dispatches class-`0x80` raster objects to `0x1f88e`, whose
+  mode branches use `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`.
 - Rectangle/rule graphics:
   rectangle dimension and fill handlers `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, `0x10dce`, and `0x10898`; object insertion
   `0x13386` / `0x133aa`; owner
   [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
-  Width/height and selector state become rule-list objects under root `+0x24`.
-  Render entry consumes those rule objects through selector helpers such as
-  `0x1f446`, `0x1f596`, and patterned-rule continuation state.
+  Width/height and selector state become ordered rule-list objects under
+  page-root `+0x24`. Bridge `0x1edc6` copies that list to render-record
+  `+0x1c` and initializes continuation word `+0x0c`; render entry consumes
+  rule nodes through `0x1f446`, solid selector helper `0x1f596`, or patterned
+  helper `0x1f4e0`.
 - VFC and vertical layout: VMI/LPI, page length, VFC table load, and channel jumps;
   owners [VFC Outcome Matrix](vertical-forms-control.md#vfc-outcome-matrix) and the
   shared geometry refresh consumer in

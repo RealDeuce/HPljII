@@ -268,6 +268,25 @@ that owner note before claiming equivalent output.
   creates no page record. Evidence:
   [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix)
   and `Minimal Reset Default Environment Walkthrough` in this file.
+- Page size/page geometry `! ESC &l1A`: the first `!` queues the ordinary
+  one-entry compact text object under current root `0x78297a`. `ESC &l1A`
+  enters through `0xa904 -> 0xda9a -> 0x11774` and dispatches to page-size
+  handler `0xfc74`. `0xfc82..0xfc9e` rewinds the six-byte parser record at
+  `0x78299e - 6`, reads word `+2`, and normalizes selector `1`; the explicit
+  selector ladder maps it to internal page code `6`. Accepted selectors flush
+  pending text through `0xf34a` and publish the current root through `0xff1e`
+  at `0xfd68..0xfd6e` before changing page-size state, so the pre-command
+  compact object renders through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`
+  under the old geometry. Commit path `0xfd74..0xfe32` sets `0x782997 = 1`,
+  clears `0x780e99`, writes `0x782da2 = 6`, refreshes page length through
+  `0xf9ac`, table-derived geometry through `0x9d4e`, `0x9d16`, `0x9e56`, and
+  `0xf87e`, clears and recomputes raster geometry state under
+  `0x783170/0x783180`, and rebuilds top/text/margin/cursor/VFC state through
+  `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, and `0x12b96`. Later printable,
+  raster, rectangle, span, and publication paths consume the new page code and
+  geometry; page size itself creates no pixel object. Evidence:
+  `Minimal Page Geometry Walkthrough` in this file and
+  [publication-commands.md](publication-commands.md#page-size-handler-details).
 - Orientation/page geometry `! ESC &l1O`: the first `!` queues the ordinary
   one-entry compact text object under current root `0x78297a`. `ESC &l1O`
   enters through `0xa904 -> 0xda9a -> 0x11774` and dispatches to orientation

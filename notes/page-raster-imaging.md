@@ -1233,8 +1233,9 @@ Field groups:
     through command records such as the raster delayed record restored by
     `0x12218`.
 - Unknown:
-  - exact live scheduler timing from a published pool record into the active
-    render record.
+  - physical/MMIO timing that decides when scheduler wait objects wake or
+    capacity changes. The ROM-visible published-record, bridge, and render
+    handoff fields are documented below.
 
 The heap allocator itself is not an unresolved page-record edge here.
 `0x1381c` owns the page-root stream-link side effects after `0x1710` succeeds
@@ -1298,10 +1299,13 @@ Confidence:
 
 - High for page-root creation side effects, stream allocator accounting,
   bucket reuse/new-head behavior, rule/fixed insertion order, root
-  publication, render-record field copies, and ROM-derived row construction.
-- Medium for live render-scheduler timing, because current fixtures model
-  active-record handoff rather than executing the entire scheduler path. The
-  shared `0x170c` / `0x1710` / `0x18b4` heap contract is covered in
+  publication, render-record field copies, active-record handoff, and
+  ROM-derived row construction.
+- Physical scheduler pacing is a hardware/MMIO boundary, not a lower
+  confidence statement about page-record storage. The ROM-visible scheduler
+  branch fields are owned by
+  [active-render-scheduler.md](active-render-scheduler.md). The shared
+  `0x170c` / `0x1710` / `0x18b4` heap contract is covered in
   [pcl-parser-firmware.md](pcl-parser-firmware.md) and the semantic model.
 
 Fixture evidence:

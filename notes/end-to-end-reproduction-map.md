@@ -565,6 +565,24 @@ that owner note before claiming equivalent output.
   page-eject helper `0xf124` and returns `D7 = 0`. Below-limit, zero-limit,
   or disabled-skip cases return without publication. Evidence:
   [direct-control-codes.md](direct-control-codes.md#layout-state-to-output-checkpoint).
+- Vertical layout fields `ESC &l6d3e60F !`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774` in the `&l` command family. Lowercase-family
+  chaining keeps the parser in mode `10` while the stream dispatches LPI
+  handler `0xc992`, top-margin handler `0xece2`, and text-length handler
+  `0xea9e`. `0xc992..0xca82` accepts the ROM LPI set, converts the selected
+  value to packed line advance `0x783160`, can refresh pending cursor y as
+  `0x782dce + VMI * 18 / 25`, and marks modified-layout byte `0x782ee1`.
+  `0xece2..0xedae` scales top-margin lines through current VMI, rejects zero
+  VMI or beyond-page positions, writes top offset `0x782dce`, recomputes
+  default text length, refreshes line caches through `0xfe54`, and rebuilds
+  the default VFC table through `0x12b96`. `0xea9e..0xeb56` scales text length
+  through current VMI and writes text-bottom state `0x782dd2` or restores the
+  default bottom through `0xea16` for selector zero. These commands queue no
+  object directly; the following `!` consumes the stored VMI/top/text-bottom
+  state through `0xd04a -> 0x12f2e -> 0x1387c`, while LF/FF, VFC, and
+  perforation helper `0xf36c` are sibling consumers of `0x783160`,
+  `0x782dce`, `0x782dd2`, and derived limit `0x782dc2`. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#layout-state-to-output-checkpoint).
 - HT/BS cursor placement `ESC &k0G HT BS !`: command bytes enter through
   `0xa904 -> 0xda9a -> 0x11774`. `ESC &k0G` dispatches to line-termination
   handler `0xedf8`, which rewinds the six-byte parser record and clears mode

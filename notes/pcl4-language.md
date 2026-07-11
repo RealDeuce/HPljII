@@ -104,7 +104,10 @@ In the ROM model, "ignored" is not a single behavior:
   handler.
 - `ESC ? 0x11` is consumed by the `0xda9a` ESC-aware byte wrapper before the
   parser table sees a command. It restarts byte fetching rather than creating
-  a page object or command record.
+  a page object or command record. Other `ESC ? X` triples are not the same
+  no-output case: `0xdab2..0xdabe` jumps back to the normal first-byte
+  comparison for third byte `X`, so a non-ESC `X` can become the parser byte,
+  while an ESC `X` re-enters the normal ESC lookahead/report path.
 - `ESC &lT/t` is an unimplemented `&l` table slot. Uppercase `T` has no
   terminal handler, while lowercase `t` uses the lowercase chaining helper
   path; neither form writes page environment, page objects, publication state,
@@ -125,7 +128,8 @@ Evidence: [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix),
 [pcl-command-map.md](pcl-command-map.md), the ignored/no-output walkthrough in
 [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), and table
 extracts in `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
-`generated/analysis/ic30_ic13_pcl_command_map.md`.
+`generated/analysis/ic30_ic13_pcl_command_map.md`. The byte-wrapper branch
+addresses are in `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
 
 ## ROM-Backed Level IV Boundary
 

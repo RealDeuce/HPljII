@@ -773,7 +773,13 @@ command-family and page-image structure:
    [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
    The handoff section classifies the shared parser fields and names the
    checked-in outcome checkpoint that owns command effects, page objects, or
-   explicit no-output/status behavior.
+   explicit no-output/status behavior. For delayed binary payloads, make the
+   restore fork explicit before entering the family owner: normal restore
+   `0x121cc -> 0x12218` calls the saved handler such as `0x12452`, `0x12cfe`,
+   `0x105d0`, `0x15d0a`, or `0x16c14`; alternate/data restore calls
+   `0x12358`, drains positive payload bytes through `0xdace`, appends them
+   through `0xe002`, and produces stored macro/data-chain input rather than
+   immediate family state, page objects, bridge roots, or render inputs.
 4. Record command state effects:
    in the owner note, capture the canonical fields written by the handler,
    parser scratch consumed, derived/cache fields, firmware bookkeeping,

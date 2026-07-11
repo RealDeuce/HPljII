@@ -1017,8 +1017,11 @@ State-only consumer index:
 - `ESC &f#S`: writer `0xf75e` stores cursor stack
   `0x782c96..0x782d36`. First visible consumers are following placement after
   pop, raster origin, or rectangle clipping.
-- `ESC &d#D`: writer `0x12622` stores underline/span selector `0x783185`.
-  First visible consumer is span flush `0xf34a -> 0x12714`.
+- `ESC &d#D`: writer `0x12622` stores underline/span selector `0x783185`
+  and arms pending span state through `0x126e2`. The first printable
+  consumers are span helpers `0xd4ac` / `0xd8fc`, which read `0x783185`
+  while updating pending bounds; the later materializing consumer is span
+  flush `0xf34a -> 0x12714`.
 - `ESC &f#Y/#X`: writers `0xe112` and `0xdd08` store macro id, records, and
   frames. First visible consumers are replay byte source `0xa904` and overlay
   publication `0xff1e`.
@@ -1056,10 +1059,14 @@ Delayed state-to-output resolution:
   through `0xd3b2` or `0xd824` into `0x12f2e -> 0x1387c`, publishes through
   `0xff1e`, bridges through `0x1ed84 -> 0x1edc6`, and renders through
   `0x1ef6a -> 0x1efc2 -> 0x1effe`.
-- Pending span and underline rows resolve when a terminal consumer calls
-  `0xf34a`. If span flag `0x783184` is set, `0xf34a -> 0x12714 -> 0x126e2`
-  materializes a selector-`0x4000` segment-list object under page-root `+0x1c`;
-  bridge `0x1ed84 -> 0x1edc6` copies that root to render `+0x18`, and
+- Pending span and underline rows first resolve in the printable span helpers
+  and then at terminal flush. `0x12622` writes selector byte `0x783185` and
+  `0x126e2` arms span flag `0x783184`; following printable text calls
+  `0xd4ac` / `0xd8fc`, which read `0x783185` while updating pending bounds
+  `0x783186..0x78318a`. When a terminal consumer later calls `0xf34a`, set
+  flag `0x783184` makes `0xf34a -> 0x12714 -> 0x126e2` materialize a
+  selector-`0x4000` segment-list object under page-root `+0x1c`; bridge
+  `0x1ed84 -> 0x1edc6` copies that root to render `+0x18`, and
   `0x1ef6a -> 0x1efc2 -> 0x1f812` renders the span object.
 - Vertical-layout, perforation, and VFC rows resolve through the same cursor
   and publication consumers. `0xf36c` reads cursor y `0x782c8e`, bottom limit

@@ -140,6 +140,9 @@ boundary outside these owners, the relevant owner note must be extended.
 - Host input handling and parser state transitions:
   [host-byte-fetch.md](host-byte-fetch.md#owner-summary) owns `0xa904..0xab8a`, source
   priority, data-chain replay, direct hardware fetches, and the `D7` caller contract.
+  Its `Pushback/Report Helper` checkpoint owns `0x9ec0` as the producer for the two
+  pushback stacks, including the `0x10` stack limit, `0x780e3b` no-byte gate behavior,
+  `0x780e66` pending-source bits, and the later `0xa904` consumption order.
   [pcl-parser-core.md](pcl-parser-core.md#owner-summary) owns `0xda9a`, `0xdaf0`,
   `0xdb74`, parser mode `0x782999`, command-record cursor `0x78299e`, and parser loop
   `0x11774`.
@@ -171,6 +174,11 @@ boundary outside these owners, the relevant owner note must be extended.
   VFC `0x12cfe`, raster `0x105d0`, or downloaded-font handlers `0x15d0a` /
   `0x16c14`, while alternate/data restore redirects through
   `0x12358 -> 0xdace -> 0xe002` instead of producing immediate page objects.
+  The `Payload-Control Side-Effect Helper` checkpoint in
+  [pcl-parser-core.md](pcl-parser-core.md#payload-control-side-effect-helper)
+  owns `0xd99a`: local `0x1a 0x58` probes and printable value `0x100` can
+  signal `0x780e2e.5`, increment/publish through counter `0x782c72`, or return
+  status to the caller without globally rewriting the byte source.
 - Command dispatch tables and mapping from parsed forms to handlers:
   [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) owns
   dispatch classes, table rows, terminal handlers, explicit zero rows,
@@ -183,6 +191,12 @@ boundary outside these owners, the relevant owner note must be extended.
   readers, font and symbol selection, raster graphics, rectangle/rules,
   downloaded fonts, macros, VFC, host/status side channels, and resource ROM
   paths.
+  Host/status side-channel ownership includes the `Operator-Panel Message
+  Formatter` checkpoint in
+  [errors-and-status.md](errors-and-status.md#operator-panel-message-formatter),
+  which closes the ROM-local `0x9112..0x9182` formatter edge by naming the
+  desired/shadow message buffers, wrapper flag comparison, changed-message
+  update path, and exact remaining physical panel-output boundary.
 - Page/image assembly model:
   [page-record-storage.md](page-record-storage.md#owner-summary) owns current page root
   `0x78297a`, compact/raster bucket root `+0x1c`, rule-list root `+0x24`, fixed-list

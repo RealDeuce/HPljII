@@ -10357,10 +10357,11 @@ documented in `Macro Definition And Data-Chain Replay`.
   the covered selector-7, gray-selector, pattern-selector, landscape-remap,
   clipping, no-room retry, addressed-storage, publication, and mixed
   text/rule/raster streams. The covered boundary is listed in
-  [rectangle-graphics.md](rectangle-graphics.md#owner-summary). Remaining
-  ROM-local work is limited to byte streams that change clipping output, `0x1381c`
-  rollover/allocation state, retry publication fields, rule object bytes,
-  bridge state, render dispatch, or ROM-derived row construction.
+  [rectangle-graphics.md](rectangle-graphics.md#owner-summary). New ROM-local
+  rectangle work is useful only when a byte stream changes a clipped source
+  field, `0x1381c` allocation/rollover outcome, retry publication field, rule
+  object byte, bridge field, render dispatch, or ROM-derived row construction
+  outside the documented rectangle and rule-list outcome matrices.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
   `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
   fixtures through compact text, bridge normalization, `0x1f446`, and
@@ -10583,10 +10584,11 @@ rows.
 - `0x10898..0x133aa`: selector mapping, clipping, addressed rule insertion,
   bridge normalization, solid/pattern rendering, no-room retry, and the
   covered mixed text/rule/raster publication streams are composed in
-  `Rectangle Rule Producer And Renderer`. Remaining work is limited to
-  byte-stream variants that change clipping output, `0x1381c`
-  rollover/allocation state, retry publication fields, rule object bytes,
-  bridge state, render dispatch, or rendered rows.
+  `Rectangle Rule Producer And Renderer`. New rectangle work is useful only
+  when a byte stream changes a clipped source field, `0x1381c`
+  allocation/rollover outcome, retry publication field, rule object byte,
+  bridge field, render dispatch, or ROM-derived row construction outside the
+  documented rectangle and rule-list outcome matrices.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
   `Raster Transfer Gate And Encoded Rows`. The parser-to-handler record handoff

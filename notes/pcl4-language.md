@@ -212,10 +212,18 @@ owner, and whether visible pixels can result.
   [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
   [display-functions.md](display-functions.md). These are direct byte readers:
-  normal transparent payload and normal `ESC Y` bytes route to `0xd04a` or
-  `0xd0f0`, while alternate/data transparent restore diverts through
-  `0x12358 -> 0xdace -> 0xe002` and alternate/display append stores bytes
-  through `0xe002` with no immediate page object.
+  normal transparent payload restores through
+  `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`, while normal `ESC Y` reaches
+  loop reader `0x12536`. In both normal cases, payload values are not parsed
+  as commands; the reader routes each normalized byte to printable `0xd04a` or
+  fixed-space/control `0xd0f0`. Printable results then use the ordinary text
+  route `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, publish through `0xff1e`,
+  bridge bucket root `+0x1c` to render root `+0x18`, and render through
+  `0x1efc2 -> 0x1effe`. In alternate/data mode, transparent restore diverts
+  through `0x12358 -> 0xdace -> 0xe002`, and alternate display reader
+  `0x12120` appends literal `ESC Y` plus normalized loop bytes through
+  `0xe002`; those stored bytes affect pixels only if later macro/data replay
+  returns them through `0xa904`.
 - Raster graphics:
   `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
   producer `0x13070`; owner [Raster Transfer Decision

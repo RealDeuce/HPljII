@@ -150,7 +150,9 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   `Worked Path: Rectangle Rule`,
   `Worked Path: Rectangle Rule Selectors And Clipping`,
   `Worked Path: Raster Row`,
-  `Worked Path: Raster Transfer Gates And Modes`.
+  `Worked Path: Raster Transfer Gates And Modes`, and
+  [Alternate/Data Raster Payload
+  Checkpoint](raster-graphics.md#alternatedata-raster-payload-checkpoint).
 
 Each worked path names the handlers, ROM fields, output effect, field
 classification, evidence files, and unresolved boundary for that slice.
@@ -241,11 +243,17 @@ dropping into the command-family detail notes. The longer ledger is
 - Raster graphics:
   `ESC *t#R`, `ESC *r#A/#B`, and delayed `ESC *b#W` route through
   `0x10808`, `0x1075a`, `0x107fa`, and
-  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Accepted transfers queue
-  encoded-span objects through `0x13070 -> 0x13250`, publish/bridge like
-  other bucket objects, and render through `0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+  `0x11f82 -> 0x121cc -> 0x12218`. In normal mode, restore calls saved
+  handler `0x105d0`; accepted transfers queue encoded-span objects through
+  `0x13070 -> 0x13250`, publish/bridge like other bucket objects, and render
+  through `0x1ef6a -> 0x1efc2 -> 0x1f88e`. In alternate/data mode, the same
+  delayed syntax restores through `0x12358`, drains positive payload counts
+  through `0xdace`, and appends bytes through `0xe002` with no immediate
+  raster block, page root, encoded object, bridge field, or render input.
   Owner worked paths are `Raster Row` and
-  `Raster Transfer Gates And Modes`.
+  `Raster Transfer Gates And Modes`; the append-only sibling is owned by
+  [Alternate/Data Raster Payload
+  Checkpoint](raster-graphics.md#alternatedata-raster-payload-checkpoint).
 - Rectangle/rule graphics:
   `ESC *c` size/fill commands route through `0x10e68`, `0x10e22`,
   `0x10dce`, `0x10a40`, `0x10ae0`, and final fill handler `0x10898`.

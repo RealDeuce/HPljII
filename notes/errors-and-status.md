@@ -378,6 +378,9 @@ Firmware bookkeeping:
 
 - `0x7801e2`: wait object used when the output worker or FIFO producer must
   yield.
+- `0x7839d2`: ready/cleanup trigger tested by `0x2c08`. When set, cleanup
+  clears it and runs the `0x2c44` subpath before clearing service-pending
+  state.
 - `0x7839d3`: service-pending byte set by `0x2a38` and cleared by copied-stub
   status handling and cleanup.
 - `0x780e3e` and `0x7822e6`: normal service-message latch and next poll
@@ -441,6 +444,10 @@ Unknown:
 - `0x2a14` publishes selected record byte `+7` to `0x780e8f`.
 - `0x2c08..0x2c3a` clears service flags including `0x7839d3` and
   `0x780e90`.
+- `0x2c44..0x2c7e` runs only from cleanup when `0x7839d2` was set. It toggles
+  `$a801` shadow helpers `0xa668`, `0xa620`, and `0xa638`, waits through
+  `0x2332`, then calls candidate-slot insertion helper `0x1fd4` with a null
+  longword argument.
 - `0x8656` updates `0x780e3e` / `0x7822e6` and emits normal service strings.
 - `0x8a48` emits media-feed strings from `0x780e8e`, `0x780e98`, and table
   `0xb490`.
@@ -471,6 +478,14 @@ Unknown:
   `2`, and `0x783e60` is ORed into the byte.
 - `0x7612..0x7834` consumes `0x780e90` to choose page-environment message
   helper `0x8a48` when set or normal service helper `0x8656` when clear.
+- `0x2c08` consumes `0x7839d2` as a cleanup trigger. If the byte is clear, the
+  path skips `0x2c44` and still clears `0x7839d3`, calls `0xa5da`, clears
+  `0x780e90`, and exits through `0x15ac`.
+- `0x2c44` consumes the active-pool candidate insertion contract indirectly:
+  it calls `0x1fd4` with a zero longword argument, so any downstream effect is
+  limited to the scheduler candidate-slot bookkeeping documented in
+  [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+  not page-object creation.
 - `0x8a48` maps `0x780e8e = 0x80` to `PF FEED` / `PE FEED` forms and
   `0x780e8e = 0x90` to envelope/manual-feed forms.
 - `0x8a48` indexes suffix table `0xb490` with `0x780e98` or
@@ -805,6 +820,8 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
 - `generated/analysis/ic30_ic13_strings.txt`
 - `generated/disasm/ic30_ic13_page_environment_status_002888.lst`
+- `generated/disasm/ic30_ic13_page_status_cleanup_002c00.lst`
+- `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`
 - `generated/disasm/ic30_ic13_page_service_messages_008656.lst`
 - local `unidasm` window `0x7c96..0x7e20` over

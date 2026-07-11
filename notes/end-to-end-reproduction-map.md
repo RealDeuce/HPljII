@@ -335,6 +335,23 @@ that owner note before claiming equivalent output.
   class-`0x80` object chain, object payloads, packed keys, and selected encoded-raster
   mode helper. Evidence: `Minimal Dense Raster Split Walkthrough` in this file and
   [raster-graphics.md](raster-graphics.md#dense-row-split-composition-checkpoint).
+- Lower-resolution raster modes `ESC *t150R` / `ESC *t100R` / `ESC *t75R` plus `ESC *r1A
+  ESC *b#W <payload>`: resolution command bytes enter through `0xa904 -> 0xda9a ->
+  0x11774` and dispatch to handler `0x10808`. When raster active byte `0x783170+0x12` is
+  clear, `0x10808..0x10896` reads parsed word `+2`, maps requested resolution to
+  scale/mode pairs `101..150 -> 2/1`, `76..100 -> 3/2`, and `<=75 -> 4/3`, writes scale
+  `+0x0e`, recomputes row byte limit `+0x10`, and writes encoded mode byte `+0x08 =
+  scale - 1` in raster state block `0x783170`. The later delayed transfer path is the
+  ordinary `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 -> 0x13070 -> 0x13250 -> 0x138de`;
+  `0x13250` copies raster state `+0x08` into encoded object byte `+0x05`.
+  Publication/bridge carry the class-`0x80` object to `0x1ef6a -> 0x1efc2 -> 0x1f88e`;
+  `0x1f88e` masks `object[5] & 3`, so mode `1` expands each payload byte through table
+  `0x30914` into two row writes at `0x1f8e6`, mode `2` expands even/odd payload bytes
+  through longword table `0x30b14` into up to three row writes at `0x1f920`, and mode
+  `3` expands through `0x30914` twice into four row writes at `0x1f9c6`. Evidence:
+  [raster-graphics.md](raster-graphics.md#resolution-at-0x10808),
+  [raster-graphics.md](raster-graphics.md#encoded-raster-object-outcome-matrix), and
+  [page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint).
 - Rectangle/rule `ESC *c12a5b0P`:
   parser dispatch reaches width/height/fill handlers
   `0x10e68 -> 0x10e22 -> 0x10898`. Fill clips through `0x10b80`, then

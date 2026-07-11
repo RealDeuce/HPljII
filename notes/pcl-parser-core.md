@@ -468,6 +468,64 @@ fractional digits, and the continuation return contract. Semicolon and colon
 continuation finals store the final byte in the record but return `D7 = 0` to
 the caller.
 
+### Tokenizer Byte-Class Decision Checkpoint
+
+This checkpoint is the byte-level contract for parsed numeric command
+records. It explains what `0xdb74` does with each byte class before a terminal
+handler sees record words `+2` and `+4`.
+
+- Record allocation:
+  `0xdb78..0xdb88` reads the current command-record cursor `0x78299e`,
+  reserves six bytes by storing `cursor + 6` back to `0x78299e`, and uses the
+  old cursor as the active record. `0xdb8a..0xdb96` clears flag byte `+0x00`,
+  clears fractional word `+0x04`, points numeric scratch at `0x782a42`, and
+  selects `0xda9a` as the byte source.
+- Leading space and sign:
+  `0xdb9c..0xdbbe` skips leading spaces `0x20`, accepts one optional `+` or
+  `-`, copies the sign byte into numeric scratch, sets record flag `+0x00 =
+  0x81`, and remembers a negative sign in `D3`. The sign itself is parser
+  scratch; handlers consume the signed integer/fraction words written later.
+- Numeric-present flag and zero prefix:
+  `0xdbc0..0xdbe8` treats a decimal point or digit as a numeric parameter and
+  sets flag bit `0x80` in record byte `+0x00`. Leading zeroes are copied into
+  scratch and skipped before the six-digit integer accumulator starts.
+- Integer accumulator:
+  `0xdbe8..0xdc28` accepts at most six integer digits. Each accepted digit
+  updates `D5 = D5 * 10 + digit`; extra digits are fetched and ignored for the
+  stored value. `0xdc14..0xdc22` clamps the absolute value to `0x7fff`,
+  `0xdc22..0xdc26` applies the stored negative sign, and `0xdc28` writes the
+  low word to record `+0x02`.
+- Fraction accumulator:
+  `0xdc2c..0xdc68` runs only when the current byte is decimal point `0x2e`.
+  It copies the point to scratch, parses at most four fractional digits into
+  `D5`, ignores additional fractional digits for the stored value through
+  `0xdc6c..0xdc7a`, applies the same sign, and writes record `+0x04`.
+- Final byte and continuation return:
+  `0xdc7c..0xdc92` stores numeric scratch cursor `0x782a3e`, writes the
+  current terminator byte to record `+0x01`, reports it through `0x9ec0`, and
+  restores it to `D7`. `0xdc94..0xdca0` returns `D7 = 0` for `:` or `;` so
+  command-combining callers continue the current family even though the
+  terminator byte remains recorded at `+0x01`.
+
+State grouping for this tokenizer boundary:
+
+- Canonical parser state:
+  six-byte command record fields `+0x00` flag, `+0x01` final byte, `+0x02`
+  signed integer word, `+0x04` signed fraction word, and cursor `0x78299e`.
+- Parser scratch:
+  copied sign, leading zeroes, decimal point, accepted digit bytes, ignored
+  extra digit bytes, and numeric scratch cursor `0x782a3e`.
+- Firmware bookkeeping:
+  `0xda9a` byte-source calls and terminator reporting through `0x9ec0`.
+- Output effect:
+  no page/image state. The first semantic owner is whichever parser table row
+  later consumes the record through `0x11774`.
+- Evidence:
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`, and fixtures
+  `0xdb74 parses sign, capped fraction digits, and final byte` and
+  `0xdb74 returns D7 zero for semicolon continuation final`.
+
 ## Angle Helper At 0xdb46
 
 `0xdb46` is called by `0xdaf0` after a byte has been fetched. If the byte is not `<`, it

@@ -2168,13 +2168,19 @@ Raster graphics:
 
 - Dispatch anchors:
   resolution/start/end `0x10808`, `0x1075a`, `0x107fa`, and delayed transfer
-  `0x11f82 -> 0x105d0`.
+  `0x11f82 -> 0x105d0` in normal mode, with alternate/data restore
+  `0x12218 -> 0x12358 -> 0xdace -> 0xe002` when `0x782c18` is set.
 - Immediate class:
-  setup writers plus encoded-span page-object producer.
+  setup writers plus encoded-span page-object producer in normal mode;
+  stored-input producer with no immediate page object in alternate/data mode.
 - Owner and boundary: [Raster Command-To-Pixel Owner
   Summary](raster-graphics.md#owner-summary),
   [raster-graphics.md](raster-graphics.md), `Raster Row`, and `Raster Transfer Gates And
-  Modes`; accepted payloads queue encoded-span objects through `0x13070 -> 0x13250`.
+  Modes`; accepted normal-mode payloads queue encoded-span objects through
+  `0x13070 -> 0x13250`, while alternate/data `ESC *b#W/w` stores bytes for
+  later replay through
+  [Alternate/Data Raster Payload
+  Checkpoint](raster-graphics.md#alternatedata-raster-payload-checkpoint).
 
 Rectangle/rule graphics:
 
@@ -2247,13 +2253,15 @@ Parser artifacts and no-output rows:
 
 - Dispatch anchors:
   zero-handler rows `0x00`, `0x07`, `0x0b`, `ESC ?`, `ESC Z`,
-  unimplemented `ESC &lT/t`, and generic drain `0x1228a` / `0x12328`.
+  unimplemented `ESC &lT/t`, generic drain `0x1228a` / `0x12328`, and
+  alternate/data non-wrapper payload storage through `0x12358`.
 - Immediate class:
-  parser reset, direct-reader terminator, or drained payload.
+  parser reset, direct-reader terminator, drained payload, or stored input
+  for later replay.
 - Owner and boundary:
   [pcl-parser-core.md](pcl-parser-core.md),
   [pcl-command-map.md](pcl-command-map.md), and `Explicit No-Output Parser
-  Rows`; no page-object producer runs in normal mode.
+  Rows`; no page-object producer runs for these handler instances.
 
 Field grouping at this handoff:
 
@@ -2419,7 +2427,11 @@ Producer-to-renderer map:
   `0x1f756`.
 - `0x13070 -> 0x13250`: raster payload rows from `ESC *b#W`. These write
   encoded-span bucket objects under root `+0x1c`, bridge to render `+0x18`,
-  and render through `0x1f88e`.
+  and render through `0x1f88e`. This applies after normal-mode delayed
+  restore calls saved handler `0x105d0`; when alternate/data flag `0x782c18`
+  is set, restore calls `0x12358` instead, and positive raster payload bytes
+  append through `0xdace -> 0xe002` without creating root/object/bridge
+  state.
 - `0x13386 -> 0x133aa`: rectangle/rule commands from `ESC *c#P`. These write
   rule-list objects under root `+0x24`, bridge to render `+0x1c`, and render
   through `0x1f446`.

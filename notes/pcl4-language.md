@@ -1144,13 +1144,18 @@ Delayed state-to-output resolution:
   page object, state mutation, publication request, or render work.
   Alternate/data blank C0 rows `0x00` and `0x07..0x0f` append the byte through
   `0xe002` instead of page output. Control-Z byte `0x1a` enters local setup
-  `0x11ea4` and mode `2`; normal nested `0x1a` reaches `0x120d2` and calls
-  `0xd04a(0x1a)` only when context byte `0x782eeb + 0x10 * 0x782f06` is `1`,
-  while normal `0x1a X` reaches `0x1219e` and calls `0xd04a(0x100)`.
-  Alternate/data siblings `0x1210c` and `0x121b2` append literal `0x1a` or
-  normalized `0x7f` through `0xe002`. `ESC ?` is consumed inside wrapper
-  `0xda9a`; `ESC Z` belongs to the local `ESC Y ... ESC Z` direct readers, not
-  a global drawing command.
+  `0x11ea4` and mode `2`, then splits by parser table. Normal nested
+  `0x1a 0x1a` reaches `0x120d2`; it reads selected slot `0x782f06`, computes
+  `0x782eeb + 0x10 * slot`, and calls `0xd04a(0x1a)` only when that context
+  byte is `1`. Normal `0x1a X` reaches `0x1219e` and calls `0xd04a(0x100)`.
+  Those `0xd04a` calls are text-output entries, so any visible output follows
+  the ordinary printable route through source creation, `0x12f2e`, page-root
+  bucket `+0x1c`, publication, bridge, and compact render dispatch. The false
+  branch of `0x120d2` queues nothing. Alternate/data siblings `0x1210c` and
+  `0x121b2` append literal `0x1a` or normalized `0x7f` through `0xe002` and
+  create no immediate page object until replay. `ESC ?` is consumed inside
+  wrapper `0xda9a`; `ESC Z` belongs to the local `ESC Y ... ESC Z` direct
+  readers, not a global drawing command.
   The concrete baseline `!!` stream maps bytes `21 21` to built-in
   `LINE_PRINTER` glyph `0x20`, compact object
   `00 00 00 00 00 00 00 02 20 00 01 20 02 02`, bridge context slot `0`, and
@@ -1163,6 +1168,7 @@ Delayed state-to-output resolution:
   [display-functions.md](display-functions.md),
   [pcl-command-map.md](pcl-command-map.md),
   [font-context-metrics.md](font-context-metrics.md),
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`,
   `Minimal Stream Walkthrough: !!` in
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md), and
   [page-raster-imaging.md](page-raster-imaging.md).

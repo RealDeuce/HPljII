@@ -298,6 +298,15 @@ owner, and whether visible pixels can result.
   and bridge then expose bucket root `+0x1c` as render root `+0x18`, where
   `0x1efc2 -> 0x1effe` selects short, wide, segmented, or segmented-wide
   helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+  Bit-30-clear descriptor records use the sibling fixed-record route rather
+  than `0x16498`: current-record descriptors branch through
+  `0x15e42 -> 0x16606`, continuation descriptors branch through
+  `0x15e64 -> 0x15c4c`, and successful installs rebuild the selected
+  map/context through `0x16770..0x16870` / `0x14c64`. Their visible effect is
+  still delayed until printable text reaches `0xd04a -> 0x1393a -> 0x12f2e`
+  and publication/render reaches `0xff1e -> 0x1ed84 -> 0x1edc6 ->
+  0x1ef6a`; the command itself mutates fixed-record payload state,
+  continuation scratch, release bookkeeping, and selected-map cache.
 - Host/status side channels:
   model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, worker
   `0xae2c`, and terminal report sinks `0x1284` / `0x128c`; owner [Host/Status Outcome
@@ -1396,6 +1405,28 @@ Delayed state-to-output resolution:
   stream `ESC )s80W ... ESC )s3W f0 f0 f0 !` installs glyph `0x21`, queues
   compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders through the
   same publication/bridge/compact-render pipeline.
+  The bit-30-clear fixed-record sibling is a selected-resource route, not a
+  second text renderer. Parsed zero-count `ESC )s0W` descriptors restore
+  through `0x11f96 -> 0x121cc -> 0x12218 -> 0x15d0a`. Current-record status
+  `1` with candidate bit `30` clear enters `0x15e42 -> 0x16606`; continuation
+  status `2` with bit `30` clear enters `0x15e64 -> 0x15c4c`. The canonical
+  state is the selected payload pointer, fixed-record entries under
+  `payload + 0x40`, side-table bytes under `payload + 0x300` or
+  `payload + 0x600`, fixed bitmap bytes, and active maps `0x782f32` /
+  `0x783032`. Parser scratch is descriptor budget `0x783140`, the restored
+  delayed `W` record, and continuation fields `0x7827c6..0x7827da`;
+  firmware bookkeeping is allocation/free, `0x17d7c` release/rewrite, and
+  active-context rebuild through `0x16770..0x16870` / `0x14c64`. The output
+  effect is delayed until a later printable selects that rebuilt map through
+  `0xd04a -> 0x1393a`, queues selector `0x0003` through `0x12f2e`, and
+  publishes/renders through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  Evidence is the
+  [Fixed-Record Render Decision
+  Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint),
+  [Worked Path: Fixed-Record Resource
+  Object](firmware-dataflow-model.md#worked-path-fixed-record-resource-object),
+  and the fixed-record entry in the
+  [Minimal Trace Index](end-to-end-reproduction-map.md#minimal-trace-index).
   Downloaded-glyph row and width boundary streams stay on that same route, but
   split the state a reader must track. Writer `0x16498` preserves canonical
   downloaded-glyph record fields such as mode byte `+5`, 16-bit row word `+6`,

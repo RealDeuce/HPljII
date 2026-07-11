@@ -446,6 +446,22 @@ that owner note before claiming equivalent output.
   bytes or create new page objects. Evidence: `Minimal Render Scheduler Walkthrough` in
   this file, [active-render-scheduler.md](active-render-scheduler.md), and
   [page-raster-imaging.md](page-raster-imaging.md#active-render-scheduler-semantic-checkpoint).
+- FF with line termination `ESC &k2G ! FF`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774`; `ESC &k2G` dispatches to `0xedf8`, rewinds
+  the six-byte parser record at `0x78299e`, reads selector `2`, and writes
+  line-termination byte `0x78318f = 0x60`. The printable `!` queues the
+  ordinary one-entry compact object under current root `0x78297a`. FF byte
+  `0x0c` then dispatches to direct-control handler `0xf0f0`; because
+  `0x78318f.5` is set, `0xf0f0` first calls `0xf06e` to copy left margin
+  `0x782dd6` into horizontal cursor `0x782c8a`, then calls `0xf34a`, ensures
+  a root through `0x10084`, publishes through `0xf124 -> 0xff1e`, and writes
+  page-eject latch `0x782a6d = 0xff`. The pixels are the compact object queued
+  before FF, rendered later through the normal
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe` path; the line-termination mode
+  changes FF's cursor side effect and publication timing, not the compact
+  object bytes already queued. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint)
+  and `Minimal FF/Reset Publication Walkthrough` in this file.
 - Downloaded glyph payload
   `ESC *c4660d37e5F ESC )s2193W <0x0891 payload> % FF`:
   font-control bytes route through `0x11eb6 -> 0x11ec8 -> 0x11eda`.

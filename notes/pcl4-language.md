@@ -865,6 +865,44 @@ Field groups for this index:
   broader byte-stream variants that change a named field/object/helper, and
   hardware/MMIO timing or physical naming.
 
+State-only consumer index:
+
+- `ESC &k#G`: writer `0xedf8` stores line-termination byte `0x78318f`.
+  First visible consumers are CR/LF/FF handlers `0xf02c`, `0xf08c`, and
+  `0xf0f0`.
+- `ESC &k#H`: writer `0xca8c` stores HMI word `0x78315c`. First visible
+  consumers are printable placement `0xd04a`, HT/BS `0xf1cc` / `0xf2a8`,
+  and column-based margin/cursor handlers.
+- `ESC &l#C/#D`: writers `0xcb00` and `0xc992` store VMI word `0x783160`.
+  First visible consumers are LF/FF, `ESC =`, VFC jumps, row positioning,
+  and page-length conversion.
+- `ESC &s#C`: writer `0xedb0` stores wrap byte `0x783190`. First visible
+  consumers are printable prechecks `0xd28a` and `0xd6bc`.
+- `ESC &l#L`: writer `0xee64` stores perforation byte `0x783191`. First
+  visible consumer is overflow helper `0xf36c` before page eject.
+- `SI` / `SO`: writers `0xc68a` and `0xc6b8` store selected slot
+  `0x782f06`. First visible consumer is printable source capture
+  `0xd04a -> 0x1393a`.
+- `ESC &a#C/#H/#R/#V` and `ESC *p#X/#Y`: cursor handlers store
+  `0x782c8a` / `0x782c8e`. First visible consumers are printable placement,
+  raster origin, rectangle clipping, VFC, or publication.
+- `ESC &f#S`: writer `0xf75e` stores cursor stack
+  `0x782c96..0x782d36`. First visible consumers are following placement after
+  pop, raster origin, or rectangle clipping.
+- `ESC &d#D`: writer `0x12622` stores underline/span selector `0x783185`.
+  First visible consumer is span flush `0xf34a -> 0x12714`.
+- `ESC &f#Y/#X`: writers `0xe112` and `0xdd08` store macro id, records, and
+  frames. First visible consumers are replay byte source `0xa904` and overlay
+  publication `0xff1e`.
+
+These rows are delayed-output routes, not no-ops. A stream reproduces them
+only when the named writer field reaches the listed consumer with the same
+value and the owner note documents any later page-object, publication, or
+render effect. Evidence is in
+[direct-control-codes.md](direct-control-codes.md#direct-control-outcome-matrix),
+[macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), and
+[publication-commands.md](publication-commands.md#page-environment-outcome-matrix).
+
 - Host byte source and parser admission:
   byte-source multiplexer `0xa904..0xab8a` reduces live host input, LIFO
   buffers, data-chain replay frames, ring input, and direct hardware modes to

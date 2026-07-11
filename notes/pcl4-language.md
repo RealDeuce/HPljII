@@ -182,7 +182,16 @@ owner, and whether visible pixels can result.
   HMI/VMI, wrap, or margin state unless they explicitly publish through FF.
   Visible output occurs when a later consumer, such as printable text,
   underline span flush, raster origin, rectangle clipping, VFC, or
-  publication, reads those fields and queues or publishes page objects.
+  publication, reads those fields and queues or publishes page objects. The
+  span-producing branch is concrete: underline/text-attribute handler
+  `0x12622` writes selector byte `0x783185`, printable text updates pending
+  bounds `0x783184..0x78318a`, and flush producers such as CR `0xf02c`, left
+  margin `0xeb58`, vertical cursor `0xf560`, or `ESC &d@` run
+  `0xf34a -> 0x12714 -> 0x126e2`. Portrait spans become class-`0x40`
+  segment-list objects under page-root `+0x1c` through `0x13520` / `0x135f0`
+  and render through `0x1efc2 -> 0x1f812 -> 0x1f862`; landscape spans become
+  fixed-list objects under root `+0x28` through `0x136d2` and render through
+  `0x1f756 -> 0x1f7b0`.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
   [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),

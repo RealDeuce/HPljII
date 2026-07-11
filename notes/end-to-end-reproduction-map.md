@@ -564,8 +564,19 @@ controlling artifact.
   and raster helper `0x1f88e`. `Band Scheduling Route Index` is the compact proof map
   for `0xff1e` publication, source selection `0x780eaa -> 0x780eae`, work-record
   alternation, active pointer `0x783a18`, band-loop no-pixel exits, and the
-  capacity-approved handoff into `0x1ef6a`. Formatter/DC timing after those ROM
-  fields is covered by the
+  capacity-approved handoff into `0x1ef6a`. Pixel row construction is documented in
+  [Pixel Composition Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint)
+  and [Render Helper Boundary
+  Index](page-raster-imaging.md#render-helper-boundary-index): `0x1ef86`
+  derives band caches `0x783a20`, `0x783a22`, `0x783a28`, and stride
+  `0x783a1c`; destination helpers `0x1f3d4`, `0x1f414`, and `0x1f626`
+  select current-band or fallback rows; compact row-copy tables
+  `0x1fa5c..0x207ac`, wide helper `0x2f27c`, segment helper `0x1f862`,
+  encoded-raster helpers `0x1f8da`, `0x1f8e6`, `0x1f920`, and `0x1f9c6`,
+  and rule/fixed helpers write ROM-derived row words or bytes directly.
+  The overlap rule is dispatch order, not an implicit hidden raster operation:
+  bucket-chain stores run before rule-list stores, and fixed-list stores are
+  last. Formatter/DC timing after those ROM fields is covered by the
   [DC reproduction contract](dc-controller-engine.md#reproduction-contract):
   physical signal names and clock timing are hardware/external state unless
   they change admitted byte order, wait-object wake order, selected

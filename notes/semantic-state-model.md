@@ -672,6 +672,14 @@ Shared payload/control probe:
 - Negative `D7` propagates to the caller. This path is reused by VFC,
   delayed-drain, raster skip, and downloaded-font readers without ESC parser
   lookahead.
+- Shared side-effect helper `0xd99a` is documented in
+  [pcl-parser-core.md](pcl-parser-core.md#payload-control-side-effect-helper).
+  It consumes no bytes itself. In alternate/data or delayed-payload contexts
+  selected by `0x782c18` / `0x782a1c`, it signals `0x780e2e.5` through
+  `0x9b5e` and returns `D7 = 1`. In normal contexts it ensures a current page
+  root, signals `0x780e2e.5` on the first `0x782c72` event, increments
+  `0x782c72`, and after overflow clears that counter, calls `0xf34a` and
+  `0xff1e`, and returns `D7 = 1`; otherwise it returns `D7 = 0`.
 
 Display, repeat, and transparent text readers:
 

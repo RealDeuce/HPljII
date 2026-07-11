@@ -435,6 +435,64 @@ These two readers are intentionally different. Parser syntax bytes go through
 Counted payload readers that call `0xdace` do not run the `ESC` lookahead
 logic; they only apply the local `1a 58 -> 00` payload-control rule.
 
+### Payload-Control Side-Effect Helper
+
+Helper `0xd99a` is the shared side-effect routine behind local `0x1a 0x58`
+probes and printable value `0x100`. It is not a byte reader: callers have
+already consumed the relevant bytes. Its return in `D7` is a status that some
+callers observe, while payload readers such as `0xdace` clear or replace
+their own returned byte after the call.
+
+Instruction route:
+
+- `0xd9a2..0xd9d4` loads active delayed/payload handler pointer `0x782a1c`
+  into `A5` and alternate/data selector byte `0x782c18` into `D7`. If
+  `0x782c18 == 1`, or if the handler pointer is one of `0x12cfe`, `0x1228a`,
+  `0x15d0a`, or `0x16c14`, the helper takes the status-only branch.
+- `0xd9d6..0xd9ea` is the status-only branch. It calls
+  `0x9b5e(0x780e2e, 0x20)`, returns `D7 = 1`, and does not allocate a page
+  root or update the normal `0x782c72` counter.
+- `0xd9ec..0xda14` is the normal branch entry. It ensures a current page root
+  through `0x10084`, reads counter/latch byte `0x782c72`, and, when that byte
+  is zero, waits through `0x9ac2` and signals `0x780e2e.5` through
+  `0x9ba2(0x780e2e, 0x20)`.
+- `0xda14..0xda40` increments `0x782c72`. Counts `1..0xff` return `D7 = 0`.
+  When the incremented count exceeds `0xff`, the helper clears `0x782c72`,
+  flushes pending text/span state through `0xf34a`, publishes through
+  `0xff1e`, and returns `D7 = 1`.
+
+State classification:
+
+- Canonical parser/payload state:
+  alternate/data selector `0x782c18` and active delayed handler pointer
+  `0x782a1c`.
+- Canonical page/publication state:
+  current page root `0x78297a` ensured by `0x10084`, pending text/span state
+  consumed by `0xf34a`, and publication through `0xff1e` when counter
+  `0x782c72` overflows.
+- Derived/cache state:
+  the exact handler-pointer membership test against `0x12cfe`, `0x1228a`,
+  `0x15d0a`, and `0x16c14`.
+- Firmware bookkeeping:
+  status/error accumulator `0x780e2e`, bit mask `0x20`, helper calls
+  `0x9b5e`, `0x9ba2`, `0x9ac2`, and counter/latch byte `0x782c72`.
+- Parser scratch:
+  none inside `0xd99a`. The consumed `0x1a 0x58` pair or synthetic printable
+  value is owned by the caller.
+- Output effect:
+  status-only contexts do not produce page objects. Normal contexts may force
+  page-root allocation and, after 256 helper events, flush and publish the
+  current page state. Otherwise the visible byte substitution is decided by
+  the caller: `0xdace` substitutes `0x00`, display/repeat readers substitute
+  `0x7f`, and printable `0xd04a(0x100)` treats nonzero `D7` as an early exit.
+- Evidence:
+  `generated/disasm/ic30_ic13_payload_control_helper_00d99a.lst`,
+  xrefs in `generated/analysis/ic30_ic13_parser_xrefs.md`, and callers in
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`, and
+  `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`.
+
 ## Tokenizer At 0xdb74
 
 `0xdb74` allocates and fills one six-byte command record. It advances `0x78299e` by six

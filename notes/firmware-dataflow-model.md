@@ -2872,6 +2872,14 @@ State classification:
 - Firmware bookkeeping:
   allocation cursors, retry bits, publication flag `0x782996`, installed-resource
   candidate bookkeeping, and scheduler source/work-record selection.
+- Hardware/external state:
+  none is an input to the crosswalk after host bytes, replay bytes, or payload
+  bytes have become parser-visible input. Physical host-interface timing is
+  upstream of `0xa904` / `0xdace`; physical engine timing is downstream of
+  publication, bridge, scheduler, and render-buffer writes. Command-family
+  rows in this crosswalk should therefore stop at the ROM field, page object,
+  bridge field, render input, or explicit status/no-output boundary they
+  actually write.
 - Unknown:
   no crosswalk row is an unresolved middle edge by itself. Remaining work starts
   from byte streams that change a named handler route, object field, bridge

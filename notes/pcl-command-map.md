@@ -824,6 +824,40 @@ Checked-in dispatch audit, generated from
   same `12` family prefixes; `0x11f96` covers the `4` downloaded-font payload
   entries that must remain stored in data/macro contexts.
 
+Supported-stream owner audit result:
+
+- The supported stream entries below are not table-only rows. Each entry either
+  stops at a parser/no-output boundary owned by
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix), or it
+  names a checked-in command-family owner with parsed inputs, RAM fields,
+  output/page effect, evidence, and remaining boundary. The matrix therefore
+  assigns the parser-to-owner handoff for the current supported families rather
+  than proving pixels from generated rows alone.
+- Page-producing entries have an owner route into the page-object/render spine:
+  printable/control rows reach [direct-control-codes.md](direct-control-codes.md),
+  publication rows reach
+  [publication-commands.md](publication-commands.md#owner-summary), raster
+  rows reach [raster-graphics.md](raster-graphics.md#owner-summary), rectangle
+  rows reach [rectangle-graphics.md](rectangle-graphics.md#owner-summary), and
+  downloaded-font/font-selection rows reach
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), or
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary). Object and
+  pixel handoff after those owners is the [Command-Family To Page-Object
+  Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk).
+- Non-page-producing entries have explicit stop owners rather than silent
+  gaps: alternate/data append and macro replay are owned by
+  [macro-data-chain.md](macro-data-chain.md#owner-summary), display and
+  transparent readers by [display-functions.md](display-functions.md) and
+  [transparent-print-data.md](transparent-print-data.md), host/status side
+  channels by [errors-and-status.md](errors-and-status.md#owner-summary), and
+  no-output parser rows by [pcl-parser-core.md](pcl-parser-core.md).
+- Remaining completion risk for this command map is not an unassigned parser
+  handler in the current supported matrix. New work should start only when a
+  byte stream changes the owner handler, field write, delayed-payload restore,
+  page object, render helper input, alternate/data append behavior, or exact
+  boundary named by the owner note.
+
 ## Alternate/Data Dispatch Decision Checkpoint
 
 This checkpoint is the checked-in semantic grouping for alternate/data table

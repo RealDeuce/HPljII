@@ -292,22 +292,26 @@ owner, and whether visible pixels can result.
   `0x1efc2 -> 0x1effe` selects short, wide, segmented, or segmented-wide
   helpers `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
 - Host/status side channels:
-  model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, and worker
-  `0xae2c`; owner [Host/Status Outcome
+  model/status wrapper `0x12034`, FIFO helpers `0xb0c0` / `0xb022`, worker
+  `0xae2c`, and terminal report sinks `0x1284` / `0x128c`; owner [Host/Status Outcome
   Matrix](errors-and-status.md#hoststatus-outcome-matrix). These paths produce
-  host-visible protocol bytes or panel/status state, not page pixels. Model
-  query commands `ESC *r#K` and `ESC *s#^` dispatch through
+  host-visible protocol bytes, panel/status state, or panel/MMIO report state,
+  not page pixels. Model query commands `ESC *r#K` and `ESC *s#^` dispatch through
   `0x12034 -> 0x11efe -> 0x122be..0x12326`; accepted query byte `0x11` with
   active record word `+2 = 1` or `-1` emits literal `33440A\r\n` from
   `0x12280..0x12288` through blocking FIFO helper `0xb090`. FIFO storage
   `0x783e92..0x783ed1`, count/pointers
   `0x783ed2/0x783ed4/0x783ed8`, service/status latches
   `0x783e61/0x783e60`, and pending status count `0x780e22` are later consumed
-  by worker `0xae2c` and status builder `0xaece`. No page root, page object,
-  publication record, render record, or pixel helper is written by these
-  paths. Pixel reproduction changes only if a bidirectional host sends
-  different future bytes after observing the backchannel, or if FIFO fullness
-  stalls a producer.
+  by worker `0xae2c` and status builder `0xaece`. Terminal reports consume a
+  two-byte code at `0x1284` / `0x128c`, select a status string through
+  `0x158c`, display it through `0x8c7a`, cache first message bytes in
+  `0x783ef0..0x783ef1`, and stop at the hardware-facing loop
+  `0x12d4..0x13b0`. No page root, page object, publication record, render
+  record, or pixel helper is written by these paths. Pixel reproduction changes
+  only if a bidirectional host sends different future bytes after observing the
+  backchannel, if FIFO fullness stalls a producer, or if an implementation
+  models panel/MMIO status effects.
 
 Common render convergence for pixel-producing rows is:
 page-root storage under `0x78297a`, publication `0xff1e`, active/render
@@ -1472,6 +1476,10 @@ Delayed state-to-output resolution:
   count `0x783ed2`, read pointer `0x783ed4`, write pointer `0x783ed8`, and
   storage `0x783e92..0x783ed1`; a full FIFO can stall this parser-side
   producer, but no FIFO/status consumer feeds page roots or render helpers.
+  Terminal report exits such as `0x1284` / `0x128c` are the same owner class:
+  they consume a two-byte code, select/display a status string through
+  `0x158c -> 0x8c7a`, cache bytes at `0x783ef0..0x783ef1`, and enter the
+  `0x12d4..0x13b0` hardware-report loop without page output.
   Evidence:
   [Host/Status Outcome Matrix](errors-and-status.md#hoststatus-outcome-matrix) and
   [host-byte-fetch.md](host-byte-fetch.md).

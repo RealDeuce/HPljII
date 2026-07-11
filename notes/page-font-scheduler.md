@@ -425,6 +425,106 @@ scheduler return` proves the external-ready teardown caller. Fixture
 `0x1a2e4 font scan ignores scheduler return` proves the built-in font-resource
 scan caller.
 
+## Scheduler-To-Glyph Checkpoint
+
+This checkpoint composes the scheduler's indirect pixel effect. Routine
+`0x19dd2` still does not draw, publish, or allocate a page object, but its
+long-refresh path can change the font/resource state that a later printable
+byte consumes.
+
+Starting condition:
+
+- `0x19dd2` has either left optional-resource state unchanged, returned the
+  status branch with `D7 = 0`, or run the changed-window refresh chain.
+- The parser later resumes and admits a font-selection command or printable
+  byte through the normal parser owners.
+
+Changed-window writer route:
+
+- `0x19dd2 -> 0x1ba92` prunes candidate entries whose pointer windows fall in
+  the affected optional-resource range.
+- `0x19dd2 -> 0x178fa` walks current downloaded-font records
+  `0x782640..0x782776` and releases matching payloads through `0x1887a`.
+- `0x19dd2 -> 0x19d9c` marks candidate pointer entries dirty.
+- `0x19dd2 -> 0x1a4fa -> 0x1a616` hands the fresh optional-resource range to
+  the resource scanner.
+- `0x19dd2 -> 0x1a900` refreshes active contexts, validates current context
+  longwords `0x782ee6` and `0x782ef6` through `0x1b4c0`, can dirty selected
+  slots through `0x179aa`, and commits ten scratch longwords from `0x782894`
+  to canonical resource-window slots `0x7828b6..0x7828dd`.
+
+Downstream visible consumers:
+
+- Font-selection refresh `0xc580 -> 0x13eb8` and candidate chooser `0x14c64`
+  consume candidate windows, current contexts, dirty state, and resource
+  records after the scheduler has refreshed them.
+- Printable byte `0xd04a` then consumes selected context/map state, builds
+  source scratch `0x782d7e` through `0x1393a`, and queues compact text through
+  `0xd824` or `0xd3b2` into `0x12f2e -> 0x1387c`.
+- Publication and render consume any queued text through
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, with compact dispatch under
+  `0x1efc2 -> 0x1effe`.
+
+Output effect:
+
+- Unchanged optional-window state preserves the existing candidate/context
+  state for later font selection and printable output.
+- Status-return state writes `0x780e8d` and `0x780e2e.9`; it changes pixels
+  only if the caller that consumes `D7 = 0`, currently caller `0x4760`, stops
+  work that would otherwise have refreshed resources or admitted later bytes.
+- Changed optional-window state can change later glyph pixels by removing
+  candidates, releasing downloaded-font payloads, dirtying active candidates,
+  scanning a fresh range, or refreshing current context slots before the next
+  printable byte reaches `0xd04a`.
+- The scheduler never bypasses the ordinary text page-object route. Later
+  pixels still come from compact objects and render helpers, not from
+  `0x19dd2` itself.
+
+State classification:
+
+- Canonical state:
+  optional-resource slots `0x7828b6..0x7828dd`, candidate pointer/count
+  windows, downloaded-font current records `0x782640..0x782776`, selected
+  context longwords `0x782ee6` / `0x782ef6`, current page root `0x78297a`,
+  and compact objects queued only by later printable paths.
+- Derived/cache state:
+  scratch pointer `0x782894`, fresh scratch slots, active optional-window
+  cursor/base/limit `0x782884/0x78288c/0x782890`, dirty bytes
+  `0x782f2c/0x782f2d`, candidate-dirty marks, and render-record root `+0x18`
+  after publication.
+- Parser scratch:
+  none in the scheduler itself. Parser scratch begins only when later host
+  bytes enter `0xda9a`, `0xdb74`, and `0x11774`.
+- Firmware bookkeeping:
+  scheduler return `D7`, predicate bytes, current-record release bookkeeping,
+  caller-specific continuation state, and dirty/refresh helper state.
+- Hardware/external state:
+  optional resource-window contents and gate bits `$8000.14` / `$8000.15`.
+  These are data inputs to candidate/context refresh; absent external bytes
+  must remain a boundary rather than inferred glyph data.
+- Unknown:
+  no ROM-local path from scheduler refresh to later text rendering is unknown
+  once concrete candidate/context state is known. Remaining uncertainty is the
+  optional-window contents or physical gate meaning that would supply different
+  candidate data.
+
+Evidence:
+
+- Scheduler and refresh listings:
+  `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`,
+  `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`,
+  `generated/disasm/ic30_ic13_font_resource_refresh_helpers_0178fa.lst`, and
+  `generated/disasm/ic30_ic13_font_scheduler_commit_01a4fa.lst`.
+- Downstream font/text/render owners:
+  [font-context-metrics.md](font-context-metrics.md),
+  [downloaded-fonts.md](downloaded-fonts.md),
+  [page-record-storage.md](page-record-storage.md), and
+  [page-raster-imaging.md](page-raster-imaging.md).
+- Fixtures:
+  `0x19dd2 optional-window change composes refresh helpers`,
+  `0x19dd2 modeled unchanged and status branch exits`, and
+  `0x447a/0x4760 consume scheduler return differently`.
+
 ## Reproduction Contract
 
 A ROM-derived renderer/emulator must preserve:

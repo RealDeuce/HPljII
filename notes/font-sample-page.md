@@ -21,8 +21,11 @@ and compact text row rendering.
 Primary routes:
 
 - Setup:
-  `0x1e0b2` prepares page/font state, forces sample-page VMI/HMI defaults, and
-  reaches printout entry `0x1c204`.
+  `0x1e0b2` prepares normal sample-page state, forces sample-page VMI/HMI
+  defaults, and reaches printout entry `0x1c204`. Alternate setup
+  `0x1e8e6` shares the same page/font helper chain but writes copy sentinel
+  `0xffff` and derives the row budget directly from page limit
+  `0x782db6 - 1`.
 - Source/class loops:
   `0x1c28e..0x1c344` run class-zero and class-one passes; `0x1c2fe..0x1c332`
   iterate source groups `0..3`; `0x1c354..0x1c5e4` walks rows within one
@@ -50,8 +53,9 @@ Field groups:
   at `0x1c170`, and sample run tables `0x1c1cf` / `0x1c1e9`.
 - Canonical page/text state:
   current page root, page-root context slots, cursor `0x782c8e`, page limit
-  `0x782db6`, row-height word `0x783f06`, and VMI/HMI defaults
-  `0x783160` / `0x78315c`.
+  `0x782db6`, row-height word `0x783f06`, copy count/sentinel
+  `0x782da4`, wrap/perforation bytes `0x783190` / `0x783191`, and VMI/HMI
+  defaults `0x783160` / `0x78315c`.
 - Parser scratch:
   synthetic orientation record at `0x78299e` from `0x1d76c`, fast-probe
   fields `0x7828a0`, `0x7828a4`, `0x78289f`, and Roman-8 substitution scratch
@@ -92,6 +96,7 @@ Output effect:
 - `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`
 - `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`
 - `generated/disasm/ic30_ic13_font_page_setup_01e0b2.lst`
+- `generated/disasm/ic30_ic13_font_page_setup_alt_01e8e6.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
@@ -153,6 +158,10 @@ Canonical page/text environment:
   and `0x1dcf2`.
 - Row-height/cache word `0x783f06`, written by `0x1ca2c` and adjusted by
   `0x1d050`.
+- Copy count/sentinel word `0x782da4`: normal setup `0x1e0b2` writes `1`,
+  while alternate setup `0x1e8e6` writes `0xffff`.
+- Wrap and perforation bytes `0x783190` / `0x783191`, cleared by both setup
+  entries before generated sample text is emitted.
 - Sample-page VMI/HMI defaults forced by `0x1e0b2` and `0x1c916` through
   `0x783160` / `0x78315c`.
 
@@ -531,6 +540,14 @@ and then intentionally rejoin the ordinary printable/page-record/render path.
   forces sample-page VMI/HMI defaults in `0x783160` / `0x78315c`, initializes
   cursor/page state, and reaches printout entry `0x1c204`. This is canonical
   page/text setup state, not visible text by itself.
+- Alternate sample setup:
+  `0x1e8e6` checks the same accepted class-zero count `0x782798`, reports
+  status `(0xe3, 0x51)` when it is zero, writes copy sentinel
+  `0x782da4 = 0xffff`, clears wrap/perforation bytes `0x783190` /
+  `0x783191`, runs `0x1d76c`, `0x10084`, and `0x1e9a0`, forces the same
+  VMI/HMI defaults, starts cursor y at `0x0024`, and calls `0x1ea4e` with a
+  row budget derived from `0x782db6 - 1`. It is an alternate setup route into
+  the same sample-page generator, not a renderer.
 - Source/class traversal:
   `0x1c28e..0x1c344` run class-zero and class-one passes, while
   `0x1c2fe..0x1c332` iterate source groups `0..3`. Per-source status bytes
@@ -582,8 +599,9 @@ State grouping for this matrix:
   at `0x1c170`, and run tables `0x1c1cf` / `0x1c1e9`.
 - Canonical page/text state:
   page root, page-root context slots, cursor `0x782c8e`, page limit
-  `0x782db6`, row-height word `0x783f06`, and VMI/HMI defaults
-  `0x783160` / `0x78315c`.
+  `0x782db6`, row-height word `0x783f06`, copy count/sentinel
+  `0x782da4`, wrap/perforation bytes `0x783190` / `0x783191`, and VMI/HMI
+  defaults `0x783160` / `0x78315c`.
 - Derived/cache state:
   row-to-row y advance from `0x1d050`, alternate-row fit from `0x1d868`,
   multi-probe fit from `0x1dcf2`, and compact page-record/render bucket
@@ -605,6 +623,7 @@ Evidence for this matrix is
 `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`,
 `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`,
 `generated/disasm/ic30_ic13_font_page_setup_01e0b2.lst`,
+`generated/disasm/ic30_ic13_font_page_setup_alt_01e8e6.lst`,
 `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`,
 `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and fixtures
 `font sample source heading carries default plus first two Courier rows`,
@@ -620,6 +639,10 @@ A byte-stream-to-pixels renderer that also supports firmware-generated sample
 pages must preserve:
 
 - `0x1e0b2` setup side effects before `0x1c204` printing;
+- `0x1e8e6` alternate setup side effects when that entry is used: copy
+  sentinel `0xffff`, cleared wrap/perforation state, shared page/font helper
+  chain, forced HMI/VMI, y cursor `0x0024`, and row budget from
+  `0x782db6 - 1`;
 - source/class pass order `0x1c28e..0x1c344`;
 - source-group iteration and per-source status bytes `0x783f02..0x783f05`;
 - `0x1b50e` fast-probe, two-window scan, current-slot suppression, and
@@ -635,14 +658,13 @@ pages must preserve:
 - page-record and render bridge consumption through `0x12f2e`, `0x1ed84`,
   and `0x1ef6a`.
 
-## Confidence
+## Evidence Boundary
 
-High for helper roles, loop order, candidate-row traversal, current-font setup,
+The helper roles, loop order, candidate-row traversal, current-font setup,
 printable byte emission, source `0..3` behavior, page-record placement,
-rendered segment surfaces, and the major forced-continuation object forms
-because each is backed by named fixtures and disassembly. Medium for
-manual-facing baseline/cell terminology because the ROM documents field roles
-but not HP's external names for those measurements.
+rendered segment surfaces, and major forced-continuation object forms are tied
+to the disassembly and named fixtures above. Manual-facing baseline/cell
+terminology remains outside the ROM-local evidence currently documented here.
 
 ## Remaining Edges
 
@@ -658,5 +680,8 @@ but not HP's external names for those measurements.
   naming of baseline/cell fields, not external row comparison.
 - Record `+0x28/+0x2a`: consumed by `0x1519a` through `0x13bca` as decoded
   height inputs; manual-facing baseline/cell naming remains open.
+- `0x1e8e6`: no ROM-local middle edge remains for the alternate setup route
+  currently documented. It rejoins the same `0x1ea4e` sample-row budget path
+  after its distinct copy sentinel and cursor/budget setup.
 - Record `+0x2f..+0x31`: consumed by `0x1428c` after `0x14398` / `0x13c06`
   as same-class chooser tie-breakers; manual-facing names remain open.

@@ -5070,6 +5070,12 @@ Entry and setup:
   clears copy/wrap/perforation state, rebuilds orientation and page-root state,
   writes forced sample-page VMI/HMI defaults, chooses the starting vertical
   cursor, and passes a derived remaining-row count to `0x1ea4e`.
+- Alternate setup entry `0x1e8e6` checks the same class-zero count gate,
+  writes copy sentinel `0x782da4 = 0xffff`, clears wrap/perforation bytes
+  `0x783190` / `0x783191`, runs the same orientation/page-root/current-font
+  helper chain, forces the same VMI/HMI defaults, starts cursor y at
+  `0x0024`, and passes a row budget derived from `0x782db6 - 1` to
+  `0x1ea4e`.
 - Printout entry `0x1c204` starts the source/class passes. If no font records
   exist, it reports status `0xe3/0x51` instead of emitting page text.
 - The class loop `0x1c28e..0x1c344` runs class-zero and class-one passes,
@@ -5147,7 +5153,9 @@ State classification:
   `0x7828ac` / `0x7821a0`.
 - Firmware bookkeeping:
   per-source status bytes `0x783f02..0x783f05`, local page-break word
-  `-6(A6)`, page-root publication state, and render scheduler progress.
+  `-6(A6)`, copy count/sentinel `0x782da4`, wrap/perforation bytes
+  `0x783190` / `0x783191`, page-root publication state, and render scheduler
+  progress.
 - Hardware/external state:
   none for the ROM-local generated-page contract.
 - Unknown:
@@ -5166,6 +5174,7 @@ Evidence:
   `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`,
   `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`,
   `generated/disasm/ic30_ic13_font_page_setup_01e0b2.lst`,
+  `generated/disasm/ic30_ic13_font_page_setup_alt_01e8e6.lst`,
   `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`,
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`, and

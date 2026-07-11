@@ -537,6 +537,20 @@ that owner note before claiming equivalent output.
   `0xf2a8`, margin writers `0xeb58` / `0xec0c`, and column handler `0xf39e`
   are sibling consumers of the same HMI field. Evidence:
   [direct-control-codes.md](direct-control-codes.md#hmi-route-checkpoint).
+- Wrap precheck state `ESC &s0C` / `ESC &s1C`: command bytes enter through
+  `0xa904 -> 0xda9a -> 0x11774` and dispatch to wrap handler
+  `0xedb0`. `0xedb0..0xedf6` rewinds the six-byte parser record at
+  `0x78299e`, reads word `+2`, takes its absolute value, writes wrap byte
+  `0x783190 = 1` for selector `0`, clears `0x783190` for selector `1`, and
+  leaves it unchanged for other selectors. The handler queues no page object
+  and publishes nothing. Its visible boundary is the later printable precheck:
+  unflagged path `0xd28a` reads `0x783190` at `0xd300` and `0xd33c`, while
+  flagged path `0xd6bc` reads it at `0xd770` and `0xd7ac`. With wrap clear,
+  horizontal overflow returns the reject value before `0x12f2e`, so no
+  compact object is queued. With wrap set, the same overflow calls recovery
+  helper `0xf054`, retries from recovered x `0`, and reaches the ordinary
+  compact text route only if the retried placement fits. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#wrap-mode-route-checkpoint).
 - HT/BS cursor placement `ESC &k0G HT BS !`: command bytes enter through
   `0xa904 -> 0xda9a -> 0x11774`. `ESC &k0G` dispatches to line-termination
   handler `0xedf8`, which rewinds the six-byte parser record and clears mode

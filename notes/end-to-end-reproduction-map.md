@@ -4,7 +4,7 @@ Goal: reproduce LaserJet II output pixels from the same host byte stream by
 using ROM-derived parser behavior, state fields, page-record formats, and
 render routines. The primary explanatory spine is
 [firmware-dataflow-model.md](firmware-dataflow-model.md). This note is the
-current coverage/evidence map for that pipeline; detailed ledgers remain in
+current route/evidence map for that pipeline; detailed ledgers remain in
 `notes/reverse-engineering-ledger.md` and `notes/semantic-state-model.md`.
 
 ## Pipeline Contract
@@ -61,19 +61,20 @@ or an executing ROM. "Confidence" therefore means how directly the disassembly
 supports a claim, with fixtures cited only as reproducible checks of the
 interpretation.
 
-Coverage means a checked-in note names the ROM address range, field
-writers, field readers/consumers, visible or state output, fixtures, and
-disassembly evidence for that edge. For example, host byte-source coverage
-means `0xa904..0xabf0` and the cited disassembly/model checks define which
-firmware byte source feeds parser `0xda9a` / `0xdaf0` / `0xdb74`; it does not
-mean every physical bus signal has been named. Render coverage means
+Documentation coverage means a checked-in note names the ROM address range,
+field writers, field readers/consumers, visible or state output, field
+classification, disassembly evidence, and any supporting fixture checks used
+for that edge. For example, host byte-source documentation coverage means
+`0xa904..0xabf0` and the cited disassembly/model checks define which firmware
+byte source feeds parser `0xda9a` / `0xdaf0` / `0xdb74`; it does not mean every
+physical bus signal has been named. Render documentation coverage means
 `0x1ed84` / `0x1edc6` / `0x1ef6a` plus the compact, segment-list, rule,
 fixed-list, and raster helpers explain how ROM state is converted into bitmap
 bytes. Those bitmap bytes are the ROM-derived result being documented; there is
 no later external rendered-row image to compare against.
 
 The physical timing boundary is separate from ROM-local reproduction
-coverage. Timing-sensitive surfaces are host fetch/polling
+documentation. Timing-sensitive surfaces are host fetch/polling
 (`0xa904..0xab8a`), scan/status interrupt and wait-object dispatch
 (`0x0f84..0x1282`), and active render scheduling
 (`0x1eb2a..0x1ed84`). The disassembly-backed model records the state effects

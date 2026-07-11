@@ -145,9 +145,9 @@ ROM-backed Level IV command families include:
   `ESC *b#W`, encoded page objects, and render target `0x1f88e`;
 - rectangle/rule graphics: rectangle dimensions, fill selector
   `ESC *c#P`, rule-list storage, and solid/pattern render helpers;
-- font selection and downloaded fonts: primary/secondary font selectors,
-  symbol-set handling, downloaded-font descriptors, downloaded-character
-  payloads, and compact glyph renderers;
+- font selection and glyph sources: primary/secondary font selectors,
+  symbol-set handling, built-in resource records, downloaded-font descriptors,
+  downloaded-character payloads, and compact glyph renderers;
 - macros and alternate/data parsing: macro id/control commands, data-chain
   replay, overlay publication, and display-functions append behavior.
 
@@ -186,11 +186,17 @@ owner, and whether visible pixels can result.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
   [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),
+  [Resource ROM Outcome Matrix](resource-rom.md#resource-rom-outcome-matrix),
   [symbol-set-selection.md](symbol-set-selection.md), and
   [symbol-map-patching.md](symbol-map-patching.md). Selection commands update
-  font contexts, symbol maps, HMI, and map patch state. Printable bytes consume
-  those fields to create compact text objects under page-root bucket `+0x1c`
-  and render through compact helpers such as `0x1effe`.
+  font contexts, candidate/resource selection, symbol maps, HMI, and map patch
+  state. Built-in resource candidates come from startup scan
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be`, while parser-visible font commands consume
+  those candidates through selectors such as `0x1569c`, `0x156de`,
+  `0x14398`, `0x144d2`, and `0x14c64`. Printable bytes then consume the
+  selected map/context to create compact text objects under page-root bucket
+  `+0x1c`; render path `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` resolves
+  built-in glyph rows from the selected IC32/IC15 resource bytes.
 - Transparent and display readers:
   delayed transparent handler `0x11f5a -> 0x12452` and display readers
   `0x12536` / `0x12120`; owners

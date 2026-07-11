@@ -367,6 +367,16 @@ write pixels.
   later text, span, raster, rectangle, or publication consumers read the
   mutated fields. Span flush `0x12714` can create class-`0x40` segment-list
   objects rendered by `0x1f812`.
+  The concrete dependency groups are indexed in
+  [State-Only Command Dependency
+  Map](firmware-dataflow-model.md#state-only-command-dependency-map):
+  line-termination byte `0x78318f` is consumed by CR/LF/FF handlers
+  `0xf02c` / `0xf08c` / `0xf0f0`; HMI/VMI `0x78315c` / `0x783160` are
+  consumed by printable advance, HT/BS, cursor-position conversion, LF/FF,
+  VFC, and page-length geometry; wrap/perforation bytes `0x783190` /
+  `0x783191` are consumed by printable prechecks `0xd28a` / `0xd6bc` and
+  overflow helper `0xf36c`; and cursor/margin fields are consumed by
+  `0xd04a`, raster start, rectangle fill, span flush, or publication.
   SO/SI handlers `0xc68a` / `0xc6b8` are selected-context writers: their
   first render-visible consumer is later `0xd04a -> 0x1393a`, which reads
   selected slot, map, and context state before compact object creation.

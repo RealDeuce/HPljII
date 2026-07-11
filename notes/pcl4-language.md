@@ -1046,7 +1046,9 @@ render effect. Evidence is in
   [semantic-state-model.md](semantic-state-model.md).
 - Vertical layout, VFC table definition, VFC channel jumps, and perforation
   skip:
-  `ESC &l#W` schedules `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`;
+  `ESC &l#W` schedules `0x11f6e -> 0x121cc`; normal restore reaches
+  `0x12cfe`, while alternate/data restore reaches
+  `0x12358 -> 0xdace -> 0xe002` and leaves the VFC table unchanged.
   `ESC &l#V` uses `0x1280a`; `ESC &l#L` uses `0xee64`; page length and
   vertical-layout terminals use `0xf9e8`, `0xcb00`, `0xc992`, `0xece2`, and
   `0xea9e`. Nonzero `ESC &l#P` converts line counts through VMI `0x783160`,
@@ -1056,7 +1058,7 @@ render effect. Evidence is in
   1/48-inch values; `ESC &l#D` maps accepted LPI selectors to the same VMI
   field and sets modified-layout byte `0x782ee1`; `ESC &l#E` writes top
   offset `0x782dce`; `ESC &l#F` writes text-bottom state `0x782dd2` or
-  restores the default bottom for selector `0`. The table loader writes
+  restores the default bottom for selector `0`. Normal table load writes
   `0x782dde..0x782edd` and line caches; channel jumps consume VMI, current y,
   top offset, and channel masks; perforation skip writes `0x783191`. Output
   is cursor-only movement, page publication/recovery, later printable
@@ -1121,7 +1123,9 @@ render effect. Evidence is in
 - Raster graphics:
   `ESC *t#R` uses `0x10808`, `ESC *r#A/#B` use `0x1075a` / `0x107fa`, and
   delayed `ESC *b#W` uses
-  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. Raster handlers write
+  `0x11f82 -> 0x121cc`; normal restore reaches `0x105d0`, while
+  alternate/data restore reaches `0x12358 -> 0xdace -> 0xe002` and leaves the
+  raster block and page objects unchanged. Raster handlers write
   `0x783170..0x783182`, gate transfer counts, allocate encoded-span objects
   through `0x13070` / `0x13250`, and copy payload via `0x138de`. Encoded
   raster objects publish through page roots and render via
@@ -1223,7 +1227,11 @@ render effect. Evidence is in
   selectors return without page output. These rows create no page object by
   themselves; later `ESC (s#W` / `ESC )s#W` descriptor or payload handlers
   consume the selected id/character/current-record state before printable text
-  can queue a downloaded-glyph compact object. Concrete chain
+  can queue a downloaded-glyph compact object. In alternate/data mode, delayed
+  font `W/w` payload restore reaches `0x12358 -> 0xdace -> 0xe002` instead of
+  `0x15d0a` or `0x16c14`, so no descriptor validation, current-record install,
+  selected-map refresh, page object, or render input is produced until appended
+  bytes replay later. Concrete chain
   `ESC *c4660d37e5F` stays in parser mode `16` across lowercase finals:
   `4660d` writes `0x782f2e = 0x1234` through `0x15a56`, `37e` writes
   `0x782f30 = 0x25` through `0x15a18`, and `5F` dispatches through

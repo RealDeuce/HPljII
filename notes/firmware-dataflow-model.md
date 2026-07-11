@@ -344,8 +344,9 @@ Shared delayed-payload state:
   `0x782a20..0x782a25`.
 - Restore helper `0x12218` runs when parser mode returns to zero. It restores
   the saved six-byte record to the live command-record buffer, clears pending
-  byte `0x782a1a`, calls handler `0x782a1c`, and then clears the saved handler
-  longword.
+  byte `0x782a1a`, and then dispatches by parser mode. In normal mode it calls
+  handler `0x782a1c`; in alternate/data mode it calls `0x12358(0x1228a)`.
+  After dispatch it clears the saved handler longword.
 - Generic counted wrapper `0x1228a` drains `abs(record[+2])` bytes through
   `0x12328` / `0xdace` without page output. In alternate/data mode, wrapper
   `0x12358` either delegates to `0x1228a` for that generic wrapper case or
@@ -354,27 +355,38 @@ Shared delayed-payload state:
 Family consumers:
 
 - Transparent print data:
-  `ESC &p#X` arms `0x12452` through `0x11f5a -> 0x121cc`. After restore,
-  `0x12452` reads the absolute count from the restored record, fetches payload
-  bytes directly through `0xa904`, applies its local `1a 58 -> 7f` rule, and
-  routes accepted bytes to text/fixed-space handlers. Output can rejoin
-  compact page-object path `0xd04a -> 0x12f2e`.
+  `ESC &p#X` arms `0x12452` through `0x11f5a -> 0x121cc`. In normal mode,
+  restored handler `0x12452` reads the absolute count from the restored record,
+  fetches payload bytes directly through `0xa904`, applies its local
+  `1a 58 -> 7f` rule, and routes accepted bytes to text/fixed-space handlers.
+  Output can rejoin compact page-object path `0xd04a -> 0x12f2e`. In
+  alternate/data mode, restore diverts to `0x12358`; because saved handler
+  `0x12452` is not wrapper `0x1228a`, positive counts are consumed through
+  `0xdace` and appended through `0xe002` instead of producing page objects.
 - VFC table definition:
-  `ESC &l#W` arms `0x12cfe` through `0x11f6e -> 0x121cc`. After restore,
-  `0x12cfe` consumes the table bytes through `0xdace`, writes
+  `ESC &l#W` arms `0x12cfe` through `0x11f6e -> 0x121cc`. In normal mode,
+  restored handler `0x12cfe` consumes the table bytes through `0xdace`, writes
   `0x782dde..0x782edd`, and updates derived VFC/text-bottom cache state
-  consumed by `ESC &l#V`.
+  consumed by `ESC &l#V`. In alternate/data mode, restore diverts to
+  `0x12358`, appends positive counts through `0xdace -> 0xe002`, and leaves
+  the VFC table and bottom-cache fields unchanged.
 - Raster transfer:
-  `ESC *b#W` arms `0x105d0` through `0x11f82 -> 0x121cc`. After restore,
-  `0x105d0` rereads record word `+2` as the byte count, clips or drains
-  payload according to raster state `0x783170..0x783182`, and queues accepted
-  encoded-span objects through `0x13070 -> 0x13250`.
+  `ESC *b#W` arms `0x105d0` through `0x11f82 -> 0x121cc`. In normal mode,
+  restored handler `0x105d0` rereads record word `+2` as the byte count, clips
+  or drains payload according to raster state `0x783170..0x783182`, and queues
+  accepted encoded-span objects through `0x13070 -> 0x13250`. In
+  alternate/data mode, restore diverts to `0x12358`, appends positive counts
+  through `0xdace -> 0xe002`, and leaves the raster block, page root, encoded
+  object, bridge, and render inputs unchanged.
 - Downloaded font and glyph payloads:
   `ESC (s#W` / `ESC )s#W` use arming handler `0x11f96`. Count zero restores
   descriptor handler `0x15d0a`; nonzero counts restore resource/character
-  payload handler `0x16c14`. These handlers consume payload budget
-  `0x783140`, update downloaded-resource records, and may later make printable
-  bytes select downloaded glyph objects.
+  payload handler `0x16c14` in normal mode. These handlers consume payload
+  budget `0x783140`, update downloaded-resource records, and may later make
+  printable bytes select downloaded glyph objects. In alternate/data mode,
+  restore diverts to `0x12358`, appends positive counts through
+  `0xdace -> 0xe002`, and does not write `0x783140`, descriptor staging,
+  current records, candidates, installed glyphs, selected maps, or page output.
 
 State classification:
 
@@ -1948,33 +1960,44 @@ Payload and direct-reader modes:
   `0x121cc` rewinds command-record cursor `0x78299e`, writes pending byte
   `0x782a1a`, stores handler pointer `0x782a1c`, and saves the active
   six-byte record at `0x782a20..0x782a25`. Terminal mode-zero reset later
-  calls `0x12218`, which restores that record and calls the saved handler.
+  calls `0x12218`, which restores that record and either calls the saved
+  handler in normal mode or diverts to `0x12358` in alternate/data mode.
 - Raster payload:
-  `ESC *b#W` arms `0x105d0` through `0x11f82 -> 0x121cc`. After
+  `ESC *b#W` arms `0x105d0` through `0x11f82 -> 0x121cc`. In normal mode after
   `0x12218`, `0x105d0` rereads restored record `+2` as byte count, drains or
   caps bytes through `0xdace` / `0xa904`, and queues accepted encoded-span
   objects through `0x13070` / `0x13250`.
 - Transparent text payload:
-  `ESC &p#X` arms `0x12452` through `0x11f5a -> 0x121cc`. After restore,
-  `0x12452` reads the absolute count, fetches payload bytes directly through
-  `0xa904`, applies its local `1a 58 -> 7f` rule, and routes bytes to
-  printable/control text handlers.
+  `ESC &p#X` arms `0x12452` through `0x11f5a -> 0x121cc`. In normal mode,
+  `0x12452` reads the absolute count after restore, fetches payload bytes
+  directly through `0xa904`, applies its local `1a 58 -> 7f` rule, and routes
+  bytes to printable/control text handlers.
 - Vertical forms payload:
-  `ESC &l#W` arms `0x12cfe` through `0x11f6e -> 0x121cc`. After restore,
-  `0x12cfe` reads the count, consumes bytes through `0xdace`, writes VFC
-  table `0x782dde..0x782edd`, and updates cursor-limit state consumed by
-  `ESC &l#V`.
+  `ESC &l#W` arms `0x12cfe` through `0x11f6e -> 0x121cc`. In normal mode,
+  `0x12cfe` reads the count after restore, consumes bytes through `0xdace`,
+  writes VFC table `0x782dde..0x782edd`, and updates cursor-limit state
+  consumed by `ESC &l#V`.
 - Downloaded font and glyph payloads:
   `ESC (s#W` / `ESC )s#W` use handler `0x11f96`. Count zero schedules
   descriptor path `0x15d0a`; nonzero counts schedule resource/character
-  payload path `0x16c14`. Both consume the restored record and payload budget
-  `0x783140` before updating downloaded-resource records that later printable
-  glyphs consume.
+  payload path `0x16c14`. In normal mode, both consume the restored record and
+  payload budget `0x783140` before updating downloaded-resource records that
+  later printable glyphs consume.
 - Generic counted payload wrapper:
   stateful tokenizer helpers can schedule `0x1228a`; after restore it drains
   the absolute count through `0x12328` without echoing bytes. In
   alternate/data mode, `0x12358` either delegates to `0x1228a` or appends
   positive-count payload bytes through the alternate append path.
+- Delayed payloads in alternate/data mode:
+  non-wrapper saved handlers `0x12452`, `0x12cfe`, `0x105d0`, `0x15d0a`, and
+  `0x16c14` are not called. `0x12358` drains only positive counts through
+  `0xdace` and appends normalized bytes through `0xe002`; nonpositive counts
+  return without consuming payload. Owner notes
+  [transparent-print-data.md](transparent-print-data.md),
+  [vertical-forms-control.md](vertical-forms-control.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [downloaded-fonts.md](downloaded-fonts.md) list the canonical state each
+  branch leaves unchanged.
 - Direct reader loops:
   display-functions handlers `0x12536` and `0x12120` do not use the delayed
   snapshot. They read bytes directly through `0xa904` until local `ESC Z`
@@ -3595,38 +3618,47 @@ Delayed payload scheduling:
 Delayed-payload family matrix:
 
 - `ESC *b#W` / `w` raster row:
-  arming path `0x11f82 -> 0x121cc`, restored handler `0x105d0`.
+  arming path `0x11f82 -> 0x121cc`, normal restored handler `0x105d0`.
   The handler reads absolute count from record `+2`, consumes payload bytes
   through the payload reader, updates raster block `0x783170`, and queues
-  encoded-span objects through `0x10084 -> 0x13070 -> 0x13250`. Render
+  encoded-span objects through `0x10084 -> 0x13070 -> 0x13250`. Alternate/data
+  restore uses `0x12358 -> 0xdace -> 0xe002` and does not call `0x105d0`,
+  `0x13070`, `0x13250`, or `0x138de`. Render
   ownership is `Worked Path: Raster Row` and `Worked Path: Raster Transfer
   Gates And Modes`.
 - `ESC &p#X` / `x` transparent print data:
-  arming path `0x11f5a -> 0x121cc`, restored handler `0x12452`.
+  arming path `0x11f5a -> 0x121cc`, normal restored handler `0x12452`.
   The handler reads absolute count from record `+2`, routes payload bytes
   through transparent filtering, and either feeds fixed-space/control handling
-  or ordinary printable text object production. Owner is
+  or ordinary printable text object production. Alternate/data restore uses
+  `0x12358 -> 0xdace -> 0xe002` and does not call `0x12452`. Owner is
   `Worked Path: Transparent Print Data`.
 - `ESC &l#W` / `w` VFC table load:
-  arming path `0x11f6e -> 0x121cc`, restored handler `0x12cfe`.
+  arming path `0x11f6e -> 0x121cc`, normal restored handler `0x12cfe`.
   The handler reads table byte count from record `+2`, copies channel rows
   into `0x782dde..0x782edd`, derives channel presence/cache fields, and is
-  later consumed by `ESC &l#V`. Owners are `Worked Path: Vertical Forms
+  later consumed by `ESC &l#V`. Alternate/data restore uses
+  `0x12358 -> 0xdace -> 0xe002` and leaves `0x782dde..0x782edd` and
+  bottom-cache fields unchanged. Owners are `Worked Path: Vertical Forms
   Control` and `Worked Path: VFC Table And Channel Branch Matrix`.
 - `ESC (s#W` / `ESC )s#W`, count `0`:
-  arming path `0x11f96 -> 0x121cc`, restored handler `0x15d0a`.
+  arming path `0x11f96 -> 0x121cc`, normal restored handler `0x15d0a`.
   The handler interprets the following descriptor/current-record grammar,
   writes descriptor budget `0x783140`, fixed-record/current resource state,
-  and later source records consumed by printable glyph output. Owner is
+  and later source records consumed by printable glyph output. Alternate/data
+  restore uses `0x12358 -> 0xdace -> 0xe002` and does not write `0x783140` or
+  descriptor/current-record state. Owner is
   [Downloaded-Font Outcome
   Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix) and
   `Worked Path: Fixed-Record Resource Object`.
 - `ESC (s#W` / `ESC )s#W`, nonzero count:
-  arming path `0x11f96 -> 0x121cc`, restored handler `0x16c14`.
+  arming path `0x11f96 -> 0x121cc`, normal restored handler `0x16c14`.
   The handler stores payload budget in `0x783140`, validates/downloads
   descriptor or glyph bytes, installs resource candidates or
   downloaded-character records, and leaves printable bytes to create page
-  objects through `0xd04a -> 0x12f2e`. Owners are
+  objects through `0xd04a -> 0x12f2e`. Alternate/data restore uses
+  `0x12358 -> 0xdace -> 0xe002` and does not validate, install, refresh maps,
+  or create page objects. Owners are
   `Worked Path: Downloaded Glyph` and `Worked Path: Nonzero Resource Payload`.
 - Generic stateful-helper `W/w` payload:
   arming path helper-specific `0x121cc(0x1228a)`, restored handler

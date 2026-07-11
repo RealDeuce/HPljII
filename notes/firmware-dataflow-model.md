@@ -1433,6 +1433,15 @@ Selection and map pipeline:
 - `0x13eb8` filters candidate windows through symbol, height, spacing, pitch,
   and resource attributes, then writes selected candidate state consumed by
   `0x144d2` and `0x14c64`.
+- Candidate chooser `0x14398` calls comparator `0x13c06`. That comparator
+  ranks candidate resource class first, then delegates same-class ordering to
+  `0x13fc6`, `0x140a4`, `0x14198`, or `0x1428c`. Fixed-form records compare
+  word `+0x20`, unsigned byte `+0x26`, signed byte `+0x27`, and unsigned byte
+  `+0x18`; offset-table records compare decoded height
+  `0x13bca(+0x28,+0x2a)`, unsigned byte `+0x2f`, signed byte `+0x30`, and
+  unsigned byte `+0x31`. Mixed helpers use the same two tuples in opposite
+  argument order. A `D7 = 1` return replaces the current best and therefore
+  changes selected slot `0x7828a8`.
 - `0x14c64` rebuilds active maps `0x782f32` and `0x783032`, using selected
   candidate or downloaded/current records plus symbol patching through
   `0x14f16`.
@@ -1517,6 +1526,7 @@ Evidence and unresolved boundaries:
   `Nonzero Resource Payload`, and `Fixed-Record Resource Object`.
 - Key listings are `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
   `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`,
+  `generated/disasm/ic30_ic13_object_compare_helpers_013fc6.lst`,
   `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
   `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
   `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`, and
@@ -4329,8 +4339,11 @@ Activation, filtering, and selection consumers:
   `0x13bca`; `0x153c6` filters spacing and pitch through resource byte
   `+0x21` and decoded pitch from `0x13b76`.
 - `0x14398` and comparator `0x13c06` choose selected slot `0x7828a8` using
-  resource window, decoded height, byte `+0x2f`, signed byte `+0x30`, and
-  byte `+0x31`.
+  resource window and same-class tuple helpers. `0x13fc6` compares fixed-form
+  records by `+0x20/+0x26/+0x27/+0x18`; `0x1428c` compares offset-table
+  records by decoded height from `0x13bca(+0x28,+0x2a)`, then
+  `+0x2f/+0x30/+0x31`; and `0x140a4` / `0x14198` compare those same tuples
+  across fixed and offset-table forms.
 - `0x13eb8`, `0x144d2`, and `0x14c64` consume the selected candidate to write
   current context records and rebuild active glyph maps for printable text.
   Remaining font-selection work must change a concrete boundary in that chain:
@@ -4718,6 +4731,11 @@ Font request and candidate selection:
 - Symbol filtering keeps primary slots `0x782354`, `0x782364`, and
   `0x782374`; later pitch, height, and stroke filters select slot
   `0x782354`, record `0x00004c`, and context longword `0xc008004c`.
+- The last selection step is comparator-owned from the disassembly: chooser
+  `0x14398` calls `0x13c06`, whose same-class helpers rank fixed and
+  offset-table tuples through `0x13fc6`, `0x140a4`, `0x14198`, and `0x1428c`.
+  The resulting `0x7828a8` slot is the canonical selected-candidate state
+  that `0x144d2` and `0x14c64` consume.
 - `0x144d2` writes primary current-font context record `0x782ee6`.
 - `0x14c64` rebuilds primary map `0x782f32`.
 - The secondary stream follows the same family with class selector `1`;
@@ -4976,6 +4994,7 @@ Evidence for this path is in
 `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
 `generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_object_compare_helpers_013fc6.lst`,
 `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`,
 `generated/disasm/ic30_ic13_default_font_current_install_01b04c.lst`,
 `generated/disasm/ic30_ic13_font_id_select_017708.lst`,

@@ -219,11 +219,12 @@ Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
   `ESC (7X!!` object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, secondary `ESC
   )8X SO !!` prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and downloaded
   printable `!` object `00 00 00 00 00 00 00 01 21 5a 00`. The source-object boundary is
-  [Printable Source Capture
-  Checkpoint](font-context-metrics.md#printable-source-capture-checkpoint): it owns how
-  `0x1393a` maps the original host byte through the active map, writes source fields
-  `+0x00/+0x04/+0x0a/+0x0b/+0x10/+0x12/+0x14/+0x16`, and hands the source to `0xd3b2` /
-  `0xd824` and `0x12f2e`.
+  [Byte-To-Glyph Flow](font-context-metrics.md#byte-to-glyph-flow) and [Printable Source
+  Capture Checkpoint](font-context-metrics.md#printable-source-capture-checkpoint): they
+  own how `0xd04a` normalizes the host byte, how `0x1393a` maps that byte through the
+  active map, how source fields `+0x00/+0x04/+0x0a/+0x0b/+0x10/+0x12/+0x14/+0x16` are
+  written, and how `0xd3b2` / `0xd824` and `0x12f2e` turn the source into compact object
+  payload.
 - Segment/span objects:
   pending text decoration or span state flushes through `0x12714` into a
   class-`0x40` object. The documented `ESC &d3D ! ESC &d@` path queues span
@@ -312,7 +313,9 @@ write pixels.
   Bridge `0x1edc6` copies root `+0x1c` to render `+0x18`, and
   `0x1efc2 -> 0x1effe` selects `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
   `0x1f264`. Pixels come from compact object entries and copied context
-  slots.
+  slots; the glyph identity is the mapped source byte `+0x0b` plus the copied
+  context longword, as documented in
+  [Byte-To-Glyph Flow](font-context-metrics.md#byte-to-glyph-flow).
 - Symbol/font selection:
   `ESC (` / `ESC )` rows reach `0x120be -> 0x1be22 -> 0xc580`. They write
   requested symbol words `0x782ef4` / `0x782f04`, dirty flags

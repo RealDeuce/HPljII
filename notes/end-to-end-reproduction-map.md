@@ -187,6 +187,23 @@ that owner note before claiming equivalent output.
   [direct-control-codes.md](direct-control-codes.md#underline-and-span-outcome-matrix),
   and `Worked Path: Text Span Flush And Fixed-Width Spans` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-text-span-flush-and-fixed-width-spans).
+- Landscape fixed-list span `ESC &l1O ESC &d3D ! ESC &d@`: orientation command bytes
+  enter through `0xa904 -> 0xda9a -> 0x11774` and dispatch to `0x10220`, which writes
+  orientation byte `0x782da3 = 1` after any required pre-change publication. The
+  underline bytes then follow the same parser/span route as the portrait stream:
+  `0x12622` writes selector `0x783185`, printable `!` updates pending span bounds
+  through `0xd04a -> 0xd824 -> 0xd8fc`, and final `ESC &d@` reaches `0x12714`. With
+  landscape orientation active, `0x13520` routes the pending span source to fixed-list
+  insertion `0x136d2` instead of portrait `0x135f0`, writing a 14-byte fixed-list object
+  under page-root root `+0x28`. Bridge `0x1edc6` copies source `+0x28` to render root
+  `+0x20`, ORs object byte `+0x05` with `0x10`, copies extent word `+0x08` to
+  continuation `+0x0a`, and initializes bytes `+0x0c = 1` and `+0x0d = 8`. Render entry
+  still uses call order `0x1ef6a -> 0x1efc2 -> 0x1f446 -> 0x1f756`; fixed-list consumer
+  `0x1f756` reads render root `+0x20` only on five-band boundaries and writes rows
+  through `0x1f7b0 -> 0x1f626`. Evidence:
+  [direct-control-codes.md](direct-control-codes.md#underline-and-span-outcome-matrix),
+  [page-record-storage.md](page-record-storage.md#fixed-list-outcome-matrix), and
+  [page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint).
 - Transparent print data `ESC &p2X!!`: the command bytes enter through `0xa904 -> 0xda9a
   -> 0x11774` and dispatch to arming handler `0x11f5a`. Delayed setup `0x11f5a ->
   0x121cc` writes pending flag `0x782a1a = 1`, saved handler `0x782a1c = 0x12452`, and

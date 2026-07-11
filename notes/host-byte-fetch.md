@@ -1058,7 +1058,9 @@ Unresolved middle edges:
   `0xfffee009.6`.
 - `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
   physical names and timing for `0xfffe0001`, `0xfffe0003`, and `$aa01`
-  remain unassigned.
+  remain external hardware correlation. This is not a ROM-local byte-source
+  or data-chain-frame gap: the admitted-byte order, ring/status fields, and
+  downstream parser consumers are already documented above.
 - `0x782d76 frame +0x00..+0x0d`: execute/call producers `0xe418` and
   non-replay page-finalization producer `0xe4f4` are documented, and their
   frame fields are tied to `0xa904`, `0x9f6a`, and `0xe22c` consumers.

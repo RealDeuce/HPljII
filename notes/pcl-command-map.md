@@ -3472,70 +3472,65 @@ through `0xd04a` into selector-1 and selector-0 page-record objects, and
 the `0x1ed84`/`0x1ef6a` dispatch renders those objects with context
 slots `1` and `0`.
 
-`ESC &p2X!!` now carries transparent print data into the same
-page-record path: `ESC &p2X` routes through handler `0x11f5a`, restores
-delayed handler `0x12452`, consumes the following two payload bytes
-through `0xa904`, routes both payload bytes through `0xd04a`, queues
-compact coords `0x0001` and `0x0202`, and renders the same rows as
-plain `!!`. `ESC &p4X!\x05\x85!` now extends that evidence to the
-default-filtered control route: C0 byte `0x05` and high-control byte
-`0x85` route through `0xd0f0`, advance fixed spacing, queue no text
-object, and leave the next visible `!` at compact coord `0x0604`.
-`ESC &p3X!\x05!` now proves the same default-filtered C0 route in an
-unflagged inline/fixed-record context: `0xd0f0` substitutes host `0x20`,
-continues through `0xd140` / `0xd3b2`, maps glyph `0`, queues compact coord
-`0x4802` in bucket `1` between surrounding unflagged `!` coords `0x7601` and
-`0x7a03`, bridges context slot `0x00000100`, and renders digest
-`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
-`ESC &p4X!\x05\x80!` covers the nonzero-filter route through `0xd04a`:
-byte `0x05` maps to glyph `0x04`, byte `0x80` maps to glyph `0x7f`,
-and both queue visible compact text entries. `ESC &p3X!\x98!` extends the
-nonzero-filter high-control path to a taller bucket-crossing glyph: byte
-`0x98` maps to glyph `0x97`, glyph entry `0x01781e`, rows `29`, width `17`,
+`ESC &p2X!!` now carries transparent print data into the same page-record path: `ESC
+&p2X` routes through handler `0x11f5a`, restores delayed handler `0x12452`, consumes the
+following two payload bytes through `0xa904`, routes both payload bytes through
+`0xd04a`, queues compact coords `0x0001` and `0x0202`, and renders the same rows as
+plain `!!`. `ESC &p4X!\x05\x85!` now extends that evidence to the default-filtered
+control route: C0 byte `0x05` and high-control byte `0x85` route through `0xd0f0`,
+advance fixed spacing, queue no text object, and leave the next visible `!` at compact
+coord `0x0604`. `ESC &p3X!\x05!` now proves the same default-filtered C0 route in an
+unflagged inline/fixed-record context: `0xd0f0` substitutes host `0x20`, continues
+through `0xd140` / `0xd3b2`, maps glyph `0`, queues compact coord `0x4802` in bucket `1`
+between surrounding unflagged `!` coords `0x7601` and `0x7a03`, bridges context slot
+`0x00000100`, and renders digest
+`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`. `ESC &p4X!\x05\x80!`
+covers the nonzero-filter route through `0xd04a`: byte `0x05` maps to glyph `0x04`, byte
+`0x80` maps to glyph `0x7f`, and both queue visible compact text entries. `ESC
+&p3X!\x98!` extends the nonzero-filter high-control path to a taller bucket-crossing
+glyph: byte `0x98` maps to glyph `0x97`, glyph entry `0x01781e`, rows `29`, width `17`,
 queues bucket `-1` coord `0xfd01`, and renders row digest
-`bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`.
-The top-of-range sibling `ESC &p3X!\x9f!` stays on that printable route too:
-byte `0x9f` maps to glyph `0x9e`, glyph entry `0x016d1e`, rows `30`, width
-`15`, queues bucket `-1` coord `0xee01`, and renders row digest
-`ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`.
-`SO ESC &p3X!\x80!` composes the same transparent high-control route with the
-secondary text context: SO handler `0xc6b8` selects slot `1`, `0x12452`
-restores record `80 58 00 03 00 00`, the high-control byte reads source
-context `0xc00ae122`, maps to glyph `0x5f`, enters segmented selector
-`0x2001` page-record storage with `157` segment objects, bridges slots
-`(0x440946b4, 0xc00ae122)`, and selected bucket `0` renders digest
-`57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
-The secondary render-prefix fixture renders buckets `0..448` with aggregate
-digest `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
-before the current source model reaches bucket `456`, glyph `0x5f`, segment
-`0x39`, source `0x03fe22`, needing `1280` bytes with `478` available.
-Disassembly pins the command-side unresolved edge more narrowly: `0x1f354`
-accepts the zero table entry for glyph `0x5f` as the secondary `LINE_PRINTER`
-record header at file offset `0x02e122`, and `0x1f1f0` advances segment `0x39`
-to file offset `0x03fe22` / firmware address `0x0bfe22`. The remaining gap is
-what resource bytes hardware supplies for `0x0bfe22..0x0c0321`, not the
-transparent parser route or compact renderer row-skip arithmetic.
-Fixture `transparent secondary segment-57 continuation policies diverge after
-verified bytes` proves the current-band rows at bucket `456` no longer depend
-on that unknown continuation: mirror, code-pair continuation, and zero-fill all
-produce digest
-`f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
-fallback rows diverge across those policies. The fixture hashes the verified
-`0x0bfe22..0x0bffff` suffix as
-`e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f` and the
+`bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`. The top-of-range
+sibling `ESC &p3X!\x9f!` stays on that printable route too: byte `0x9f` maps to glyph
+`0x9e`, glyph entry `0x016d1e`, rows `30`, width `15`, queues bucket `-1` coord
+`0xee01`, and renders row digest
+`ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`. `SO ESC &p3X!\x80!`
+composes the same transparent high-control route with the secondary text context: SO
+handler `0xc6b8` selects slot `1`, `0x12452` restores record `80 58 00 03 00 00`, the
+high-control byte reads source context `0xc00ae122`, maps to glyph `0x5f`, enters
+segmented selector `0x2001` page-record storage with `157` segment objects, bridges
+slots `(0x440946b4, 0xc00ae122)`, and selected bucket `0` renders digest
+`57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`. The secondary
+render-prefix fixture renders buckets `0..448` with aggregate digest
+`292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9` before the current
+source model reaches bucket `456`, glyph `0x5f`, segment `0x39`, source `0x03fe22`,
+needing `1280` bytes with `478` available. Disassembly pins the resource-source boundary
+more narrowly: `0x1f354` accepts the zero table entry for glyph `0x5f` as the secondary
+`LINE_PRINTER` record header at file offset `0x02e122`, and `0x1f1f0` advances segment
+`0x39` to file offset `0x03fe22` / firmware address `0x0bfe22`. The remaining gap is the
+physical byte source after the verified suffix, specifically firmware addresses
+`0x0c0000..0x0c0321`, not the transparent parser route, page-record path, bridge, or
+compact renderer row-skip arithmetic. Fixture `transparent secondary segment-57
+continuation policies diverge after verified bytes` proves the current-band rows at
+bucket `456` no longer depend on that unknown continuation: mirror, code-pair
+continuation, and zero-fill all produce digest
+`f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The fallback rows
+diverge across those policies. The fixture hashes the verified `0x0bfe22..0x0bffff`
+suffix as `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f` and the
 mirror/code-pair/zero-fill continuation candidates as
 `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
 `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
-`359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the
-unresolved command-map edge is specifically the memory map at
-`0x0c0000..0x0c0321`. `data/rom_manifest.json` shows that range is beyond the
-verified `IC32,IC15` resource image, and `notes/formatter-interface-pca.md`
-records address-controller/jumper ROM-region behavior as the hardware state
-that can resolve it. Startup checksum evidence does not choose a continuation:
-`notes/firmware-startup.md` bounds the resource-pair byte-sum self-test at
-`0x080000..0x0bffff`, before the fallback-row bytes at `0x0c0000`.
-`ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
-`0x41`, not `0x1a`.
+`359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the remaining
+boundary belongs to the canonical missing-resource entry [Secondary Segment-57 Resource
+Source](unresolved-boundaries.md#secondary-segment-57-resource-source), not to command
+dispatch: the unknown is the memory map at `0x0c0000..0x0c0321`.
+`data/rom_manifest.json` shows that range is beyond the verified `IC32,IC15` resource
+image, and `notes/formatter-interface-pca.md` records address-controller/jumper
+ROM-region behavior as the hardware state that can resolve it. Startup checksum evidence
+does not choose a continuation: `notes/firmware-startup.md` bounds the resource-pair
+byte-sum self-test at `0x080000..0x0bffff`, before the fallback-row bytes at `0x0c0000`.
+`ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte `0x41`,
+not `0x1a`.
 
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` tracks the software
 reset boundary: `ESC E` runs text flush/page-root finalization before

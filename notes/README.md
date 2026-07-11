@@ -62,6 +62,7 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary),
   [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
+  [errors-and-status.md](errors-and-status.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
@@ -185,8 +186,11 @@ checked-in ROM model:
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.
    If the owner classifies the route as host/status, explicit no-output,
    generic drain, append-only storage, or status-only behavior, preserve the
-   named FIFO/status/parser/append state and stop page-image traversal until a
-   later admitted byte reaches a page-producing owner.
+   named FIFO/status/report/parser/append state and stop page-image traversal
+   until a later admitted byte reaches a page-producing owner. Terminal
+   report routes stop at `0x1284` / `0x128c -> 0x158c -> 0x8c7a` and cached
+   report bytes `0x783ef0..0x783ef1`, as owned by
+   [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix).
    The parser command-dispatch anchors in
    [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the common
    terminal-handler handoffs before the full flattened table. The `Command Family Owner
@@ -208,6 +212,9 @@ checked-in ROM model:
    `0xff1e` publication boundary;
    [display-functions.md](display-functions.md#owner-summary) owns `ESC Y`, local
    Control-Z variants, alternate/data append, and `ESC z` status behavior;
+   [errors-and-status.md](errors-and-status.md#owner-summary) owns `ESC *r#K`,
+   `ESC *s#^`, host-output FIFO/status bytes, and terminal report sinks
+   `0x1284` / `0x128c`;
    [font-context-metrics.md](font-context-metrics.md#owner-summary) owns font request
    refresh, page-root context slots, glyph maps, printable source fields, and span
    metrics; and [symbol-set-selection.md](symbol-set-selection.md#owner-summary) plus
@@ -318,7 +325,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   state classification and producer/consumer composition for parser, page-object,
   publication, scheduler, render, status, and boundary fields.
 - [errors-and-status.md](errors-and-status.md#owner-summary) - status, attendance,
-  error, and service codes useful during ROM tracing.
+  error, service codes, host-output FIFO/status bytes, and terminal report
+  sinks `0x1284` / `0x128c` with cached report bytes
+  `0x783ef0..0x783ef1`.
 - [external-ready-service.md](external-ready-service.md#owner-summary) - documented
   external-ready/service loop status bits, messages, register shadows, and
   scheduler/status teardown.

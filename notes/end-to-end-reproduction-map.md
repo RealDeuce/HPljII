@@ -32,6 +32,18 @@ pool record and clears `0x78297a`. Render entry then copies those roots through
 `0x1eba4` / `0x1ef6a`; the ROM-local model does not require or imply a
 parser-time full-page bitmap.
 
+The page image is therefore assembled in three ROM-visible phases, not as
+independent parser-time strips. First, parser handlers and delayed payload
+consumers write display-list objects or state fields into the current root.
+Second, publication freezes that root into pool state selected by
+`0x780ea6` / `0x780eaa` / `0x780eae`. Third, active rendering chooses band
+words and derives destination caches `0x783a20`, `0x783a22`, `0x783a28`, and
+`0x783a1c` before object helpers write current-band or fallback-buffer rows.
+The detailed owner boundaries are
+[page-record-storage.md](page-record-storage.md#page-object-lifetime-and-band-boundary),
+[active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+
 Every reproduction claim below requires a checked-in note that names the ROM
 address boundary and cites focused disassembly, ROM bytes/tables, static
 cross-reference analysis, or generated table extracts used as supporting

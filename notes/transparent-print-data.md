@@ -255,8 +255,8 @@ State grouping:
 - Parser scratch: fetched payload bytes from `0xa904`, local countdown `D4`,
   and the local `0x1a` probe byte.
 - Firmware bookkeeping: delayed restore through `0x121cc..0x1227e`, generic
-  drain helpers `0x1228a` / `0x12328`, alternate/data redirect
-  `0x12358`, and local normalization helper `0xd99a`.
+  drain helpers `0x1228a` / `0x12328`, alternate/data redirect `0x12358`,
+  append sink `0xe002`, and local normalization helper `0xd99a`.
 - Hardware/external state: resource-window bytes after verified firmware
   suffix `0x0bfe22..0x0bffff`.
 - Unknown: manual-facing names for selected filter/context fields and the
@@ -298,7 +298,11 @@ Decision route:
   `0x12452` when alternate/data flag `0x782c18` is clear.
 - Alternate/data restore: if `0x782c18` is set at restore time,
   `0x1226e..0x1227e` redirects the saved count through `0x12358(0x1228a)`
-  instead of calling `0x12452`; this is a stored/drained payload outcome, not
+  instead of calling `0x12452`. Because the saved handler is transparent
+  reader `0x12452` rather than wrapper `0x1228a`, `0x12358` takes its
+  non-wrapper branch: record word `+2 <= 0` returns without consuming data,
+  while positive counts fetch normalized bytes through `0xdace` and append
+  each byte through `0xe002`. This is stored macro/data-chain input, not
   immediate page output.
 - Payload reader: `0x12452` reads absolute record word `+2`, then consumes
   that many bytes through `0xa904`. Local pair `0x1a 0x58` contributes
@@ -975,21 +979,32 @@ For `ESC &p#X`:
 
 - Parse and save the six-byte `X` command record through the shared
   `0x121cc`/`0x12218` delayed-payload mechanism.
-- Use the absolute value of record word `+2` as the transparent payload count.
-- Consume payload bytes through the same priority byte source as `0xa904`.
-- Preserve the local `1a 58 -> 7f` behavior in `0x12452`.
-- Route each normalized payload value through `0xd0f0` or `0xd04a` according to
-  the control-byte filtering rules above.
-- Let printable transparent bytes update cursor, page-record text objects, and
-  rendered rows exactly like normal printable host bytes.
-- Let default-filtered C0 and `0x80..0x9f` bytes advance spacing through
-  `0xd0f0` without appending compact text entries in the flagged built-in path.
-- Let default-filtered C0 and `0x80..0x9f` bytes also queue substituted host
-  space if the current source class is an unflagged fixed-record font with a
-  valid space record.
-- Let nonzero-filtered C0 and `0x80..0x9f` bytes enter `0xd04a` and emit normal
-  mapped text entries.
-- Treat `1a xx` with `xx != 58` as routed payload byte `xx`, not `1a`.
+- In normal parser mode, call delayed handler `0x12452`, use the absolute value
+  of record word `+2` as the transparent payload count, consume payload bytes
+  through the same priority byte source as `0xa904`, preserve the local
+  `1a 58 -> 7f` behavior in `0x12452`, and route each normalized payload value
+  through `0xd0f0` or `0xd04a` according to the control-byte filtering rules
+  above.
+- In alternate/data mode, do not call `0x12452`: route the restored record
+  through `0x12358(0x1228a)`. For transparent data, the saved handler
+  `0x12452` differs from wrapper `0x1228a`, so positive record counts consume
+  bytes through `0xdace` and append each normalized byte through `0xe002`;
+  nonpositive counts return without consuming payload. This branch creates no
+  page root, page object, bridge record, render dispatch, or pixels unless the
+  appended bytes are replayed later.
+- On the normal `0x12452` branch, let printable transparent bytes update
+  cursor, page-record text objects, and rendered rows exactly like normal
+  printable host bytes.
+- On the normal `0x12452` branch, let default-filtered C0 and `0x80..0x9f`
+  bytes advance spacing through `0xd0f0` without appending compact text entries
+  in the flagged built-in path.
+- On the normal `0x12452` branch, let default-filtered C0 and `0x80..0x9f`
+  bytes also queue substituted host space if the current source class is an
+  unflagged fixed-record font with a valid space record.
+- On the normal `0x12452` branch, let nonzero-filtered C0 and `0x80..0x9f`
+  bytes enter `0xd04a` and emit normal mapped text entries.
+- On the normal `0x12452` branch, treat `1a xx` with `xx != 58` as routed
+  payload byte `xx`, not `1a`.
 - For the secondary `SO ESC &p3X ! 80 !` segmented high-control path, preserve
   the page-record and renderer state through glyph `0x5f`, segment `0x39`,
   source `0x0bfe22`, and read window `0x0bfe22..0x0c0321`. Rows backed by

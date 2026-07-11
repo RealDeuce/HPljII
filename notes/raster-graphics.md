@@ -339,6 +339,87 @@ Evidence:
   `modeled raster command stream queues consecutive ESC *b#W rows`, and the
   `0x1f88e mode-0` through `0x1f88e mode-3` render fixtures named above.
 
+### Alternate/Data Raster Payload Checkpoint
+
+This checkpoint owns the raster-family counted payload route while
+alternate/data mode is active. It is deliberately a no-page-output route:
+the ROM preserves the counted bytes as stored input and does not run the
+raster transfer gate.
+
+Route:
+
+- Parser table mode `14` still treats `ESC *b#W/w` as a counted payload
+  terminal and reaches setup handler `0x11f82`.
+- `0x11f82 -> 0x121cc` snapshots the six-byte transfer record and stores
+  saved handler `0x782a1c = 0x105d0`.
+- Restore `0x12218` tests alternate/data flag `0x782c18` before dispatching
+  the saved handler. With the flag set, `0x12218..0x12274` calls
+  `0x12358` instead of `0x105d0`.
+- Since the saved handler is raster transfer `0x105d0`, not generic wrapper
+  `0x1228a`, `0x12358` takes its direct branch: positive counts are consumed
+  through `0xdace`, normalized bytes are appended through `0xe002`, and
+  nonpositive counts return without page state.
+
+Field grouping:
+
+- Canonical parser state:
+  alternate/data flag `0x782c18`, pending delayed-payload byte `0x782a1a`,
+  saved handler `0x782a1c`, saved record `0x782a20..0x782a25`, and restored
+  command record at `0x78299e`.
+- Canonical stored-input state:
+  macro/data-chain bytes appended by `0xe002`. The stored bytes can become
+  future host input only if a later macro/data replay frame feeds them back
+  through `0xa904`.
+- Parser scratch:
+  parsed transfer count, direct-reader returns from `0xdace`, and the
+  temporary wrapper argument `0x1228a` used by `0x12358` to distinguish the
+  generic drain case from the raster saved handler.
+- Firmware bookkeeping:
+  delayed restore control flow in `0x12218`, alternate/data redirect
+  `0x12358`, append allocation/error state owned by `0xe002`, and the
+  parser reset path after the payload is consumed or aborted.
+- Canonical raster/page state:
+  none is written on this route. Raster block `0x783170`, current root
+  `0x78297a`, encoded objects under root `+0x1c`, publication flag
+  `0x782996`, bridge roots, and `0x1f88e` inputs are unchanged by the
+  alternate/data payload itself.
+- Hardware/external state:
+  none beyond the already-admitted payload bytes.
+- Unknown:
+  no ROM-local raster output edge remains inside this route. Any later pixels
+  belong to the replayed byte stream that consumes the stored data, not to the
+  alternate/data `ESC *b#W/w` handler instance.
+
+Writers, readers, and output effect:
+
+- `0x11f82` writes delayed-payload bookkeeping only; it does not admit row
+  bytes.
+- `0x12218` reads `0x782c18` and `0x782a1c`, then redirects to `0x12358`
+  while alternate/data mode is active.
+- `0x12358` reads the restored count and saved handler relationship,
+  consumes payload bytes through `0xdace`, and writes stored bytes through
+  `0xe002`.
+- `0x105d0`, `0x10084`, `0x13070`, `0x13250`, `0x138de`, `0xff1e`,
+  `0x1ed84`, `0x1edc6`, `0x1ef6a`, and `0x1f88e` are not consumers of this
+  handler instance. The immediate output effect is stored input, not a raster
+  row, page object, publication record, or render helper input.
+
+Evidence:
+
+- Disassembly:
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
+  `0x121cc..0x123d4`, especially `0x12256..0x12274` for the alternate/data
+  redirect and `0x12358..0x123d4` for direct positive-count append.
+- Parser owner:
+  [pcl-parser-core.md](pcl-parser-core.md#delayed-payload-scheduler)
+  documents `0x1228a`, `0x12328`, and `0x12358`; this raster checkpoint
+  applies that generic restore rule to saved handler `0x105d0`.
+- Route map:
+  [firmware-dataflow-model.md](firmware-dataflow-model.md) records that
+  alternate/data `ESC *b#W/w` uses `0x12358 -> 0xdace -> 0xe002` and leaves
+  the raster block, page root, encoded object, bridge roots, and renderer
+  untouched.
+
 ## Parser Boundary
 
 The primary byte-stream fixture is:

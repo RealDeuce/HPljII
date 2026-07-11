@@ -2819,8 +2819,8 @@ the first ROM field where each byte-stream family becomes page-image state.
 - Direct control bytes and text-motion commands:
   normal-mode CR, LF, HT, BS, SO, and SI reach `0xf02c`, `0xf08c`,
   `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`; `ESC &k#G/#H`, `ESC &s#C`,
-  `ESC &a#L/#M/#C/#H/#R/#V`, `ESC *p#X/#Y`, `ESC &f#S`, and `ESC &d`
-  reach the handler set documented in
+  `ESC 9`, `ESC =`, `ESC &a#L/#M/#C/#H/#R/#V`, `ESC *p#X/#Y`,
+  `ESC &f#S`, and `ESC &d` reach the handler set documented in
   [direct-control-codes.md](direct-control-codes.md). These handlers write
   cursor, margin, HMI/VMI, selected-context, wrap, stack, pending-width, and
   span state such as `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`,

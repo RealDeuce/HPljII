@@ -300,8 +300,9 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [pcl-to-pdf-rom-goals.md](pcl-to-pdf-rom-goals.md) - revised goal:
   stream-to-PDF renderer, and what ROMs are expected to contribute.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
-  primary host-byte-to-rendered-pixel coverage/evidence map for supported
-  streams, state groups, objective coverage, and open reproduction boundaries.
+  primary host-byte-to-rendered-pixel route/evidence map for supported
+  streams, state groups, objective requirements, and open reproduction
+  boundaries.
   Start here when following a concrete byte stream or checking what part of the
   ROM-disassembly objective is covered by checked-in documentation.
 - [firmware-dataflow-model.md](firmware-dataflow-model.md) - detailed

@@ -331,15 +331,15 @@ Current milestone status:
   publication, render bridge, and render dispatch all have tracked notes.
 - [firmware-dataflow-model.md](firmware-dataflow-model.md) is the current
   reader-facing spine for the ROM-derived stream-to-pixel path. The
-  end-to-end map remains an evidence/coverage companion rather than the
+  end-to-end map remains a route/evidence companion rather than the
   controlling explanation.
-- Behavioral fixtures now cover the major parser-to-render command families
-  named above as regression checks for ROM-derived interpretations. Remaining
-  work is documentation first: trace the disassembly edges, field writes,
-  page-object forms, bridge state, and row-construction helpers for any new
-  byte-stream variant that changes ROM state. Fixtures may drive those variants
-  or check internal consistency, but they are not a rendered-row oracle and do
-  not replace the explanatory trace.
+- Behavioral fixtures now exercise the major parser-to-render command families
+  named above as regression checks for ROM-derived interpretations. The
+  controlling progress is the checked-in explanation: disassembly edges, field
+  writes, page-object forms, bridge state, and row-construction helpers for any
+  new byte-stream variant that changes ROM state. Fixtures may drive those
+  variants or check internal consistency, but they are not a rendered-row
+  oracle and do not replace the explanatory trace.
 - The current shared page-image shape is summarized by `Page Object Shape
   Route Index` in [firmware-dataflow-model.md](firmware-dataflow-model.md);
   it groups compact text/downloaded glyphs, portrait segment-list spans,
@@ -368,7 +368,7 @@ The current notes should be enough to avoid routine PDF lookup for:
 - ROM-backed byte-source/parser/page-record/render state needed for the
   covered byte-stream families.
 - Built-in and downloaded-font candidate/context/glyph payload semantics for
-  the documented visible-output fixtures.
+  the documented visible-output paths.
 
 Expected remaining PDF lookups:
 
@@ -381,14 +381,15 @@ Expected remaining PDF lookups:
 
 Expected remaining validation and boundary work:
 
-- Exact ROM-local pixel helper boundaries:
-  downloaded-glyph compact-helper over-indexing, wrapped low-width helper
-  targets, segmented-wide fallback source offset, and the segmented-wide
-  payload-count cap are now bounded in
-  [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
-  Those are not parser, page-object, publication, or scheduler gaps; they are
-  the exact helper/source or payload-count stops reached after those upstream
-  routes are already documented.
+- Canonical unresolved boundary index:
+  [unresolved-boundaries.md](unresolved-boundaries.md) is now the source of
+  truth for residual stop points. Pixel-affecting ROM-local stops are
+  downloaded-glyph invalid helper/source cases at `0x1fe76..0x1fe88`,
+  `0x1f034 -> 0x1f08e`, and `0x1f264`, plus the exact parser payload-count
+  stop for oversized restored `ESC )s#W` streams. These are not parser,
+  page-object, publication, bridge, or scheduler gaps; the upstream routes are
+  documented before the model reaches the exact helper/source or payload-budget
+  stop.
 - ROM-local unresolved helper caller:
   optional active-pool pattern helper bodies `0x247c..0x2746` have decoded
   accumulator, pattern-pointer, and destination writes, but no static caller,
@@ -426,40 +427,6 @@ Expected remaining validation and boundary work:
   install-to-page boundary after `ESC )s18W`. These are not current
   ROM-semantic blockers when the checked-in notes already document field
   ownership, consumers, fixtures, and output rows.
-- Documented ROM-local visible-output helper boundary:
-  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
-  `Boundary: Short Compact Downloaded-Glyph High Rows` for `0x1fe76`
-  fallback indices above `128` after rows `0x0101..0x0103` publish low-byte
-  short compact objects. This is an exact unresolved renderer-helper edge, not
-  a parser/install/publication gap. Continue only with streams that change the
-  selected helper, fallback index, or ROM-derived rows.
-- Documented ROM-local visible-output helper boundary:
-  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
-  `Boundary: Downloaded-Glyph Wrapped Width Low Bytes` for wrapped downloaded
-  spans where the installed width word is preserved, but the printable source
-  exposes only low width bytes `0x00..0x10` to `0x12f2e`, selecting invalid
-  compact mode-0 helper targets. Low bytes `0x11..0xff` render through
-  compact-wide helper `0x1f0d2`. Continue only with streams that change source
-  object bytes, selector class, helper dispatch, or rows.
-- Documented ROM-local visible-output source boundary:
-  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
-  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` for sampled
-  high-row segmented-wide span-31 cases. They reach selector `0x3003`, bucket
-  `8` segment `1`, renderer `0x1f264`, and the `32/96` row split before
-  stopping at fallback A2 source offset `+0xb50`. Neighboring below-cap spans
-  are already documented as pixel-defined; continue only if a stream changes
-  the selected segment, source offset, parser cap, or rows.
-- Documented ROM-local parser/payload boundary:
-  [firmware-dataflow-model.md](firmware-dataflow-model.md) now names
-  `Boundary: Downloaded-Glyph Payload Count Cap` for oversized segmented-wide
-  high-row streams that exceed the restored `ESC )s#W` count cap `0x7fff`.
-  The exact minimum-span limit is `floor(0x7fff / 17) = 0x0787`, so
-  `0x0788*17` stops before `0x16498`, page-object publication, or `0x1f264`
-  renderer entry. Adjacent below-cap products render through `0x1f264`;
-  oversized products stop before installed glyph publication or render
-  dispatch. Continue only with payload shapes that change parser budget,
-  restored count, drain status, next parser handler, or post-stop command
-  recovery.
 - ROM-local work: broader command cross-products only where they expose a new
   state boundary; already-covered command families should be treated as
   regression expansion.

@@ -251,6 +251,22 @@ that owner note before claiming equivalent output.
   creates no page record. Evidence:
   [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix)
   and `Minimal Reset Default Environment Walkthrough` in this file.
+- Orientation/page geometry `! ESC &l1O`: the first `!` queues the ordinary
+  one-entry compact text object under current root `0x78297a`. `ESC &l1O`
+  enters through `0xa904 -> 0xda9a -> 0x11774` and dispatches to orientation
+  handler `0x10220`. If requested orientation differs from byte `0x782da3`,
+  `0x10220` flushes pending text through `0xf34a`, publishes the current root
+  through `0xff1e`, writes orientation byte `0x782da3 = 1`, rebuilds active
+  geometry through helpers including `0xf9ac`, `0xf87e`, and `0x103ea`, and
+  refreshes metric/font state for later placement. The published pre-command
+  compact object renders through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1eba4 ->
+  0x1ef6a` under the old geometry. Following printable, raster, and rectangle
+  paths consume the new geometry: text placement uses the rebuilt cursor and
+  extents through `0xd04a -> 0xd824 -> 0x12f2e`, raster origin uses
+  orientation in `0x1075a`, and rectangle clipping uses `0x10b80` with
+  `0x782da3` and extents `0x782db8/0x782db6`. Evidence:
+  `Minimal Page Geometry Walkthrough` in this file and
+  [publication-commands.md](publication-commands.md).
 - Raster row `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55`: parser dispatch reaches
   resolution/start handlers `0x10808` / `0x1075a`, delayed transfer setup `0x11f82 ->
   0x121cc`, restore `0x12218`, and transfer consumer `0x105d0`. Accepted bytes queue

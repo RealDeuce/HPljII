@@ -364,6 +364,24 @@ that owner note before claiming equivalent output.
   documented non-solid selectors. Evidence:
   [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix) and
   [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
+- Gray and patterned rules `! ESC *c12a5b50g2P` / `! ESC *c12a5b2g3P`: host bytes enter
+  through `0xa904 -> 0xda9a -> 0x11774`; the leading printable queues ordinary compact
+  text, then rectangle parser handlers `0x10e68`, `0x10e22`, `0x10dce`, and `0x10898`
+  consume the chained `ESC *c` command records. `50g` writes area-fill id `0x78316e =
+  50`, and `2P` maps that percentage to gray selector `4`; `2g` writes area-fill id
+  `2`, and `3P` maps portrait pattern id `2` to HP-pattern selector `9`. Both streams
+  then use the same clipping and rule-object producer path
+  `0x10b80 -> 0x13386 -> 0x133aa`, linking a 14-byte rule node under page-root rule list
+  `+0x24`: selector `4` object prefix `00 00 00 00 01 04 ...`, or selector `9` object
+  prefix `00 00 00 00 01 09 ...`. Bridge `0x1edc6` copies root `+0x24` to render root
+  `+0x1c`, ORs selector byte `+0x05` with `0x10`, and copies height `+0x0a` to
+  continuation `+0x0c`. Rule walker `0x1f446` sends selectors `0..6` and `8..13` to
+  pattern helper `0x1f4e0`, which consumes packed key `+0x06`, width `+0x08`,
+  continuation `+0x0c`, selector table `0x2fefe`, mask helper `0x1f6ee`, and
+  render-band destination state to write gray/pattern pixels. Evidence:
+  [rectangle-graphics.md](rectangle-graphics.md#fill-selector-at-0x10898),
+  [rectangle-graphics.md](rectangle-graphics.md#pattern-rules), and
+  [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix).
 - Mixed page image `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`:
   the same current page root receives compact text/raster bucket objects under
   `+0x1c` and a rectangle rule-list node under `+0x24`. FF reaches

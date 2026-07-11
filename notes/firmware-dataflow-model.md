@@ -2964,6 +2964,10 @@ the first ROM field where each byte-stream family becomes page-image state.
   page-image object until a later printable byte reaches `0xd04a`, a pending
   span flush reaches `0x12714`, FF reaches `0xf0f0 -> 0xf124 -> 0xff1e`, or a
   graphics handler consumes the updated cursor state.
+  The owner handoff from these delayed fields to compact objects, span
+  objects, raster origin, rectangle clipping, publication, and row stores is
+  [Delayed State To Visible Consumer
+  Map](direct-control-codes.md#delayed-state-to-visible-consumer-map).
 - Page-layout and VFC state writers:
   `ESC &l#P/#C/#D/#E/#F/#L`, VFC table `ESC &l#W`, and VFC channel
   `ESC &l#V` reach `0xf9e8`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`,

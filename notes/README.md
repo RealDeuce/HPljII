@@ -190,37 +190,37 @@ checked-in ROM model:
 4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
    index. After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.
-   If the owner classifies the route as host/status, explicit no-output,
-   generic drain, append-only storage, or status-only behavior, preserve the
-   named FIFO/status/report/parser/append state and stop page-image traversal
-   until a later admitted byte reaches a page-producing owner. Terminal
-   report routes stop at `0x1284` / `0x128c -> 0x158c -> 0x8c7a` and cached
-   report bytes `0x783ef0..0x783ef1`, as owned by
-   [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix).
-   The parser command-dispatch anchors in
-   [firmware-dataflow-model.md](firmware-dataflow-model.md) summarize the common
-   terminal-handler handoffs before the full flattened table. The `Command Family Owner
-   Matrix` in the same file gives the compact handler-to-owner handoff and output class
-   for each command family. For text/font routes, use `Font Context And Glyph Source
-   Boundary` to connect selected contexts and maps to printable source objects, and use
-   `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`, final `X`, or final `@`
-   changes requested symbols, maps, or `0x14f16` patching. Then use `Downloaded Glyph
-   Boundary Decision Rules` for downloaded-glyph helper and payload stop points. For
-   transparent/display readers, use `Transparent And Display Reader Boundary` before
-   crossing into text output, alternate/data append, or status behavior. For layout
-   routes, use `Page Geometry And Layout State Boundary` to connect page-length, VMI,
-   LPI, top-margin, text-length, wrap, and perforation commands to later placement,
-   overflow, publication, and render effects. For raster and rectangle routes, use
-   `Raster And Rectangle Graphics Object Boundary` to connect graphics setup and payload
-   commands to page objects and render helpers. Dispatch handoff should be concrete:
-   [publication-commands.md](publication-commands.md#owner-summary) owns reset, FF,
-   page-size, page-length zero/default, orientation, paper-source, copies, and the
-   `0xff1e` publication boundary;
+   If the owner classifies the route as host/status, explicit no-output, generic drain,
+   append-only storage, or status-only behavior, preserve the named
+   FIFO/status/report/parser/append state and stop page-image traversal until a later
+   admitted byte reaches a page-producing owner. Terminal report routes stop at `0x1284`
+   / `0x128c -> 0x158c -> 0x8c7a` and cached report bytes `0x783ef0..0x783ef1`, as owned
+   by [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix). The parser
+   command-dispatch anchors in [firmware-dataflow-model.md](firmware-dataflow-model.md)
+   summarize the common terminal-handler handoffs before the full flattened table. The
+   `Command Family Owner Matrix` in the same file gives the compact handler-to-owner
+   handoff and output class for each command family. For text/font routes, use `Font
+   Context And Glyph Source Boundary` to connect selected contexts and maps to printable
+   source objects, and use `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`,
+   final `X`, or final `@` changes requested symbols, maps, or `0x14f16` patching. Then
+   use `Downloaded Glyph Boundary Decision Rules` for downloaded-glyph helper and
+   payload stop points. For transparent/display readers, use `Transparent And Display
+   Reader Boundary` before crossing into text output, alternate/data append, or status
+   behavior. For layout routes, use `Page Geometry And Layout State Boundary` to connect
+   page-length, VMI, LPI, top-margin, text-length, wrap, and perforation commands to
+   later placement, overflow, publication, and render effects. For raster and rectangle
+   routes, use `Raster And Rectangle Graphics Object Boundary` to connect graphics setup
+   and payload commands to page objects and render helpers. Dispatch handoff should be
+   concrete: [publication-commands.md](publication-commands.md#owner-summary) owns
+   reset, FF, page-size, page-length zero/default, orientation, paper-source, copies,
+   and the `0xff1e` publication boundary;
    [display-functions.md](display-functions.md#owner-summary) owns `ESC Y`, local
    Control-Z variants, alternate/data append, and `ESC z` status behavior;
-   [errors-and-status.md](errors-and-status.md#owner-summary) owns `ESC *r#K`,
-   `ESC *s#^`, host-output FIFO/status bytes, and terminal report sinks
-   `0x1284` / `0x128c`;
+   [errors-and-status.md](errors-and-status.md#owner-summary) owns `ESC *r#K`, `ESC
+   *s#^`, host-output FIFO/status bytes, and terminal report sinks `0x1284` / `0x128c`;
+   [direct-control-codes.md](direct-control-codes.md#delayed-state-to-visible-consumer-map)
+   maps cursor, margin, selected-context, span, raster-origin, and rectangle placement
+   state to the later page-object and row-store consumers;
    [font-context-metrics.md](font-context-metrics.md#owner-summary) owns font request
    refresh, page-root context slots, glyph maps, printable source fields, and span
    metrics; and [symbol-set-selection.md](symbol-set-selection.md#owner-summary) plus

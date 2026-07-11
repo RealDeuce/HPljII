@@ -2748,6 +2748,19 @@ the first ROM field where each byte-stream family becomes page-image state.
   object fields `+0x04/+0x05/+0x06/+0x08` and payload bytes at `+0x0a`. The
   first render consumer is `0x1ef6a -> 0x1efc2 -> 0x1effe`, then the compact
   helper selected by object selector bits.
+- Macro definition, execute/call, and overlay replay:
+  macro id/control handlers `0xe112` and `0xdd08` select records, definition
+  mode stores bytes through append sink `0xe002`, and execute/call selectors
+  build data-chain replay frames through `0xe418`. Replayed bytes re-enter
+  the ordinary `0xa904 -> 0xda9a -> 0x11774` parser route, so the first
+  page-image state is whichever owner the stored bytes reach: compact text
+  under root `+0x1c`, span objects from `0x12714`, raster objects from
+  `0x105d0 -> 0x13070`, rule objects from `0x10898 -> 0x133aa`, VFC cursor or
+  publication effects, or direct publication. Overlay selector `4` is the
+  publication-time special case: `0xff1e` tests overlay state `0x782a92`,
+  saved id `0x782a94`, and page-root retry flag `+0x14.0`, then `0xe4f4`
+  builds a non-replay frame before the same parser/page-object/render owners
+  run. Macro replay has no macro-specific page-object class or renderer.
 - SI/SO, font selection, and downloaded-font selection before printable bytes:
   `0xc68a` / `0xc6b8`, `0x17708`, `0x14c64`, and `0xc428` / `0xc4fc` update the
   selected context before later printable bytes reach `0xd04a`. The first
@@ -2858,6 +2871,7 @@ Evidence:
   [pcl-parser-firmware.md](pcl-parser-firmware.md).
 - Object-owner notes:
   [direct-control-codes.md](direct-control-codes.md),
+  [macro-data-chain.md](macro-data-chain.md),
   [font-context-metrics.md](font-context-metrics.md),
   [downloaded-fonts.md](downloaded-fonts.md),
   [raster-graphics.md](raster-graphics.md),

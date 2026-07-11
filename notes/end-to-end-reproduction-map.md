@@ -309,6 +309,13 @@ write pixels.
   the next printable byte: `0xd04a -> 0x1393a` reads selected slot
   `0x782f06`, maps the host byte through the active map, and queues compact
   text under root `+0x1c`.
+  Font attribute wrappers `0x12046`, `0x1206e`, `0x12082`, `0x12096`,
+  `0x120aa`, and `0x1205a` write point/style/spacing/pitch/stroke/typeface
+  request fields before the same refresh boundary. Pitch-mode `ESC &k#S/s`
+  is a compatibility producer: `0xc390` accepts selectors `0`, `2`, and `4`,
+  rewrites synthetic pitch records, and rejoins `0xc89c -> 0xc580`.
+  These commands are state-only until `0xc580`, `0x13eb8`, `0x14c64`, and
+  `0xc428` have selected context/map state for a later printable byte.
 - Direct cursor/layout controls:
   handlers such as `0xf02c`, `0xf08c`, `0xf0f0`, `0xedf8`, `0xca8c`,
   `0xeb58`, `0xec0c`, `0xf39e`, `0xf560`, `0xf48c`, and `0xf692` write

@@ -59,7 +59,11 @@ Primary route:
 
 - Parser final `0x11f6e` schedules delayed `ESC &l#W` handler `0x12cfe`
   through `0x121cc`; restore `0x12218` later calls `0x12cfe` with the saved
-  six-byte command record.
+  six-byte command record when alternate/data flag `0x782c18` is clear. In
+  alternate/data mode, the same restored record diverts through
+  `0x12358(0x1228a)`; because saved handler `0x12cfe` is not wrapper
+  `0x1228a`, positive counts are consumed through `0xdace` and appended
+  through `0xe002` instead of loading the VFC table.
 - Table-load route:
   `0x12cfe -> 0xdace payload bytes -> 0x782dde table words
   -> 0x782dc2/0x782dd2 text-bottom caches`.
@@ -93,8 +97,9 @@ Field groups:
 - Parser scratch: command-record cursor `0x78299e`, delayed payload state
   from `0x121cc`, restored `ESC &l#W` records, and bytes consumed by `0xdace`.
 - Firmware bookkeeping: modified-layout flag `0x782ee1`, pending-width latch
-  `0x782a58`, pending cursor/text latch `0x782a6d`, and pending span-enable
-  byte `0x783184`.
+  `0x782a58`, pending cursor/text latch `0x782a6d`, pending span-enable byte
+  `0x783184`, delayed alternate/data redirect `0x12358`, and append sink
+  `0xe002`.
 - Unknown: manual HP names for `0x782ede`, `0x782edf`, and `0x782ee0` remain
   inferred, but their ROM roles are tied to the cited writers and consumers.
 
@@ -415,6 +420,16 @@ page-publication split, or no new table/page output.
   `0x100` bytes and drain the rest. The output effect is delayed until
   `0x1280a`, vertical overflow, or later printable placement consumes the
   table/cache state.
+- Delayed table load in alternate/data mode:
+  `0x12218` restores the saved `ESC &l#W/w` record but, with `0x782c18` set,
+  calls `0x12358(0x1228a)` instead of saved handler `0x12cfe`. Since
+  `0x782a1c = 0x12cfe` differs from wrapper argument `0x1228a`, `0x12358`
+  returns immediately for nonpositive counts and otherwise consumes positive
+  payload bytes through `0xdace` and appends each normalized byte through
+  `0xe002`. The VFC table `0x782dde..0x782edd`, bottom caches
+  `0x782dc2` / `0x782dd2`, and modified-layout flag `0x782ee1` are not
+  written by this branch; any later visible effect can only come from replay
+  of the appended bytes.
 - Lowercase delayed-record preservation:
   mixed `w...W` streams keep the first pending delayed record because
   `0x121cc` does not replace an already-pending `0x782a1a` snapshot. The
@@ -643,7 +658,9 @@ State writers:
 
 - `0x11f6e -> 0x121cc` arms delayed `ESC &l#W` handler `0x12cfe`; restore
   `0x12218` replays the saved six-byte command record before the following
-  printable byte can be parsed.
+  printable byte can be parsed. In alternate/data mode, `0x12218` calls
+  `0x12358(0x1228a)` instead of `0x12cfe`, and the non-wrapper branch appends
+  positive payload bytes through `0xe002` without writing VFC table fields.
 - `0x12cfe` consumes accepted table payload bytes through `0xdace`, writes
   VFC table `0x782dde..0x782edd`, updates bottom caches `0x782dc2` /
   `0x782dd2`, and clears modified-layout flag `0x782ee1`.
@@ -744,7 +761,8 @@ Medium for the manual-facing names of the derived line-count fields
 A byte-stream renderer must preserve:
 
 - delayed `ESC &l#W` record restoration, including lowercase `w...W`
-  behavior;
+  behavior and the alternate/data `0x12358 -> 0xdace -> 0xe002` append branch
+  that bypasses `0x12cfe`;
 - shared `0xe5e2` layout refresh when page/macro paths rebuild default VFC
   and static font-context state;
 - `0xdace` payload-byte normalization during VFC table load;

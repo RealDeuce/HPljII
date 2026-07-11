@@ -468,6 +468,22 @@ that owner note before claiming equivalent output.
   render consumer `0x1f88e`. Evidence:
   [pcl-command-map.md](pcl-command-map.md) and
   [raster-graphics.md](raster-graphics.md#owner-summary).
+- Alternate/data raster payload storage, for example a macro-definition
+  stream containing `ESC *b2W c3 3c`: parser mode `14` still reaches
+  delayed setup handler `0x11f82`, and `0x121cc` snapshots saved handler
+  `0x782a1c = 0x105d0` plus the six-byte `ESC *b#W` parser record.
+  When restore `0x12218` sees alternate/data flag `0x782c18`, it calls
+  `0x12358(0x1228a)` instead of raster transfer handler `0x105d0`.
+  Because the saved handler is raster `0x105d0`, not generic wrapper
+  `0x1228a`, positive payload counts are consumed through `0xdace` and
+  appended through `0xe002`. That handler instance creates no raster block
+  fields, current page root, encoded object, publication record, bridge
+  root, or `0x1f88e` input. The immediate output effect is stored input;
+  pixels can appear only if later macro/data replay feeds those stored
+  bytes back through `0xa904` in normal parser mode. Evidence:
+  [raster-graphics.md](raster-graphics.md#alternatedata-raster-payload-checkpoint)
+  and
+  [pcl-parser-core.md](pcl-parser-core.md#delayed-payload-scheduler).
 - Raster active-state control `ESC *t300R ESC *r0A ESC *t75R ESC *b2W <payload>` /
   `ESC *t300R ESC *r0A ESC *b2W <payload> ESC *rB ESC *t150R ESC *r0A ESC *b2W
   <payload>`: the first stream shows the ignored-resolution branch. `ESC *t300R` writes

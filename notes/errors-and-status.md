@@ -33,6 +33,12 @@ Primary routes:
   `0x36e4`, `0x7612`, `0x7c96..0x7e20`, `0x8656`, `0x8a48`, and display
   helpers under `0x8c7a..0x9406` fold status longwords, sensor/status bytes,
   and page-environment state into host-visible or panel-visible messages.
+- Terminal error/status reports:
+  stack-entry `0x1284` and register-entry `0x128c` consume a two-byte report
+  code, select a status string through helper `0x158c`, display it through
+  wrapper `0x8c7a`, cache the first two message bytes in
+  `0x783ef0..0x783ef1`, and then enter the hardware-facing report loop. This
+  is a panel/MMIO status sink, not a page-image producer.
 
 Field groups:
 
@@ -47,6 +53,10 @@ Field groups:
   page-environment bytes `0x780e8e` / `0x780e8f`, selected page/control bytes
   `+6/+7/+8`, status root fields `0x780e12`, `0x780e0a`, `0x780e2a`,
   `0x780e32`, `0x780e2e`, and `0x780e36`.
+- Canonical report state:
+  two-byte report inputs at `0x1284` stack offsets `+7` / `+0x0b` or
+  `0x128c` registers `D0` / `D1`, selected string pointer from `0x158c`, and
+  cached message bytes `0x783ef0..0x783ef1`.
 - Derived/cache state:
   pending status count `0x780e22`, service byte latch `0x783e61`, reason byte
   `0x783e60`, accepted status byte `0x780e62`, page-environment flag
@@ -58,14 +68,18 @@ Field groups:
 - Firmware bookkeeping:
   service latch fields, aggregate-status helper state, panel desired/shadow
   buffers, display wrapper flag `0x78296c`, attendance byte `0x7821f9`, and
-  self-test/font-print selectors.
+  self-test/font-print selectors. Error-report bookkeeping includes saved
+  stack pointer `0x783eea`, gate byte `0x7821a5`, loop counter `D4`, and
+  sentinel byte `D6`.
 - Hardware/external state:
   physical output backend registers, panel side effects, and DC-controller or
-  sensor sources that produce attendance bits.
+  sensor sources that produce attendance bits. The error-report loop reaches
+  `$8000.w`, `$ffff3800`, and helper `0x1492`.
 - Unknown:
   physical names/timing for output MMIO banks, panel flag-`1` effects, exact
   external protocol name for query byte `0x11`, and sensor producers for
-  `0x7821f9`. No ROM-local page-object or render edge is unknown here.
+  `0x7821f9`. Error-report physical protocol details after `0x1492` are
+  also external. No ROM-local page-object or render edge is unknown here.
 
 Output effect:
 
@@ -81,10 +95,11 @@ Output effect:
 
 This checkpoint composes the ROM-visible host/status side channel from parser
 command dispatch or status producers to host-visible bytes, panel/status
-state, or an explicit no-page-output outcome. It starts at parser wrapper
-`0x12034`, FIFO/status worker `0xae2c`, page-environment status helper
-`0x2888`, or aggregate status helper `0x36e4`, and ends before any page-root
-or render-record path because this family does not create pixels directly.
+state, terminal report state, or an explicit no-page-output outcome. It starts
+at parser wrapper `0x12034`, FIFO/status worker `0xae2c`,
+page-environment status helper `0x2888`, aggregate status helper `0x36e4`, or
+error-report helper `0x1284` / `0x128c`, and ends before any page-root or
+render-record path because this family does not create pixels directly.
 
 Decision route:
 
@@ -108,6 +123,12 @@ Decision route:
 - Aggregate status: `0x36e4` folds status longwords into `0x780e12`,
   `0x780e0e`, `0x780e0a`, and `0x780e1a`; the same fields affect `0xaece`
   status-byte bits and service-control returns.
+- Error/status report: callers such as retained-record load, resource scan,
+  font selection, host-output retry, or bitmap error exits call `0x1284` or
+  `0x128c` with two report bytes. `0x1284` first copies stack arguments into
+  registers; `0x128c` masks both report bytes, selects the message through
+  `0x158c`, displays it through `0x8c7a`, caches the first two message bytes,
+  and then enters the hardware-facing loop under `0x12d4..0x13b0`.
 
 State classification:
 
@@ -120,6 +141,8 @@ State classification:
 - Canonical status state: selected page/control bytes `+6/+7/+8`, active
   environment bytes `0x780e8e` / `0x780e8f`, status longwords `0x780e12`,
   `0x780e0a`, `0x780e2a`, `0x780e32`, `0x780e2e`, and `0x780e36`.
+- Canonical report state: two-byte error/status report inputs, selected
+  message pointer, and cached visible bytes `0x783ef0..0x783ef1`.
 - Derived/cache state: pending status count `0x780e22`, service byte latch
   `0x783e61`, reason byte `0x783e60`, accepted status byte `0x780e62`,
   page-environment flag `0x780e90`, media-feed cache `0x780e98`, and folded
@@ -127,11 +150,13 @@ State classification:
 - Parser scratch: transient query/fetch state consumed by
   `0x122be..0x12326` before the byte is accepted or reported.
 - Firmware bookkeeping: FIFO critical sections, wait-object scheduling,
-  display/message shadow state, service latch fields, and panel wrapper flag
-  `0x78296c`.
+  display/message shadow state, service latch fields, panel wrapper flag
+  `0x78296c`, saved error-report stack pointer `0x783eea`, and gate byte
+  `0x7821a5`.
 - Hardware/external state: physical output backend registers selected by
-  `0x780e40`, panel side effects, and DC-controller or sensor inputs that
-  produce attendance bits.
+  `0x780e40`, panel side effects, DC-controller or sensor inputs that produce
+  attendance bits, and the error-report loop through `$8000.w`, `$ffff3800`,
+  and helper `0x1492`.
 - Unknown: external protocol name for accepted query byte `0x11`, physical
   names/timing for output MMIO banks, physical sensor producers for
   `0x7821f9`, and panel flag-`1` effects after `0x9406`.
@@ -141,7 +166,8 @@ Writers, readers, and output effect:
 - Writers are `0x12034` / `0x11efe` / `0x122be` for response command state,
   `0xb0c0` / `0xb090` for FIFO append state, `0xb022` for FIFO removal,
   `0xaece` for outbound status bytes, `0x2888` for page-environment status,
-  and `0x36e4` for aggregate status fields.
+  `0x36e4` for aggregate status fields, and `0x1284` / `0x128c` for
+  terminal error/status report state.
 - Readers and consumers are `0xda9a` for the model-ID query byte,
   `0xae2c` for FIFO/status worker priority, backend writers selected by
   `0x780e40`, `0x7612` / `0x8656` / `0x8a48` for service or panel messages,
@@ -172,6 +198,11 @@ Evidence and unresolved boundary:
   `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`, and fixtures
   `0xaece emits service byte and combined status byte` and
   `0x2888 sets page-environment status consumed by 0xaece`.
+- Error-report evidence is
+  `generated/disasm/ic30_ic13_error_report_entry_001284.lst` and
+  `generated/disasm/ic30_ic13_error_report_00128c.lst`, with upstream report
+  callers visible in reset/default, resource-scan, font-selection,
+  host-output, and bitmap listings.
 - No ROM-local page-object, publication, render-scheduler, or pixel-generation
   edge remains in this side-channel checkpoint. Remaining boundaries are
   hardware/MMIO identity, external protocol naming, panel behavior, and
@@ -265,13 +296,26 @@ page roots, page objects, published records, render work, or bitmap rows.
   and feeds `0xaece` status-byte formulas plus service-control consumers.
   Output effect is derived status state only. Evidence:
   `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`.
+- Terminal error/status report:
+  stack-entry `0x1284` or register-entry `0x128c` consumes a two-byte report
+  code. The body masks the bytes into words, selects a status string through
+  `0x158c`, displays it through wrapper `0x8c7a`, copies the first two
+  selected message bytes into `0x783ef0..0x783ef1`, and then enters the
+  hardware-facing loop at `0x12d4..0x13b0`. Upstream callers include
+  retained-record load, resource checksum, font-selection, host-output retry,
+  and bitmap error exits. Output effect is panel/MMIO report state, not page
+  output. Evidence:
+  `generated/disasm/ic30_ic13_error_report_entry_001284.lst`,
+  `generated/disasm/ic30_ic13_error_report_00128c.lst`, and the
+  [Error Report Helper](#error-report-helper) section below.
 
 State grouping for all outcomes:
 
 - Canonical:
   parser/model response state, FIFO storage/count/pointers, backend selector
-  `0x780e40`, selected page/control bytes, active environment bytes, and
-  status longwords.
+  `0x780e40`, selected page/control bytes, active environment bytes, status
+  longwords, and two-byte report inputs plus cached report bytes
+  `0x783ef0..0x783ef1`.
 - Derived/cache:
   pending status count `0x780e22`, service byte latch `0x783e61`, reason byte
   `0x783e60`, accepted status byte `0x780e62`, page-environment flag
@@ -281,10 +325,12 @@ State grouping for all outcomes:
   whether to emit or reject the model-ID response.
 - Firmware bookkeeping:
   FIFO critical sections, wait object `0x7801e2`, worker sleeps/wakes, service
-  latch cleanup, and panel/display shadow state.
+  latch cleanup, panel/display shadow state, saved report stack pointer
+  `0x783eea`, and report gate byte `0x7821a5`.
 - Hardware/external:
-  selected output backend registers, physical panel behavior, and
-  DC-controller or sensor sources.
+  selected output backend registers, physical panel behavior, DC-controller or
+  sensor sources, and the terminal report loop through `$8000.w`,
+  `$ffff3800`, and `0x1492`.
 - Unknown:
   physical protocol name for query byte `0x11`, output-backend electrical
   identities, physical sensor producers, and panel flag-`1` side effects.
@@ -294,7 +340,8 @@ Unresolved boundaries:
 - No ROM-local host-byte-to-page-object or page-object-to-pixel edge remains
   in this family. The exact remaining boundaries are hardware/MMIO identity
   for output backends, external protocol naming for the accepted query byte,
-  physical sensor producers, and panel behavior after display helpers.
+  physical sensor producers, report-loop electrical behavior after `0x1492`,
+  and panel behavior after display helpers.
 
 ## Normal Status
 
@@ -314,7 +361,7 @@ Unresolved boundaries:
 
 ## ROM Status Composition
 
-The ROM has three documented status/backchannel paths that matter to
+The ROM has four documented status/backchannel paths that matter to
 byte-stream reproduction even though they do not draw pixels themselves:
 
 - host/interface backchannel status through `0xae2c` / `0xaece`;
@@ -322,6 +369,8 @@ byte-stream reproduction even though they do not draw pixels themselves:
   `0x122be..0x12326`;
 - page-environment service status through `0x2888`, `0x7612`, `0x8a48`, and
   `0x8656`.
+- terminal error/status reports through `0x1284` / `0x128c`, display wrapper
+  `0x8c7a`, and the report loop under `0x12d4..0x13b0`.
 
 The low-level ledger remains in `notes/semantic-state-model.md` under
 `Interface Output FIFO And Status Bytes` and

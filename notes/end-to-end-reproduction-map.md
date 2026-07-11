@@ -356,7 +356,11 @@ write pixels.
   jumps either move the cursor for a later printable object or publish the
   old current root through `0xf124 -> 0xff1e`; the first render consumer is
   either later compact text or the ordinary publication bridge
-  `0x1ed84 -> 0x1edc6`.
+  `0x1ed84 -> 0x1edc6`. In alternate/data mode, delayed `ESC &l#W/w`
+  restores through `0x12218` but diverts to `0x12358`; positive table bytes
+  are drained through `0xdace` and appended through `0xe002` instead of
+  calling `0x12cfe`. The VFC table and layout caches therefore do not change
+  until those stored bytes replay through `0xa904` and the normal VFC owner.
 - Transparent print data:
   `ESC &p#X` arms `0x11f5a -> 0x121cc`; restore `0x12218` calls payload
   reader `0x12452`. Counted payload bytes route to `0xd04a` or fixed-space
@@ -420,7 +424,11 @@ write pixels.
   glyph output uses the compact text route; documented valid helpers are
   `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`. Invalid or high-row helper
   boundaries stop at exact targets such as `0x1fe76..0x1fe88` or wrapped
-  `0x1f034 -> 0x1f08e`.
+  `0x1f034 -> 0x1f08e`. In alternate/data mode, delayed `W/w` payload forms
+  restore through `0x12358` instead of `0x15d0a` or `0x16c14`; positive
+  descriptor/resource/glyph payload bytes append through `0xe002`, so no
+  downloaded-font record, installed glyph, page-root context slot, or compact
+  render input exists until replay returns those bytes through `0xa904`.
 - Macro definition, execute/call, and overlay replay:
   alternate/data mode stores macro bytes through append sink `0xe002`. Macro
   controls `0xe112` / `0xdd08` create, clear, execute, call, or overlay

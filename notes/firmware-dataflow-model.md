@@ -2850,14 +2850,25 @@ the first ROM field where each byte-stream family becomes page-image state.
   origin, rectangle clipping, or VFC channel movement consumes fields such as
   page extent `0x782dba`, top offset `0x782dce`, text limit `0x782dc2`,
   VMI `0x783160`, perforation byte `0x783191`, and VFC table
-  `0x782dde..0x782edd`.
+  `0x782dde..0x782edd`. In alternate/data mode, immediate layout/table rows
+  have no normal canonical-state write, while delayed `ESC &l#W/w` can still
+  restore through `0x12218`; wrapper `0x12358` consumes positive payload bytes
+  through `0xdace` and appends them through `0xe002` instead of calling
+  `0x12cfe`. The VFC table, layout caches, page roots, and render inputs stay
+  unchanged until replayed bytes return through `0xa904` and reach the normal
+  VFC owner.
 - Downloaded character and descriptor payloads used by later printable bytes:
   `0x11f96 -> 0x121cc -> 0x12218` dispatches either downloaded characters
   through `0x16498` or descriptor/resource payloads through
   `0x16c14 -> 0x16fae -> 0x1719c`. The first persistent image input is installed
   font resource/candidate state; later printable bytes create compact bucket
   objects under root `+0x1c`. Renderer `0x1effe` dispatches downloaded compact
-  helpers `0x1f0d2`, `0x1f1f0`, or `0x1f264` according to object selector bits.
+  helpers `0x1f0d2`, `0x1f1f0`, or `0x1f264` according to object selector
+  bits. In alternate/data mode, the same delayed `W/w` forms restore through
+  `0x12358` instead of calling descriptor handler `0x15d0a` or resource/glyph
+  handler `0x16c14`; positive payload bytes append through `0xe002`, and no
+  downloaded-font records, installed glyph tables, page-root context slots, or
+  compact render inputs change until replay reaches the normal owner route.
 - Pending span flush from CR, cursor/margin movement, or printable low-water
   branches:
   `0xf02c`, `0xeb58`, `0xf560`, `0xd4ac`, or `0xd8fc` reach `0xf34a` /

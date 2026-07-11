@@ -299,10 +299,11 @@ Explicit no-output parser rows:
 - Output effect:
   no direct page object. These rows are meaningful because they preserve parser
   state and delayed-payload boundaries exactly.
-- Evidence:
-  `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+- Evidence: `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
   [pcl-command-map.md](pcl-command-map.md#inbound-byte-outcome-classes), and the
-  `No-Output And Reported-Byte Checkpoint` below.
+  `No-Output And Reported-Byte Checkpoint` below. The composed byte-stream path is also
+  indexed in [Worked Path: Explicit No-Output Parser
+  Rows](firmware-dataflow-model.md#worked-path-explicit-no-output-parser-rows).
 
 Parser-external service return:
 
@@ -1458,6 +1459,27 @@ produce. The required ROM-visible behavior is:
 The shared parser mechanism and currently identified command-family parser
 edges in this note are documented.
 
+- Explicit no-output and alternate/data append outcomes are not command-family
+  gaps. They are parser-owned byte outcomes: normal mode-zero blank C0 rows
+  `0x00`, `0x07`, and `0x0b` run terminal path `0x119a6..0x119f4`; alternate/
+  data mode-zero C0 rows `0x00` and `0x07..0x0f` run append-preserving path
+  `0x11930..0x11ab8`; wrapper-consumed `ESC ? 0x11` stays inside `0xda9a`;
+  and display terminator `ESC Z` is consumed inside readers `0x12536` or
+  `0x12120`.
+- The canonical fields for those outcomes are parser mode `0x782999`,
+  alternate/data selector `0x782c18`, command-record cursor `0x78299e`, and
+  delayed-payload fields `0x782a1a/0x782a1c/0x782a20..0x782a25`. Scratch and
+  bookkeeping are matched-byte buffer `0x783196..0x783199`, scratch cursors
+  `0x782a26` / `0x782a3e`, append sink `0xe002`, delayed restore `0x12218`,
+  and pushback/report helper `0x9ec0`.
+- Their output effect is absence of immediate page state: no `0xd04a`, direct control
+  handler, page-root allocation, publication, or render scheduling runs unless `0x12218`
+  restores a pending payload handler or bytes appended through `0xe002` later replay
+  through `0xa904`. The checked-in spine path is [Worked Path: Explicit No-Output Parser
+  Rows](firmware-dataflow-model.md#worked-path-explicit-no-output-parser-rows); the
+  table grouping is in [Inbound Byte Outcome
+  Classes](pcl-command-map.md#inbound-byte-outcome-classes) and [Alternate/Data Dispatch
+  Decision Checkpoint](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint).
 - `0x12452` transparent print data is documented in
   [transparent-print-data.md](transparent-print-data.md). That command-family
   note covers delayed restore, `1a` probe handling, C0 and `0x80..0x9f`

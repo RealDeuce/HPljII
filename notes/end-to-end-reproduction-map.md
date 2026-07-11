@@ -186,6 +186,42 @@ that owner note before claiming equivalent output.
   for composing text, encoded raster rows, and rules into one band. Evidence:
   `Mixed Page-Image Composition` in this file and
   [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+- Downloaded glyph payload
+  `ESC *c4660d37e5F ESC )s2193W <0x0891 payload> % FF`:
+  font-control bytes route through `0x11eb6 -> 0x11ec8 -> 0x11eda`.
+  `0x15a56` writes current downloaded-font id `0x782f2e`, `0x15a18` writes
+  current character/code `0x782f30`, and `0x16df6 -> 0x16e86 -> 0x17108`
+  marks the current record. The binary payload enters delayed transfer state
+  through `0x11f96 -> 0x121cc -> 0x12218 -> 0x16c14`, then install/return
+  uses `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`. The following printable
+  `%` resumes normal output through `0xd04a -> 0x1393a -> 0x12f2e ->
+  0x1387c`, queueing segmented compact objects under bucket root `+0x1c`
+  with selector `0x3003`; the covered prefixes are bucket `9`, segment `1`,
+  `00 00 00 00 30 03 00 01 25 01 66 01`, and bucket `1`, segment `0`,
+  `00 00 00 00 30 03 00 01 25 00 66 01`. FF publication/render uses
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`, with
+  downloaded segmented-wide rows emitted by `0x1f264`. Evidence:
+  [downloaded-fonts.md](downloaded-fonts.md#end-to-end-downloaded-glyph-path)
+  and `Worked Path: Downloaded Glyph` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-downloaded-glyph).
+- Macro execute replay `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`: live bytes enter
+  through `0xa904 -> 0xda9a -> 0x11774`. In parser mode `17`, `ESC &f#Y` reaches
+  `0xe112` and writes current macro id `0x783164`; `ESC &f#X` reaches `0xdd08`, calls
+  `0xe0a4`, selects/allocates a macro record under `0x782a98`, and writes current macro
+  pointer `0x782d7a`. Selector `0` starts definition through `0xdd86`, so `0xe002`
+  stores payload bytes `21 0d` into macro chunks instead of running `0xd04a` or
+  `0xf02c`; selector `1` stops through `0xddfc`. Selector `2` executes through `0xde7c
+  -> 0xe418`, writing an active data-chain frame at `0x782d76` with kind byte `+9 = 2`
+  and payload fields `+0x00/+0x04/+0x08`. The next `0xa904` fetch prioritizes that frame
+  and returns replayed bytes to `0x11774`; `0x21` queues a compact object through
+  `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`, while `0x0d` updates cursor state through
+  `0xf02c`. The queued object is the same compact text object as the live printable
+  path, prefix `00 00 00 00 00 00 00 01 20 00 01`, under page-root bucket array `+0x1c`.
+  Later publication/render uses `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 ->
+  0x1effe -> 0x1f354`; macro replay has no separate pixel renderer. Evidence:
+  [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix) and `Worked
+  Path: Macro Execute Replay` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-macro-execute-replay).
 - State-only line termination `ESC &k1G!\r!`: `ESC &k1G` writes line-termination byte
   `0x78318f = 0x80` through handler `0xedf8`. The first `!` follows the ordinary compact
   text path. CR handler `0xf02c` consumes bit `0x78318f.7`, resets x through `0xf06e`,

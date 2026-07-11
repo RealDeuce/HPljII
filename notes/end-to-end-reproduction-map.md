@@ -431,6 +431,20 @@ that owner note before claiming equivalent output.
   render consumer `0x1f88e`. Evidence:
   [pcl-command-map.md](pcl-command-map.md) and
   [raster-graphics.md](raster-graphics.md#owner-summary).
+- Raster active-state control `ESC *t300R ESC *r0A ESC *t75R ESC *b2W <payload>` /
+  `ESC *t300R ESC *r0A ESC *b2W <payload> ESC *rB ESC *t150R ESC *r0A ESC *b2W
+  <payload>`: the first stream shows the ignored-resolution branch. `ESC *t300R` writes
+  raster mode `0` and scale `1`; `ESC *r0A` sets active byte `0x783170+0x12`. While that
+  active byte is set, later `ESC *t75R` still dispatches to `0x10808` but exits before
+  changing mode `+0x08`, scale `+0x0e`, or row byte limit `+0x10`, so the following
+  delayed transfer queues a mode-0 object. The second stream shows the re-enable branch:
+  `ESC *rB` dispatches to `0x107fa`, clears only active byte `+0x12`, and lets the later
+  `ESC *t150R` update mode `+0x08 = 1` before the next `ESC *b#W` queues a mode-1
+  encoded object. In both cases, pixels still originate from the later accepted transfer
+  object under root `+0x1c`, bridge `+0x18`, and render consumer `0x1f88e`; `ESC *rB`
+  itself creates no page object. Evidence:
+  [raster-graphics.md](raster-graphics.md#start-and-end-raster) and
+  [raster-graphics.md](raster-graphics.md#additional-command-family-variants).
 - Rectangle/rule `ESC *c12a5b0P`:
   parser dispatch reaches width/height/fill handlers
   `0x10e68 -> 0x10e22 -> 0x10898`. Fill clips through `0x10b80`, then

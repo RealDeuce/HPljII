@@ -1219,6 +1219,13 @@ Writers:
 
 Shared helper effects:
 
+- Geometry lookup helpers `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe` mask the
+  internal page code with `0x7f` before indexing table rows `0..10`.
+  `0x9d4e` supplies the stored logical width word `0x782db2`, while `0x9d16`
+  supplies the stored logical height word `0x782db4`. The orientation helper
+  `0x103ea` uses `0x9dbe` for portrait thresholds and `0x9d86` for landscape
+  thresholds before writing `0x782daa`, `0x782dae`, `0x782dac`, and
+  `0x782db0`.
 - `0xf9ac` writes page extent `0x782dba` from the portrait or landscape length
   table selected by orientation byte `0x782da3`.
 - `0xf87e` writes orientation offset `0x782dbe`, then swaps table-derived
@@ -1275,8 +1282,8 @@ Field classification:
   `0x782dde..0x782edd`.
 - Derived/cache: table words `0x782db2/0x782db4`, phase word `0x782dc0`,
   text-bottom cache `0x782dd2`, overflow limit `0x782dc2`, line-count caches
-  `0x782ede/0x782edf/0x782ee0`, and threshold words
-  `0x782daa/0x782dac/0x782dae/0x782db0`.
+  `0x782ede/0x782edf/0x782ee0`, page-code masked lookup indexes, and
+  threshold words `0x782daa/0x782dac/0x782dae/0x782db0`.
 - Parser scratch: six-byte parsed records consumed after `0x78299e` is
   rewound by `0xfc74`, `0xf9e8`, or `0x10220`.
 - Firmware bookkeeping: pending publication byte `0x782997`, layout scratch
@@ -1299,6 +1306,7 @@ Evidence:
   `generated/disasm/ic30_ic13_text_span_flush_012714.lst`, and
   `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`.
 - Checked-in explanations:
+  `generated/analysis/ic30_ic13_page_geometry_tables.md`,
   [page-raster-imaging.md](page-raster-imaging.md#page-size-tables),
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),

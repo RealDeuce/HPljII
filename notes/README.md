@@ -235,7 +235,14 @@ checked-in ROM model:
    roots, publication, bridge roots, band caches, fallback buffer, and renderer order.
    `Page Versus Band Model` in [firmware-dataflow-model.md](firmware-dataflow-model.md)
    is the concise explanation of why parsing builds a page-object graph rather than a
-   full-page bitmap.
+   full-page bitmap. The concrete producer-to-root handoff is:
+   `0xd04a -> 0x12f2e -> 0x1387c` for compact text/downloaded glyphs,
+   `0x12714 -> 0x13520/0x135f0 -> 0x1387c` for portrait spans,
+   `0x105d0 -> 0x13070/0x13250` for encoded raster rows,
+   `0x10898 -> 0x13386 -> 0x133aa` for rectangle/rule lists, and
+   `0x12714 -> 0x136d2` for fixed-list landscape spans. These helpers store
+   page objects; they do not write final pixels before publication and render
+   scheduling.
 6. For publication and scheduling, follow `Publication And Page-Control Boundary` and
    `Render Scheduling` in [firmware-dataflow-model.md](firmware-dataflow-model.md), then
    follow `0xff1e` into the page/control pool and
@@ -244,7 +251,10 @@ checked-in ROM model:
    `Band Scheduling Route Index` in
    [firmware-dataflow-model.md](firmware-dataflow-model.md#band-scheduling-route-index)
    is the handoff map from page roots to render roots, band word, and first renderer
-   consumers.
+   consumers. Bridge helper `0x1edc6` maps page root `+0x1c` to render `+0x18`,
+   root `+0x24` to render `+0x1c`, root `+0x28` to render `+0x20`, and context
+   slots `+0x2c..+0x68` to render `+0x24..+0x60`; renderer entry `0x1ef6a`
+   then consumes those render roots by band.
 7. For pixels, finish in
    [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary):
    render entry `0x1ef6a`,
@@ -309,8 +319,11 @@ parser route, field value, object layout, bridge copy, or helper input.
   flow control, buffers.
 - [pcl4-language.md](pcl4-language.md#owner-summary) - PCL Level IV semantics,
   environment, command syntax, command quick reference.
-- [pcl-to-pdf-rom-goals.md](pcl-to-pdf-rom-goals.md) - revised goal:
-  stream-to-PDF renderer, and what ROMs are expected to contribute.
+- [pcl-to-pdf-rom-goals.md](pcl-to-pdf-rom-goals.md) - current ROM
+  documentation goal, evidence boundaries, and rules for accepting new
+  byte-stream traces into the checked-in semantic model. It keeps a future
+  PDF renderer as a design constraint, but the deliverable here is the
+  firmware dataflow documentation.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
   primary host-byte-to-rendered-pixel route/evidence map for supported
   streams, state groups, objective requirements, and open reproduction

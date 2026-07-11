@@ -338,11 +338,12 @@ back to `0x783e8e`, decrements `0x783e8c`, and returns the byte in `D7`.
 The predecrement access means `0x783e8e` points one byte past the next byte
 to be returned.
 
-Helper `0x9ec0` is a producer for this stack. If `0x780e3b` is clear and the
-current data-chain frame byte `+0x09` is nonzero, `0x9ec0` appends its byte
-argument at `0x783e8e`, increments count `0x783e8c`, advances the pointer,
-and sets `0x780e66.2` at `0x9f56`. The later `0xa904` consumer clears that
-bit at `0xa94c` only after the first stack count has drained to zero.
+Helper `0x9ec0` is a producer for this stack. If `0x780e3b` is clear, the
+current data-chain frame byte `+0x09` is nonzero, and count `0x783e8c` is
+below `0x10`, `0x9ec0` appends its byte argument at `0x783e8e`, increments
+count `0x783e8c`, advances the pointer, and sets `0x780e66.2` at `0x9f56`.
+The later `0xa904` consumer clears that bit at `0xa94c` only after the first
+stack count has drained to zero.
 
 ### Active Data Chain
 
@@ -419,14 +420,66 @@ Branch `0xa980..0xa99e` is the same shape as the first LIFO source but
 uses count `0x783e76` and pointer `0x783e78`.
 
 The same helper `0x9ec0` is also the producer for this stack. If
-`0x780e3b` is clear and the current data-chain frame byte `+0x09` is zero,
-`0x9ec0` appends its byte argument at `0x783e78`, increments count
-`0x783e76`, advances the pointer, and sets `0x780e66.0` at `0x9f1a`.
-`0xa904` clears bit 0 at `0xa9a0` only after the second stack count is empty.
+`0x780e3b` is clear, the current data-chain frame byte `+0x09` is zero, and
+count `0x783e76` is below `0x10`, `0x9ec0` appends its byte argument at
+`0x783e78`, increments count `0x783e76`, advances the pointer, and sets
+`0x780e66.0` at `0x9f1a`. `0xa904` clears bit 0 at `0xa9a0` only after the
+second stack count is empty.
 
 If `0x780e3b` is already set, `0x9ec0` returns `D7 = 1` immediately and does
 not append to either stack. This prevents parser logging/replay helpers from
 building more pushback state while the no-byte gate is active.
+
+### Pushback/Report Helper
+
+Helper `0x9ec0` is the shared producer for both pushback stacks and the
+common report path used by parser lookahead, data-chain literal `0x1a`, and
+direct-input literal `0x1a` paths. Its byte argument is at stack frame
+`A6 + 0x0b`. The helper returns a status in `D7`, not the reported byte.
+
+Instruction route:
+
+- `0x9ec8..0x9ed8` tests no-byte gate byte `0x780e3b`. If the gate is set, it
+  returns `D7 = 1` without changing either stack. The reported byte is
+  deliberately not queued while the gate is active.
+- `0x9edc..0x9ee8` reads current data-chain frame byte `+0x09` through
+  pointer `0x782d76`. Zero selects the second stack; nonzero selects the first
+  stack.
+- `0x9eea..0x9f24` handles the second stack. If count `0x783e76` is already
+  `0x10` or higher, it returns `D7 = 0`. Otherwise it increments
+  `0x783e76`, stores the byte at pointer `0x783e78`, advances the pointer by
+  one, sets `0x780e66.0`, and returns `D7 = 1`.
+- `0x9f26..0x9f60` handles the first stack with the same capacity rule. If
+  count `0x783e8c` is below `0x10`, it increments the count, stores the byte
+  at pointer `0x783e8e`, advances the pointer by one, sets `0x780e66.2`, and
+  returns `D7 = 1`; if the count is already `0x10` or higher, it returns
+  `D7 = 0`.
+
+State classification:
+
+- Canonical byte-source state:
+  first stack count/pointer `0x783e8c` / `0x783e8e`, second stack
+  count/pointer `0x783e76` / `0x783e78`, and active frame pointer
+  `0x782d76` with frame byte `+0x09`.
+- Derived/cache state:
+  stack capacity comparison against `0x10`. This is a ROM-defined queueing
+  limit for the report helper, not a parser command field.
+- Firmware bookkeeping:
+  pending-source flags `0x780e66.2` and `0x780e66.0`, no-byte gate
+  `0x780e3b`, and the helper status return in `D7`.
+- Parser scratch:
+  none. Parser handlers that call `0x9ec0` own the byte being reported; the
+  helper only decides whether it becomes later pushback input.
+- Output effect:
+  no page object or pixel. The effect is future byte order: successfully
+  queued first-stack bytes will beat active data-chain, second-stack, ring,
+  and direct input at `0xa904`; successfully queued second-stack bytes will be
+  consumed after active data-chain but before ring/direct input.
+- Evidence:
+  `generated/disasm/ic30_ic13_pushback_report_helper_009ec0.lst`,
+  `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`, and callers
+  documented in [pcl-parser-core.md](pcl-parser-core.md) for ESC lookahead and
+  tokenizer reporting.
 
 ### No-Byte Gate Flag
 
@@ -1058,6 +1111,8 @@ Disassembly evidence:
 
 - `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
   `0xa904..0xab8a`.
+- `generated/disasm/ic30_ic13_pushback_report_helper_009ec0.lst`:
+  `0x9ec0..0x9f68`.
 - `generated/disasm/ic30_ic13_data_chain_byte_reader_009f6a.lst`:
   `0x9f6a..0x9fd2`.
 - `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
@@ -1152,7 +1207,9 @@ effects that `0xa904` would produce. The required ROM-visible behavior is:
 - Pushback/log helper `0x9ec0` must feed the same two LIFO sources that
   `0xa904` later consumes. With `0x780e3b` clear, current frame byte
   `+0x09 == 0` selects the second stack, and nonzero `+0x09` selects the first
-  stack. With `0x780e3b` set, `0x9ec0` returns `D7 = 1` without appending.
+  stack. Each stack is capped at `0x10` bytes by the helper; a full selected
+  stack returns `D7 = 0` without appending. With `0x780e3b` set, `0x9ec0`
+  returns `D7 = 1` without appending.
 - `0xa904` does not globally translate the `0x1a 0x58` pair. Direct-MMIO
   modes report a literal `0x1a` through `0x9ec0` while returning `0x1a`;
   parser and payload readers such as `0xdace`, `0x12142`, `0x138fa`, and

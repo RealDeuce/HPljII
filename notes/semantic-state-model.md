@@ -589,7 +589,9 @@ data.
 - Pushback/log helper `0x9ec0` writes `0x783e76` / `0x783e78` and sets
   `0x780e66.0` when current frame byte `+0x09 == 0`; it writes `0x783e8c`
   / `0x783e8e` and sets `0x780e66.2` when current frame byte
-  `+0x09 != 0`.
+  `+0x09 != 0`. The selected stack must have count below `0x10`; when it is
+  already full, `0x9ec0` returns `D7 = 0` without appending. If no-byte gate
+  `0x780e3b` is already set, `0x9ec0` returns `D7 = 1` without appending.
 - Host-input quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`
   write `0x780e3b = 1` and set `0x780e66.3`. If the gate remains set, both
   wait through `0x10e0(0x780242, 5)`, call `0x3178` to clear ring and pushback

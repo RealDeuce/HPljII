@@ -642,13 +642,25 @@ output class that a byte-stream reader should follow next.
   page/control state or publish through `0xff1e`. Neighboring `&l`
   vertical-layout rows such as VMI `0xcb00`, LPI `0xc992`, and top margin
   `0xece2` write delayed placement state rather than page-control
-  publication fields.
+  publication fields. Valid publication creates page/control pool state at
+  protected head `0x780ea6`; scheduler selection
+  `0x780ea6 -> 0x780eaa -> 0x780eae`, bridge `0x1ed84 -> 0x1edc6`, and
+  render entry `0x1ef6a` are the first render handoff.
   Continue in [Publication Outcome
   Matrix](publication-commands.md#publication-outcome-matrix) and
   [Reset Default Outcome
   Matrix](reset-default-environment.md#reset-default-outcome-matrix). Output
   class: environment state, current-root publication, or no-publication reset
   clear.
+- Vertical forms control:
+  `ESC &l#W` schedules delayed table load `0x11f6e -> 0x121cc -> 0x12cfe`
+  in normal mode, while alternate/data restore diverts through
+  `0x12358 -> 0xdace -> 0xe002` without writing VFC table state.
+  `ESC &l#V` reaches channel consumer `0x1280a`. Continue in
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
+  Output class: VFC table state, cursor-only movement before later compact
+  text under root `+0x1c`, or old-root publication through `0xf124 ->
+  0xff1e` before the ordinary scheduler/bridge/render handoff.
 - Transparent and display reader bytes:
   `ESC &p#X` arms `0x11f5a -> 0x121cc`; normal restore reaches payload
   reader `0x12452`, while alternate/data restore reaches

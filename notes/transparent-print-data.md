@@ -37,10 +37,14 @@ command family.
 Concept: transparent print data is a counted byte-stream splice, not an opaque
 binary skip. `ESC &p#X` reaches `0x11f5a`, which schedules delayed reader
 `0x12452` through `0x121cc`; restore path `0x12218` reopens the saved six-byte
-record and calls the reader in normal parser mode. `0x12452` consumes raw bytes
-through `0xa904`, normalizes local `0x1a 0x58` to `0x7f`, routes each payload
-value through `0xd04a` or `0xd0f0`, and then leaves page-record construction,
-bridge, and rendering to the ordinary text path.
+record. In normal parser mode, `0x12218` calls `0x12452`, which consumes raw
+bytes through `0xa904`, normalizes local `0x1a 0x58` to `0x7f`, routes each
+payload value through `0xd04a` or `0xd0f0`, and then leaves page-record
+construction, bridge, and rendering to the ordinary text path. In
+alternate/data mode, `0x12218` diverts the restored record through `0x12358`;
+because the saved transparent handler is not wrapper `0x1228a`, positive
+counts are drained through `0xdace` and appended through `0xe002` instead of
+calling `0x12452`.
 
 Primary route:
 
@@ -51,6 +55,9 @@ Primary route:
 - Fixed-space/control output: `0x12452 -> 0xd0f0`, which can either advance
   spacing only in the flagged built-in path or queue substituted host-space
   text in the documented unflagged fixed-record path.
+- Alternate/data append output:
+  `0x12218 -> 0x12358 -> 0xdace -> 0xe002` for positive delayed counts when
+  `0x782c18` is set and saved handler `0x782a1c != 0x1228a`.
 
 Field groups:
 
@@ -70,7 +77,9 @@ Field groups:
   `D4`, and the temporary `0x1a` probe byte.
 - Firmware bookkeeping: `0xd99a` side effect for local `0x1a 0x58`
   normalization and the alternate/data restore redirect
-  `0x1226e..0x1227e -> 0x12358(0x1228a)`.
+  `0x1226e..0x1227e -> 0x12358(0x1228a)`, whose non-wrapper branch drains
+  positive counts through `0xdace` and appends normalized bytes through
+  `0xe002`.
 - Hardware/external state: secondary segment-57 fallback rows require bytes
   from firmware `0x0c0000..0x0c0321` after verified resource suffix
   `0x0bfe22..0x0bffff`.
@@ -84,6 +93,9 @@ Writers:
   handler in normal parser mode.
 - `0x1226e..0x1227e` redirects restored delayed payloads through
   `0x12358(0x1228a)` when alternate/data flag `0x782c18` is set.
+- `0x12358..0x123ac` calls `0x1228a` only when saved handler `0x782a1c`
+  equals wrapper argument `0x1228a`; otherwise it drains positive record counts
+  through `0xdace` and writes each normalized byte through `0xe002`.
 - `0x14d3a..0x14d7e` writes high-character flags `0x783132` and `0x783133`
   during primary or secondary font/map activation.
 - `0x1c604`, `0x1ceea`, and `0x1e9fc` write primary selected-context filter
@@ -168,12 +180,15 @@ state is read or written, and what page or pixel effect follows.
 
 - Alternate/data restore:
   `0x1226e..0x1227e` redirects a restored delayed payload through
-  `0x12358(0x1228a)` when `0x782c18` is set. State class: firmware
-  bookkeeping plus parser scratch, not text/page canonical state. Output
-  effect: the stored/drained payload is not immediately imaged by `0x12452`.
-  The unresolved edge, if this branch is followed further, belongs to the
-  alternate data consumer reached through `0x12358`, not to transparent
-  command dispatch.
+  `0x12358(0x1228a)` when `0x782c18` is set. Because the saved transparent
+  handler `0x12452` differs from wrapper argument `0x1228a`, `0x12358` rewinds
+  the restored record, returns without consuming nonpositive counts, and for
+  positive counts drains bytes through `0xdace` and appends each normalized
+  byte through `0xe002`. State class: firmware bookkeeping plus parser scratch
+  and canonical macro/data-chain stored input, not text/page canonical state.
+  Output effect: `0x12452`, `0xd04a`, `0xd0f0`, page-record storage, bridge,
+  and rendering are not reached from this branch; any pixels can only come if
+  the appended bytes are replayed later.
 
 - Counted payload loop:
   `0x12452..0x12474` reads absolute count from command-record word `+2`,

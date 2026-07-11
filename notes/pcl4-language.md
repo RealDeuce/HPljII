@@ -197,9 +197,10 @@ owner, and whether visible pixels can result.
   [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
   [display-functions.md](display-functions.md). These are direct byte readers:
-  transparent payload and normal `ESC Y` bytes route to `0xd04a` or `0xd0f0`,
-  while alternate/display append stores bytes through `0xe002` with no
-  immediate page object.
+  normal transparent payload and normal `ESC Y` bytes route to `0xd04a` or
+  `0xd0f0`, while alternate/data transparent restore diverts through
+  `0x12358 -> 0xdace -> 0xe002` and alternate/display append stores bytes
+  through `0xe002` with no immediate page object.
 - Raster graphics:
   `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
   producer `0x13070`; owner [Raster Transfer Decision
@@ -1078,16 +1079,21 @@ render effect. Evidence is in
 - Transparent and display-function data:
   `ESC &p#X` schedules `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`;
   `ESC Y ... ESC Z` uses normal direct reader `0x12536` or alternate/data
-  reader `0x12120`. The transparent reader restores delayed record state,
-  consumes the absolute record count through direct `0xa904` fetches,
-  normalizes local `0x1a 0x58 -> 0x7f`, applies the selected-context
-  filter matrix, and re-enters `0xd04a` or `0xd0f0`; printable transparent
-  bytes can therefore create compact text objects. Normal display-functions
-  reader `0x12536` is also page-affecting: it fetches loop bytes through
-  `0xa904` until local `ESC Z` termination, routes values through `0xd04a`
-  or `0xd0f0`, and consumes the terminating pair as routed values before
-  exit. Alternate/data reader `0x12120` appends literal `ESC Y` and loop
-  values through `0xe002` with no immediate page object. Concrete stream
+  reader `0x12120`. In normal parser mode, `0x12218` restores delayed
+  transparent record state and calls `0x12452`; the reader consumes the
+  absolute record count through direct `0xa904` fetches, normalizes local
+  `0x1a 0x58 -> 0x7f`, applies the selected-context filter matrix, and
+  re-enters `0xd04a` or `0xd0f0`, so printable transparent bytes can create
+  compact text objects. In alternate/data mode, the same delayed
+  `ESC &p#X` / `x` record does not call `0x12452`: `0x12218` diverts to
+  `0x12358`, which drains positive payload counts through `0xdace` and
+  appends normalized bytes through `0xe002`, leaving no immediate page
+  object until later replay. Normal display-functions reader `0x12536` is
+  also page-affecting: it fetches loop bytes through `0xa904` until local
+  `ESC Z` termination, routes values through `0xd04a` or `0xd0f0`, and
+  consumes the terminating pair as routed values before exit. Alternate/data
+  reader `0x12120` appends literal `ESC Y` and loop values through `0xe002`
+  with no immediate page object. Concrete stream
   `ESC &p2X!!` restores delayed record `80 58 00 02 00 00`, consumes payload
   bytes `21 21`, routes both through `0xd04a`, and queues the same compact
   coordinates `0x0001` and `0x0202` as the direct printable `!!` baseline

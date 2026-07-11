@@ -157,6 +157,13 @@ boundary outside these owners, the relevant owner note must be extended.
   execute/call and overlay frames live at `0x782d76`, `0xa904` gives those frame bytes
   priority over live ring input, and returned bytes re-enter `0xda9a` / `0x11774` or the
   active direct payload reader before any page-object or pixel effect exists.
+  Ignored/error-like bytes are reproduced by their parser outcome, not by a
+  generic skip: normal zero-handler rows use `0x119a6..0x119f4` and may
+  trigger delayed restore `0x12218`; alternate/data zero-handler and no-match
+  rows append through `0xe002`; normal no-match either reaches `0xd04a` or is
+  ignored from `0x118b2..0x11900`; nonzero no-match delegates to callback
+  `0x78299a`; and parser-external service/return stops at
+  `0x117d2..0x11818` before command-family state is touched.
 - Command dispatch tables and mapping from parsed forms to handlers:
   [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) owns
   dispatch classes, table rows, terminal handlers, explicit zero rows,

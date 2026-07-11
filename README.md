@@ -57,6 +57,12 @@ confirming it.
 
 - `notes/README.md`: Index for the emulator-oriented note set. Start
   here for the local documentation map.
+- `notes/firmware-dataflow-model.md`: Reader-facing spine from host bytes
+  through parser state, command-family owners, page objects, render
+  scheduling, and pixel-generation checkpoints.
+- `notes/end-to-end-reproduction-map.md`: Supported stream walkthroughs,
+  command-family-to-render routes, objective coverage, and exact remaining
+  ROM-local or external boundaries.
 - `notes/source-index.md`: What each local PDF contains and which
   sections are useful for LaserJet II work.
 - `notes/pcl-to-pdf-rom-goals.md`: Project boundary: PCL/input byte

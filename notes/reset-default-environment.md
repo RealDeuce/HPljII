@@ -20,6 +20,7 @@ below.
 - `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`
 - `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`
 - `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`
+- `generated/disasm/ic30_ic13_font_default_metric_helpers_01bd64.lst`
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`
 - `generated/disasm/ic30_ic13_default_env_load_005e80.lst`
 - `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`
@@ -85,6 +86,11 @@ Field groups:
   `0x782c1e..0x782c6d`, and text accumulation bytes `0x783196..0x783199`.
 - Derived/cache reset state: HMI `0x78315c`, VMI `0x783160`, top offset
   `0x782dce`, layout scratch `0x782dd0`, and raster block `0x783170`.
+- Current-default selector/cache state: resolver scratch bytes
+  `0x78289e/0x78289f`, current default pointer `0x7828a0`, current default
+  word `0x7828a4`, and selector helper `0x1bdba`. During reset VMI conversion,
+  `0xcfea` and `0xcf52` call `0x1bdba`; zero return selects page table
+  `0x9dbe`, while nonzero return selects page table `0x9d86`.
 - Retained/default bookkeeping: retained-record flags `0x780eba..0x780ed8`,
   maintenance counters `0x780ef0`, buffers `0x782252..0x782270`, and serial
   retained-storage helpers using `$a400` and `$8c01`.
@@ -105,6 +111,13 @@ Writers and readers:
 - `0xcda2` consumes defaults and current-font context, rebuilds page/control
   records, copies default environment fields, recomputes HMI/VMI, and resets
   bookkeeping bytes.
+- `0x1bdba` consumes current-default resolver state from `0x1b250` and byte
+  `0x78289f` to return the reset VMI page-table selector used by `0xcfea` and
+  `0xcf52`.
+- `0x1bd64` consumes the same current-default resolver/cache state, refreshes
+  unresolved defaults through `0x1ad66`, masks the current default pointer
+  from `0x7828a0`, and forwards it with word `0x7828a4` to `0x19c70` for
+  default metric output.
 - `0xcbd4` consumes current-font context and active symbol words to refresh
   HMI and active-symbol snapshots.
 - `0xe146` consumes and resets parser/data-chain records, freeing active
@@ -130,6 +143,7 @@ Evidence and boundaries:
   `ic30_ic13_esc_e_environment_reset_00cda2.lst`,
   `ic30_ic13_esc_e_metric_refresh_00cbd4.lst`,
   `ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
+  `ic30_ic13_font_default_metric_helpers_01bd64.lst`,
   `ic30_ic13_page_root_finalize_00ff1e.lst`, and the default/retained-record
   listings named above.
 - Fixture evidence is named in the Primary fixtures list above; those streams
@@ -213,6 +227,9 @@ Environment rebuild:
 - Readers / consumers:
   later printable placement, font selection, VFC/layout, raster transfer,
   rectangle/rule setup, and publication paths consume the rebuilt fields.
+  Reset VMI conversion also consumes helper `0x1bdba`, which selects table
+  `0x9dbe` when the current default cannot resolve and table `0x9d86` when
+  byte `0x78289f` is nonzero.
 - Output effect:
   no immediate pixels unless a pre-reset root was already published; the
   rebuilt defaults change how following host bytes are parsed, positioned,
@@ -352,6 +369,13 @@ Derived/cache reset state:
   `0xcda2` and refreshed again by `0xcbd4`.
 - `0x783160`: reset VMI derived from `0x78219e` through `0xcfea`, `0xcf52`,
   and `0x104d8`.
+- `0x1bdba` return value: reset VMI page-table selector derived from
+  current-default resolver state. Zero selects page table `0x9dbe`; nonzero
+  selects `0x9d86`.
+- `0x1bd64` output path: current-default metric helper that refreshes
+  unresolved defaults through `0x1ad66`, masks pointer `0x7828a0` to 24 bits,
+  reads word `0x7828a4`, and calls `0x19c70` with caller-provided output
+  pointers.
 - `0x782dce`: top offset recomputed as `0x96 - 0x782dbe`; `0x782dd0` is
   cleared.
 - `0x783170`: raster state block reinitialized by `0xcc70`; byte `+0x12`,
@@ -382,6 +406,10 @@ Firmware bookkeeping:
   `0x782f08` and `0x782f0a`.
 - `0x783164`, `0x782c18`, `0x782c19`, and `0x782a92`: cleared by `0xe146`.
 - `0x782a93`: reset completion/status byte cleared by top-level `0xcc52`.
+- `0x78289e`, `0x78289f`, `0x7828a0`, and `0x7828a4`: current-default
+  resolver/cache fields shared by `0x1bd64` and `0x1bdba`. They influence
+  reset VMI table selection and default metric output, but they do not create
+  page records by themselves.
 
 Unknown/provenance:
 
@@ -476,6 +504,12 @@ The software reset path is ordered by disassembly, not by fixture output:
   publication or clear.
 - `0xcda2` consumes defaults `0x78219d`, `0x78219e`, `0x7821a2`, reset gate
   `0x7810b2`, and current-font context `0x782ee6`.
+- `0xcfea` and `0xcf52` consume `0x1bdba` return value while converting
+  default line spacing to reset VMI.
+- `0x1bdba` consumes current-default resolver `0x1b250` and byte `0x78289f`.
+- `0x1bd64` consumes current-default resolver `0x1b250`, scratch bytes
+  `0x78289e/0x78289f`, pointer `0x7828a0`, word `0x7828a4`, and caller output
+  pointers before forwarding to `0x19c70`.
 - `0xcbd4` consumes current-font context `0x782ee6` plus active symbol words
   `0x783144` and `0x783146`.
 - `0xe146` consumes parser/data-chain records while freeing any 0x100-byte
@@ -509,7 +543,10 @@ and reset VMI source.
 The line-spacing arithmetic is at `0xcec8..0xcf38`: `0xcfea` computes a line
 count from `(page_table_value - 0x12c) * 12 / 0x78219e`, `0xcda2` clamps
 outside `5..128` lines through `0xcf52`, and `0x104d8` converts the selected
-line-spacing longword into packed 12-subunit VMI.
+line-spacing longword into packed 12-subunit VMI. Helper `0x1bdba` supplies
+the page-table selector for that arithmetic: unresolved current defaults
+return zero and select `0x9dbe`, while resolved defaults return byte
+`0x78289f` and select `0x9d86`.
 
 ## Reproduction Contract
 
@@ -527,7 +564,7 @@ A byte-stream renderer must preserve:
   clear and `0x780e3c == 1`, the ROM copies `0x7821a2` to `0x780e8f`
   and signals `0x780e26` through `0x9b5e`;
 - HMI refresh from current-font context and VMI conversion from default
-  line-spacing;
+  line-spacing, including the `0x1bdba` table selector;
 - parser/data-chain reset through `0xe146`;
 - raster-state reset fields in `0x783170`;
 - selected default-record load/update semantics that feed later reset.
@@ -539,8 +576,8 @@ page-record pool header fields, compact-bucket rendering before reset,
 default-record load into reset-consumed fields, line-spacing-to-VMI arithmetic,
 and parser/data-chain clearing because the claims are backed by disassembly
 `0xcc52..0xcd7a`, `0xcda2..0xcf50`, `0xcbd4..0xcc50`,
-`0xe146..0xe1e2`, `0x5e80..0x5f94`, publication helper `0xff1e`, and the named
-byte-stream examples.
+`0xe146..0xe1e2`, `0x1bd64..0x1bdde`, `0x5e80..0x5f94`, publication helper
+`0xff1e`, and the named byte-stream examples.
 
 High for the immediate default producer edge from selected backing records to
 `0x78219d`, `0x78219e`, and `0x7821a2`.
@@ -553,8 +590,8 @@ retained-storage identity and board-level serial pin names behind `$a400` /
 
 - No ROM middle edge remains for the software-visible `ESC E` reset path,
   reset publication/missing-root split, default record load into reset
-  consumers, line-spacing-to-VMI arithmetic, or compact-text reset publication
-  through `0x1ed84` / `0x1ef6a`.
+  consumers, line-spacing-to-VMI arithmetic including the `0x1bdba` table
+  selector, or compact-text reset publication through `0x1ed84` / `0x1ef6a`.
 - Remaining reset/default work is external: physical retained-storage identity,
   board-level serial pin names, the external producer of `$8000.w` panel/service
   bytes, reconciling manual NVRAM-failure wording with the ROM paths, and

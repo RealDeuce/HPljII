@@ -45,10 +45,14 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): parser mode
   `0x782999`, command-record cursor `0x78299e`, six-byte parsed records,
   normal/alternate tables, and delayed payload restore
-  `0x121cc -> 0x12218`. Its `Inbound Byte Outcome Contract` is the branch-level
-  owner for deciding whether a normalized byte becomes printable output,
-  alternate/data append, a matched command handler, a zero-handler reset, a
-  no-match fallback, callback continuation, or parser-external return.
+  `0x121cc -> 0x12218`. Its
+  [Inbound Byte Outcome Contract](pcl-parser-core.md#inbound-byte-outcome-contract)
+  and the command-map
+  [Inbound Byte Outcome Classes](pcl-command-map.md#inbound-byte-outcome-classes)
+  are the branch-level owners for deciding whether a normalized byte becomes
+  printable output, alternate/data append, a matched command handler, a
+  zero-handler reset, a no-match fallback, callback continuation, or
+  parser-external return.
 - Command dispatch is indexed by
   [pcl-command-map.md](pcl-command-map.md#reproduction-contract):
   parser rows are classified as prefix/setup state, terminal handler

@@ -1723,9 +1723,11 @@ Field groups:
     The caller boundary is exact: the long-reference scan lists
     `0x7839d4` refs at `0x001bf8`, `0x0026c6`, and `0x0026ea`, but no
     `0x0000247c` target, and the adjacent copy-pass listing returns at
-    `0x2330` / `0x247a` before the separate `0x247c` body. Ordinary active
-    rendering still reaches copied rows through `0x22f4` and page bands
-    through `0x1ef6a`.
+    `0x2330` / `0x247a` before the separate `0x247c` body. A broad decoded
+    disassembly search for `247c`, `26de`, and `270c` adds no branch, jump,
+    trap/vector entry, or computed table into the helper; non-helper hits are
+    opcode/data false positives. Ordinary active rendering still reaches
+    copied rows through `0x22f4` and page bands through `0x1ef6a`.
 
 Writers:
 

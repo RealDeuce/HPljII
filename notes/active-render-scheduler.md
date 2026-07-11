@@ -247,7 +247,11 @@ Unknown:
   Evidence for the caller boundary is the absence of a `0x0000247c` target in
   `generated/analysis/ic30_ic13_long_reference_scan.md`, plus the local
   returns at `0x2330` and `0x247a` in
-  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`.
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`. A wider decoded
+  disassembly search for `247c`, `26de`, and `270c` finds only the helper body
+  itself, existing documentation, and unrelated opcode/data hits; it does not
+  expose a branch, jump, trap/vector entry, or computed-target table into the
+  helper.
 
 ## Band Render Model
 
@@ -799,6 +803,8 @@ register-to-signal names are still board-level evidence.
   `0x2330` and `0x247a` before the separate helper body in
   `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, and the expanded
   helper body in
-  `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. Closing this
+  `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. The broader
+  decoded-search result does not add a caller: hits outside the helper body
+  are unrelated opcodes or data values, not control-flow entries. Closing this
   edge requires a static caller, computed target, trap/vector entry, or
   scheduler-entry proof into `0x247c`, `0x26de`, or `0x270c`.

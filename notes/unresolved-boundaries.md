@@ -199,8 +199,12 @@ Host and formatter/MMIO boundaries:
   direct entry provenance for helper bodies `0x247c..0x2746`. The current xref scan
   does not locate an absolute `0x0000247c` target; the adjacent copy-pass
   listing returns at `0x2330` and the coordinate helper returns at `0x247a`
-  before the separate `0x247c` body. No current evidence proves an entry into
-  sibling bodies `0x26de` or `0x270c`.
+  before the separate `0x247c` body. A broad disassembly search for `247c`,
+  `26de`, and `270c` finds the helper body, existing documentation, and
+  unrelated `movea.l` opcodes or resource-data values, but no decoded branch,
+  jump, trap/vector entry, or computed-target table naming those addresses.
+  No current evidence proves an entry into sibling bodies `0x26de` or
+  `0x270c`.
 - Covered upstream state:
   active-pool scheduling, work-record selection, source pointer `0x783992`,
   destination row base `0x78399a`, row-copy jump offset `0x7839a4`,

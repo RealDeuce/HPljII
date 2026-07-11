@@ -95,6 +95,14 @@ records to encoded raster page objects. It does not own parser table matching
 before `0x11f82`, nor the shared render scheduler after a published record has
 entered `0x1ef6a`; those boundaries are linked below.
 
+The supported `ESC *b` raster form in these ROM tables is transfer row bytes.
+Both normal and alternate/data parser table mode `14` contain only `w` and
+`W` terminal rows, and both point to delayed setup handler `0x11f82`; there is
+no separate parser row for `ESC *b#M` or another host-selected raster
+compression method. Raster expansion mode is instead derived by `0x10808`
+from `ESC *t#R`, stored in raster state byte `0x783170+0x08`, copied into
+encoded object byte `+0x05` by `0x13250`, and consumed by `0x1f88e`.
+
 The route for accepted raster rows is:
 
 - `0x10808` handles `ESC *t#R` and writes raster scale/mode state when raster
@@ -205,9 +213,12 @@ Field classification:
   begins after shared render buffers are written.
 - Unknown: no ROM-local middle edge remains for the documented `ESC *t#R`,
   `ESC *r#A/#B`, accepted row, drain, dense split, and modes `0..3` render
-  paths. Future work starts only from byte streams that change a concrete
-  transfer gate, allocator split, object field, payload-copy stop, packed-key
-  advance, or `0x1f88e` helper input named here.
+  paths. There is no ROM-backed raster-compression-method state currently
+  left unmodeled under `ESC *b`; a future `*b` variant would first need a
+  concrete parser row, state writer, object byte, or render-helper input not
+  present in mode `14`. Future work starts only from byte streams that change
+  a concrete transfer gate, allocator split, object field, payload-copy stop,
+  packed-key advance, or `0x1f88e` helper input named here.
 
 Evidence is the sections below, [pcl-command-map.md](pcl-command-map.md),
 [page-raster-imaging.md](page-raster-imaging.md), and

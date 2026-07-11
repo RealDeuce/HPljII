@@ -419,6 +419,18 @@ that owner note before claiming equivalent output.
   [raster-graphics.md](raster-graphics.md#resolution-at-0x10808),
   [raster-graphics.md](raster-graphics.md#encoded-raster-object-outcome-matrix), and
   [page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint).
+- Raster transfer command boundary for non-`W/w` `*b` finals:
+  parser mode `14` has only two ROM-backed rows in the generated normal and
+  alternate/data tables: `w -> 0x11f82` with next mode `14`, and
+  `W -> 0x11f82` with next mode `0`. There is no documented `ESC *b#M`
+  compression-method row, no compression-state writer, and no separate page
+  object field sourced from a host-selected compression method. Pixel
+  reproduction for supported raster streams therefore follows the `ESC *t#R`
+  mode writer `0x10808`, delayed `ESC *b#W` transfer path
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`, object writer `0x13250`, and
+  render consumer `0x1f88e`. Evidence:
+  [pcl-command-map.md](pcl-command-map.md) and
+  [raster-graphics.md](raster-graphics.md#owner-summary).
 - Rectangle/rule `ESC *c12a5b0P`:
   parser dispatch reaches width/height/fill handlers
   `0x10e68 -> 0x10e22 -> 0x10898`. Fill clips through `0x10b80`, then

@@ -1941,6 +1941,17 @@ Outcome owners:
   page-root bucket `+0x1c` for publication/render dispatch through `0x1ed84`,
   `0x1edc6`, `0x1ef6a`, `0x1efc2`, and `0x1f88e`.
 
+  Mode `14` is also the exact parser boundary for unsupported-looking
+  raster-transfer siblings. Generated table
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md` lists only two
+  normal rows for mode `14`, byte `0x77` (`w`) with next mode `14` and byte
+  `0x57` (`W`) with next mode `0`; both route to `0x011f82`. The
+  alternate/data table repeats the same two rows. No `M` row or compression
+  method writer exists in this documented table, so the command map has no
+  ROM-local `ESC *b#M` owner to follow into page objects. Raster pixel
+  semantics are therefore owned by `ESC *t#R` mode selection plus `ESC *b#W`
+  byte transfer and the encoded object fields produced by `0x13250`.
+
   Field grouping for this raster edge is explicit. Canonical raster state is
   block `0x783170`: baseline `+0x00`, current row `+0x02`, accepted byte
   count `+0x04`, overflow/drain count `+0x06`, encoded mode `+0x08`,

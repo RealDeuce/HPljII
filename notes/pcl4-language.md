@@ -233,6 +233,13 @@ owner, and whether visible pixels can result.
   and bridge preserve that bucket chain as render-record root `+0x18`; bucket
   walker `0x1efc2` dispatches class-`0x80` raster objects to `0x1f88e`, whose
   mode branches use `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`.
+  The ROM-backed `*b` family is transfer-only: generated parser table
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md` lists mode `14`
+  entries only for lowercase `w` and uppercase `W`, both routed to `0x11f82`.
+  No `ESC *b#M` compression-method row or separate compression-state writer is
+  present in the documented ROM tables; supported raster pixel reproduction
+  therefore starts from the encoded object mode selected by `ESC *t#R`, not
+  from a host-selected raster compression method.
 - Rectangle/rule graphics:
   rectangle dimension and fill handlers `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, `0x10dce`, and `0x10898`; object insertion

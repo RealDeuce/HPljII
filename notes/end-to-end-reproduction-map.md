@@ -299,6 +299,16 @@ write pixels.
   `0x1efc2 -> 0x1effe` selects `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
   `0x1f264`. Pixels come from compact object entries and copied context
   slots.
+- Symbol/font selection:
+  `ESC (` / `ESC )` rows reach `0x120be -> 0x1be22 -> 0xc580`. They write
+  requested symbol words `0x782ef4` / `0x782f04`, dirty flags
+  `0x782f2c` / `0x782f2d`, selected contexts `0x782ee6` / `0x782ef6`,
+  active maps `0x782f32` / `0x783032`, and page-root context slot state
+  through `0x13eb8`, `0x14c64`, `0x14f16`, and `0xc428`. No page object is
+  queued by the selection command itself. The first render-visible effect is
+  the next printable byte: `0xd04a -> 0x1393a` reads selected slot
+  `0x782f06`, maps the host byte through the active map, and queues compact
+  text under root `+0x1c`.
 - Direct cursor/layout controls:
   handlers such as `0xf02c`, `0xf08c`, `0xf0f0`, `0xedf8`, `0xca8c`,
   `0xeb58`, `0xec0c`, `0xf39e`, `0xf560`, `0xf48c`, and `0xf692` write
@@ -308,6 +318,17 @@ write pixels.
   later text, span, raster, rectangle, or publication consumers read the
   mutated fields. Span flush `0x12714` can create class-`0x40` segment-list
   objects rendered by `0x1f812`.
+- Vertical forms control:
+  `ESC &l#W` schedules delayed table load through
+  `0x11f6e -> 0x121cc -> 0x12218 -> 0x12cfe`; `ESC &l#V` reaches channel
+  consumer `0x1280a`. Canonical VFC state is table
+  `0x782dde..0x782edd`, line-bound caches `0x782dc2`, `0x782dd2`,
+  `0x782ede`, `0x782edf`, and `0x782ee0`, plus cursor fields
+  `0x782c8a` / `0x782c8e`. Table loads have no immediate pixels. Channel
+  jumps either move the cursor for a later printable object or publish the
+  old current root through `0xf124 -> 0xff1e`; the first render consumer is
+  either later compact text or the ordinary publication bridge
+  `0x1ed84 -> 0x1edc6`.
 - Transparent print data:
   `ESC &p#X` arms `0x11f5a -> 0x121cc`; restore `0x12218` calls payload
   reader `0x12452`. Counted payload bytes route to `0xd04a` or fixed-space
@@ -351,6 +372,17 @@ write pixels.
   `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`. Invalid or high-row helper
   boundaries stop at exact targets such as `0x1fe76..0x1fe88` or wrapped
   `0x1f034 -> 0x1f08e`.
+- Macro definition, execute/call, and overlay replay:
+  alternate/data mode stores macro bytes through append sink `0xe002`. Macro
+  controls `0xe112` / `0xdd08` create, clear, execute, call, or overlay
+  records; execute/call frames from `0xe418` and overlay frames from `0xe4f4`
+  replay stored bytes through the same `0xa904 -> 0xda9a -> 0x11774` parser
+  route. Page objects are therefore not a special macro class: replayed bytes
+  can create compact text, span, raster, rule, VFC, or publication effects
+  using the same owners as live input. Overlay publication is the special
+  render-visible join: `0xff1e` resolves enabled overlay id `0x782a94`,
+  re-enters parser replay before base-page publication, then bridges the
+  resulting page roots through `0x1ed84 -> 0x1edc6`.
 - Publication and copies:
   FF/reset/layout publication routes enter `0xf124` / `0xff1e`; copies use
   `0xeef0` before later publication. Current root `0x78297a` is copied into
@@ -364,10 +396,14 @@ Evidence: the handler-to-owner mapping is in
 [pcl-command-map.md](pcl-command-map.md#semantic-owners). Detailed state,
 writer, reader, and unresolved-boundary ledgers are in
 [direct-control-codes.md](direct-control-codes.md#owner-summary),
+[symbol-set-selection.md](symbol-set-selection.md#owner-summary),
+[symbol-map-patching.md](symbol-map-patching.md#owner-summary),
 [transparent-print-data.md](transparent-print-data.md#owner-summary),
+[vertical-forms-control.md](vertical-forms-control.md#owner-summary),
 [raster-graphics.md](raster-graphics.md#owner-summary),
 [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
 [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
+[macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix),
 [page-record-storage.md](page-record-storage.md#page-assembly-decision-checkpoint),
 and [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
 

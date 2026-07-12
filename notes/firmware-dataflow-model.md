@@ -3050,6 +3050,13 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0x1f812 -> 0x1f862`, landscape spans use `0x1f756 -> 0x1f7b0`, raster rows
   use `0x1f88e` and its mode helpers, and rectangle/rule fills use
   `0x1f446 -> 0x1f596/0x1f4e0`.
+  In alternate/data mode, the same direct-control and text-motion rows are
+  stored syntax or parser synchronization, not immediate page-image state:
+  mode-zero C0 bytes append through `0xe002`, uppercase cursor/layout rows are
+  blank, lowercase finals rewind through `0x11f4c`, and the `ESC &d` row does
+  not call underline/span handler `0x12622`. Cursor, margins, HMI/VMI, wrap,
+  stack, pending span state, current root, bridge roots, and render inputs
+  therefore stay unchanged until replay reaches the normal owner route.
 - Page-layout and VFC state writers:
   `ESC &l#P/#C/#D/#E/#F/#L`, VFC table `ESC &l#W`, and VFC channel
   `ESC &l#V` reach `0xf9e8`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`,
@@ -3148,6 +3155,12 @@ the first ROM field where each byte-stream family becomes page-image state.
   state only changes where and how later encoded raster objects are queued. The
   field-to-consumer route is in [Raster State To Visible Consumer
   Map](raster-graphics.md#raster-state-to-visible-consumer-map).
+  Alternate/data `ESC *t#R` and `ESC *r#A/#B/#K` rows are blank or rewind-only
+  outcomes in table `0x116f6`. They do not write raster state, do not create a
+  page root, and cannot change encoded-object mode/count/key/payload fields
+  until the stored bytes replay through the normal table. The active
+  alternate/data raster exception is the transfer syntax `ESC *b#W/w` described
+  above, which preserves payload bytes instead of running `0x105d0`.
 - Rectangle/rule fill:
   chained `ESC *c` parser records reach size/fill handlers `0x10e68`,
   `0x10e22`, `0x10a40`, `0x10ae0`, and `0x10dce`; fill reaches
@@ -3165,6 +3178,12 @@ the first ROM field where each byte-stream family becomes page-image state.
   rule-list node through `0x13386 -> 0x133aa`, and later render dispatch
   reaches `0x1f446`; the field-to-consumer detail is in [Rectangle State To
   Visible Consumer Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map).
+  Alternate/data `ESC *c#A/B/G/H/P/V` uppercase rows are blank and lowercase
+  siblings rewind through `0x11f4c`, so stored rectangle syntax does not call
+  `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`, `0x10dce`, or `0x10898`.
+  Rectangle width/height/fill state, source record `0x782a88`, rule-list root
+  `+0x24`, bridge continuation fields, and render selector inputs remain
+  unchanged until replay reaches the normal rectangle owner.
 - Page publication commands such as FF, reset, page-size, orientation,
   paper-source, and copies:
   command-family handlers flush pending state, call publication helper `0xff1e`,
@@ -3224,7 +3243,12 @@ Evidence:
 - Parser and dispatch ownership:
   [pcl-parser-core.md](pcl-parser-core.md),
   [pcl-command-map.md](pcl-command-map.md), and
-  [pcl-parser-firmware.md](pcl-parser-firmware.md).
+  [pcl-parser-firmware.md](pcl-parser-firmware.md). The alternate/data
+  no-page-object rows above are grounded in
+  [Alternate/Data Dispatch Decision
+  Checkpoint](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint)
+  and generated table extract
+  `generated/analysis/ic30_ic13_pcl_command_map.md` for table `0x116f6`.
 - Object-owner notes:
   [direct-control-codes.md](direct-control-codes.md),
   [macro-data-chain.md](macro-data-chain.md),

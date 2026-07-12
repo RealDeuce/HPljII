@@ -2915,7 +2915,13 @@ the first ROM field where each byte-stream family becomes page-image state.
   page-image state is a compact bucket object under current root `+0x1c` with
   object fields `+0x04/+0x05/+0x06/+0x08` and payload bytes at `+0x0a`. The
   first render consumer is `0x1ef6a -> 0x1efc2 -> 0x1effe`, then the compact
-  helper selected by object selector bits.
+  helper selected by object selector bits. The row-store endpoint is the
+  selected compact route in [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map): mode `0x00` reaches
+  `0x1f034` and table `0x1f08e`, mode `0x10` reaches `0x1f0d2` plus
+  `0x2f27c` / table `0x1f1ac`, and modes `0x20` / `0x30` reach `0x1f1f0` /
+  `0x1f264` before the same row-copy helpers and destination split helpers
+  `0x1f3d4` / `0x1f414`.
 - Transparent/display direct readers and local Control-Z terminals:
   transparent `ESC &p#X` restores delayed reader `0x12452`; normal
   display-functions `ESC Y ... ESC Z` reaches direct reader `0x12536`; normal
@@ -2940,6 +2946,10 @@ the first ROM field where each byte-stream family becomes page-image state.
   Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map);
   display-loop and local Control-Z routing details are in [Display Byte To Visible
   Consumer Map](display-functions.md#display-byte-to-visible-consumer-map).
+  When these readers route bytes to `0xd04a` or `0xd0f0`, their pixel endpoint
+  is the same compact row-store route as ordinary printable bytes; when they
+  append through `0xe002`, there is no row-store endpoint until replay feeds
+  the stored bytes back through a normal parser owner.
 - Host/status side-channel commands:
   model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
   `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.
@@ -2965,7 +2975,11 @@ the first ROM field where each byte-stream family becomes page-image state.
   publication-time special case: `0xff1e` tests overlay state `0x782a92`,
   saved id `0x782a94`, and page-root retry flag `+0x14.0`, then `0xe4f4`
   builds a non-replay frame before the same parser/page-object/render owners
-  run. Macro replay has no macro-specific page-object class or renderer.
+  run. Macro replay has no macro-specific page-object class or renderer; its
+  row-store endpoint is inherited from the owner reached by replayed bytes:
+  compact text routes through `0x1effe`, spans through `0x1f812 -> 0x1f862`,
+  raster through `0x1f88e`, rules through `0x1f446`, and fixed-list spans
+  through `0x1f756 -> 0x1f7b0`.
 - SI/SO, symbol-set/font-designation, font selection, pitch mode, and
   downloaded-font selection before printable bytes:
   `0xc68a` / `0xc6b8` select primary or secondary text context. Symbol-set
@@ -2985,7 +2999,12 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0x78297e`, and live-slot flags. Later printable bytes reach `0xd04a` /
   `0x1393a`, consume the selected context/map state, and queue compact
   objects under root `+0x1c`. The compact renderer resolves glyph resources
-  through render context slots `+0x24..+0x60`.
+  through render context slots `+0x24..+0x60`. The row-store endpoint is
+  therefore delayed but compact-specific: selected context/map state becomes
+  render context `0x783a2c` at `0x1effe`, glyph rows are resolved through
+  `0x1f354`, and compact helpers `0x1f034` / `0x1f0d2` / `0x1f1f0` /
+  `0x1f264` write rows through the row-copy tables and destination helpers
+  named in the row-store owner.
 - Direct control bytes and text-motion commands:
   normal-mode CR, LF, HT, BS, SO, and SI reach `0xf02c`, `0xf08c`,
   `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`; `ESC &k#G/#H`, `ESC &s#C`,
@@ -3002,7 +3021,12 @@ the first ROM field where each byte-stream family becomes page-image state.
   The owner handoff from these delayed fields to compact objects, span
   objects, raster origin, rectangle clipping, publication, and row stores is
   [Delayed State To Visible Consumer
-  Map](direct-control-codes.md#delayed-state-to-visible-consumer-map).
+  Map](direct-control-codes.md#delayed-state-to-visible-consumer-map). The
+  resulting row-store endpoint is object-class specific: compact text uses
+  `0x1effe` and compact row-copy tables, portrait spans use
+  `0x1f812 -> 0x1f862`, landscape spans use `0x1f756 -> 0x1f7b0`, raster rows
+  use `0x1f88e` and its mode helpers, and rectangle/rule fills use
+  `0x1f446 -> 0x1f596/0x1f4e0`.
 - Page-layout and VFC state writers:
   `ESC &l#P/#C/#D/#E/#F/#L`, VFC table `ESC &l#W`, and VFC channel
   `ESC &l#V` reach `0xf9e8`, `0xcb00`, `0xc992`, `0xece2`, `0xea9e`,
@@ -3026,7 +3050,11 @@ the first ROM field where each byte-stream family becomes page-image state.
   exists, with selector/key/width/height/continuation fields
   `+0x05/+0x06/+0x08/+0x0a/+0x0c`.
   VFC cursor-only movement has no object until the following printable byte
-  queues through the compact path. In alternate/data mode, immediate
+  queues through the compact path. The row-store endpoint is whichever object
+  class the later consumer creates: compact printable output reaches
+  `0x1effe`, raster output reaches `0x1f88e`, rule output reaches `0x1f446`,
+  and publication-only movement has no pixel writer until the published roots
+  are bridged and rendered. In alternate/data mode, immediate
   layout/table rows have no normal canonical-state write, while delayed
   `ESC &l#W/w` can still restore through `0x12218`; wrapper `0x12358`
   consumes positive payload bytes through `0xdace` and appends them through
@@ -3052,7 +3080,10 @@ the first ROM field where each byte-stream family becomes page-image state.
   through the compact mode-0 helper path for the documented fixed-record
   examples, and dispatches downloaded compact-wide, segmented, or
   segmented-wide helpers `0x1f0d2`, `0x1f1f0`, or `0x1f264` when object
-  selector bits and map/source state select those forms. In
+  selector bits and map/source state select those forms. Successful printable
+  downloaded-glyph pixels terminate in the compact row-store owner, with
+  `0x1f354` resolving the copied render context and selected glyph/source rows
+  before the compact helper writes destination rows. In
   alternate/data mode, the same delayed `W/w` forms restore through `0x12358`
   instead of calling descriptor handler `0x15d0a` or resource/glyph handler
   `0x16c14`; positive payload bytes append through `0xe002`, and no
@@ -3065,7 +3096,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0x12714`. The first page-image state is either portrait segment-list bucket
   objects under root `+0x1c` or landscape fixed-list objects under root `+0x28`.
   The first render consumers are portrait `0x1f812` and landscape
-  `0x1f756 -> 0x1f7b0`.
+  `0x1f756 -> 0x1f7b0`. The row-store endpoints are portrait
+  `0x1f812 -> 0x1f862` with destination helpers `0x1f3d4` / `0x1f414`, and
+  landscape `0x1f756 -> 0x1f7b0` with destination helper `0x1f626`.
 - Raster transfer rows:
   delayed `ESC *b#W` dispatch uses
   `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`, then `0x13070` / `0x13250`. The
@@ -3073,6 +3106,10 @@ the first ROM field where each byte-stream family becomes page-image state.
   with class byte `+0x04` in `0x80..0xff`, mode byte `+0x05`, count `+0x06`,
   key `+0x08`, and payload `+0x0a`. The first render consumer is
   `0x1efc2 -> 0x1f88e`, with expansion mode from object byte `+0x05 & 3`.
+  The row-store endpoint is the encoded-raster branch in the row-store owner:
+  mode `0` reaches literal helper `0x1f8da`, while modes `1..3` reach
+  `0x1f8e6`, `0x1f920`, or `0x1f9c6` and expand payload bytes through ROM
+  tables before writing destination rows.
   In alternate/data mode, the same `ESC *b#W/w` syntax can still arm delayed
   payload state, but restore uses `0x12358` instead of calling saved handler
   `0x105d0`. Positive payload bytes are drained through `0xdace` and appended
@@ -3095,7 +3132,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   ordered rule-list node under root `+0x24` with selector `+0x05`, key `+0x06`,
   width `+0x08`, height `+0x0a`, and continuation `+0x0c`. The first render
   consumer is `0x1f446`, then solid helper `0x1f596` for selector `7` or pattern
-  helper `0x1f4e0` for documented non-solid selectors.
+  helper `0x1f4e0` for documented non-solid selectors. The row-store endpoint
+  is the rule/rectangle route in the row-store owner: `0x1f596` or `0x1f4e0`
+  writes through destination helper `0x1f626` after clipping and displacement.
 - Rectangle setup before fill:
   size and fill-id handlers `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`, and
   `0x10dce` are canonical graphics-state writers. Their output effect remains
@@ -3112,7 +3151,11 @@ the first ROM field where each byte-stream family becomes page-image state.
   scheduler source selection and bridge `0x1ed84 -> 0x1edc6` before the next
   `0x1ef6a` render call; the state-to-consumer detail is in [Publication State
   To Visible Consumer
-  Map](publication-commands.md#publication-state-to-visible-consumer-map).
+  Map](publication-commands.md#publication-state-to-visible-consumer-map). The
+  row-store endpoint is selected by the published object roots copied by
+  `0x1edc6`: bucket root `+0x18` reaches compact, segment-list, or raster
+  row-store routes; rule root `+0x1c` reaches `0x1f446`; and fixed root
+  `+0x20` reaches `0x1f756`.
 
 State classification:
 

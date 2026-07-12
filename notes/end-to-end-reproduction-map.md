@@ -1686,8 +1686,16 @@ command-family and page-image structure:
    Contract in [semantic-state-model.md](semantic-state-model.md) to follow `0x1ef6a`
    into compact text/downloaded glyph helpers, segment-list helper `0x1f812`, rule
    helpers `0x1f4e0` / `0x1f596`, fixed-list helper `0x1f756`, or encoded raster helper
-   `0x1f88e`. Row vectors are derived from those ROM helpers, object fields, and
-   ROM/resource bitmap bytes, not from an external print comparison.
+   `0x1f88e`. Do not stop at first dispatch: compact routes continue through
+   `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264` into row-copy tables `0x1f08e` /
+   `0x1f1ac` or helper `0x2f27c`; segment-list routes continue through
+   `0x1f812 -> 0x1f862`; encoded raster routes continue through `0x1f8da`,
+   `0x1f8e6`, `0x1f920`, or `0x1f9c6`; rule routes continue through `0x1f596` or
+   `0x1f4e0`; and fixed-list routes continue through `0x1f7b0`. Destination helpers
+   `0x1f3d4`, `0x1f414`, and `0x1f626` choose current-band versus fallback-buffer
+   rows from object coordinates and band caches. Row vectors are derived from those
+   ROM helpers, object fields, and ROM/resource bitmap bytes, not from an external
+   print comparison.
 8. State any unresolved boundary exactly:
    if the trace stops, classify the stop as ROM-local invalid target/source,
    ROM-local unresolved caller, missing external resource data, exact ROM stop,

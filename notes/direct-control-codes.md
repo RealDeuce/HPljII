@@ -2116,9 +2116,22 @@ render-helper input outside the documented matrix.
 ## Remaining Edges
 
 - No ROM parser-to-page-record middle edge remains for the documented
-  CR/LF/FF/HT/BS plus `ESC &k#G` control family.
+  direct-control clusters:
+  CR/LF/FF/HT/BS, line termination `ESC &k#G`, HMI/VMI and cursor movement,
+  SO/SI selected-context switching, cursor-stack push/pop, underline/span
+  state, wrap mode `ESC &s#C`, perforation skip `ESC &l#L`, and the listed
+  margin/layout writers.
+- The delayed-state consumer boundaries are named in the owner sections above:
+  printable source capture and prechecks `0xd04a`, `0xd28a`, and `0xd6bc`;
+  span metric consumers `0xd4ac` / `0xd8fc`; span flush
+  `0xf34a -> 0x12714`; vertical overflow/perforation helper `0xf36c`;
+  publication `0xf124 -> 0xff1e`; raster-origin consumer `0x1075a`; and
+  rectangle clipper `0x10b80`.
 - Remaining work is byte-stream cases that change a field or boundary named in
-  the [Printable Source Outcome Matrix](#printable-source-outcome-matrix),
-  span-flush state outside the documented `0xd4ac` / `0xd8fc` consumers, or a
-  later render-dispatch input. Replaying already documented direct-control
+  the [Printable Source Outcome Matrix](#printable-source-outcome-matrix), the
+  [Wrap Mode Route Checkpoint](#wrap-mode-route-checkpoint), the
+  [Layout State To Output Checkpoint](#layout-state-to-output-checkpoint),
+  span-flush state outside the documented `0xd4ac` / `0xd8fc` consumers,
+  cross-family cursor consumers that create new raster/rule object fields, or
+  a later render-dispatch input. Replaying already documented direct-control
   fields from another execution source is not a new ROM-local edge.

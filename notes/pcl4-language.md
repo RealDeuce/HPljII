@@ -1407,34 +1407,52 @@ Delayed state-to-output resolution:
   Evidence:
   [transparent-print-data.md](transparent-print-data.md#owner-summary) and
   [display-functions.md](display-functions.md).
-- Raster graphics:
-  `ESC *t#R` uses `0x10808`, `ESC *r#A/#B` use `0x1075a` / `0x107fa`, and
-  delayed `ESC *b#W` uses
-  `0x11f82 -> 0x121cc`; normal restore reaches `0x105d0`, while
-  alternate/data restore reaches `0x12358 -> 0xdace -> 0xe002` and leaves the
-  raster block and page objects unchanged. Raster handlers write
-  `0x783170..0x783182`, gate transfer counts, allocate encoded-span objects
-  through `0x13070` / `0x13250`, and copy payload via `0x138de`. Encoded
-  raster objects publish through page roots and render via
-  `0x1ef6a -> 0x1efc2 -> 0x1f88e`, then the selected mode helper `0x1f8da`,
+- Raster graphics: `ESC *t#R` uses `0x10808`, `ESC *r#A/#B` use `0x1075a` / `0x107fa`,
+  and delayed `ESC *b#W` uses `0x11f82 -> 0x121cc`; normal restore reaches `0x105d0`,
+  while alternate/data restore reaches `0x12358 -> 0xdace -> 0xe002` and leaves the
+  raster block and page objects unchanged. Raster handlers write `0x783170..0x783182`,
+  gate transfer counts, allocate encoded-span objects through `0x13070` / `0x13250`, and
+  copy payload via `0x138de`. Encoded raster objects publish through page roots and
+  render via `0x1ef6a -> 0x1efc2 -> 0x1f88e`, then the selected mode helper `0x1f8da`,
   `0x1f8e6`, `0x1f920`, or `0x1f9c6`; dense split allocation is bounded at
-  `0x132b6..0x13382`. Resolution handler `0x10808` updates encoded mode
-  `0x783178` and scale `0x78317e` only while active byte `0x783182` is clear.
-  Start handler `0x1075a` also exits early while `0x783182` is set; otherwise
-  it sets the active byte, seeds origin `0x78317a` from portrait x cursor
-  `0x782c8a`, landscape y cursor `0x782c8e`, or left edge depending on the
-  `*r#A` selector, copies that origin to baseline `0x783170`, and recomputes
-  row byte limit `0x783180`. End handler `0x107fa` clears only `0x783182`,
-  leaving origin, baseline, mode, scale, limit, and row state for later
-  transfers or resolution changes. Concrete stream
-  `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` queues encoded raster object
-  `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`; byte `+0x04 = 0x80`
-  selects raster dispatch, byte `+0x05 = 0` selects mode-0 literal helper
-  `0x1f8da`, word `+0x06 = 4` is the copied payload capacity, and key
+  `0x132b6..0x13382`. Resolution handler `0x10808` updates encoded mode `0x783178` and
+  scale `0x78317e` only while active byte `0x783182` is clear. Start handler `0x1075a`
+  also exits early while `0x783182` is set; otherwise it sets the active byte, seeds
+  origin `0x78317a` from portrait x cursor `0x782c8a`, landscape y cursor `0x782c8e`, or
+  left edge depending on the `*r#A` selector, copies that origin to baseline `0x783170`,
+  and recomputes row byte limit `0x783180`. End handler `0x107fa` clears only
+  `0x783182`, leaving origin, baseline, mode, scale, limit, and row state for later
+  transfers or resolution changes. Concrete stream `ESC *t300R ESC *r1A ESC *b4W`
+  followed by payload `f0 0f aa 55` queues this encoded raster object:
+
+  ```text
+  00 00 00 00 80 00 00 04 00 01 f0 0f aa 55
+  ```
+
+  Byte `+0x04 = 0x80` selects raster dispatch, byte `+0x05 = 0` selects mode-0 literal
+  helper `0x1f8da`, word `+0x06 = 4` is the copied payload capacity, and key
   `+0x08 = 0x0001` is the packed coordinate consumed after publication.
-  Evidence:
-  [raster-graphics.md](raster-graphics.md) and
-  [page-raster-imaging.md](page-raster-imaging.md).
+  Lower-resolution command variants use the same delayed payload and page-object route
+  but change the canonical raster mode state and encoded object byte `+0x05`:
+  `ESC *t150R` writes scale `2` and mode `1` at `0x10808`; after `ESC *r0A` and
+  `ESC *b2W f0 0f`, `0x13250` queues class-`0x80` object:
+
+  ```text
+  00 00 00 00 80 01 00 02 00 01 f0 0f
+  ```
+
+That mode-1 object renders through `0x1f88e -> 0x1f8e6`, expanding each payload byte
+through ROM table `0x30914` into two current/fallback row writes. `ESC *t100R` writes
+scale `3` and mode `2`, so the accepted row object carries byte `+0x05 = 2` and renders
+through `0x1f920`, where even and odd payload-byte passes expand through longword table
+`0x30b14` into up to three row writes. `ESC *t75R` writes scale `4` and mode `3`, so
+object byte `+0x05 = 3` dispatches to `0x1f9c6`, which expands each payload byte through
+two levels of `0x30914` into four row writes. These variants are canonical raster/page
+state, not compression-method state: the ROM tables have no separate `ESC *b#M` row, and
+active raster byte `0x783182` can suppress later `ESC *t#R` updates until `ESC *rB`
+clears it. Evidence: [raster-graphics.md](raster-graphics.md),
+[firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-raster-transfer-gates-and-modes),
+[page-raster-imaging.md](page-raster-imaging.md).
 - Rectangle/rule graphics:
   `ESC *c` mode `16` routes width/height/fill writers `0x10e68`, `0x10e22`,
   `0x10dce`, and fill command `0x10898`. Size/id handlers write

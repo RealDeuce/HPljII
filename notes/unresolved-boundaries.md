@@ -353,16 +353,18 @@ State classification for these pixel-affecting stops:
   depend on physical decode or external resource data for
   `0x0c0000..0x0c0321`.
 - Unknown state is deliberately bounded to the named invalid target, invalid
-  source read, missing resource range, or exact parser-count stop. Parser
-  dispatch, page-object publication, bridge roots, and render-helper entry are
-  not generic unknowns for these entries.
+  source read, missing resource range, physical identity, or optional data
+  source. Exact parser-count stops are bounded terminal ROM behavior rather
+  than unknown state. Parser dispatch, page-object publication, bridge roots,
+  and render-helper entry are not generic unknowns for these entries.
 
 ## Renderer Stop Contract
 
-This checkpoint turns the pixel-affecting boundaries into the rule a byte-stream
-reproducer should apply after the upstream command path is modeled. Each row
-keeps the detailed owner notes as evidence; the contract here is the exact
-handoff from documented ROM state to a bounded non-pixel result.
+This checkpoint turns the residual render/source boundaries and exact terminal
+stops into the rule a byte-stream reproducer should apply after the upstream
+command path is modeled. Each row keeps the detailed owner notes as evidence;
+the contract here is the exact handoff from documented ROM state to a bounded
+non-pixel result.
 
 - Short compact downloaded-glyph high rows:
   preserve the restored `ESC )s#W` record, installed glyph record from

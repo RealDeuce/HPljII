@@ -1859,10 +1859,14 @@ end-to-end stream:
   The boundary entry must say whether it is ROM-local invalid target/source,
   ROM-local unresolved caller, missing external resource data, exact ROM stop,
   hardware/MMIO, optional external data, or manual/physical correlation.
-  Current examples are the physical decode for `0x0c0000..0x0c0321`, restored
-  `ESC )s#W` payload-count cap, exact MMIO-to-formatter signal mapping,
-  optional active-pool helper entry `0x247c..0x2746`, and bounded downloaded-
-  glyph helper table/source-read edges.
+  Current unresolved examples are the physical decode for
+  `0x0c0000..0x0c0321`, exact MMIO-to-formatter signal mapping, optional
+  active-pool helper entry `0x247c..0x2746`, and bounded downloaded-glyph
+  helper table/source-read edges. Exact ROM stops are recorded in the same
+  boundary index but are not unknown state; for example, the restored
+  `ESC )s#W` payload-count cap is documented parser/payload state with no
+  glyph object, publication record, render bridge, or pixel helper after the
+  cap.
 
 Do not use fixtures as a separate state class. A fixture can exercise a
 documented interpretation, but the documented field must still be classified

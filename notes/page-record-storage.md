@@ -179,6 +179,21 @@ object graph is ready for publication, bridge copy, and render entry.
   and fixed producers share one page-root stream chain while preserving their
   own root/list heads.
 
+- Shared allocator contract:
+  `0x1381c` treats its word argument as a requested byte count. It starts from
+  current stream cursor `0x782a76` and remaining-space word `0x782a70`. If the
+  remaining space is large enough, it returns the old cursor as the allocation
+  address, advances `0x782a76` by the requested count, and subtracts the count
+  from `0x782a70`. If the remaining space is too small, it calls
+  `0x1710(1, 1, 0x100)` for a fresh 0x100-byte chunk. A successful new chunk is
+  linked through the longword pointed to by `0x782a72`; `0x782a72` is then
+  moved to the new chunk, the returned allocation address starts at
+  `chunk + 4`, and usable remaining space is reset to `0xfc` before the same
+  count subtraction. A failed `0x1710` allocation returns zero and leaves the
+  caller to take the owning no-room or retry path. This is firmware
+  bookkeeping until a producer writes typed object bytes into the returned
+  address and links that object from root `+0x1c`, `+0x24`, or `+0x28`.
+
 - Compact text and downloaded glyph objects:
   Printable/font paths reach `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`.
   The allocator writes bucket objects under root `+0x1c` with object byte
@@ -785,7 +800,11 @@ Unknown:
   list heads, and selected current-font context slot `+0x2c`.
 - `0x1381c` allocates variable-size stream objects and updates
   `0x782a70`, `0x782a72`, and `0x782a76`. On a new chunk it links that chunk
-  through the prior `0x782a72` target.
+  through the prior `0x782a72` target. The exact disassembly boundary is
+  `0x1381c..0x13876`: compare requested count with remaining space
+  `0x782a70`, allocate through `0x1710` only when needed, reserve the first
+  longword of a fresh chunk as the next pointer, and return zero on allocation
+  failure.
 - Shared heap allocator entries `0x170c` and `0x1710` are documented in
   [pcl-parser-firmware.md](pcl-parser-firmware.md) and
   [semantic-state-model.md](semantic-state-model.md). Page-record storage

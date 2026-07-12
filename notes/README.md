@@ -376,7 +376,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   checkpoint.
 - [display-functions.md](display-functions.md#owner-summary) - documented
   `ESC Y ... ESC Z` display-functions loop, alternate append path, Control-Z
-  siblings, and `ESC z` status edge.
+  siblings, and `ESC z` status edge, with a
+  [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map).
 - [direct-control-codes.md](direct-control-codes.md#owner-summary) - documented
   CR/LF/FF/HT/BS, line-termination mode, cursor stack, and cursor/margin
   control paths to page-record output.

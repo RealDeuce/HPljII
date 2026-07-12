@@ -2907,7 +2907,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   non-replay data-chain frame before the same `0xa904 -> 0x11774`
   parser/page-object owners run. Transparent byte routing details are in
   [Transparent Payload To Visible Consumer
-  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map).
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map);
+  display-loop and local Control-Z routing details are in [Display Byte To Visible
+  Consumer Map](display-functions.md#display-byte-to-visible-consumer-map).
 - Host/status side-channel commands:
   model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
   `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.

@@ -234,6 +234,66 @@ Evidence and unresolved boundary:
   status-consumer naming or new byte streams that expose different filter,
   append, page-object, or status fields.
 
+### Display Byte To Visible Consumer Map
+
+This map is the short route from an `ESC Y` loop byte, local Control-Z
+terminal, or `ESC z` command to its first semantic consumer. It keeps the
+decision checkpoint above intact while making the byte-stream outcomes
+followable without tracing every loop branch.
+
+- Normal `ESC Y` reader:
+  normal parser mode `1` dispatches `ESC Y` to `0x12536`. The loop fetches
+  bytes through `0xa904`, normalizes local pair `0x1a 0x58` to routed value
+  `0x7f` after `0xd99a`, and terminates only after a normalized `ESC Z` pair
+  or no-byte return. The first visible consumer is either fixed-space handler
+  `0xd0f0` or printable handler `0xd04a`, selected by the C0 filter byte
+  `0x782eea + 0x10 * 0x782f06`, high-control fallback byte `0x782efa`, and
+  high-character flags `0x783132` / `0x783133`.
+- Normal printable output:
+  values routed to `0xd04a` rejoin the ordinary compact text path:
+  `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e -> 0x1387c`. The first
+  page-image state is a compact bucket object under current root `+0x1c`;
+  publication and rendering then follow `0xff1e -> 0x1ed84 -> 0x1edc6 ->
+  0x1ef6a -> 0x1efc2 -> 0x1effe`. Display functions has no private renderer.
+- Normal fixed-space output:
+  default-filtered C0 or high-control values routed to `0xd0f0` produce the
+  same fixed-space/text-state effects as transparent data. Depending on the
+  active source/context, that can be spacing-only or a substituted compact
+  object through `0xd140 -> 0xd3b2`; the first page-image consumer remains the
+  shared compact text path, not the display reader.
+- Alternate/data append:
+  alternate/data parser mode `1` dispatches `ESC Y` to `0x12120`. The handler
+  writes literal `ESC Y`, then each normalized loop value, through append sink
+  `0xe002` until local `ESC Z` or no-byte return. The first visible consumer is
+  a later macro/data-chain replay frame that returns the stored bytes through
+  `0xa904`; this handler instance itself does not call `0xd04a`, `0xd0f0`,
+  `0x12f2e`, `0xff1e`, or a renderer.
+- Local Control-Z terminals:
+  normal mode-2 `0x1a 0x1a` reaches `0x120d2`, which emits printable
+  `0x1a` through `0xd04a` only when context byte
+  `0x782eeb + 0x10 * 0x782f06` equals `1`; otherwise it has no page output.
+  Normal `0x1a X` reaches `0x1219e` and emits synthetic printable value
+  `0x100` through `0xd04a`. Alternate/data siblings `0x1210c` and `0x121b2`
+  append literal `0x1a` or normalized `0x7f` through `0xe002` and are visible
+  only after later replay.
+- `ESC z` status edge:
+  handler `0xcd86` reads active data-chain frame pointer `0x782d76` and frame
+  kind byte `+9`. Only the zero-kind case calls `0x9c2c`, which writes status
+  markers `0x7821cc` / `0x7822db` and ORs warning/status bit
+  `0x780e2a.3` through `0x9b5e`. This route has no page object, bridge field,
+  or render consumer; the remaining boundary is external status-consumer
+  naming.
+- State grouping:
+  canonical reader state is local `ESC` flag `D4`, normalized value `D5`, and
+  source `0xa904`; canonical text/filter state is `0x782f06`,
+  `0x782eea + 0x10 * slot`, `0x782eeb + 0x10 * slot`, `0x782efa`, and
+  `0x783132/0x783133`; canonical append/status state is `0xe002`,
+  macro/data stored bytes, `0x782d76`, `0x7821cc`, `0x7822db`, and
+  `0x780e2a.3`; derived/cache state is selected-slot multiplication and local
+  high-control filter word; parser scratch is the mode-1/mode-2 table state
+  and per-loop bytes; firmware bookkeeping is `0xd99a`, `0xf054`, and
+  `0x9c2c`.
+
 ## Field Groups
 
 Canonical reader state:

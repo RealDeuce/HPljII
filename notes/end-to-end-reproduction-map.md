@@ -7027,9 +7027,13 @@ Address-level cluster map:
   0x12218 -> 0x12452`; display functions use normal reader `0x12536` or alternate/data
   reader `0x12120`; Control-Z siblings use `0x120d2`, `0x1219e`, `0x1210c`, and
   `0x121b2`. Owners are [Transparent Payload Decision
-  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint) and
-  [display-functions.md](display-functions.md). The remaining pixel-affecting residual
-  is not parser routing; it is the secondary segment-57 resource continuation read at
+  Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint),
+  [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map), and
+  [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map). The remaining
+  pixel-affecting residual is not parser routing; it is the secondary segment-57
+  resource continuation read at
   firmware range `0x0c0000..0x0c0321`. Transparent `ESC &p#X` saves a delayed record
   through `0x121cc`; `0x12452` reopens the restored count, fetches payload bytes
   directly through `0xa904`, locally normalizes `1a 58` through `0xd99a`, and routes
@@ -7659,8 +7663,11 @@ Address-level cluster map:
   Control-Z forms; start with [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix),
   [Display Functions Decision
-  Checkpoint](display-functions.md#display-functions-decision-checkpoint), and their
-  worked paths in [firmware-dataflow-model.md](firmware-dataflow-model.md).
+  Checkpoint](display-functions.md#display-functions-decision-checkpoint),
+  [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map), and
+  [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map).
 - Font selection and visible glyph output:
   `ESC (s0p10h12v0s0b3T!!`,
   `ESC )s0p16h8v0s0b0T SO !!`, final-`X` / final-`@` streams, and

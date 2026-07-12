@@ -225,10 +225,12 @@ fixed-list, macro-overlay, or VFC owners.
   `0x1ef6a`.
 - Render consumers:
   `0x1ef6a` renders bucket-chain objects through `0x1efc2`, rule-list objects
-  through `0x1f446`, and fixed-list objects through `0x1f756`. Publication
-  commands are therefore visible because they expose an existing page-object
-  graph to scheduler/render code, not because reset, FF, page-size, paper
-  source, or copies write pixels directly.
+  through `0x1f446`, and fixed-list objects through `0x1f756`. The final
+  helper-to-row-store step is owned by
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
+  Publication commands are therefore visible because they expose an existing
+  page-object graph to scheduler/render code, not because reset, FF,
+  page-size, paper source, or copies write pixels directly.
 - No-output and alternate/data boundaries:
   missing-root reset has no published page record. Alternate/data
   page-environment rows in table `0x116f6` are blank or lowercase

@@ -606,8 +606,8 @@ page objects and pixels.
   consumers are shared with live bytes:
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, then compact text `0x1effe`,
   encoded raster `0x1f88e`, segment list `0x1f812`, rule/fixed-list helpers,
-  or row-store primitive `0x1effe`-family consumers named in
-  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
+  and the destination/row-store helpers named in
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
   Macro replay contributes no row writer beyond selecting the ordinary
   replayed command family.
 - Overlay publication:

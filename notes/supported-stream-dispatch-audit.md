@@ -16,9 +16,8 @@ Audit state:
   control cluster below; cursor, motion, margin, and span command cluster
   below.
 - Still pending in this ledger:
-  rectangle/rule imaging, font selection and downloaded glyphs,
-  macro definition/replay, parser-only rows, and page/render owner crosswalk
-  rows.
+  font selection and downloaded glyphs, macro definition/replay, parser-only
+  rows, and page/render owner crosswalk rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -812,5 +811,147 @@ when `0x1efc2` selects encoded raster renderer `0x1f88e` and its mode helper.
 No ROM-local raster dispatch, object-layout, bridge, or row-store helper edge
 remains unresolved for the documented raster cluster. Remaining work in this
 audit ledger starts from rectangle/rule objects, font/downloaded-glyph
+selection, macro replay, parser-only behavior, or final page/render crosswalk
+evidence.
+
+## Rectangle And Rule Imaging
+
+This cluster covers the supported `ESC *c` rectangle/rule graphics family from
+parser dispatch through rule-list page objects and solid/pattern rendering. It
+starts at normal table handlers for rectangle size, area-fill, and fill
+commands, and ends at delayed rectangle state, no-output selector/clip gates,
+rule-list objects under page-root `+0x24`, no-room retry publication, or
+rule-list row helpers after publication.
+
+### Audited Rows
+
+- `ESC *c#A/#B/#H/#V`, rectangle width and height:
+  parser mode `16` dispatches dot width `A/a` to `0x10e68`, dot height `B/b`
+  to `0x10e22`, decipoint width `H/h` to `0x10a40`, and decipoint height
+  `V/v` to `0x10ae0`. These handlers rewind command record cursor
+  `0x78299e`, consume parsed numeric words, and write canonical dimension
+  fields `0x78316a` and `0x783166`. Dot handlers require positive explicit
+  integer parameters; decipoint handlers convert accepted values through ROM
+  subunit math before storing packed dimensions. They queue no page object;
+  first visible consumer is fill handler `0x10898`. Owner evidence is
+  [Size Commands](rectangle-graphics.md#size-commands) and
+  [Rectangle State To Visible Consumer
+  Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map).
+
+- `ESC *c#G`, area-fill id:
+  parser mode `16` dispatches `G/g` to `0x10dce`. The handler rewinds
+  `0x78299e`, treats missing or zero explicit values as `0`, takes absolute
+  value for negative explicit values, and writes area-fill id `0x78316e`.
+  This is delayed command state consumed only by later `ESC *c#P` selector
+  mapping. Owner evidence is
+  [Command Handler Boundaries](rectangle-graphics.md#command-handler-boundaries)
+  and [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
+
+- `ESC *c#P`, fill selector and no-output gates:
+  parser mode `16` dispatches `P/p` to `0x10898`. The handler rewinds the
+  command record, reads current width `0x78316a`, height `0x783166`, area-fill
+  id `0x78316e`, orientation `0x782da3`, and selector parameter. Missing or
+  zero selector maps to solid selector `7`; selector `2` maps percent-fill ids
+  to selectors `0..7`; selector `3` maps pattern ids `1..6` to selectors
+  `8..13`, with landscape remaps for ids `1..4`. Invalid selector/id
+  combinations, zero dimensions, off-page starts, and empty-after-clip paths
+  return before `0x13386`, so they create no rule object, publication state,
+  bridge field, or render input. Owner evidence is
+  [Fill Selector At 0x10898](rectangle-graphics.md#fill-selector-at-0x10898)
+  and [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
+
+- Clip and queue at `0x10b80`:
+  accepted fill selectors call `0x10b80`, which consumes current cursor
+  `0x782c8a` / `0x782c8e`, orientation byte `0x782da3`, page extents
+  `0x782db8` / `0x782db6`, and stored dimensions. It rejects starts to the
+  right or below the page, rejects negative starts that do not cross onto the
+  page, clips negative x/y and right/top/bottom edges, writes clipped source
+  record `0x782a88`, ensures current root `0x78297a` through `0x10084`, and
+  calls `0x13386` only for nonempty on-page rectangles. Owner evidence is
+  [Clip And Queue At 0x10b80](rectangle-graphics.md#clip-and-queue-at-0x10b80)
+  and `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`.
+
+- Rule-list object creation and retry:
+  `0x13386` derives bucket/key fields through `0x134d6` from source record
+  `0x782a88`, then calls `0x133aa`. `0x133aa` allocates a 14-byte rule object
+  through stream allocator `0x1381c`, inserts it under page-root rule list
+  `+0x24` in ascending bucket order, and writes object byte `+0x04`, selector
+  byte `+0x05`, packed key `+0x06`, width `+0x08`, height `+0x0a`, and
+  continuation word `+0x0c`. If allocation fails, it returns zero without
+  changing the rule-list head; caller `0x10d22..0x10d3e` sets retry bit
+  `root+0x15.0`, publishes through `0xff1e`, ensures a fresh root, and retries
+  the same clipped source record. Owner evidence is
+  [Rule Storage And Bridge
+  Route](rectangle-graphics.md#rule-storage-and-bridge-route) and
+  [Rule-List Outcome Matrix](page-record-storage.md#rule-list-outcome-matrix).
+
+- Alternate/data rectangle rows:
+  with alternate/data table `0x116f6` active, uppercase `ESC *c`
+  terminals `A/B/G/H/P/V` have no handler and lowercase `a/b/g/h/p/v` route
+  only to rewind helper `0x11f4c`. Normal rectangle writers `0x10e68`,
+  `0x10e22`, `0x10a40`, `0x10ae0`, `0x10dce`, and producer `0x10898` are not
+  called. Width `0x78316a`, height `0x783166`, area-fill id `0x78316e`,
+  clipped source `0x782a88`, root `+0x24`, publication state, and render
+  inputs remain unchanged until replay through normal parser mode. Owner
+  evidence is [Rectangle Outcome
+  Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
+
+- Bridge and render:
+  publication preserves page-root rule list `+0x24`; bridge `0x1edc6` copies
+  that list to render-record list `+0x1c`, ORs selector byte `+0x05` with
+  `0x10`, and copies object height `+0x0a` into continuation word `+0x0c`.
+  Render entry `0x1ef6a` calls rule walker `0x1f446`; selector low nibble `7`
+  dispatches to solid helper `0x1f596`, and selector nibbles `0..6` or
+  `8..13` dispatch to pattern helper `0x1f4e0`. Both helpers consume packed
+  key `+0x06`, width `+0x08`, continuation `+0x0c`, destination helper
+  `0x1f626`, and, for patterned rules, mask helper `0x1f6ee` plus pattern
+  table `0x2fefe`. Owner evidence is
+  [Render Dispatch](rectangle-graphics.md#render-dispatch),
+  [Rule Destination And Row
+  Writes](rectangle-graphics.md#rule-destination-and-row-writes), and
+  [Render Selector Dispatch
+  Checkpoint](page-raster-imaging.md#render-selector-dispatch-checkpoint).
+
+### Field Classification
+
+- Canonical parser state:
+  parser mode `16`, active six-byte command record at `0x78299e`, lowercase
+  chaining state, parsed numeric parameters, and final byte.
+- Canonical rectangle command state:
+  width `0x78316a`, height `0x783166`, and area-fill id `0x78316e`.
+- Canonical page/image state:
+  current root `0x78297a`, clipped source record `0x782a88`, page-root
+  rule-list head `+0x24`, 14-byte rule object fields, published source record,
+  and render-record rule list `+0x1c`.
+- Derived/cache state:
+  bucket index and key fields `0x782a7c..0x782a7e`, horizontal phase
+  `0x782dc0`, bridge selector bit `0x10`, continuation word `+0x0c`, render
+  band fields, destination masks, and pattern-base selection.
+- Firmware bookkeeping:
+  stream allocator fields `0x782a70`, `0x782a72`, and `0x782a76`, no-room
+  retry bit `root+0x15.0`, publication flag `0x782996`, pool cursors, and
+  render scheduler progress.
+- Hardware/external state:
+  none for the ROM-local rectangle object and renderer contract after the same
+  normalized host bytes and publication boundary exist.
+- Unknown:
+  no ROM-local middle edge remains for documented selector-7, gray, pattern,
+  landscape-remap, clipping, no-room, bridge, solid, and pattern render paths.
+  New work must change a named selector predicate, clipped source field,
+  allocator outcome, rule object byte, retry field, bridge field, helper
+  dispatch, continuation mutation, or row construction.
+
+### Output And Boundary Result
+
+Size and area-fill commands are delayed state until `ESC *c#P` consumes them.
+A valid nonempty on-page fill queues a rule-list object under page-root
+`+0x24`; invalid selectors, zero dimensions, off-page rectangles, and
+alternate/data rows create no page object. Pixel generation starts only after
+publication and bridge when `0x1ef6a` reaches rule walker `0x1f446` and then
+solid helper `0x1f596` or pattern helper `0x1f4e0`.
+
+No ROM-local rectangle/rule dispatch, object-layout, bridge, retry, or
+row-store helper edge remains unresolved for the documented rectangle cluster.
+Remaining work in this audit ledger starts from font/downloaded-glyph
 selection, macro replay, parser-only behavior, or final page/render crosswalk
 evidence.

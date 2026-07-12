@@ -7949,9 +7949,14 @@ Address-level cluster map:
   publication runs from those rows. `ESC &d` is another blank terminal row in
   alternate/data mode: it does not call `0x12622`, does not write underline
   selector `0x783185`, does not arm or flush pending span state
-  `0x783184..0x78318a`, and does not create segment/fixed-list objects. The
-  active exceptions remain `ESC E` reset and `ESC &l#W/w` VFC payload
-  storage. Evidence is
+  `0x783184..0x78318a`, and does not create segment/fixed-list objects.
+  `ESC &f` has a same-family split: `S` and `Y` are blank terminal rows,
+  lowercase `s/y` rewind through `0x11f4c`, and therefore cursor-stack state
+  `0x782c96..0x782d36` and current macro id `0x783164` do not change from
+  those stored syntax rows; `X/x` remains active through `0xdd08` so macro
+  selector `1` can stop definition storage. The active exceptions remain
+  `ESC E` reset, `ESC &l#W/w` VFC payload storage, and alternate/data macro
+  control `ESC &f#X/x`. Evidence is
   [direct-control-codes.md](direct-control-codes.md#owner-summary) and
   [publication-commands.md](publication-commands.md#owner-summary).
 

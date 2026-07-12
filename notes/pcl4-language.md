@@ -1088,7 +1088,10 @@ State-only consumer index:
   raster origin, rectangle clipping, VFC, or publication.
 - `ESC &f#S`: writer `0xf75e` stores cursor stack
   `0x782c96..0x782d36`. First visible consumers are following placement after
-  pop, raster origin, or rectangle clipping.
+  pop, raster origin, or rectangle clipping. In alternate/data table
+  `0x116f6`, uppercase `S` is blank and lowercase `s` rewinds through
+  `0x11f4c`, so this stack state is not written until the stored command is
+  replayed through the normal table.
 - `ESC &d#D`: writer `0x12622` stores underline/span selector `0x783185`
   and arms pending span state through `0x126e2`. The first printable
   consumers are span helpers `0xd4ac` / `0xd8fc`, which read `0x783185`
@@ -1098,7 +1101,9 @@ State-only consumer index:
   state remains unchanged until replay.
 - `ESC &f#Y/#X`: writers `0xe112` and `0xdd08` store macro id, records, and
   frames. First visible consumers are replay byte source `0xa904` and overlay
-  publication `0xff1e`.
+  publication `0xff1e`. Alternate/data mode suppresses `Y/y` rows but keeps
+  `X/x -> 0xdd08`, so current id `0x783164` does not change while payload is
+  stored, while selector `1` can still stop a definition.
 - `ESC *t#R`: writer `0x10808` stores raster mode/scale state in the raster
   block `0x783170..0x783182`, including mode byte `+0x08`, scale word
   `+0x0e`, and row limit `+0x10` when raster is inactive. First visible

@@ -1401,7 +1401,9 @@ State grouping:
 - Derived/cache state: stored y with vertical offset already added, popped y
   after subtracting that offset, and clamped x/y candidates.
 - Parser scratch: the six-byte `ESC &f#S` command record rewound by
-  `0xf75e`.
+  `0xf75e`. In alternate/data parser table `0x116f6`, uppercase
+  `ESC &f#S` is a blank terminal row and lowercase `ESC &f#s` rewinds
+  through `0x11f4c`; neither path calls `0xf75e`.
 - Firmware bookkeeping: latch clears for `0x782a57` and `0x782a6d`, stack
   pointer movement, and optional span flush through `0xf34a` /
   `0x12714 -> 0x126e2`.
@@ -1412,6 +1414,10 @@ Readers and output effect:
 
 - Cursor stack commands do not queue page objects or draw pixels by
   themselves.
+- Alternate/data `ESC &f#S/s` does not push, pop, clamp, clear latches, flush
+  spans, or change the next-free stack pointer. Cursor-stack state can only
+  affect page output later when the same stored bytes replay through normal
+  parser table `0x112a4` and reach `0xf75e`.
 - Printable text consumes the restored cursor through
   `0xd04a -> 0x1393a -> 0x12f2e`. The worked stream
   `ESC &f0S ESC &a2C ESC &f1S !` proves the intervening cursor move is undone
@@ -1430,6 +1436,10 @@ Evidence:
   `0xf75e`, `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
   `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`, and
   `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`.
+- Parser tables:
+  `generated/analysis/ic30_ic13_pcl_command_map.md` normal rows
+  `ESC & f S/s -> 0xf75e` and alternate/data rows `ESC & f S -> blank`,
+  `ESC & f s -> 0x11f4c`.
 - Checked-in owners:
   [raster-graphics.md](raster-graphics.md#start-and-end-raster),
   [rectangle-graphics.md](rectangle-graphics.md#clip-and-queue-at-0x10b80),

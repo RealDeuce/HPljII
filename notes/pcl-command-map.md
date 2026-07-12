@@ -1072,6 +1072,17 @@ Command-family suppression and exception matrix:
   underline/span handler `0x12622`, so selector byte `0x783185`, pending span
   fields `0x783184..0x78318a`, generic `W/w` drain scheduling, page-root span
   objects, publication state, and render inputs remain unchanged until replay.
+- Macro/cursor-stack family:
+  alternate/data `ESC &f` keeps the family prefix active but splits terminal
+  rows by state ownership. `ESC &f#S` and `ESC &f#Y` uppercase rows are blank,
+  and lowercase `s/y` rows rewind through `0x11f4c`, so cursor-stack handler
+  `0xf75e` and macro-id handler `0xe112` do not write stack
+  `0x782c96..0x782d36` or current id `0x783164` from stored payload syntax.
+  `ESC &f#X/x` remains active through `0xdd08`, allowing selector `1` to stop
+  a macro definition while ordinary payload commands are stored rather than
+  executed. Cursor-stack and macro-id effects therefore appear only after
+  replay through the normal table; macro-control record/frame effects can
+  happen at the alternate/data boundary.
 - Rectangle, raster-control, and raster-resolution families:
   uppercase alternate/data rows for `ESC *c#A/B/D/E/F/G/H/P/V`,
   `ESC *r#A/B/K`, `ESC *s#^`, and `ESC *t#R` are blank, while lowercase
@@ -1099,7 +1110,9 @@ Command-family suppression and exception matrix:
   `ESC Y -> 0x12120`, local Control-Z append/report handlers
   `0x1210c/0x121b2`, and macro control `ESC &f#X/x -> 0xdd08` are active
   alternate/data rows. Their owner notes still decide whether bytes are
-  appended, drained, stored as payload, or later replayed.
+  appended, drained, stored as payload, or later replayed; the paired
+  `ESC &f#S/s` and `ESC &f#Y/y` rows are explicit same-family suppressions,
+  not payload exceptions.
 - Reset exception:
   `ESC E -> 0xcc52` remains active in alternate/data mode. It is the only
   broad page/environment command in this checkpoint that immediately crosses
@@ -2486,13 +2499,20 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   `X/x` reaches macro-control handler `0xdd08`; `S/s` reaches cursor-stack
   handler `0xf75e`. Normal and alternate/data tables both keep `X/x` active
   so selector `1` can stop macro definition while payload controls are
-  appended rather than executed. Cursor-stack `S/s` is placement state, not a
-  macro record operation: selector `0` pushes horizontal cursor `0x782c8a` and
-  vertical cursor plus top physical offset `0x782dbe` into stack
-  `0x782c96..0x782d36`; selector `1` pops when above base `0x782c96`, restores
-  x/y with active-extent clamps, clears pending/right-limit latches, and can
-  flush pending spans. Following printable text consumes the restored cursor
-  through `0xd04a -> 0x12f2e`. `0xe112` writes current macro id
+  appended rather than executed. The same alternate/data table suppresses
+  `S/s` and `Y/y`: `S` and `Y` are blank terminal rows, while `s` and `y`
+  rewind through `0x11f4c`. Cursor-stack `0x782c96..0x782d36` and current
+  macro id `0x783164` therefore cannot change at the stored-payload boundary
+  through those rows; they change only if replay later feeds the stored command
+  through normal table `0x112a4`.
+
+  Cursor-stack `S/s` is placement state, not a macro record operation:
+  selector `0` pushes horizontal cursor `0x782c8a` and vertical cursor plus top
+  physical offset `0x782dbe` into stack `0x782c96..0x782d36`; selector `1`
+  pops when above base `0x782c96`, restores x/y with active-extent clamps,
+  clears pending/right-limit latches, and can flush pending spans. Following
+  printable text consumes the restored cursor through `0xd04a -> 0x12f2e`.
+  `0xe112` writes current macro id
   `0x783164`; `0xdd08` resolves that id through the 32-entry pool at
   `0x782a98` and dispatches selector `0` start-definition, `1`
   stop-definition, `2` execute, `3` call, `4`/`5` overlay on/off, `6` delete
@@ -2516,10 +2536,11 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   data-chain frame pointer `0x782d76`, frame head/count `+0/+4`, source offset
   `+8 = 4`, frame kind `+9`, and snapshot pointer `+0x0a`. Canonical overlay
   state is mode byte `0x782a92`, saved overlay id `0x782a94`, and page-root
-  retry flag `+0x14.0`. Parser scratch is normal mode-17 records for `Y/y`
-  and `X/x`, alternate/data table `0x116f6` keeping `X/x -> 0xdd08` while
-  suppressing payload control execution, and replayed payload bytes returned
-  by `0xa904` before `0x11774` parses them again. Firmware bookkeeping is
+  retry flag `+0x14.0`. Parser scratch is normal mode-17 records for `S/s`,
+  `Y/y`, and `X/x`, alternate/data table `0x116f6` keeping `X/x -> 0xdd08`
+  while suppressing `S/Y` state writers and payload control execution, and
+  replayed payload bytes returned by `0xa904` before `0x11774` parses them
+  again. Firmware bookkeeping is
   heap chunk allocation/free, definition-mode bytes `0x782c18` / `0x782c19`,
   frame-end unwinding through `0xe22c`, context-stack pointer `0x782c6e`, and
   font-context refresh helper `0xe65c`.

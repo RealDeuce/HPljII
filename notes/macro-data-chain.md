@@ -291,6 +291,13 @@ Parser scratch:
 - Alternate/data parser table `0x116f6` keeps `x/X -> 0xdd08`, so a macro
   definition can stop, while ordinary payload controls are appended rather
   than dispatched.
+- The same alternate/data mode-17 rows suppress sibling `ESC &f` state
+  writers: uppercase `S` and `Y` are blank, lowercase `s` and `y` rewind
+  through `0x11f4c`, so cursor-stack handler `0xf75e` and macro-id handler
+  `0xe112` do not run while definition payload is being stored. Stored
+  `ESC &f#S/#Y` bytes can affect cursor stack `0x782c96..0x782d36` or current
+  macro id `0x783164` only when a later replay frame feeds them through normal
+  table `0x112a4`.
 - `0x782c18` and `0x782c19` gate definition mode and macro append errors.
 - `0x78299e` is rewound by `0xdd08` before selector dispatch.
 - Non-replay overlay examples restore the stored payload bytes as parser

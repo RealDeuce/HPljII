@@ -131,11 +131,12 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   from an admitted byte stream to page objects, rendered pixels, and exact
   pixel-affecting stop points.
 - Resource bytes are owned by [resource-rom.md](resource-rom.md#owner-summary) and
-  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary). The verified
-  `IC32,IC15` pair supplies built-in resource bytes through firmware address
-  `0x0bffff`; the transparent secondary segment-57 continuation rule in
-  [resource-rom.md](resource-rom.md#owner-summary) is the owner for the remaining
-  pixel-affecting resource boundary at `0x0c0000..0x0c0321`.
+  [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary). The
+  [Resource Bytes To Visible Consumer
+  Map](resource-rom.md#resource-bytes-to-visible-consumer-map) joins verified
+  `IC32,IC15` bytes to selected contexts, compact page objects, renderer glyph
+  reads, and the remaining transparent secondary segment-57 continuation
+  boundary at `0x0c0000..0x0c0321`.
 - Exact remaining stop points are indexed in
   [unresolved-boundaries.md](unresolved-boundaries.md), grouped as ROM-local
   invalid-target/source, ROM-local unresolved caller, missing external

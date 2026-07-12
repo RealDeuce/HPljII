@@ -105,6 +105,89 @@ Output effect:
   fields, glyph-entry interpretation, bitmap payload bytes, and continuation
   boundary rather than substituting inferred missing data.
 
+### Resource Bytes To Visible Consumer Map
+
+This map composes immutable `IC32,IC15` resource bytes into the first visible
+text consumers. Resource data is not parser state and does not draw by itself;
+it becomes visible only after parser/font commands select a context, printable
+bytes queue compact objects, and render helpers read the copied context and
+glyph payload.
+
+- Resource byte source:
+  local resource byte offset `N` maps to firmware address `0x080000 + N` for
+  verified bytes through `0x0bffff`. Startup scanner `0x41a` and font scanner
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be` read immutable `HEAD` records, built-in
+  font records, and record fields; they do not consume PCL parser records and
+  do not create page objects.
+- Candidate-window producers:
+  `0x1a9be` turns accepted built-in records into candidate windows and counts
+  consumed by `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, and `0x14398`.
+  The canonical resource inputs are record fields such as
+  `+0x20/+0x21/+0x22/+0x24/+0x28/+0x2a/+0x2f..+0x31`; the derived/cache
+  state is the candidate pointer/count windows and active filter state.
+- Parser/font-selection consumers:
+  parser-produced symbol and font requests choose among those candidate
+  windows through the symbol/font owners. `0x144d2` writes selected current
+  contexts such as `0xc008004c`, `0xc00ae122`, or `0x440946b4`; `0x14c64`
+  rebuilds active maps; `0xc428` exposes selected page-root context state.
+  The resource bytes are therefore selected by parser state, but they are not
+  themselves parser scratch.
+- Printable object consumer:
+  later printable bytes reach `0xd04a -> 0x1393a`, which reads selected slot
+  `0x782f06`, the current context `0x782ee6` or `0x782ef6`, and active map
+  `0x782f32` or `0x783032`. It captures the mapped glyph byte and selected
+  context into source state, then `0x12f2e -> 0x1387c` queues compact text
+  under current root `+0x1c`.
+- Publication and render consumers:
+  `0xff1e -> 0x1ed84 -> 0x1edc6` copies the page-root context slot into the
+  render record. `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` consumes the
+  compact object, copied context, glyph table entry, glyph-entry fields
+  `+0/+2/+4/+5/+6/+8`, and bitmap payload bytes. This is the first path where
+  resource bytes become ROM-derived rows.
+- Continuation boundary:
+  secondary `LINE_PRINTER` segment `57` for glyph `0x5f` reaches verified
+  source bytes `0x0bfe22..0x0bffff`, then needs firmware bytes
+  `0x0c0000..0x0c0321`. The upstream parser, selected context, compact
+  object, publication, bridge, and compact render dispatch are documented; the
+  only remaining unknown is the physical resource decode for those bytes.
+
+State classification for this map:
+
+- Canonical:
+  verified `HEAD` records, built-in font records, glyph table entries,
+  glyph-entry fields, bitmap bytes, selected context longwords, selected glyph
+  table index, segment number, compact object selector, and copied page/render
+  context slots.
+- Derived/cache:
+  firmware addresses, file offsets, candidate window pointers/counts,
+  selected-font HMI/cache fields, decoded glyph dimensions, placement spans,
+  payload hashes, and continuation-policy hashes.
+- Parser scratch:
+  symbol/font command records and printable bytes choose the resource
+  consumer path but are not resource-ROM fields.
+- Firmware bookkeeping:
+  startup checksum/scan state, candidate lists, current-font and page-root
+  context slots, selected-font flags, sample-page recent-context lists, and
+  render helper register/source-pointer state.
+- Hardware/external and unknown:
+  optional cartridge windows and physical decode after `0x0bffff`. No
+  ROM-local parser-to-context, compact-object, bridge, or compact-render
+  middle edge remains unknown for the documented built-in glyph paths.
+
+Evidence:
+[built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+[symbol-set-selection.md](symbol-set-selection.md#symbol-state-to-visible-consumer-map),
+[font-context-metrics.md](font-context-metrics.md#printable-source-capture),
+[page-record-storage.md](page-record-storage.md#page-object-to-visible-consumer-map),
+[page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
+`generated/analysis/ic32_ic15_font_records.md`,
+`generated/analysis/ic32_ic15_resource_glyph_probe.md`,
+`generated/analysis/ic30_ic13_font_context_bridge.md`,
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`,
+`generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`,
+`generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`, and
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+
 ## Resource ROM Outcome Matrix
 
 This matrix composes the byte-level resource ledger into the parser-to-pixels

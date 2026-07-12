@@ -10077,6 +10077,8 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   Evidence: [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md),
+  [Resource Bytes To Visible Consumer
+  Map](resource-rom.md#resource-bytes-to-visible-consumer-map),
   [downloaded-fonts.md](downloaded-fonts.md), and
   [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix).
 - Canonical page model: current page root `0x78297a`, page-root class byte

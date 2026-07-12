@@ -1558,9 +1558,11 @@ Output effect and evidence:
   alone are insufficient because `0x1f354` resolves glyph rows from the copied
   render context slot.
 - The covered built-in, symbol-set, font-ID, pitch, and downloaded-glyph routes
-  are grounded in cited notes that follow command records into `0xc580`,
-  `0x13eb8`, `0x14c64`, `0x1393a`, `0x12f2e`, `0x1edc6`, and compact render
-  helpers.
+  are grounded in cited notes that follow command records and resource bytes
+  into `0xc580`, `0x13eb8`, `0x14c64`, `0x1393a`, `0x12f2e`, `0x1edc6`, and
+  compact render helpers. The resource-byte side of that route is summarized in
+  [Resource Bytes To Visible Consumer
+  Map](resource-rom.md#resource-bytes-to-visible-consumer-map).
 
 Evidence and unresolved boundaries:
 

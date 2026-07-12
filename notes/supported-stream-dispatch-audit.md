@@ -16,9 +16,9 @@ Audit state:
   control cluster below; cursor, motion, margin, and span command cluster
   below.
 - Still pending in this ledger:
-  page-environment publication and VFC, raster transfer, rectangle/rule
-  imaging, font selection and downloaded glyphs, macro definition/replay,
-  parser-only rows, and page/render owner crosswalk rows.
+  raster transfer, rectangle/rule imaging, font selection and downloaded
+  glyphs, macro definition/replay, parser-only rows, and page/render owner
+  crosswalk rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -499,3 +499,168 @@ rows. Remaining work starts only when a byte stream changes page-environment
 fields, VFC tables/channels, raster transfer objects, rectangle/rule objects,
 font/downloaded-glyph selection, macro replay, parser-only behavior, or final
 page/render crosswalk evidence.
+
+## Page Environment, Publication, And VFC
+
+This cluster covers supported `ESC &l` page-environment rows, reset/FF
+publication, VFC table payloads, and VFC channel jumps. It starts at parser
+dispatch or delayed restore for the relevant command family and ends at one of
+four outcomes: delayed page/layout state, current-root publication through
+`0xff1e`, VFC table installation, or VFC cursor/page movement consumed by
+later printable and render paths.
+
+### Audited Rows
+
+- Reset `ESC E` and FF:
+  reset handler `0xcc52` remains active even in alternate/data table
+  selection. For active current roots it flushes pending span/text state
+  through `0xf34a`, calls publication helper `0xff1e`, then rebuilds the
+  default environment. Missing-root reset reaches the documented no-root
+  `0xff1e` exit without producing a published page. FF handler `0xf0f0`
+  optionally applies CR-style reset from `0x78318f.5`, flushes spans, ensures
+  root `0x78297a`, reaches page-eject helper `0xf124 -> 0xff1e`, and writes
+  pending page-eject latch `0x782a6d = 0xff`. Owner evidence is
+  [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map),
+  [Publication Helper At
+  0xff1e](publication-commands.md#publication-helper-at-0xff1e), and
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`.
+
+- `ESC &l#A`, `ESC &l#O`, and `ESC &l#H`, page size, orientation, and paper
+  source:
+  page-size handler `0xfc74`, orientation handler `0x10220`, and paper-source
+  handler `0xef62` all publish any active current root before their new
+  environment belongs to later bytes. Page size and orientation call
+  `0xf34a -> 0xff1e` before rebuilding geometry, margins, VMI/HMI, VFC, and
+  font-context state. Paper source calls `0xf34a -> 0xff1e`, writes
+  paper-source byte `0x782da6`, sets pending header byte `0x782998`, and can
+  mirror or signal `0x780e8f` / `0x780e26`. First render consumers after
+  publication are scheduler pool `0x780ea6 -> 0x780eaa -> 0x780eae`, bridge
+  `0x1ed84 -> 0x1edc6`, and render dispatch `0x1ef6a`. Owner evidence is
+  [Page Environment Outcome
+  Matrix](publication-commands.md#page-environment-outcome-matrix),
+  [Shared Geometry Refresh Consumer
+  Checkpoint](publication-commands.md#shared-geometry-refresh-consumer-checkpoint),
+  and [Paper Source Selector
+  Matrix](publication-commands.md#paper-source-selector-matrix).
+
+- `ESC &l#P`, page length:
+  handler `0xf9e8` rewinds the six-byte command record, takes the absolute
+  parameter, and has two audited outcomes. Accepted nonzero values convert
+  line count through VMI `0x783160`, write page extent `0x782dba`, set pending
+  header byte `0x782997`, refresh geometry/VFC fields, and create no immediate
+  page object; following printable, raster, rectangle, VFC, or publication
+  paths consume the new extent. Zero/default can first flush and publish the
+  active root through `0xf34a -> 0xff1e`, then restore default page state.
+  Owner evidence is [Page-Length Nonzero Placement
+  Checkpoint](publication-commands.md#page-length-nonzero-placement-checkpoint),
+  [Page Length Handler
+  Details](publication-commands.md#page-length-handler-details), and
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`.
+
+- `ESC &l#X`, copies:
+  copies handler `0xeef0` rewinds the command record, accepts absolute
+  nonzero counts, clamps them to `1..99`, and writes copy count
+  `0x782da4`. It does not call `0xff1e` and creates no page object at handler
+  time. The first publication consumer is a later FF, reset, page-size,
+  orientation, paper-source, VFC page eject, or no-room path; `0xff1e` then
+  copies `0x782da4` into published pool-header word `+0x0c`. Owner evidence is
+  [Copy-Count Delayed Header
+  Checkpoint](publication-commands.md#copy-count-delayed-header-checkpoint)
+  and `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`.
+
+- `ESC &l#C/#D/#E/#F/#L`, vertical layout and perforation state:
+  VMI handler `0xcb00`, LPI handler `0xc992`, top-margin handler `0xece2`,
+  text-length handler `0xea9e`, and perforation-skip handler `0xee64` write
+  delayed layout state rather than page objects. Canonical fields include VMI
+  `0x783160`, top offset `0x782dce`, text-bottom cache `0x782dd2`, VFC limit
+  `0x782dc2`, last-line caches `0x782ede..0x782ee0`, and perforation byte
+  `0x783191`. Consumers are LF/FF, overflow helper `0xf36c`, VFC channel
+  handler `0x1280a`, printable placement, raster/rectangle placement, and
+  later publication. Owner evidence is
+  [Layout State To Output
+  Checkpoint](direct-control-codes.md#layout-state-to-output-checkpoint),
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary), and
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`.
+
+- `ESC &l#W/#w`, VFC table payload:
+  parser final `0x11f6e` schedules delayed handler `0x12cfe` through
+  `0x121cc`; normal restore `0x12218 -> 0x12cfe` loads VFC table words
+  `0x782dde..0x782edd`, derives bottom caches `0x782dc2` / `0x782dd2`, and
+  clears modified-layout flag `0x782ee1`. Count zero or layout refresh can
+  build the default table through `0x12b96`. In alternate/data mode, restore
+  diverts through `0x12358(0x1228a)`; because saved handler `0x12cfe` is not
+  wrapper `0x1228a`, positive payload bytes drain through `0xdace` and append
+  through `0xe002` instead of writing VFC state. Owner evidence is
+  [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map) and
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`.
+
+- `ESC &l#V`, VFC channel jump:
+  handler `0x1280a` consumes selector, VMI `0x783160`, top offset
+  `0x782dce`, current cursor `0x782c8e`, left margin `0x782dd6`, line-bound
+  caches, and VFC table words. Non-publishing paths reset x through
+  `0xf06e`, flush spans through `0xf34a`, write cursor state, and leave the
+  following printable to queue under the current root. Publishing branches
+  call `0xf124 -> 0xff1e`, so pre-VFC page objects remain on the old published
+  root while post-VFC printable bytes allocate or queue on a fresh root. Owner
+  evidence is [vertical-forms-control.md](vertical-forms-control.md#owner-summary)
+  and [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map).
+
+### Field Classification
+
+- Canonical parser/delayed state:
+  six-byte command record `0x78299e`, delayed flag `0x782a1a`, saved handler
+  pointer `0x782a1c`, saved delayed record `0x782a20..0x782a25`, and
+  alternate/data flag `0x782c18`.
+- Canonical page/image state:
+  current root `0x78297a`, root state byte `+0x04`, current-root bucket/list
+  fields `+0x1c/+0x24/+0x28`, context slots `+0x2c..+0x68`, published pool
+  head `0x780ea6`, scheduler cursors `0x780eaa` / `0x780eae`, and
+  publication flag `0x782996`.
+- Canonical page-control/environment state:
+  copy count `0x782da4`, paper-source byte `0x782da6`, orientation byte
+  `0x782da3`, pending header bytes `0x782997` / `0x782998`, status byte
+  `0x780e99`, paper-source mirrors `0x780e8f` / `0x780e26`, page length
+  `0x782dba`, top offset `0x782dce`, text-bottom cache `0x782dd2`,
+  perforation byte `0x783191`, and VMI/HMI fields `0x783160` / `0x78315c`.
+- Canonical VFC state:
+  table words `0x782dde..0x782edd`, VFC limit `0x782dc2`, last-line caches
+  `0x782ede`, `0x782edf`, and `0x782ee0`, modified-layout flag
+  `0x782ee1`, and selector mask `1 << (n - 1)` used by `0x1280a`.
+- Derived/cache state:
+  refreshed page geometry, VFC line-count caches, render-record roots copied
+  by `0x1ed84` / `0x1edc6`, and band caches produced after scheduler/render
+  selection.
+- Firmware bookkeeping:
+  allocator cursors `0x782a70`, `0x782a72`, and `0x782a76`, pending byte
+  `0x782a6d`, root retry/overlay state `0x782a92` / `0x782a94`, delayed
+  alternate/data redirect `0x12358`, append sink `0xe002`, service wait
+  helper `0x9ac2`, and macro overlay frame helpers `0xe0a4` / `0xe4f4`.
+- Hardware/external state:
+  physical engine consumption after rendered band buffers and board-facing
+  service/status timing. These are outside the ROM-local publication/VFC
+  parser-to-render-entry route.
+- Unknown:
+  manual-facing names for VFC line caches `0x782ede`, `0x782edf`, and
+  `0x782ee0`, plus physical paper movement after publication. Their ROM-local
+  writer and consumer roles are documented by the cited handlers.
+
+### Output And Boundary Result
+
+Publication creates no pixels by itself. It snapshots the current page/image
+object graph and header state so scheduler and render code can later select
+the page/control record. VFC commands also draw nothing at handler entry: they
+install table state, move cursor state, or split pages through `0xff1e`.
+Pixel generation begins only after earlier page objects or later printable,
+raster, rectangle, fixed-list, or span objects pass through the published
+record and render path.
+
+No ROM-local parser-to-publication, VFC-table, VFC-channel, or
+publication-to-render-entry middle edge remains for the documented reset, FF,
+page-size, page-length, orientation, paper-source, copies-through-FF,
+vertical-layout, VFC table-definition, and VFC channel-jump rows. Remaining
+work in this audit ledger starts from raster transfer objects,
+rectangle/rule objects, font/downloaded-glyph selection, macro replay,
+parser-only behavior, or final page/render crosswalk evidence.

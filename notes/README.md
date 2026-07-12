@@ -192,12 +192,15 @@ checked-in ROM model:
 4. Use [pcl-command-map.md](pcl-command-map.md#owner-summary) only as the dispatch
    index. After a terminal handler is named, continue in the family owner note for
    parsed inputs, RAM writers, readers/consumers, output effect, and residual boundary.
-   If the owner classifies the route as host/status, explicit no-output, generic drain,
-   append-only storage, or status-only behavior, preserve the named
-   FIFO/status/report/parser/append state and stop page-image traversal until a later
-   admitted byte reaches a page-producing owner. Terminal report routes stop at `0x1284`
-   / `0x128c -> 0x158c -> 0x8c7a` and cached report bytes `0x783ef0..0x783ef1`, as owned
-   by [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix). The parser
+   For the shortest byte-family handoff from parser outcome to the first visible
+   consumer map, use the [Inbound Byte To Visible Consumer
+   Index](pcl-command-map.md#inbound-byte-to-visible-consumer-index). If the owner
+   classifies the route as host/status, explicit no-output, generic drain, append-only
+   storage, or status-only behavior, preserve the named FIFO/status/report/parser/append
+   state and stop page-image traversal until a later admitted byte reaches a
+   page-producing owner. Terminal report routes stop at `0x1284` / `0x128c -> 0x158c ->
+   0x8c7a` and cached report bytes `0x783ef0..0x783ef1`, as owned by
+   [errors-and-status.md](errors-and-status.md#hoststatus-outcome-matrix). The parser
    command-dispatch anchors in [firmware-dataflow-model.md](firmware-dataflow-model.md)
    summarize the common terminal-handler handoffs before the full flattened table. The
    `Command Family Owner Matrix` in the same file gives the compact handler-to-owner
@@ -431,7 +434,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   current host-byte fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) -
   firmware parser-table dispatch classes, handler-owner matrix, supported
-  stream dispatch matrix, and flattened command-to-handler map.
+  stream dispatch matrix, [Inbound Byte To Visible Consumer
+  Index](pcl-command-map.md#inbound-byte-to-visible-consumer-index), and
+  flattened command-to-handler map.
 - [page-raster-imaging.md](page-raster-imaging.md#owner-summary) -
   page geometry lookup tables, orientation state, page-record storage,
   active-render, bitmap object-dispatch, compact row-copy checkpoints, and

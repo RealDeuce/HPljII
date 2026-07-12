@@ -100,6 +100,8 @@ Use these worked paths as entry points for the byte-stream-to-pixel model:
   Matrix](pcl-parser-core.md#parser-core-outcome-matrix),
   [Inbound Byte Outcome
   Classes](pcl-command-map.md#inbound-byte-outcome-classes),
+  [Inbound Byte To Visible Consumer
+  Index](pcl-command-map.md#inbound-byte-to-visible-consumer-index),
   `Worked Path: Command Record And Payload Dispatch`,
   `Worked Path: Explicit No-Output Parser Rows`.
 - Host/status side channels with no direct page-object effect:

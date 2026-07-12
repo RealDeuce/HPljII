@@ -731,6 +731,126 @@ output class that a byte-stream reader should follow next.
   [io-interfaces.md](io-interfaces.md). Output class:
   host-visible response bytes with no page-object output.
 
+### Inbound Byte To Visible Consumer Index
+
+This index is the compact handoff from parser outcome to the checked-in
+semantic route that explains visible effects. It starts after `0xa904`,
+`0xda9a`, and `0x11774` have admitted a byte or command record, and it stops
+at the first owner map that names downstream consumers.
+
+- Printable byte or printable replay:
+  parser no-match normal path reaches `0xd04a`; display/transparent readers
+  can also route normalized bytes to `0xd04a`. Continue through
+  [Printable Source Outcome
+  Matrix](direct-control-codes.md#printable-source-outcome-matrix), [Font
+  State To Visible Consumer
+  Map](font-context-metrics.md#font-state-to-visible-consumer-map), and [Page
+  Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map). First
+  page producer is compact text under root `+0x1c`; first render consumers
+  are `0x1ef6a -> 0x1efc2 -> 0x1effe`.
+- Direct-control byte or cursor/layout command:
+  C0 handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`,
+  and `0xc68a`, plus cursor/layout handlers such as `0xeb58`, `0xedb0`,
+  `0xf48c`, and `0xf560`, continue through [Delayed State To Visible
+  Consumer Map](direct-control-codes.md#delayed-state-to-visible-consumer-map).
+  Output is cursor/span/layout state until a later printable, span flush,
+  page-boundary, raster, rectangle, VFC, or publication consumer reads it.
+- Transparent or display payload byte:
+  normal transparent restore `0x12218 -> 0x12452` and display reader
+  `0x12536` route payload bytes directly, while alternate/data routes
+  `0x12358 -> 0xdace -> 0xe002` and `0x12120` append stored bytes. Continue
+  through [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map)
+  or [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map).
+- Raster graphics byte stream:
+  raster setup handlers `0x1075a`, `0x107fa`, and `0x10808` write raster
+  state, and delayed `ESC *b#W` restore reaches `0x105d0`. Continue through
+  [Raster State To Visible Consumer
+  Map](raster-graphics.md#raster-state-to-visible-consumer-map) and [Page
+  Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map). First
+  page producer is class-`0x80` bucket state under root `+0x1c`; first raster
+  render consumer is `0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+- Rectangle/rule graphics byte stream:
+  dimension/fill handlers `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`,
+  `0x10dce`, and `0x10898` continue through [Rectangle State To Visible
+  Consumer Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map)
+  and [Page Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map). First page
+  producer is a rule-list node under root `+0x24`; first render consumer is
+  `0x1ef6a -> 0x1f446`.
+- Font, symbol, and downloaded-font command stream:
+  font writers `0xc390`, `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`,
+  `0xc930`, terminal wrappers `0x12046..0x120be`, and downloaded-font
+  handlers `0x15a18`, `0x15a56`, `0x16df6`, `0x15d0a`, and `0x16c14`
+  continue through [Font State To Visible Consumer
+  Map](font-context-metrics.md#font-state-to-visible-consumer-map) and
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These commands
+  are delayed state or resource installers until a later printable byte queues
+  compact text/downloaded glyph output.
+- VFC command stream:
+  delayed table load `0x11f6e -> 0x12218 -> 0x12cfe` and channel jump
+  `0x1280a` continue through [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map). Output is
+  table state, cursor movement, or page-boundary publication that later uses
+  the shared page-object and render path.
+- Macro or alternate/data byte stream:
+  append sink `0xe002`, macro handlers `0xdd08` / `0xe112`, replay source
+  `0xa904`, and overlay replay `0xff40..0xffb0` continue through [Macro
+  Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map). Replayed
+  bytes then re-enter this index as ordinary admitted bytes.
+- Publication or page-environment byte stream:
+  reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
+  orientation `0x10220`, paper source `0xef62`, copies `0xeef0`, and
+  page-eject helper `0xf124` continue through
+  [publication-commands.md](publication-commands.md#owner-summary), [Page
+  Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map), and
+  [Scheduler Outcome Matrix](active-render-scheduler.md#scheduler-outcome-matrix).
+  Publication snapshots existing page objects; it is not itself a row writer.
+- Parser-only, ignored, host/status, or hardware-boundary byte stream:
+  zero-handler rows, setup-only rows, `ESC ?`, `ESC Z`, generic drains, and
+  status/model queries continue through
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) or
+  [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix). Output is parser
+  bookkeeping, stored bytes, host-visible response bytes, or an exact
+  unresolved boundary rather than a page-object producer.
+
+State at this index:
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data flag `0x782c18`, current command
+  record `0x78299e..`, delayed snapshot fields `0x782a1a`, `0x782a1c`, and
+  `0x782a20..0x782a25`, and admitted byte `D7`.
+- Parser scratch:
+  tokenizer scratch `0x782a3e`, `0x782a26`, `0x782a42..`, `0x782a2a..`, and
+  matched-byte buffer `0x783196..0x783199`.
+- Canonical downstream state:
+  none until the selected owner writes cursor, layout, font, macro, raster,
+  rectangle, VFC, page-object, or publication fields. The visible-consumer
+  maps above name those writer fields and first consumers.
+- Firmware bookkeeping:
+  prefix helpers, lowercase rewind `0x11f4c`, delayed restore `0x12218`,
+  alternate append `0xe002`, generic drains `0x1228a` / `0x12328`, and
+  callback pointer `0x78299a`.
+- Unknown:
+  no parser-to-owner row is unresolved for the supported families in this
+  index. Remaining stop points are the exact owner boundaries for optional
+  resource bytes, invalid computed helper targets, unresolved callers, or
+  hardware/MMIO timing.
+
+Evidence:
+`generated/disasm/ic30_ic13_main_parser_loop_011774.lst`,
+`generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`,
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md`,
+`generated/analysis/ic30_ic13_pcl_command_map.md`, and the visible-consumer
+owner maps linked above.
+
 These classes are mutually useful for reproduction: a byte-stream renderer
 does not need physical paper output to classify a byte. It must preserve the
 ROM parser state, command records, delayed-payload state, and page/render

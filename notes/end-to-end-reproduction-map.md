@@ -1614,7 +1614,9 @@ command-family and page-image structure:
    parser-external return. The dispatch class determines whether the next
    semantic owner is a prefix/setup row, terminal handler, delayed-payload
    owner, explicit no-output row, alternate/data append path, or service
-   outcome.
+   outcome. For the compact owner-to-consumer handoff after classification,
+   use [Inbound Byte To Visible Consumer
+   Index](pcl-command-map.md#inbound-byte-to-visible-consumer-index).
 3. Follow parser records and dispatch:
    for matched command bytes, continue in
    [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) to

@@ -3028,6 +3028,23 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0x1f354`, and compact helpers `0x1f034` / `0x1f0d2` / `0x1f1f0` /
   `0x1f264` write rows through the row-copy tables and destination helpers
   named in the row-store owner.
+- Downloaded-font control before descriptor or character payloads:
+  `ESC *c#D` reaches `0x15a56` and writes current downloaded-font id
+  `0x782f2e`; `ESC *c#E` reaches `0x15a18` and writes current character word
+  `0x782f30`; `ESC *c#F` reaches dispatcher `0x16df6` and its selector
+  helpers for mark, unmark, delete, release, and refresh operations. These
+  commands create no page-image object by themselves. Their first persistent
+  downstream input is current downloaded-font/current-character/current-record
+  state consumed by later descriptor or character payload handlers
+  `0x15d0a`, `0x16c14`, and `0x16498`; page-image state appears only after a
+  later printable byte consumes the installed or fixed-record resource state
+  and queues a compact object under root `+0x1c`.
+  In alternate/data mode, `ESC *c#D/#E/#F` uppercase rows are blank and
+  lowercase `d/e/f` rows rewind through `0x11f4c`, so `0x15a56`, `0x15a18`,
+  and `0x16df6` do not run. Current id `0x782f2e`, current character
+  `0x782f30`, current-record pool state, selected maps, page-root context
+  slots, compact objects, bridge roots, and render inputs remain unchanged
+  until replay reaches the normal downloaded-font owner.
 - Direct control bytes and text-motion commands:
   normal-mode CR, LF, HT, BS, SO, and SI reach `0xf02c`, `0xf08c`,
   `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`; `ESC &k#G/#H`, `ESC &s#C`,

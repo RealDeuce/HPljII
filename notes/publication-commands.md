@@ -103,7 +103,9 @@ The publication route is:
   root published, writes pool head `0x780ea6`, sets publication flag
   `0x782996`, and clears current root pointer `0x78297a`.
 - Scheduler and render handoff later consume that published pool state through
-  `0x780eaa -> 0x780eae -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  `0x780eaa -> 0x780eae -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, then
+  object-class helpers write rows through the row-store primitives owned by
+  [page-raster-imaging.md](page-raster-imaging.md#row-store-primitive-map).
 
 Writers feeding this checkpoint:
 
@@ -130,7 +132,9 @@ Readers and consumers:
   and copy source roots `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render roots
   `+0x18/+0x1c/+0x20/+0x24..+0x60`.
 - `0x1ef6a` consumes the bridged render record; compact, segment, raster,
-  rule, and fixed-list render helpers produce the ROM-derived rows.
+  rule, and fixed-list render helpers produce the ROM-derived rows through the
+  object-class row-store helpers documented in
+  [page-raster-imaging.md](page-raster-imaging.md#row-store-primitive-map).
 
 Output effect:
 
@@ -442,8 +446,10 @@ environment change, no-publication clear, or the shared
   `0x780ea6`, `0x780eaa`, and `0x780eae` feed `0x1ed84`. Bridge `0x1edc6`
   copies source roots `+0x1c/+0x24/+0x28/+0x2c..+0x68` into render roots
   `+0x18/+0x1c/+0x20/+0x24..+0x60`, and render entry `0x1ef6a` dispatches
-  compact, raster, rule, and fixed-list objects. Output effect: publication
-  snapshots page/image state; pixel generation belongs to the render owners.
+  compact, raster, rule, and fixed-list objects. The selected object-class
+  helper then writes current-band or fallback rows through the row-store
+  primitives. Output effect: publication snapshots page/image state; pixel
+  generation belongs to the render owners.
 
 State grouping:
 
@@ -869,8 +875,9 @@ Common setup:
   `0x782996 = 1`, and clears `0x78297a`.
 - Render entry then treats the published record as the source record:
   `0x1ed84` selects it, `0x1edc6` copies source roots and context slots into
-  render-work fields, and `0x1ef6a` dispatches bucket contents through the
-  compact helper route `0x1efc2`.
+  render-work fields, and `0x1ef6a` dispatches bucket contents through
+  `0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354` to the selected compact
+  row-copy helper.
 
 Stream outcomes:
 
@@ -1004,9 +1011,9 @@ with reset/FF publication timing and the shared `0xff1e` root finalizer.
 - Bridge/render consumer:
   `0x1ed84` selects the published source record, `0x1edc6` copies bucket roots
   and context slots into render-work fields, and `0x1ef6a` dispatches compact,
-  rule, fixed, and raster roots. Page-environment commands do not draw pixels
-  directly; they either publish already queued objects or mutate state that
-  later object producers consume.
+  rule, fixed, and raster roots to their row-store helpers. Page-environment
+  commands do not draw pixels directly; they either publish already queued
+  objects or mutate state that later object producers consume.
 
 Field grouping for this route:
 
@@ -1229,9 +1236,11 @@ Consumers and output effect:
   `0x782dba = 3300`, sets internal page code `2`, refreshes vertical
   placement, and queues the following `!` at compact coordinate `0x9001`.
 - Once that compact object exists, pixels follow the ordinary publication and
-  render route: `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
-  The page-length command has already done its work by changing the fields
-  that determined the queued object coordinate.
+  render route:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe -> 0x1f034 -> 0x1f354`,
+  then the selected compact row-copy helper writes the row. The page-length
+  command has already done its work by changing the fields that determined the
+  queued object coordinate.
 
 State classification:
 
@@ -1373,7 +1382,8 @@ Output effect:
 - If a current root exists, page-size, page-length zero/default, and
   orientation change paths publish the old page before rewriting geometry.
   Objects already queued under the old root therefore render with the old
-  geometry through the normal `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`
+  geometry through the normal
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> object-class row-store helper`
   route. Later objects consume the new fields above.
 
 Field classification:
@@ -1613,7 +1623,8 @@ count`, `mixed printable/copies/FF stream publishes copy count`, and
   render record.
 - `0x1ef6a` consumes the render record in call order
   `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`; the covered streams dispatch
-  one compact bucket object to `0x1effe` with context slot `0`.
+  one compact bucket object to `0x1effe` with context slot `0`, then through
+  `0x1f034 -> 0x1f354` to the selected compact row-copy helper.
 
 ## Output Effect
 
@@ -1629,6 +1640,8 @@ path for streams that publish already queued text is:
        -> 0x1ed84/0x1edc6 render-record bridge
        -> 0x1ef6a compact bucket dispatch
        -> 0x1effe text/compact render helper
+       -> 0x1f034/0x1f354 compact source resolver
+       -> selected compact row-copy helper
 ```
 
 The named byte-stream and addressed examples exercise that path for reset, FF,

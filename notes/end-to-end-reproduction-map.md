@@ -6724,9 +6724,12 @@ or from a byte stream that changes a named field in the family sections.
   decoded fields include source pointer `0x783992`, destination row base
   `0x78399a`, row-copy jump offset `0x7839a4`, destination stride
   `0x7839a8`, accumulator `0x7839d4`, and pattern-pointer cache
-  `0x7839d8..0x7839f7`. Remaining evidence needed is a static caller/xref,
-  computed jump target, trap/vector entry, or scheduler-entry proof into
-  `0x247c`.
+  `0x7839d8..0x7839f7`. The surrounding state provenance is bounded:
+  active-pool setup `0x1a9c..0x1bf6` seeds the copy-window fields, copy loops
+  `0x1db0..0x1e2e` and `0x2038..0x211c` advance source pointer `0x783992`,
+  and ordinary helper `0x22f4..0x2454` consumes the supported copy route.
+  Remaining evidence needed is a static caller/xref, computed jump target,
+  trap/vector entry, or scheduler-entry proof into `0x247c`.
 - ROM-local command variants:
   new parser work should begin only when a byte stream changes a documented
   field or branch boundary: selected font/context fields, transparent/display

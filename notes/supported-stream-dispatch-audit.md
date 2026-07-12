@@ -16,9 +16,9 @@ Audit state:
   control cluster below; cursor, motion, margin, and span command cluster
   below.
 - Still pending in this ledger:
-  raster transfer, rectangle/rule imaging, font selection and downloaded
-  glyphs, macro definition/replay, parser-only rows, and page/render owner
-  crosswalk rows.
+  rectangle/rule imaging, font selection and downloaded glyphs,
+  macro definition/replay, parser-only rows, and page/render owner crosswalk
+  rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -664,3 +664,153 @@ vertical-layout, VFC table-definition, and VFC channel-jump rows. Remaining
 work in this audit ledger starts from raster transfer objects,
 rectangle/rule objects, font/downloaded-glyph selection, macro replay,
 parser-only behavior, or final page/render crosswalk evidence.
+
+## Raster Transfer And Encoded Rows
+
+This cluster covers the supported `ESC *t`, `ESC *r`, and `ESC *b#W` raster
+family from parser dispatch through encoded raster objects and render helper
+selection. It starts at normal table handlers for raster setup or delayed
+restore for the transfer payload and ends at raster state mutation,
+append-only alternate/data storage, drained payload bytes, encoded objects
+under page-root `+0x1c`, or encoded-raster row-store helpers after
+publication.
+
+### Audited Rows
+
+- `ESC *t#R`, raster resolution:
+  parser dispatch reaches handler `0x10808`. When raster active byte
+  `0x783182` is clear, the handler rewinds command record cursor
+  `0x78299e`, reads the absolute parameter, maps thresholds to scale
+  `+0x0e` and encoded mode `+0x08`, and recomputes row byte limit `+0x10`
+  from page extent and baseline. Requests above `150` store scale `1` and
+  mode `0`; `101..150` stores scale `2` and mode `1`; `76..100` stores scale
+  `3` and mode `2`; `<= 75` stores scale `4` and mode `3`. If raster is
+  already active, `0x10808` exits without rewriting mode, scale, or limit.
+  First visible consumer is later transfer `0x105d0`. Owner evidence is
+  [raster-graphics.md](raster-graphics.md#resolution-at-0x10808) and
+  [Raster Transfer Decision
+  Checkpoint](raster-graphics.md#raster-transfer-decision-checkpoint).
+
+- `ESC *r#A/#B`, start and end raster:
+  start handler `0x1075a` rewinds the parsed record, reads the absolute
+  parameter, and initializes raster state only when active byte `+0x12` is
+  clear. It sets active byte `0x783182`, seeds origin `+0x0a` from the active
+  cursor axis for selector `1` or from the left edge otherwise, copies baseline
+  `+0x00`, and recomputes row byte limit `+0x10`. End handler `0x107fa`
+  clears only active byte `0x783182`; it leaves mode, scale, origin,
+  baseline, row, and limit fields unchanged until later start/resolution/reset
+  paths rewrite them. Owner evidence is
+  [Start And End Raster](raster-graphics.md#start-and-end-raster) and
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`.
+
+- `ESC *b#W/#w`, delayed transfer setup:
+  parser mode `14` has `W/w` transfer rows that call setup handler `0x11f82`.
+  `0x11f82` schedules delayed handler `0x105d0` through `0x121cc`, storing
+  pending byte `0x782a1a`, saved handler `0x782a1c = 0x105d0`, and saved
+  six-byte command record `0x782a20..0x782a25`. Normal restore `0x12218`
+  copies the record back to `0x78299e`, advances the cursor, and calls
+  `0x105d0`; payload bytes are not consumed at parser-table dispatch time.
+  Owner evidence is [Parser Boundary](raster-graphics.md#parser-boundary),
+  [Transfer Gate At 0x105d0](raster-graphics.md#transfer-gate-at-0x105d0),
+  and `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`.
+
+- Alternate/data raster rows:
+  with alternate/data flag `0x782c18` set, `ESC *t#R`, `ESC *r#A`, and
+  `ESC *r#B` do not reach `0x10808`, `0x1075a`, or `0x107fa`; uppercase
+  terminal rows are blank and lowercase finals route only to rewind helper
+  `0x11f4c`. `ESC *b#W/w` still schedules delayed setup, but restore
+  `0x12218` diverts through `0x12358(0x1228a)`. Because saved handler
+  `0x105d0` is not wrapper `0x1228a`, positive payload bytes drain through
+  `0xdace` and append through `0xe002`. No raster block field, page root,
+  encoded object, bridge field, or renderer input changes until replay.
+  Owner evidence is [Alternate/Data Raster Payload
+  Checkpoint](raster-graphics.md#alternatedata-raster-payload-checkpoint).
+
+- Transfer gate `0x105d0`:
+  the restored transfer handler flushes pending spans, rewinds the restored
+  command record, reads absolute byte count, sets raster active byte `+0x12`,
+  and derives the orientation-specific row coordinate. Beyond-extent
+  transfers drain payload through `0xdace` and return before current-root
+  allocation. Negative-row transfers ensure a root and update row state but
+  skip `0x13070`, draining payload instead of queueing an object. In-range
+  transfers store accepted count `+0x04` and overflow/drain count `+0x06`;
+  if the raw count exceeds row byte limit `+0x10`, the accepted bytes can
+  become object payload and the overflow drains later. Owner evidence is
+  [Transfer Gate Outcome
+  Matrix](raster-graphics.md#transfer-gate-outcome-matrix) and
+  `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`.
+
+- Encoded object creation:
+  accepted nonnegative rows call `0x13070`. `0x13070` computes bucket index
+  `0x782a7c` and packed key `0x782a7e`; `0x13250` links one or more high-bit
+  class objects under current page-root bucket `+0x1c`; and `0x138de` copies
+  accepted payload bytes into object `+0x0a..`. Object byte `+0x04 = 0x80`
+  selects encoded-raster dispatch, byte `+0x05` carries mode bits, word
+  `+0x06` records payload capacity/count, and word `+0x08` carries the packed
+  destination key. Dense rows can split into multiple objects before
+  publication. Owner evidence is
+  [Encoded Raster Object Outcome
+  Matrix](raster-graphics.md#encoded-raster-object-outcome-matrix),
+  [page-record-storage.md](page-record-storage.md#page-object-storage-outcome-matrix),
+  and `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`.
+
+- Encoded raster rendering:
+  after publication `0xff1e`, bridge `0x1ed84 -> 0x1edc6` copies bucket root
+  `+0x1c` into render root `+0x18`. Render dispatch
+  `0x1ef6a -> 0x1efc2` routes high-bit objects to `0x1f88e`. `0x1f88e`
+  parses object byte `+0x05 & 3`, count `+0x06`, key `+0x08`, and payload
+  bytes. Mode `0` dispatches helper `0x1f8da` for literal rows; mode `1`
+  dispatches `0x1f8e6` for two-row expansion; mode `2` dispatches
+  `0x1f920` with shared loop `0x1f9a0` for three-row expansion and fallback
+  split behavior; mode `3` dispatches `0x1f9c6` for four-row expansion.
+  Owner evidence is [Render Dispatch](raster-graphics.md#render-dispatch),
+  [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map), and
+  `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`.
+
+### Field Classification
+
+- Canonical parser/delayed state:
+  command-record cursor `0x78299e`, delayed pending byte `0x782a1a`, saved
+  handler `0x782a1c`, saved transfer record `0x782a20..0x782a25`, and
+  alternate/data flag `0x782c18`.
+- Canonical raster state:
+  raster block `0x783170`, including baseline `+0x00`, current row `+0x02`,
+  accepted count `+0x04`, overflow/drain count `+0x06`, encoded mode `+0x08`,
+  origin `+0x0a`, scale `+0x0e`, row byte limit `+0x10`, and active byte
+  `+0x12`.
+- Canonical page/image state:
+  current page root `0x78297a`, bucket root `+0x1c`, encoded object class
+  byte `+0x04`, mode byte `+0x05`, count/capacity word `+0x06`, key word
+  `+0x08`, and copied payload bytes `+0x0a..`.
+- Derived/cache state:
+  bucket index `0x782a7c`, packed key `0x782a7e`, allocation capacity
+  `0x782a80`, render-record bucket root `+0x18`, active band caches, stride
+  `0x783a1c`, and fallback storage rooted at `0x7810b4`.
+- Firmware bookkeeping:
+  allocator cursors `0x782a70`, `0x782a72`, and `0x782a76`, copy-stop flag
+  `0x782996`, root retry flag `+0x15.0`, alternate/data redirect `0x12358`,
+  append sink `0xe002`, and no-room publication/retry state.
+- Hardware/external state:
+  none inside this command-family edge after payload bytes have been admitted
+  by `0xa904` / `0xdace`; physical engine consumption begins after shared
+  render buffers are written.
+- Unknown:
+  no ROM-local middle edge remains for the audited setup, accepted row, drain,
+  dense split, encoded object, bridge, or modes `0..3` render paths. No
+  separate ROM parser row for `ESC *b#M` or another host-selected raster
+  compression method is present in the supported table.
+
+### Output And Boundary Result
+
+Resolution and start/end commands are state-only until a later transfer uses
+them. Accepted `ESC *b#W` rows create encoded raster objects under page-root
+`+0x1c`; beyond-extent and negative-row transfers consume payload without
+queueing encoded objects. Pixel generation begins after publication and bridge
+when `0x1efc2` selects encoded raster renderer `0x1f88e` and its mode helper.
+
+No ROM-local raster dispatch, object-layout, bridge, or row-store helper edge
+remains unresolved for the documented raster cluster. Remaining work in this
+audit ledger starts from rectangle/rule objects, font/downloaded-glyph
+selection, macro replay, parser-only behavior, or final page/render crosswalk
+evidence.

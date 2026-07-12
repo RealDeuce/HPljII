@@ -12,12 +12,13 @@ output/no-output effect, evidence, and any exact residual boundary.
 Audit state:
 
 - Complete in this ledger:
-  transparent/display/status byte-reader cluster below.
+  transparent/display/status byte-reader cluster below; printable/direct C0
+  control cluster below.
 - Still pending in this ledger:
-  printable/direct controls, cursor and layout state, publication and VFC,
-  raster transfer, rectangle/rule imaging, font selection and downloaded
-  glyphs, macro definition/replay, parser-only rows, and page/render owner
-  crosswalk rows.
+  cursor and layout command families beyond direct C0 controls, publication
+  and VFC, raster transfer, rectangle/rule imaging, font selection and
+  downloaded glyphs, macro definition/replay, parser-only rows, and
+  page/render owner crosswalk rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -187,3 +188,142 @@ Exact residual boundaries:
 - Model/status backchannel output after FIFO helper `0xb090` reaches a
   hardware/backend selector rooted at `0x780e40`. This is a host-interface
   boundary, not a page-object or render-engine boundary.
+
+## Printable Bytes And Direct C0 Controls
+
+This cluster covers the normal mode-zero parser rows that either create the
+first ordinary text page objects or mutate immediately adjacent text state.
+It starts when parser loop `0x11774` admits a normal host byte with
+alternate/data flag `0x782c18` clear, and it ends at compact text objects,
+span/publication effects, delayed cursor/context state, or explicit
+no-output parser rows.
+
+### Audited Rows
+
+- Plain printable bytes:
+  normal mode-zero no-match dispatch sends bytes `>= 0x20` to `0xd04a`.
+  `0xd04a` normalizes the admitted value, builds printable source scratch
+  through `0x1393a`, consumes selected text context, cursor
+  `0x782c8a` / `0x782c8e`, HMI `0x78315c`, and previous-width latches, then
+  selects unflagged `0xd140 -> 0xd3b2` or flagged
+  `0xd550 -> 0xd824`. The compact object writer is
+  `0x12f2e -> 0x1387c` under current page-root bucket `+0x1c`; publication
+  and pixels then flow through `0xff1e`, `0x1ed84 -> 0x1edc6`,
+  `0x1ef6a`, compact dispatcher `0x1efc2 -> 0x1effe`, and the selected
+  row-store helper. Owner evidence is
+  [direct-control-codes.md](direct-control-codes.md#printable-byte-to-compact-object),
+  [Printable Source Outcome
+  Matrix](direct-control-codes.md#printable-source-outcome-matrix),
+  [page-record-storage.md](page-record-storage.md#page-object-storage-outcome-matrix),
+  and `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+
+- CR and LF:
+  normal C0 rows dispatch CR `0x0d` to `0xf02c` and LF `0x0a` to `0xf08c`.
+  CR copies left margin `0x782dd6` into horizontal cursor `0x782c8a`
+  through helper `0xf06e`, flushes pending spans through `0xf34a`, and can
+  apply LF movement when line-termination byte `0x78318f.7` is set. LF can
+  apply CR-style reset when `0x78318f.6` is set, then advances vertical
+  cursor `0x782c8e` by VMI `0x783160` through helper `0xf0b2`. Neither row
+  queues compact glyph bytes by itself; the visible consumers are pending
+  span flush `0x12714 -> 0x126e2`, later printable `0xd04a`, VFC placement,
+  raster or rectangle placement, or page-boundary publication after overflow.
+  Owner evidence is
+  [Direct-Control Output Decision
+  Checkpoint](direct-control-codes.md#direct-control-output-decision-checkpoint),
+  [Line-Termination Route
+  Checkpoint](direct-control-codes.md#line-termination-route-checkpoint), and
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`.
+
+- FF:
+  normal C0 row `0x0c` dispatches `0xf0f0`. FF optionally applies
+  CR-style reset from `0x78318f.5`, flushes pending spans, marks page-eject
+  state in `0x782a6d`, and reaches page-eject helper
+  `0xf124 -> 0xff1e` when a current page root exists. Its first page-image
+  effect is publication of already queued page objects, not a new printable
+  object. Publication consumers are documented by the page-record and render
+  owners after `0xff1e`. Owner evidence is
+  [direct-control-codes.md](direct-control-codes.md#line-termination-route-checkpoint),
+  [publication-commands.md](publication-commands.md#owner-summary), and
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`.
+
+- HT and BS:
+  normal C0 rows dispatch HT `0x09` to `0xf1cc` and BS `0x08` to `0xf2a8`.
+  HT reads HMI `0x78315c`, left margin `0x782dd6`, right margin
+  `0x782dda`, and page width `0x782db8` to commit the next eight-column tab
+  x into `0x782c8a`. BS ensures a root through `0x10084`, subtracts HMI or
+  previous-width state from `0x782a58` / `0x782a5a` / `0x782a5c`, clamps at
+  left margin, and refreshes span metrics. Both rows are delayed-output
+  cursor writers; the next printable byte consumes the committed x through
+  `0xd04a`, or a later span flush can materialize segment-list output.
+  Owner evidence is
+  [Previous-Width Backspace
+  Checkpoint](direct-control-codes.md#previous-width-backspace-checkpoint),
+  [Readers And Consumers](direct-control-codes.md#readers-and-consumers), and
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`.
+
+- SO and SI:
+  normal C0 rows dispatch SO `0x0e` to `0xc6b8` and SI `0x0f` to
+  `0xc68a`. Both call selected-context installer `0xc428(slot)`, update
+  selected text slot `0x782f06`, and can install page-root context slot state
+  through `0xc4fc`. They create no page object directly; the next printable
+  byte consumes the selected primary or secondary context through
+  `0xd04a -> 0x1393a` and queues compact objects under the matching page-root
+  context. Owner evidence is
+  [Selected Context Switch
+  Checkpoint](direct-control-codes.md#selected-context-switch-checkpoint),
+  [font-context-metrics.md](font-context-metrics.md#owner-summary), and
+  fixtures `live primary current-font RAM install feeds SI page-record rows`
+  and `live secondary current-font RAM install feeds SO page-record rows`.
+
+- Explicit no-output C0 rows:
+  normal table rows `0x00`, `0x07`, and `0x0b` are zero-handler rows. They
+  reach the parser terminal reset path through `0x12218` without calling
+  `0xd04a`, a direct-control handler, page-root creation, publication, or a
+  render helper. Owner evidence is
+  [pcl-parser-core.md](pcl-parser-core.md#parser-core-outcome-matrix) and the
+  dispatch audit in [pcl-command-map.md](pcl-command-map.md#table-coverage-note).
+
+### Field Classification
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data flag `0x782c18`, admitted printable
+  byte, and direct C0 table rows that select `0xf02c`, `0xf08c`, `0xf0f0`,
+  `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`.
+- Canonical text/page state:
+  current page root `0x78297a`, compact bucket root `+0x1c`, selected context
+  slot `0x782f06`, page-root context slot `0x78297e`, live context flags
+  `0x78297f..`, horizontal and vertical cursors `0x782c8a` / `0x782c8e`,
+  margins `0x782dd6` / `0x782dda`, HMI `0x78315c`, VMI `0x783160`, and
+  line-termination byte `0x78318f`.
+- Derived/cache state:
+  printable source scratch `0x782d7e`, compact bucket/key fields
+  `0x782a7a..0x782a7e`, previous-width latches `0x782a58..0x782a5c`,
+  pending span watermarks `0x783184..0x78318a`, and render-band products
+  after publication.
+- Firmware bookkeeping:
+  pending byte/page-eject state `0x782a6d`, page-root retry flag
+  `root+0x15.0`, allocator state `0x782a70`, `0x782a72`, and `0x782a76`,
+  span flush `0xf34a -> 0x12714 -> 0x126e2`, and selected-context installer
+  `0xc428 -> 0xc4fc`.
+- Hardware/external state:
+  none for the ROM-local parser-to-page-object edge. Physical paper movement
+  after FF publication and formatter/DC timing are outside this audit row set.
+- Unknown:
+  no ROM-local handler, consumer, page-object, or render-entry middle edge is
+  unknown for the audited printable/direct C0 rows.
+
+### Output And Boundary Result
+
+This cluster now has a checked-in route from supported host bytes to ordinary
+compact text objects, direct cursor/context/page-publication side effects, or
+explicit no-output parser reset. The first pixel-producing route is the
+ordinary compact path after `0xd04a`; CR/LF/HT/BS/SO/SI become visible only
+when later printable, span, raster, rectangle, VFC, overflow, or publication
+consumers read their state; FF publishes existing page objects through
+`0xff1e`.
+
+No ROM-local unresolved middle edge remains for these audited rows. Remaining
+work in this area belongs to broader cursor/layout command families that use
+parameterized ESC handlers, or to byte streams that change compact selector
+shape, selected context, span object bytes, page-publication fields, or render
+inputs.

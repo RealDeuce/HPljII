@@ -1108,16 +1108,24 @@ State-only consumer index:
   block `0x783170..0x783182`, including mode byte `+0x08`, scale word
   `+0x0e`, and row limit `+0x10` when raster is inactive. First visible
   consumer is delayed raster transfer `0x105d0 -> 0x13070 -> 0x13250`, whose
-  encoded object mode later selects renderer `0x1f88e`.
+  encoded object mode later selects renderer `0x1f88e`. In alternate/data
+  mode, `ESC *t#R` is a blank terminal row, so raster mode/scale state is not
+  written until replay.
 - `ESC *r#A/#B`: start writer `0x1075a` seeds raster origin/bounds and sets
   active byte `0x783182`; end writer `0x107fa` clears that active byte. First
   visible consumer is a later `ESC *b#W` transfer through `0x105d0`, or a
-  later `ESC *t#R` accepted only after active state is clear.
+  later `ESC *t#R` accepted only after active state is clear. Alternate/data
+  table rows for `A/B/K` are blank or rewind-only, so the raster active byte
+  and origin/bounds stay unchanged until replay.
 - `ESC *c#A/#B/#H/#V/#G`: writers `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, and `0x10dce` store rectangle width, height, and area-fill state
   in `0x78316a`, `0x783166`, and `0x78316e`. First visible consumer is fill
   handler `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`, which clips the stored
   rectangle source and queues a rule-list object under root `+0x24`.
+  Alternate/data uppercase `ESC *c#A/B/G/H/P/V` rows are blank and lowercase
+  siblings rewind through `0x11f4c`; rectangle state, source record
+  `0x782a88`, rule-list root `+0x24`, and render inputs are unchanged until
+  replay.
 
 These rows are delayed-output routes, not no-ops. A stream reproduces them
 only when the named writer field reaches the listed consumer with the same

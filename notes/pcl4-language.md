@@ -1491,8 +1491,19 @@ clears it. Evidence: [raster-graphics.md](raster-graphics.md),
   `0x104d8` / `0x10518`, advances vertical cursor `0x782c8e` by half the current VMI,
   then clears pending page-eject byte `0x782a6d`. The documented visible streams are
   `ESC 9 CR !` and `ESC = !`, where later handlers consume the margin or vertical-cursor
-  state before queueing compact text through `0x12f2e`. Evidence:
+  state before queueing compact text through `0x12f2e`. The same delayed fields feed
+  graphics consumers: cursor/margin writers such as `0xf39e`, `0xeb58`, `0xec0c`, and
+  `0xf176` update `0x782c8a`, `0x782c8e`, `0x782dd6`, or `0x782dda`; `ESC *r1A` then
+  reaches `0x1075a` and copies the active cursor axis into raster origin `0x783170+0x0a`
+  before `ESC *b#W` queues an encoded raster object through `0x105d0 -> 0x13070 ->
+  0x13250`; `ESC *c#P` reaches `0x10898 -> 0x10b80`, clips from cursor/page fields into
+  rule source record `0x782a88`, and then queues a rule-list object through `0x13386 ->
+  0x133aa`. These are delayed state-to-page-object handoffs, not immediate drawing by
+  the direct control handler. Evidence:
   [direct-control-codes.md](direct-control-codes.md#owner-summary),
+  [direct-control-codes.md](direct-control-codes.md#delayed-state-to-visible-consumer-map),
+  [raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint),
+  [rectangle-graphics.md](rectangle-graphics.md#rectangle-outcome-matrix),
   [pcl-command-map.md](pcl-command-map.md), and
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md#supported-stream-entry-points).
 - Font selection and downloaded fonts:

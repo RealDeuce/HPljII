@@ -10,7 +10,7 @@ bytes, disassembly, decoded tables, static cross-references, and RAM fields
 read or written by those instructions. Fixture scripts and generated reports
 are supporting checks for the documented interpretation; they do not represent
 runtime observation of a real printer or an executing ROM. When older notes
-describe evidence strength, read that as a statement about the cited static
+describe evidence status, read that as a statement about the cited static
 disassembly, field writes, and decoded data, not as hardware-emulation
 validation.
 

@@ -470,14 +470,14 @@ protocol-faithful emulator must preserve:
 - teardown through `0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`;
 - final status byte write to `0x780e08`.
 
-## Confidence
+## Evidence Status
 
-High for the loop structure, `01 EXT READY` string identity, `68 SERVICE`
-display boundary, retained-storage commit-failure writer, status-shadow
-fields, register writes, and fixture-backed `0xc0ae` / `0xc1c6` behavior.
+Direct ROM evidence covers the loop structure, `01 EXT READY` string identity, `68
+SERVICE` display boundary, retained-storage commit-failure writer, status-shadow fields,
+register writes, and fixture-backed `0xc0ae` / `0xc1c6` behavior.
 
-Medium for the physical identity of the external register family. The strings
-and loop behavior establish a service/external-interface role, but board-level
+The remaining boundary is the physical identity of the external register family. The
+strings and loop behavior establish a service/external-interface role, but board-level
 device mapping is still unresolved.
 
 ## Remaining Edges

@@ -1083,12 +1083,12 @@ Output effect:
   `0xae2c` for mode-selected drain. The FIFO fixtures listed below support
   those helper contracts.
 
-Confidence:
+Evidence status:
 
-- High for source priority, service retry, no-byte return, stack/ring
+- Direct ROM evidence covers source priority, service retry, no-byte return, stack/ring
   pointer movement, data-chain end retry, direct-mode `0x1a` reporting,
   mode-2 status accumulation, and software-visible bridge behavior.
-- Medium for the physical signal names and timing attached to direct MMIO
+- The remaining boundary is the physical signal names and timing attached to direct MMIO
   registers, because the ROM proves polling and handshake behavior but not
   board labels.
 

@@ -1730,20 +1730,20 @@ as a pixel renderer.
   same published-record bridge and render helpers. There is no separate
   publication renderer.
 
-## Confidence
+## Evidence Status
 
-High for parser handler order, host-byte draining, page-record storage,
-published pool headers, command side effects, render bridge fields, and render
-entry call order because the claims are backed by handler ranges
-`0xcc52..0xcc98`, `0xf0f0..0xf172`, `0xfc74..0xfe52`,
-`0xf9e8..0xfc52`, `0x10220..0x103e6`, `0xef62..0xf02a`,
-`0xeef0..0xef38`, publication helper `0xff1e..0x10080`, bridge helpers
+Direct ROM evidence covers parser handler order, host-byte draining, page-record
+storage, published pool headers, command side effects, render bridge fields, and render
+entry call order because the claims are backed by handler ranges `0xcc52..0xcc98`,
+`0xf0f0..0xf172`, `0xfc74..0xfe52`, `0xf9e8..0xfc52`, `0x10220..0x103e6`,
+`0xef62..0xf02a`, `0xeef0..0xef38`, publication helper `0xff1e..0x10080`, bridge helpers
 `0x1ed84` / `0x1edc6`, and the named byte-stream examples.
 
-Medium only for byte-stream variants that create a new publication-side field,
-bucket shape, bridge state, placement state, or rendered row outside the
-covered command streams listed above. Physical printer correlation and engine
-timing remain outside this ROM-internal publication contract.
+Remaining publication work starts only from byte-stream variants that create a
+new publication-side field, bucket shape, bridge state, placement state, or
+rendered row outside the covered command streams listed above. Physical printer
+correlation and engine timing remain outside this ROM-internal publication
+contract.
 
 ## Remaining Edges
 

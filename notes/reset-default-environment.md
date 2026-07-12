@@ -680,22 +680,22 @@ A byte-stream renderer must preserve:
 - raster-state reset fields in `0x783170`;
 - selected default-record load/update semantics that feed later reset.
 
-## Confidence
+## Evidence Status
 
-High for `ESC E` handler order, valid-root publication, missing-root clearing,
-page-record pool header fields, compact-bucket rendering before reset,
-default-record load into reset-consumed fields, line-spacing-to-VMI arithmetic,
-and parser/data-chain clearing because the claims are backed by disassembly
-`0xcc52..0xcd7a`, `0xcda2..0xcf50`, `0xcbd4..0xcc50`,
-`0xe146..0xe1e2`, `0x1bd64..0x1bdde`, `0x5e80..0x5f94`, publication helper
-`0xff1e`, and the named byte-stream examples.
+Direct ROM evidence covers `ESC E` handler order, valid-root publication, missing-root
+clearing, page-record pool header fields, compact-bucket rendering before reset,
+default-record load into reset-consumed fields, line-spacing-to-VMI arithmetic, and
+parser/data-chain clearing because the claims are backed by disassembly
+`0xcc52..0xcd7a`, `0xcda2..0xcf50`, `0xcbd4..0xcc50`, `0xe146..0xe1e2`,
+`0x1bd64..0x1bdde`, `0x5e80..0x5f94`, publication helper `0xff1e`, and the named
+byte-stream examples.
 
-High for the immediate default producer edge from selected backing records to
-`0x78219d`, `0x78219e`, and `0x7821a2`.
+Direct ROM evidence covers the immediate default producer edge from selected backing
+records to `0x78219d`, `0x78219e`, and `0x7821a2`.
 
-Medium for manual-facing names of reset/default latches. Low for physical
-retained-storage identity and board-level serial pin names behind `$a400` /
-`$8c01`.
+The remaining boundary is manual-facing names of reset/default latches. The least
+documented boundary is physical retained-storage identity and board-level serial pin
+names behind `$a400` / `$8c01`.
 
 ## Remaining Edges
 

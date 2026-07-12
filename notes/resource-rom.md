@@ -1781,14 +1781,14 @@ and context `0xc008004c`; secondary Line Printer selection for
 streams are covered as separate visible-output fixtures in the semantic
 model, but they all consume the same candidate-window state summarized here.
 
-Confidence:
+Evidence status:
 
-High for built-in scan bounds, candidate count/window partitioning,
+Direct ROM evidence covers built-in scan bounds, candidate count/window partitioning,
 verified `IC32,IC15` candidate order, active-window selection, symbol
 fallback, final-`@` table consumption, final-`X` success/non-selected exits,
 selected context writes, map rebuilds, and visible primary/secondary text
 output because those are fixture-backed and cited in
-[semantic-state-model.md](semantic-state-model.md). Medium for manual
+[semantic-state-model.md](semantic-state-model.md). The remaining boundary is manual
 metadata names; physical sample pages, if available, are optional
 correlation.
 

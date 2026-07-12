@@ -819,7 +819,7 @@ Evidence and remaining boundaries:
   `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`,
   `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`, and
   `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`.
-- Confidence is high for the listed writer and consumer addresses because the
+- ROM evidence directly covers the listed writer and consumer addresses because the
   fields are named by direct handler disassembly and by checked-in worked paths
   that follow those fields into page-object producers or render dispatch. It
   is deliberately not a claim that every possible selector value in those

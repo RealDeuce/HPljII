@@ -963,12 +963,12 @@ Field classes:
   user-facing names for the folded status categories remain unresolved; the
   arithmetic, return-bit encoding, and no-page-output boundary are ROM-local.
 
-### Confidence And Evidence
+### Evidence Status
 
-Confidence is high for FIFO capacity/order, output mode selection, outbound
+ROM evidence directly covers FIFO capacity/order, output mode selection, outbound
 status-byte composition, `0x780e90` production, media-feed message selection,
 and normal service-message routing because these are direct disassembly reads
-and executable fixtures. Confidence is high for model-ID literal emission from
+and executable fixtures. ROM evidence directly covers model-ID literal emission from
 the disassembly path `0x12034 -> 0x122be..0x12326`, string-table hit at
 `0x12280`, and fixture
 `0x12034/0x122be model-ID response emits FIFO literal`.

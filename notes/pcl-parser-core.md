@@ -1355,14 +1355,14 @@ Output effect:
   through `0xdace` and appended through `0xe002`, while nonpositive counts
   leave the payload stream untouched.
 
-Confidence:
+Evidence status:
 
-- High for tokenizer record layout, cursor rewind, helper selection, delayed
-  snapshot/restore, and alternate/data redirection because these are direct
-  disassembly reads and exercised by supporting fixtures across raster,
-  transparent text, downloaded-font, and macro paths.
-- Medium only for command-family semantics beyond the parser boundary. Those
-  are intentionally documented in command-family notes.
+- Direct ROM evidence covers tokenizer record layout, cursor rewind, helper selection,
+  delayed snapshot/restore, and alternate/data redirection because these are direct
+  disassembly reads and exercised by supporting fixtures across raster, transparent
+  text, downloaded-font, and macro paths.
+- Command-family semantics beyond the parser boundary are intentionally
+  documented in command-family notes.
 
 Fixture evidence:
 

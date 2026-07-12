@@ -2595,19 +2595,18 @@ Output effect:
   fixed-list records through `0x136d2`. The render side consumes those records
   through `0x1edc6`, `0x1ef6a`, and the span render helpers.
 
-Confidence:
+Evidence status:
 
-- High for the copied-field formulas, selected-context legal forms, consumer
-  branch behavior, and page-record/span effects named above because each claim
-  is backed by ROM disassembly and host-fetched descriptor routes. Fixture row
-  digests are supporting branch anchors, not an independent rendered-row oracle.
-- Medium for broader descriptor compatibility only where a new byte stream
-  changes a named ROM input to the documented path: selected context records,
-  active maps, source-object fields, copied metric fields, pending span
-  fields, page-object fields, bridge context slots, or row-construction
-  helper inputs. Exact HP manual labels for non-staged fields remain open;
-  additional legal metric values are cross-products of the documented producer
-  formulas and consumer gates.
+- Direct ROM evidence covers the copied-field formulas, selected-context legal forms,
+  consumer branch behavior, and page-record/span effects named above because each claim
+  is backed by ROM disassembly and host-fetched descriptor routes. Fixture row digests
+  are supporting branch anchors, not an independent rendered-row oracle.
+- The remaining boundary is broader descriptor compatibility only where a new byte
+  stream changes a named ROM input to the documented path: selected context records,
+  active maps, source-object fields, copied metric fields, pending span fields,
+  page-object fields, bridge context slots, or row-construction helper inputs. Exact HP
+  manual labels for non-staged fields remain open; additional legal metric values are
+  cross-products of the documented producer formulas and consumer gates.
 
 Fixture evidence:
 

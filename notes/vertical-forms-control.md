@@ -791,16 +791,16 @@ Evidence:
   printable`, `mixed VFC wrap-no-hit publishes old page and returns to top`,
   and `mixed VFC target-after-text recovers near top before fresh printable`.
 
-## Confidence
+## Evidence Status
 
-High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
+Direct ROM evidence covers the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
 same-family preservation, table bytes, text-bottom cache effect, default-table
 channel convention, forward in-text hits, before-top normalization,
 selector-zero early exit, selector-zero page eject, wrap hit, wrap no-hit,
 target-after-text publication, and start-after-text recovery paths. Each claim
 cites handler ranges, RAM fields, and named evidence streams above.
 
-Medium for the manual-facing names of the derived line-count fields
+The remaining boundary is the manual-facing names of the derived line-count fields
 `0x782ede`, `0x782edf`, and `0x782ee0`.
 
 ## Reproduction Contract

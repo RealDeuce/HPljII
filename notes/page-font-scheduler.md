@@ -622,16 +622,15 @@ A ROM-derived renderer/emulator must preserve:
 - canonical table commit and active-context refresh through `0x1a900`;
 - caller-specific handling of scheduler `D7`.
 
-## Confidence
+## Evidence Status
 
-High for call order, predicate branching, scratch layout, optional-window
-bases/limits, canonical versus scratch comparison, `0x19fb8` predicates,
-candidate-list pruning, current-record release predicates, dirty-bit marking,
-range handoff, active-context checks, canonical-table copy, status-mask call,
-and return values because they are direct disassembly evidence and
-fixture-backed.
+Direct ROM evidence covers call order, predicate branching, scratch layout,
+optional-window bases/limits, canonical versus scratch comparison, `0x19fb8` predicates,
+candidate-list pruning, current-record release predicates, dirty-bit marking, range
+handoff, active-context checks, canonical-table copy, status-mask call, and return
+values because they are direct disassembly evidence and fixture-backed.
 
-Medium for treating the routine as a page/font scheduler handoff: caller
+The remaining boundary is treating the routine as a page/font scheduler handoff: caller
 locations and callee behavior support that role, and shared helper interiors
 are documented in sibling checkpoints. Physical optional-resource contents and
 the `$8000.14/15` board-level meaning are not yet represented by hardware or

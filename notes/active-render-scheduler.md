@@ -766,17 +766,17 @@ Supported stream rendering rule:
   otherwise ordinary active rendering still follows `0x22f4` for engine row
   copies and `0x1ef6a` for page-object rendering.
 
-## Confidence
+## Evidence Status
 
-High for pool-head versus scheduler-cursor distinction, candidate-slot
+Direct ROM evidence covers pool-head versus scheduler-cursor distinction, candidate-slot
 staging/release, `0x780eaa -> 0x780eae`, work-record alternation,
 `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic,
 wait-object state transitions, active-loop branch predicates, render-entry
 state handoff, and classifying `0x780eb6` as initialized-only bookkeeping
 because each is backed by disassembly, reference scans, or checked fixtures.
 
-Medium for physical engine pacing because the firmware-visible wait states and
-MMIO-facing predicates are modeled, but connector-signal timing and exact
+The remaining boundary is physical engine pacing because the firmware-visible wait
+states and MMIO-facing predicates are modeled, but connector-signal timing and exact
 register-to-signal names are still board-level evidence.
 
 ## Remaining Edges

@@ -167,7 +167,7 @@ Output effect:
   selector to segmented class `0x2001`, bridges the secondary context roots,
   and stops only at the exact external resource boundary below.
 
-Evidence strength:
+Evidence status:
 
 - The delayed payload boundary is supported by disassembly
   `0x11f5a..0x11f6c`, `0x121cc..0x12210`, and `0x12218..0x1227e`.

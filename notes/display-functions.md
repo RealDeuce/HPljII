@@ -625,18 +625,17 @@ A byte-stream renderer must preserve:
   runs `0xd99a` then appends `0x7f`;
 - `ESC z` as a guarded status/service edge, not a text-rendering command.
 
-## Confidence
+## Evidence Status
 
-High for loop termination, local normalization, alternate append, normal
-default-filter route, normal filter-on printable route, and page-record output
-because the claims are backed by disassembly `0x12120..0x1219c`,
-`0x12536..0x1261e`, the `0xd04a`/`0xd0f0` consumers, and the named byte-stream
-examples above. Those examples exercise the branch interpretation; they are not
-an external rendered-output oracle.
+Direct ROM evidence covers loop termination, local normalization, alternate append,
+normal default-filter route, normal filter-on printable route, and page-record output
+because the claims are backed by disassembly `0x12120..0x1219c`, `0x12536..0x1261e`, the
+`0xd04a`/`0xd0f0` consumers, and the named byte-stream examples above. Those examples
+exercise the branch interpretation; they are not an external rendered-output oracle.
 
-High for the `ESC z` guard and `0x9c2c` call boundary because they are direct
-disassembly reads. Medium for the manual-facing names and external consumers
-of the status bits.
+Direct ROM evidence covers the `ESC z` guard and `0x9c2c` call boundary because they are
+direct disassembly reads. The remaining boundary is the manual-facing names and external
+consumers of the status bits.
 
 ## Remaining Edges
 

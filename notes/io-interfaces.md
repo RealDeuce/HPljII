@@ -264,9 +264,9 @@ State grouping for this matrix:
   `0xdebc` with kinds `2` and `3`, `0xe4f4` is called from `0xff8e` and writes
   kind `4`, and `0xe1e4` clears stale frame kind bytes to `0`.
 
-### Confidence And Evidence
+### Evidence Status
 
-Confidence is high for source priority, service retry, no-byte return,
+ROM evidence directly covers source priority, service retry, no-byte return,
 pushback/ring pointer movement, direct-mode `0x1a` reporting, mode-2 status
 accumulation, FIFO order/wrap, and outbound status-byte construction. These
 are direct ROM listings and executable fixtures.
@@ -323,7 +323,7 @@ under 10 feet.
 | 2-9 | `Data 1`..`Data 8` input | Data 1 is LSB, Data 8 is MSB |
 | 10 | `-Acknlg` output | Acknowledge pulse |
 | 11 | `Busy` output | High means not ready for data |
-| 12 | `Paper Error` output | High for paper/operator attention conditions |
+| 12 | `Paper Error` output | Direct ROM evidence covers paper/operator attention conditions |
 | 13 | `Select` output | High when online and no errors |
 | 14, 15 | NC | No connection |
 | 16 | `0 VDC` | Logic ground |

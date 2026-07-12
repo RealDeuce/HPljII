@@ -748,12 +748,12 @@ A renderer that wants byte-for-byte agreement with these ROM paths must:
   separate physical decode boundary, not as a parser or glyph-field
   ambiguity.
 
-## Confidence
+## Evidence Status
 
-Confidence is high for the verified built-in scan, counters/windows,
+ROM evidence directly covers the verified built-in scan, counters/windows,
 activation, filters, chooser, primary/secondary visible output streams, and
 the modeled scanner consequences of the three tested `0x0c0000` continuation
-policies. Confidence is medium for the actual hardware decode source at
+policies. ROM evidence is bounded for the actual hardware decode source at
 `0x0c0000..0x0c0321` and for external cartridge/resource windows because the
 decoded handlers are known, but no matching board decode, cartridge image, or
 ROM image evidence has been captured for those ranges.

@@ -1952,16 +1952,16 @@ Output effect:
   software-visible consequences of those events; it does not yet map
   each physical signal to an MMIO bit.
 
-Confidence:
+Evidence status:
 
-- High for pool-head versus scheduler-cursor distinction, candidate-slot
-  staging/release, `0x780eaa -> 0x780eae`, two-work-record alternation,
-  `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic,
-  wait-object state transitions, active-loop branch predicates, and
-  render-entry output. High for `0x780eb6` as initialized-only bookkeeping
-  because the reference scan finds only the pool-base initialization store.
-- Medium for physical engine pacing because the firmware wait-state and MMIO
-  side effects are modeled, but the board-level event timing is not named.
+- Direct ROM evidence covers pool-head versus scheduler-cursor distinction,
+  candidate-slot staging/release, `0x780eaa -> 0x780eae`, two-work-record alternation,
+  `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic, wait-object state
+  transitions, active-loop branch predicates, and render-entry output. Direct ROM
+  evidence covers `0x780eb6` as initialized-only bookkeeping because the reference scan
+  finds only the pool-base initialization store.
+- The remaining boundary is physical engine pacing because the firmware wait-state and
+  MMIO side effects are modeled, but the board-level event timing is not named.
 
 Fixture evidence:
 
@@ -3681,42 +3681,42 @@ Output effect:
   target. A reproducer should preserve all state up to the target selection and
   then report the exact invalid compact-helper boundary.
 
-Confidence:
+Evidence status:
 
-- High for the boundary addresses and target longwords because they are direct
-  disassembly/table reads from
+- Direct ROM evidence covers the boundary addresses and target longwords because they
+  are direct disassembly/table reads from
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`, and
   `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`.
-- High for the producer and bridge state because the downloaded-glyph notes
-  cite parser-produced command families that install the records, publish the
-  compact objects, and reach `0x1effe`. Fixture evidence is only supporting
-  path evidence; it is not an external pixel oracle.
+- Direct ROM evidence covers the producer and bridge state because the downloaded-glyph
+  notes cite parser-produced command families that install the records, publish the
+  compact objects, and reach `0x1effe`. Fixture evidence is only supporting path
+  evidence; it is not an external pixel oracle.
 
-Confidence:
+Evidence status:
 
-- High for `0x1f354` context-form split, A2/A3 source layout, table
+- Direct ROM evidence covers `0x1f354` context-form split, A2/A3 source layout, table
   selection, even/odd span copy behavior, wide chunk/remainder behavior, and
   segmented row-plane offsets because these are pinned by disassembly plus
   generated row-copy fixtures.
-- High for parser-produced built-in, normal downloaded, even-span wide
+- Direct ROM evidence covers parser-produced built-in, normal downloaded, even-span wide
   downloaded, split-plane segmented, and segmented-wide examples because the
   named fixtures tie host bytes to installed records, queued compact objects,
   dispatch targets, and row-construction inputs.
-- High for the documented symbol-selection variants because non-Roman
+- Direct ROM evidence covers the documented symbol-selection variants because non-Roman
   `0N` / `10U` / `11U`, real final-`@` default-table streams, final-`X`
   success paths, final-`X` non-selected exits, and `0x13eb8` no-dispatch exits
   all carry host-fetched parser state through selected contexts, compact
   object prefixes, bridge context slots, and ROM-helper row-construction
   inputs. Row digests in the fixtures are consistency checks for those
   ROM-derived rows, not independent rendered-output evidence.
-- Medium for exhaustive descriptor/font-width coverage because downloaded spans `1..32`,
-  high-span compact-wide row checks through span `255`, segmented-wide row checks
-  through span `64`, the legal metric matrix, and many downloaded row-count cases are
-  fixture-backed. The span `0x0100..0x020d` printable handoff is now classified as an
-  8-bit source-record producer boundary whose wrapped cases select non-helper mode-0
-  row-copy entries. Remaining renderer risk starts only when a byte stream changes a
-  named field in [Selected-Font Residual Routing
+- The remaining boundary is exhaustive descriptor/font-width coverage because downloaded
+  spans `1..32`, high-span compact-wide row checks through span `255`, segmented-wide
+  row checks through span `64`, the legal metric matrix, and many downloaded row-count
+  cases are fixture-backed. The span `0x0100..0x020d` printable handoff is now
+  classified as an 8-bit source-record producer boundary whose wrapped cases select
+  non-helper mode-0 row-copy entries. Remaining renderer risk starts only when a byte
+  stream changes a named field in [Selected-Font Residual Routing
   Checkpoint](font-context-metrics.md#selected-font-residual-routing-checkpoint), helper
   dispatch, or object shape.
 

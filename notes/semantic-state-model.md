@@ -392,16 +392,16 @@ records as the ROM. A mismatch here can move render buffers, change
 which scheduler object runs, or leave stale input bytes visible, but it
 does not interpret host PCL bytes by itself.
 
-### Confidence
+### Evidence Status
 
-High for the default-path formulas and wait-object table shape: the
-disassembly gives direct writes and a fixed `0x15d0` table. High for
-`0x2feb6`, `0x3178`, and `0x31d6` initializer writes because the focused
-listings are straight-line stores. High for the software-visible `0x071c`
-and `0x05ba` branch effects on `0x780e4c` and `0x780e5a`; medium for
-physical interpretation of `$8000`, `$ff8000`, `$8c01`, and the
-`$800000 + 2 * value` probe addresses, because the branch effects are known
-but the physical signal names are not.
+Direct ROM evidence covers the default-path formulas and wait-object table
+shape: the disassembly gives direct writes and a fixed `0x15d0` table.
+Direct ROM evidence covers `0x2feb6`, `0x3178`, and `0x31d6` initializer
+writes because the focused listings are straight-line stores. Direct ROM
+evidence covers the software-visible `0x071c` and `0x05ba` branch effects on
+`0x780e4c` and `0x780e5a`. The remaining boundary is physical interpretation
+of `$8000`, `$ff8000`, `$8c01`, and the `$800000 + 2 * value` probe addresses:
+the branch effects are known, but the physical signal names are not.
 
 ### Fixtures
 
@@ -846,14 +846,15 @@ substitute `0x7f`, and raster/font payload readers store zero. Reproducing
 downloaded glyphs or raster rows from the same byte stream therefore requires
 modeling the consumer-local probe, not pre-normalizing the host byte stream.
 
-### Confidence
+### Evidence Status
 
-High for byte-source priority, no-byte gating, data-chain end retry,
+Direct ROM evidence covers byte-source priority, no-byte gating, data-chain end retry,
 ring/direct source selection, `0x1a` reporting, direct-mode state side
 effects, the software-visible `0xa6cc` ring/status bridge, and the observed
 data-chain frame layout because those are covered by executable fixtures and
-the `0xa904`/`0xa6cc`/`0xe418`/`0xe4f4`/`0xe22c` disassembly. Medium for
-physical interface naming because that requires board/manual correlation.
+the `0xa904`/`0xa6cc`/`0xe418`/`0xe4f4`/`0xe22c` disassembly. The remaining
+boundary is physical interface naming because that requires board/manual
+correlation.
 
 ### Fixtures
 
@@ -1081,14 +1082,14 @@ change. For a closed byte-stream-to-page renderer that ignores
 bidirectional host responses, no observed FIFO consumer feeds `0xda9a`,
 page records, `0x1ed84`, or `0x1ef6a`.
 
-### Confidence
+### Evidence Status
 
-High for FIFO capacity, pointer wrap, enqueue/dequeue side effects,
-`0x7801e2` wait-object coupling, status-byte composition, output-backend
-branch behavior, and the `0x122be` model-ID literal bytes: the focused
-listings are direct stores, tests, calls, and a string-table hit. Medium
-for physical connector naming and the external protocol name of the
-`0x11` query.
+Direct ROM evidence covers FIFO capacity, pointer wrap, enqueue/dequeue side
+effects, `0x7801e2` wait-object coupling, status-byte composition,
+output-backend branch behavior, and the `0x122be` model-ID literal bytes: the
+focused listings are direct stores, tests, calls, and a string-table hit. The
+remaining boundary is physical connector naming and the external protocol name
+of the `0x11` query.
 
 ### Fixtures
 
@@ -1373,17 +1374,17 @@ does not modify page records. Pixel effects remain indirect through host
 protocol decisions and scheduler/service timing, not through bitmap
 composition.
 
-### Confidence
+### Evidence Status
 
-High for `0x780e90`, `0x780e98`, `0x780e8f`, `0x780e29`, `0x780e30`,
+Direct ROM evidence covers `0x780e90`, `0x780e98`, `0x780e8f`, `0x780e29`, `0x780e30`,
 `0x780e2a.4`, and `0x7839d3` writes because the focused listings show
 direct stores and bit operations, and the `0x2888` producer boundary now
-has executable fixture coverage. High for the service-message string
+has executable fixture coverage. Direct ROM evidence covers the service-message string
 addresses, the `0x7612` helper choice, the `0x8a48` media-feed message
 matrix, and the `0x9182` desired/shadow buffer contract because the
 literals, table indexes, helper calls, stores, and comparison predicate
 are direct ROM data; the first three are fixture-backed, while `0x9182`
-is disassembly-backed in this checkpoint. Medium for physical/user-facing
+is disassembly-backed in this checkpoint. The remaining boundary is physical/user-facing
 status names for the selected record bytes and the hardware bits behind
 `$8a01`, `$a801`, and the `0x9406` flag-`1` panel table.
 
@@ -1720,15 +1721,15 @@ If a reimplementation does not preserve the `0x78299e` rewind and `0x121cc` /
 generic `W/w` payloads, downloaded-font payloads, and macro data-chain replay
 will restore the wrong byte count or final byte before producing page objects.
 
-### Confidence
+### Evidence Status
 
-High for tokenizer record layout, cursor rewind, helper selection, delayed
-snapshot/restore, alternate/data redirection, the `0x11ea4` / `0x11eb6` /
-`0x11ec8` / `0x11eda` / `0x11eec` callback selection stubs, the `0x11efe` /
-`0x11f26` synthetic font-designation records, and the `0x11f4c` rewind helper
-because these are direct disassembly reads and fixture-backed across raster,
-transparent text, downloaded-font, and macro paths. Medium only for
-command-family semantics beyond the restored-record boundary.
+Direct ROM evidence covers tokenizer record layout, cursor rewind, helper selection,
+delayed snapshot/restore, alternate/data redirection, the `0x11ea4` / `0x11eb6` /
+`0x11ec8` / `0x11eda` / `0x11eec` callback selection stubs, the `0x11efe` / `0x11f26`
+synthetic font-designation records, and the `0x11f4c` rewind helper because these are
+direct disassembly reads and fixture-backed across raster, transparent text,
+downloaded-font, and macro paths. Command-family semantics beyond the
+restored-record boundary are owned by the family-specific notes.
 
 ### Fixtures
 
@@ -1939,19 +1940,21 @@ Supporting fixture anchors:
 - `ESC Y display-functions filter-on routes controls as printable`
 - `0x12120 ESC Y alternate append stores normalized display bytes`
 
-### Confidence
+### Evidence Status
 
-High for the loop terminator, local `0x1a 0x58` normalization, alternate/data
-append behavior, normal-path C0/high-control routing predicates, and CR
-post-handler call because these are direct disassembly reads and now have
-dedicated fixtures for both `0x12120` and `0x12536`. High for the normal
-`0x12536` parser-to-page-record boundary because the host-fetched fixture
-drives `ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`, compact object queueing,
-bridge, and rendered rows. High for the alternate/data append boundary because
-the append fixture drives `0x12120` loop output through `0xe002` into the
-macro chunk payload. High for the `ESC z` guard and `0x9c2c` call boundary
-because they are direct disassembly reads. Medium for the manual-facing name
-of the `0x7822db` marker and the external status consumer of `0x780e2a.3`.
+Direct ROM evidence covers the loop terminator, local `0x1a 0x58`
+normalization, alternate/data append behavior, normal-path C0/high-control
+routing predicates, and CR post-handler call because these are direct
+disassembly reads and now have dedicated fixtures for both `0x12120` and
+`0x12536`. Direct ROM evidence covers the normal `0x12536`
+parser-to-page-record boundary because the host-fetched fixture drives
+`ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`, compact object queueing, bridge,
+and rendered rows. Direct ROM evidence covers the alternate/data append
+boundary because the append fixture drives `0x12120` loop output through
+`0xe002` into the macro chunk payload. Direct ROM evidence covers the `ESC z`
+guard and `0x9c2c` call boundary because they are direct disassembly reads.
+The remaining boundary is the manual-facing name of the `0x7822db` marker and
+the external status consumer of `0x780e2a.3`.
 
 ### Fixtures
 
@@ -2407,29 +2410,29 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `0xa904` ring source, records the parser handlers, preserves the
   `0x1edc6` bridge contract, and feeds `0x1ed84` / `0x1ef6a`.
 
-### Confidence
+### Evidence Status
 
-High for the command-family mapping, field roles, conversion effects,
-page-record compact coordinates, and bridge/render-entry effects because the
-handler listings, generated disassembly reports, and named RAM fields show the
-writer and consumer chain from `0xa904` through page-record/render-helper
-state. Fixtures that start at `0xa904` exercise that documented path, but the
-derived rows are consequences of traced ROM helpers rather than an external
-pixel oracle. Medium for the exact names of pending-text latches and every
-internal write between `0xd04a` and `0x12f2e`; those names remain inferred
-until the disassembly is documented down to each intermediate field for every
-source variant.
-High for the ROM-visible `ESC 9`, `ESC =`, and `ESC &d` field writes,
-helper boundaries, and representative downstream visible-output effects
-because those are direct disassembly reads plus dedicated host-fetched
-page-record/render fixtures. Medium remains only for their complete
+Direct ROM evidence covers the command-family mapping, field roles,
+conversion effects, page-record compact coordinates, and bridge/render-entry
+effects because the handler listings, generated disassembly reports, and named
+RAM fields show the writer and consumer chain from `0xa904` through
+page-record/render-helper state. Fixtures that start at `0xa904` exercise that
+documented path, but the derived rows are consequences of traced ROM helpers
+rather than an external pixel oracle. The remaining boundary is the exact
+manual-facing names of pending-text latches and every internal write between
+`0xd04a` and `0x12f2e`; those names remain inferred until the disassembly is
+documented down to each intermediate field for every source variant.
+Direct ROM evidence covers the ROM-visible `ESC 9`, `ESC =`, and `ESC &d`
+field writes, helper boundaries, and representative downstream visible-output
+effects because those are direct disassembly reads plus dedicated host-fetched
+page-record/render fixtures. The remaining boundary is their complete
 manual-facing names outside the PCL labels already cited here.
-High for `0xf36c` perforation-skip gating because the fixture covers all
-three non-eject predicates and the enabled-overflow eject predicate against
-disassembly `0xf36c..0xf398`.
-High for `0xedb0` wrap-mode writes and the `0xd28a` / `0xd6bc`
-prequeue consumer effect because both command-side selector handling and
-consumer-side continue/reject/recover decisions are fixture-pinned against
+Direct ROM evidence covers `0xf36c` perforation-skip gating because the fixture
+covers all three non-eject predicates and the enabled-overflow eject predicate
+against disassembly `0xf36c..0xf398`.
+Direct ROM evidence covers `0xedb0` wrap-mode writes and the `0xd28a` /
+`0xd6bc` prequeue consumer effect because both command-side selector handling
+and consumer-side continue/reject/recover decisions are fixture-pinned against
 their disassembly reads of `0x783190`.
 
 ### Fixtures
@@ -2892,26 +2895,25 @@ also probes `PROG` at `0x200000` and `0x400000`. Therefore the segment-57
 fallback-byte read at `0x0c0000..0x0c0321` is inside the built-in scan range but
 outside the verified resource pair, not an optional cartridge-window read.
 
-### Confidence
+### Evidence Status
 
-High for delayed snapshot/restore, absolute payload count, `1a 58` and
-`1a xx` probe handling, default filtering, nonzero filtering, fixed-space
-cursor advance, page-record object bytes, bridge context slots, and rendered
-rows, plus sampled primary high-control interior values and two taller primary
-high-control bucket-crossing glyphs because each is fixture-pinned against
-disassembly-backed helpers. High for the secondary selector/routing/page-record
-boundary because the SO plus transparent fixture pins handler `0xc6b8`, source
-context `0xc00ae122`, segmented selector `0x2001`, bridge context slots, and a
-selected-bucket render digest; the secondary render-prefix fixture pins
-buckets `0..448` and the first source-read boundary at bucket `456`. High for
-the conclusion that segment-57 fallback rows depend on an unverified memory-map
-policy, because the mirror, code-pair, and zero-fill continuation fixtures all
-share the same current-band digest and diverge only in fallback row digests.
-Medium for the actual hardware source interpretation after that boundary: the
-verified `IC32,IC15` resource pair ends at `0x0bffff`, but
-`notes/formatter-interface-pca.md` records formatter ROM capacity and
-address-controller facts that allow a larger or altered ROM region. Medium also
-for manual names for the filter bytes.
+Direct ROM evidence covers delayed snapshot/restore, absolute payload count, `1a 58` and
+`1a xx` probe handling, default filtering, nonzero filtering, fixed-space cursor
+advance, page-record object bytes, bridge context slots, and rendered rows, plus sampled
+primary high-control interior values and two taller primary high-control bucket-crossing
+glyphs because each is fixture-pinned against disassembly-backed helpers. Direct ROM
+evidence covers the secondary selector/routing/page-record boundary because the SO plus
+transparent fixture pins handler `0xc6b8`, source context `0xc00ae122`, segmented
+selector `0x2001`, bridge context slots, and a selected-bucket render digest; the
+secondary render-prefix fixture pins buckets `0..448` and the first source-read boundary
+at bucket `456`. Direct ROM evidence covers the conclusion that segment-57 fallback rows
+depend on an unverified memory-map policy, because the mirror, code-pair, and zero-fill
+continuation fixtures all share the same current-band digest and diverge only in
+fallback row digests. The remaining boundary is the actual hardware source
+interpretation after that boundary: the verified `IC32,IC15` resource pair ends at
+`0x0bffff`, but `notes/formatter-interface-pca.md` records formatter ROM capacity and
+address-controller facts that allow a larger or altered ROM region. The remaining
+boundary is manual names for the filter bytes.
 
 ### Fixtures
 
@@ -3287,13 +3289,13 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `c2c1504836f113d5a2c89168702ccb008dcc93126cfcf55a57964ba889170318`
   and `15b6d4e1c1691ca7d6204259f3dfff5c96575588c0c71c8ff011898581be4f35`.
 
-### Confidence
+### Evidence Status
 
-High for source field meanings, paired writer behavior, `0x12f2e`
+Direct ROM evidence covers source field meanings, paired writer behavior, `0x12f2e`
 short/segmented object shapes, selector bits, and rendered compact rows
-because all are backed by disassembly and executable fixtures. Medium for
-broader source-class and allocator-branch coverage that could expose new
-object shapes or visible rows.
+because all are backed by disassembly and executable fixtures. Remaining
+source-class and allocator-branch work starts only when a byte stream exposes
+new object shapes or visible rows.
 
 ### Fixtures
 
@@ -3687,13 +3689,13 @@ default Line Printer source map used by the printable fixtures: context
 `0x440946b4`, first/last host range `0x01..0xff`, host byte `0x21`, mapped
 glyph `0x20`.
 
-### Confidence
+### Evidence Status
 
-High for the verified built-in scan, class/range counters, cursor
+Direct ROM evidence covers the verified built-in scan, class/range counters, cursor
 windows, active-window activation, concrete symbol/height/pitch filtering,
 candidate chooser behavior, and downstream visible primary/secondary row
 effects because the claims are backed by generated record reports,
-disassembly, and executable fixtures. Medium for external cartridge
+disassembly, and executable fixtures. The remaining boundary is external cartridge
 resources because no image is available in this repo.
 
 ### Fixtures
@@ -4327,9 +4329,9 @@ It documents the ROM-derived rendered surface; a known printed/self-test
 sample would only be optional physical correlation and is not an oracle for
 the rendered rows.
 
-### Confidence
+### Evidence Status
 
-High for helper roles, class-pass loop structure, candidate-row
+Direct ROM evidence covers helper roles, class-pass loop structure, candidate-row
 traversal, current-font/page-root setup, printable byte emission,
 continuation checks, local label tables, concrete default Roman-8 row,
 first `COURIER`, and first `LINE_PRINTER` row-field formatting, first
@@ -4343,7 +4345,7 @@ page-record object placement, carried run-2 bucket rendering through
 placement skeleton, and per-row reuse of sample byte tables `0x1c1cf` /
 `0x1c1e9`, plus all-source rendered surface digests through `0x1ed84` /
 `0x1ef6a`, because they are anchored by generated disassembly analysis and
-`tools/render_fixture_harness.py`. Medium for manual-facing baseline/cell
+`tools/render_fixture_harness.py`. The remaining boundary is manual-facing baseline/cell
 terminology because the ROM documents field roles but not HP's external names
 for those measurements.
 
@@ -5467,75 +5469,65 @@ following `!!` consumes prior secondary context `0xc40ad87a`, queues object
 `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and renders row digest
 `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
-### Confidence
+### Evidence Status
 
-High for parser handler routing, fallback table decision, selected built-in
-context, secondary current-font RAM to page-root slot install, map rebuild
-metadata, HMI, compact object bytes, render context slot, and final rows
-because they are all fixture-pinned against ROM-derived helpers. High for the
-primary and secondary parser-to-printable state edge because the inline
-fixtures preserve one mixed-stream state from selection handlers through
-following printable source capture and ROM-derived row construction. High for
-the direct no-dispatch refresh variants because
-`0x13eb8 no-dispatch exits keep prior visible rows` carries both the
-transient-context and cache-hit exits through printable/SO tails, prior
-contexts, bridged context slots, object prefixes, and row digests. Remaining
-refresh work is `0x13eb8` / `0x156de` / `0x14c64` state combinations that
-change candidate windows, active symbol words, selected context records,
-active maps, snapshot keys, page-root font slot/context fields, source-object
-fields, HMI/cursor advance, bridge context slots, or rendered rows.
-High for primary and secondary visible-output handling of `0N`, `10U`, and
-`11U` because fixture `non-Roman symbol streams select visible built-ins`
-preserves symbol-set parsing, font-selection refresh, SO for secondary,
-compact object creation, bridge context slots, and rendered row digests.
-High for final-`X` built-in visible output because fixture
-`font-ID built-in selection feeds visible page-record rows` composes
-host-fetched bytes, ROM parser handlers, `0x17708` helper calls, selected
-context, printable source capture, object prefix, bridge context slots, and
-rendered row digest.
-High for secondary final-`X` built-in visible output because fixture
-`font-ID secondary built-in selection feeds visible SO page-record rows`
-composes host-fetched bytes, ROM parser handlers, the class-one `0x17708`
-helper path, selected context `0xc00ae122`, SO, printable source capture,
-object prefix, bridge context slots, and rendered row digest.
-High for final-`X` inline/downloaded visible output because fixtures
-`font-ID primary inline/downloaded selection feeds visible page-record rows`
-and `font-ID inline/downloaded selection feeds visible page-record rows`
-compose host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708`
-helper path, selected inline context, page-root slots `0` and `1`, optional
-SO, unflagged printable source capture, object prefixes, bridge context slots,
-and rendered row digest.
-High for the `0x13eb8` transient and cache-hit no-dispatch exits because
-fixture `0x13eb8 transient and cache-hit exits avoid dispatch` pins call
-lists, selected context cache, saved active word restoration, absence of
-`0x144d2` / `0x14c64`, and cache-hit early return. High for their visible
-output because fixture `0x13eb8 no-dispatch exits keep prior visible rows`
-appends printable/SO tails and pins prior contexts, object prefixes, bridge
-context slots, and rendered-row digests.
-High for direct `0x17708` non-selected exits because fixture
-`0x17708 font-ID non-selected exits preserve prior selection` pins all four
-terminal statuses, call lists, restored font ID, selected pointer state, class
-comparison, and `0xc4fc` full-table result. High for carrying those exits
-through later visible output because fixtures `font-ID non-selected exits keep
-prior visible rows` and `font-ID secondary non-selected exits keep prior SO
-visible rows` append the parsed printable/SO tails and pin prior contexts
-`0xc008004c` and `0xc40ad87a`, object prefixes, bridge context slots, and row
-digests.
-High for final-`@` parser/default-table behavior because the ROM parser
-records, terminal handler, subdispatch targets, real built-in default words,
-requested words, active words, and common-refresh count are fixture-pinned.
-High for final-`@` visible output because fixture
-`real final-@ default-table streams select visible built-ins` composes those
-exact default-table requests with primary and secondary font-selection tails,
-printable sources, object prefixes, bridge context slots, and rendered row
-digests.
-High for the `0xc580` common-refresh branch cluster because the dirty-1
-primary/secondary install branches, full-live matching-context reuse,
-full-live/no-match `0xc4fc = 0x11` skip, selector-mismatch refresh-only path,
-dirty-2 primary/secondary selector-match installs, and dirty-2
-selector-mismatch remembered-word-only path are all fixture-pinned with active
-words, remembered words, dirty flags, page-root slots, refresh calls, and
-install events.
+Direct ROM evidence covers parser handler routing, fallback table decision, selected
+built-in context, secondary current-font RAM to page-root slot install, map rebuild
+metadata, HMI, compact object bytes, render context slot, and final rows because they
+are all fixture-pinned against ROM-derived helpers. Direct ROM evidence covers the
+primary and secondary parser-to-printable state edge because the inline fixtures
+preserve one mixed-stream state from selection handlers through following printable
+source capture and ROM-derived row construction. Direct ROM evidence covers the direct
+no-dispatch refresh variants because `0x13eb8 no-dispatch exits keep prior visible rows`
+carries both the transient-context and cache-hit exits through printable/SO tails, prior
+contexts, bridged context slots, object prefixes, and row digests. Remaining refresh
+work is `0x13eb8` / `0x156de` / `0x14c64` state combinations that change candidate
+windows, active symbol words, selected context records, active maps, snapshot keys,
+page-root font slot/context fields, source-object fields, HMI/cursor advance, bridge
+context slots, or rendered rows. Direct ROM evidence covers primary and secondary
+visible-output handling of `0N`, `10U`, and `11U` because fixture `non-Roman symbol
+streams select visible built-ins` preserves symbol-set parsing, font-selection refresh,
+SO for secondary, compact object creation, bridge context slots, and rendered row
+digests. Direct ROM evidence covers final-`X` built-in visible output because fixture
+`font-ID built-in selection feeds visible page-record rows` composes host-fetched bytes,
+ROM parser handlers, `0x17708` helper calls, selected context, printable source capture,
+object prefix, bridge context slots, and rendered row digest. Direct ROM evidence covers
+secondary final-`X` built-in visible output because fixture `font-ID secondary built-in
+selection feeds visible SO page-record rows` composes host-fetched bytes, ROM parser
+handlers, the class-one `0x17708` helper path, selected context `0xc00ae122`, SO,
+printable source capture, object prefix, bridge context slots, and rendered row digest.
+Direct ROM evidence covers final-`X` inline/downloaded visible output because fixtures
+`font-ID primary inline/downloaded selection feeds visible page-record rows` and
+`font-ID inline/downloaded selection feeds visible page-record rows` compose
+host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708` helper path,
+selected inline context, page-root slots `0` and `1`, optional SO, unflagged printable
+source capture, object prefixes, bridge context slots, and rendered row digest. Direct
+ROM evidence covers the `0x13eb8` transient and cache-hit no-dispatch exits because
+fixture `0x13eb8 transient and cache-hit exits avoid dispatch` pins call lists, selected
+context cache, saved active word restoration, absence of `0x144d2` / `0x14c64`, and
+cache-hit early return. Direct ROM evidence covers their visible output because fixture
+`0x13eb8 no-dispatch exits keep prior visible rows` appends printable/SO tails and pins
+prior contexts, object prefixes, bridge context slots, and rendered-row digests. Direct
+ROM evidence covers direct `0x17708` non-selected exits because fixture `0x17708 font-ID
+non-selected exits preserve prior selection` pins all four terminal statuses, call
+lists, restored font ID, selected pointer state, class comparison, and `0xc4fc`
+full-table result. Direct ROM evidence covers carrying those exits through later visible
+output because fixtures `font-ID non-selected exits keep prior visible rows` and
+`font-ID secondary non-selected exits keep prior SO visible rows` append the parsed
+printable/SO tails and pin prior contexts `0xc008004c` and `0xc40ad87a`, object
+prefixes, bridge context slots, and row digests. Direct ROM evidence covers final-`@`
+parser/default-table behavior because the ROM parser records, terminal handler,
+subdispatch targets, real built-in default words, requested words, active words, and
+common-refresh count are fixture-pinned. Direct ROM evidence covers final-`@` visible
+output because fixture `real final-@ default-table streams select visible built-ins`
+composes those exact default-table requests with primary and secondary font-selection
+tails, printable sources, object prefixes, bridge context slots, and rendered row
+digests. Direct ROM evidence covers the `0xc580` common-refresh branch cluster because
+the dirty-1 primary/secondary install branches, full-live matching-context reuse,
+full-live/no-match `0xc4fc = 0x11` skip, selector-mismatch refresh-only path, dirty-2
+primary/secondary selector-match installs, and dirty-2 selector-mismatch
+remembered-word-only path are all fixture-pinned with active words, remembered words,
+dirty flags, page-root slots, refresh calls, and install events.
 
 ### Fixtures
 
@@ -6053,9 +6045,9 @@ queues a fixed-width span through `0x136d2`.
   `00 00 00 00 00 16 33 00 00 03 00 03 01 08`, and `0x1f756` /
   `0x1f7b0` renders three shifted 3-pixel rows at x `3`, y `3`.
 
-### Confidence
+### Evidence Status
 
-High for pending-state initialization, unflagged `0xd4ac` low-water
+Direct ROM evidence covers pending-state initialization, unflagged `0xd4ac` low-water
 success, flagged `0xd8fc` low-water success, disabled/lower-bound/page-extent
 exits, high-x span extent updates, flush source packaging, portrait versus
 landscape branch selection, portrait split output, landscape nonempty
@@ -6351,9 +6343,9 @@ Writer/reader model:
   from partial bitmap bytes plus zero-filled missing bytes and can later be
   completed by `0x15b9a`.
 
-Confidence and evidence:
+Evidence status:
 
-- High for the covered parser-to-render routes because the checked-in
+- Direct ROM evidence covers the covered parser-to-render routes because the checked-in
   low-level note cites concrete parser handlers, RAM fields, object bytes,
   publication buckets, render-dispatch targets, row digests, and disassembly
   boundaries.
@@ -7503,11 +7495,11 @@ printable byte. No downloaded-font candidate is installed, no current-record
 payload is selected, the default-font compact object matches the baseline `!`,
 and the final rendered rows are derived from the baseline default-font path.
 
-Confidence is high for the parser boundary, failed validation entries, last
+ROM evidence directly covers the parser boundary, failed validation entries, last
 staged fields, allocation skip, no-install result, resumed printable handler,
 default compact object, and rendered rows because the documented route covers
 the seven bounded `ESC )s80W` no-install streams and the short-budget
-`ESC )s8W` stream. Confidence is high for ROM-internal rejecting validation
+`ESC )s8W` stream. ROM evidence directly covers ROM-internal rejecting validation
 coverage because disassembly shows only predicate helpers `0x17362`,
 `0x173d0`, `0x173fe`, `0x17430`, and `0x1749e` can return failure; the
 remaining validation entries cannot create additional no-install error forms.
@@ -7644,13 +7636,14 @@ Output effect:
   `ESC )s#W` budget. The minimum segmented-wide span is `17`, so the last
   below-cap row word in this stream shape is `0x0787`.
 
-Confidence is high for the parser/install/page-record/bridge portions because
-the cited fixtures start from host-fetched command streams and preserve the
-same installed records through publication and render entry. Confidence is high
-for the invalid helper/source boundaries because the disassembly names the
-exact unchecked table or source-read boundary: `0x1fe76..0x2008e`,
-`0x1f034` table `0x1f08e`, `0x1f264` plus helper `0x2f27c`, and payload budget
-restore/drain through `0x12218`, `0x16c14`, `0x15dcc`, and `0x12328`.
+ROM evidence directly covers the parser/install/page-record/bridge portions
+because the cited fixtures start from host-fetched command streams and preserve
+the same installed records through publication and render entry. Direct ROM
+evidence also bounds the invalid helper/source boundaries because the
+disassembly names the exact unchecked table or source-read boundary:
+`0x1fe76..0x2008e`, `0x1f034` table `0x1f08e`, `0x1f264` plus helper
+`0x2f27c`, and payload budget restore/drain through `0x12218`, `0x16c14`,
+`0x15dcc`, and `0x12328`.
 
 Fixtures:
 
@@ -7880,7 +7873,7 @@ pool record keeps bucket word `9`, empty rule/fixed lists, context prefix
 `(0, 0, 0, 0)`, and the same `0x1ed84`/`0x1ef6a` row digests as the active
 records.
 
-Confidence is high for the installed glyph resource fields, page-record object
+ROM evidence directly covers the installed glyph resource fields, page-record object
 bytes, render call order, dispatch targets, rule helper, and composed rows
 because the disassembly-backed command route reaches the documented writers and
 consumers: font install `0x16c14 -> 0x16498`, printable glyph production
@@ -7890,11 +7883,11 @@ consumers: font install `0x16c14 -> 0x16498`, printable glyph production
 reproducible checks of those documented routes and row-construction inputs, not
 external rendered-row evidence.
 
-The byte-24 install-to-page state handoff is high confidence for the same
+The byte-24 install-to-page state handoff is directly evidenced for the same
 reason: the documented stream boundary preserves the final header, install
 header, `0x783140` drain state, next handler `0x10e68`, glyph source fields,
 page object bytes, and raster payload offset `28`. Segmented, split-plane, and
-even-span glyph/rule/raster publication siblings are high confidence for the
+even-span glyph/rule/raster publication siblings are directly evidenced for the
 documented `0xff1e` bucket arrays, rule-list bytes, published bucket words,
 rule mutation through `0x1f596`, and dispatch to `0x1f88e` / `0x1effe`.
 Fixture row digests remain consistency checks for those ROM-derived object and
@@ -8073,19 +8066,19 @@ The segmented sibling adds the same page-eject path for selector `0x2000`:
 with the span plus segment `0`; the visible segment reaches `0x1f1f0` after
 the shared `0x1ed84`/`0x1ef6a` and `0x1effe` dispatch boundaries.
 
-Confidence is high for the integrated bit-30 resource-header plus
+ROM evidence directly covers the integrated bit-30 resource-header plus
 downloaded-pointer glyph path because the documented ROM route includes both
 fetched streams, the installed table entry, record and bitmap bytes, context
 `0x40000000`, queued compact/span objects, and render dispatch rows. Legal
-type-1/type-2 header siblings are high confidence because the route includes
+type-1/type-2 header siblings are directly evidenced because the route includes
 setup bytes `1` and `2`, payload units `0x100`, allocation size `18`,
 candidate flags `0x40000000` and `0x44000000`, the same fetched glyph record,
 the installed table entry, and resolved downloaded-pointer state.
 
-Legal type-1/type-2 FF publication is high confidence because the route
+Legal type-1/type-2 FF publication is directly evidenced because the route
 includes the fetched glyph/tail boundaries, `0xd04a`/`0xf0f0` tail handlers,
 `0xff1e` bucket/context fields, render dispatch targets, and row equality. The
-wide and segmented publication siblings are high confidence because they
+wide and segmented publication siblings are directly evidenced because they
 preserve exact selector, object, bucket, context, render-target, and row-digest
 boundaries: `0x1003` / `0x1f0d2` with digest
 `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`, and
@@ -8218,138 +8211,143 @@ partial-resave, or failed-release cases. The nonzero-count
 `Nonzero Resource Payload Checkpoint`; it should not be merged with this
 zero-count bit-30-clear object route.
 
-### Confidence
+### Evidence Status
 
-High for command dispatch, current-record state, existing-record release ordering before
-allocation failure, staged header fields, payload allocation, installed
-downloaded-character object, and visible row, because the fixtures tie host-fetched
-streams to parser records, teardown state, and render rows. High for the
-downloaded-character parser-to-page path for the normal, wide/control, even-span wide,
-row-threshold, segmented, and segmented-wide compact selectors represented by fixtures
-`host-fetched linear downloaded character stream renders through 0x168dc`, `host-fetched
-downloaded character payload control reaches wide render`, `host-fetched even-span wide
-downloaded character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
-character remains short compact`, `0x16498 replacement allocation failure partial and
-rejected downloaded character exits preserve state`, `0x16498 no-install exits preserve
-following printable output`, `0x16498 status-2 partial installs remain printable`,
-`host-fetched segmented downloaded character renders through 0x1f1f0`, `host-fetched
-split-plane segmented downloaded character renders through 0x1f1f0`, and `host-fetched
-downloaded character stream reaches rendered object`. High for the modeled FF
-publication boundary of the combined downloaded-glyph stream because the fixture asserts
-the full fetched stream boundaries, published bucket array entries `1` and `9`, selected
-render bucket words `1` and `9`, dispatch target, and final rows. High for the even-span
-wide publication sibling because fixture `host-fetched even-span downloaded glyph FF
-publishes rendered page record` asserts the host-fetched `ESC )s18W` payload, tail
-handlers `0xd04a` and `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
-dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control
-odd-span wide publication sibling because fixture `host-fetched payload-control
-downloaded glyph FF publishes page record` asserts the `1a 58` normalized payload,
-mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, nonzero return drain
-`0x783140 = 1` consuming `&`, post-return FF handler `0xf0f0`, published bucket `1`,
-`0x1ed84` render word `1`, compact dispatch target `0x1effe`, and final modeled
-`0x1f0d2` rows. High for the normal, non-boundary short, rows-`0x20` short, rows-`0x40`
-short, row-`0x80`, segmented, rows-`0x82` segmented, and split-plane segmented
-publication siblings because fixtures `host-fetched nonboundary short downloaded glyph
-FF publication renders page record`, `host-fetched rows-0x20 short downloaded glyph FF
-publication renders page record`, `host-fetched rows-0x40 short downloaded glyph FF
-publication renders page record`, `downloaded normal row-0x80 and segmented glyph FF
-publications render page records`, `host-fetched rows-0x82 segmented downloaded glyph FF
-publication renders page record`, and `split-plane segmented downloaded glyph FF
-publication renders page record` assert fetched stream boundaries, parser-restored
-records, tail handlers `0xd04a` and `0xf0f0`, published bucket entries `1` and `9`,
-selected render bucket words, compact target `0x1effe`, row-`0x80` selector `0x0003`,
-rows `0x20` selector `0x0003`, rows `0x40` selector `0x0003`, rows `0x82` selector
-`0x2003`, split-plane A2/A3 source offsets, dispatch object bytes `0x00` and `0x20`, and
-final `0x1fe76`/`0x1f1f0` rows. High for main downloaded width-span rendering because
-fixture `downloaded glyph width-span matrix publishes and renders all main helpers`
-asserts spans `1..16`, mode-byte parity, split-plane copies for odd spans above one,
-zero-drain return boundaries, bucket-0 FF publication, `0x1ed84`/`0x1ef6a` dispatch,
-helper targets `0x1fa5c..0x26910`, and rows derived from the installed bitmap. High for
-compact-wide downloaded rendering because fixture `downloaded glyph wide-remainder
-matrix publishes and renders compact chunks` asserts spans `17..32`, mode-byte parity,
-split-plane copies for odd spans, selector `0x1003`, object byte `0x10`, full-chunk
-helper `0x2f27c`, `0x1f1ac` remainders `1..15`, the no-remainder span-`32` sibling,
-zero-drain return boundaries, bucket-0 FF publication, `0x1ed84`/`0x1ef6a` dispatch, and
-ROM-derived row construction from installed bitmap bytes; the same fixture keeps
-high-span probes `33`, `48`, `49`, `64`, and `255` useful for upstream metadata and
-renderer source-walk documentation. High for the width-byte producer boundary because
-fixture `downloaded glyph width-byte boundary truncates page-record span` asserts spans
-`0x00ff`, every span `0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`, the
-canonical installed width words, the one-byte source records, the resulting `0x12f2e`
-selectors, and the render split. Source width bytes `0x11..0xff` select compact-wide
-`0x1f0d2` and now render rows derived from installed bitmap bytes; source width bytes
-`0x00..0x10` select compact mode-0 helper entries outside the decoded row-copy helper
-heads, with exact target classes recorded by fixture field `helper_target_class`. High
-for segmented-wide downloaded rendering because fixture `downloaded glyph segmented-wide
-matrix publishes and renders compact chunks` asserts spans `17..32`, rows `0x81`,
-mode-byte parity, split-plane copies for odd spans, selector `0x3003`, object byte
-`0x30`, segment row skip `0x80`, A2/A3 source offsets, full-chunk helper `0x2f27c`,
+Direct ROM evidence covers command dispatch, current-record state, existing-record
+release ordering before allocation failure, staged header fields, payload allocation,
+installed downloaded-character object, and visible row, because the fixtures tie
+host-fetched streams to parser records, teardown state, and render rows. Direct ROM
+evidence covers the downloaded-character parser-to-page path for the normal,
+wide/control, even-span wide, row-threshold, segmented, and segmented-wide compact
+selectors represented by fixtures `host-fetched linear downloaded character stream
+renders through 0x168dc`, `host-fetched downloaded character payload control reaches
+wide render`, `host-fetched even-span wide downloaded character renders through
+0x1f0d2`, `host-fetched row-0x80 downloaded character remains short compact`, `0x16498
+replacement allocation failure partial and rejected downloaded character exits preserve
+state`, `0x16498 no-install exits preserve following printable output`, `0x16498
+status-2 partial installs remain printable`, `host-fetched segmented downloaded
+character renders through 0x1f1f0`, `host-fetched split-plane segmented downloaded
+character renders through 0x1f1f0`, and `host-fetched downloaded character stream
+reaches rendered object`. Direct ROM evidence covers the modeled FF publication boundary
+of the combined downloaded-glyph stream because the fixture asserts the full fetched
+stream boundaries, published bucket array entries `1` and `9`, selected render bucket
+words `1` and `9`, dispatch target, and final rows. Direct ROM evidence covers the
+even-span wide publication sibling because fixture `host-fetched even-span downloaded
+glyph FF publishes rendered page record` asserts the host-fetched `ESC )s18W` payload,
+tail handlers `0xd04a` and `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`,
+compact dispatch target `0x1effe`, and final `0x1f0d2` rows. Direct ROM evidence covers
+the payload-control odd-span wide publication sibling because fixture `host-fetched
+payload-control downloaded glyph FF publishes page record` asserts the `1a 58`
+normalized payload, mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, nonzero
+return drain `0x783140 = 1` consuming `&`, post-return FF handler `0xf0f0`, published
+bucket `1`, `0x1ed84` render word `1`, compact dispatch target `0x1effe`, and final
+modeled `0x1f0d2` rows. Direct ROM evidence covers the normal, non-boundary short,
+rows-`0x20` short, rows-`0x40` short, row-`0x80`, segmented, rows-`0x82` segmented, and
+split-plane segmented publication siblings because fixtures `host-fetched nonboundary
+short downloaded glyph FF publication renders page record`, `host-fetched rows-0x20
+short downloaded glyph FF publication renders page record`, `host-fetched rows-0x40
+short downloaded glyph FF publication renders page record`, `downloaded normal row-0x80
+and segmented glyph FF publications render page records`, `host-fetched rows-0x82
+segmented downloaded glyph FF publication renders page record`, and `split-plane
+segmented downloaded glyph FF publication renders page record` assert fetched stream
+boundaries, parser-restored records, tail handlers `0xd04a` and `0xf0f0`, published
+bucket entries `1` and `9`, selected render bucket words, compact target `0x1effe`,
+row-`0x80` selector `0x0003`, rows `0x20` selector `0x0003`, rows `0x40` selector
+`0x0003`, rows `0x82` selector `0x2003`, split-plane A2/A3 source offsets, dispatch
+object bytes `0x00` and `0x20`, and final `0x1fe76`/`0x1f1f0` rows. Direct ROM evidence
+covers main downloaded width-span rendering because fixture `downloaded glyph width-span
+matrix publishes and renders all main helpers` asserts spans `1..16`, mode-byte parity,
+split-plane copies for odd spans above one, zero-drain return boundaries, bucket-0 FF
+publication, `0x1ed84`/`0x1ef6a` dispatch, helper targets `0x1fa5c..0x26910`, and rows
+derived from the installed bitmap. Direct ROM evidence covers compact-wide downloaded
+rendering because fixture `downloaded glyph wide-remainder matrix publishes and renders
+compact chunks` asserts spans `17..32`, mode-byte parity, split-plane copies for odd
+spans, selector `0x1003`, object byte `0x10`, full-chunk helper `0x2f27c`, `0x1f1ac`
+remainders `1..15`, the no-remainder span-`32` sibling, zero-drain return boundaries,
+bucket-0 FF publication, `0x1ed84`/`0x1ef6a` dispatch, and ROM-derived row construction
+from installed bitmap bytes; the same fixture keeps high-span probes `33`, `48`, `49`,
+`64`, and `255` useful for upstream metadata and renderer source-walk documentation.
+Direct ROM evidence covers the width-byte producer boundary because fixture `downloaded
+glyph width-byte boundary truncates page-record span` asserts spans `0x00ff`, every span
+`0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`, the canonical installed
+width words, the one-byte source records, the resulting `0x12f2e` selectors, and the
+render split. Source width bytes `0x11..0xff` select compact-wide `0x1f0d2` and now
+render rows derived from installed bitmap bytes; source width bytes `0x00..0x10` select
+compact mode-0 helper entries outside the decoded row-copy helper heads, with exact
+target classes recorded by fixture field `helper_target_class`. Direct ROM evidence
+covers segmented-wide downloaded rendering because fixture `downloaded glyph
+segmented-wide matrix publishes and renders compact chunks` asserts spans `17..32`, rows
+`0x81`, mode-byte parity, split-plane copies for odd spans, selector `0x3003`, object
+byte `0x30`, segment row skip `0x80`, A2/A3 source offsets, full-chunk helper `0x2f27c`,
 `0x1f1ac` remainders `1..15`, the no-remainder span-`32` sibling, zero-drain return
 boundaries, bucket-0/bucket-8 FF publication, `0x1ed84`/`0x1ef6a` dispatch, and
 segment-1 rows derived from installed bitmap bytes; the same fixture keeps high-span
 probes `33`, `48`, `49`, and `64` useful for upstream metadata and renderer source-walk
-documentation. High for segmented-wide row/span cross-products because fixture
-`downloaded segmented-wide row-span cross-products render selected segment` asserts row
-words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`, selected
-segment `1`, zero-drain returns, bucket-8 publication, `0x1f264` dispatch, and selected
-segment rows derived from installed bitmap bytes. High for high-row segmented-wide
-fallback at the sampled split-plane, linear, and no-remainder boundaries because
-fixtures `downloaded segmented-wide high-row fallback renders selected segment`,
-`downloaded segmented-wide high-row even-span fallback renders selected segment`, and
-`downloaded segmented-wide high-row span-32 fallback renders selected segment` assert
-row word `0x0181`, spans `17`, `18`, and `32`, selected segment `1`, `0x1f414` split
-`32/96`, and current plus fallback rows derived from installed bitmap bytes. High for
-the neighboring failure boundary because `downloaded segmented-wide high-row span-31
-fallback hits source boundary` reaches the same renderer and reports the exact fallback
-A2 source read at `+0xb50`. High for the row-`0x0182` sibling because fixtures
-`downloaded segmented-wide row-0x0182 fallbacks render selected segment` and `downloaded
-segmented-wide row-0x0182 span-31 fallback hits source boundary` assert the same
-selected-segment success/boundary split. High for the row-`0x01ff` sibling because
-fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
-`downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` assert the
-same selected-segment success/boundary split. High for the row-`0x0282`/`0x02ff` matrix
-because fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected
-segment` and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source
-boundary` assert the same selected-segment success/boundary split across both row words.
-High for the row-`0x0381`/`0x0382`/`0x03ff` matrix because fixtures `downloaded
-segmented-wide high-row 0x03xx matrix renders selected segment` and `downloaded
-segmented-wide high-row 0x03xx span-31 matrix hits source boundary` assert the same
-success/source-boundary split for the next high-byte range. High for the
-row-`0x0481`/`0x0482`/`0x04ff` matrix below the payload-count cap because fixture
-`downloaded segmented-wide high-row 0x04xx matrix renders selected segment` asserts
-selected-segment rendering at spans `17`, `18`, and `24`; high for the oversized
-parser-count boundary because fixture `downloaded segmented-wide high-row 0x04xx
-oversized payload counts stop before renderer` records `parser_stop_offset` and
-`full_payload_end_offset` for spans `31` and `32` before renderer entry. High for the
-row-`0x05xx` and parser-limit matrices because fixtures `downloaded segmented-wide
-high-row 0x05xx matrix renders selected segment` and `downloaded segmented-wide high-row
-parser-limit matrix renders selected segment` assert the same selected-segment renderer
-model through row `0x0787`, while their oversized siblings prove the adjacent
-parser-count cap including `0x0788*17`. High for publication-to-scheduler band
-progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`, `0x1ed84`
-copies that word into render `+0x10/+0x16`, and fixture `0x1eba4 scheduler band words
-render published downloaded glyph` proves `0x1eba4` emits band words `0..9` through
-`0x1ef6a` and preserves the same visible row. High for the segmented-wide row-byte
+documentation. Direct ROM evidence covers segmented-wide row/span cross-products because
+fixture `downloaded segmented-wide row-span cross-products render selected segment`
+asserts row words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`,
+selected segment `1`, zero-drain returns, bucket-8 publication, `0x1f264` dispatch, and
+selected segment rows derived from installed bitmap bytes. Direct ROM evidence covers
+high-row segmented-wide fallback at the sampled split-plane, linear, and no-remainder
+boundaries because fixtures `downloaded segmented-wide high-row fallback renders
+selected segment`, `downloaded segmented-wide high-row even-span fallback renders
+selected segment`, and `downloaded segmented-wide high-row span-32 fallback renders
+selected segment` assert row word `0x0181`, spans `17`, `18`, and `32`, selected segment
+`1`, `0x1f414` split `32/96`, and current plus fallback rows derived from installed
+bitmap bytes. Direct ROM evidence covers the neighboring failure boundary because
+`downloaded segmented-wide high-row span-31 fallback hits source boundary` reaches the
+same renderer and reports the exact fallback A2 source read at `+0xb50`. Direct ROM
+evidence covers the row-`0x0182` sibling because fixtures `downloaded segmented-wide
+row-0x0182 fallbacks render selected segment` and `downloaded segmented-wide row-0x0182
+span-31 fallback hits source boundary` assert the same selected-segment success/boundary
+split. Direct ROM evidence covers the row-`0x01ff` sibling because fixtures `downloaded
+segmented-wide row-0x01ff fallbacks render selected segment` and `downloaded
+segmented-wide row-0x01ff span-31 fallback hits source boundary` assert the same
+selected-segment success/boundary split. Direct ROM evidence covers the
+row-`0x0282`/`0x02ff` matrix because fixtures `downloaded segmented-wide high-row 0x02xx
+matrix renders selected segment` and `downloaded segmented-wide high-row 0x02xx span-31
+matrix hits source boundary` assert the same selected-segment success/boundary split
+across both row words. Direct ROM evidence covers the row-`0x0381`/`0x0382`/`0x03ff`
+matrix because fixtures `downloaded segmented-wide high-row 0x03xx matrix renders
+selected segment` and `downloaded segmented-wide high-row 0x03xx span-31 matrix hits
+source boundary` assert the same success/source-boundary split for the next high-byte
+range. Direct ROM evidence covers the row-`0x0481`/`0x0482`/`0x04ff` matrix below the
+payload-count cap because fixture `downloaded segmented-wide high-row 0x04xx matrix
+renders selected segment` asserts selected-segment rendering at spans `17`, `18`, and
+`24`. Direct ROM evidence also covers the oversized parser-count boundary because
+fixture `downloaded segmented-wide high-row 0x04xx oversized payload counts stop before
+renderer` records `parser_stop_offset` and `full_payload_end_offset` for spans `31` and
+`32` before renderer entry. Direct ROM evidence covers the row-`0x05xx` and parser-limit
+matrices because fixtures `downloaded segmented-wide high-row 0x05xx matrix renders
+selected segment` and `downloaded segmented-wide high-row parser-limit matrix renders
+selected segment` assert the same selected-segment renderer model through row `0x0787`,
+while their oversized siblings prove the adjacent parser-count cap including
+`0x0788*17`. Direct ROM evidence covers publication-to-scheduler band progression
+because `0xff1e` disassembly at `0xffc8` clears root `+0x18`, `0x1ed84` copies that word
+into render `+0x10/+0x16`, and fixture `0x1eba4 scheduler band words render published
+downloaded glyph` proves `0x1eba4` emits band words `0..9` through `0x1ef6a` and
+preserves the same visible row. Direct ROM evidence covers the segmented-wide row-byte
 producer boundary because fixture `downloaded segmented-wide row-byte boundary truncates
 page-record segments` asserts row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
 `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`,
 `0x0200`, and `0x0201`, the one-byte source records, the resulting `0x12f2e`
 selectors/segments, the `0x1f0d2` render boundary for low row bytes `0x00..0x80`, and
-the produced `0x1f264` segment-boundary records for low row bytes above `0x80`. High for
-downloaded-glyph/rule/raster render composition because fixture `host-fetched downloaded
-glyph composes with rule and raster through 0x1ef6a` asserts the `ESC )s18W` install
-fields, bucket-5 glyph/raster objects, bridged selector-7 rule object, `0x1ef6a` call
-order, dispatch targets `0x1f88e` and `0x1effe`, rule helper `0x1f596`, and composed
-output rows. High for parser-driven page-stream composition because fixture
-`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a` asserts the
-post-font page bytes, handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`,
-`0x1075a`, and `0x11f82`, delayed raster record `80 57 00 02 00 00`, payload offset
-`28`, bucket-5 chain, bridged rule list, and the same composed rows. High for the
-ROM-effect names and failure behavior of every `0x16fae` validation-table entry,
-including the host-fetched invalid-type, first-code overflow, zero/high line-count,
-reversed/high range-count, and invalid-class no-install boundaries. Medium for the
-complete soft-font grammar because exact HP manual labels for pass-through descriptor
-fields remain external. The ROM-local selected-font residual is narrowed by
+the produced `0x1f264` segment-boundary records for low row bytes above `0x80`. Direct
+ROM evidence covers downloaded-glyph/rule/raster render composition because fixture
+`host-fetched downloaded glyph composes with rule and raster through 0x1ef6a` asserts
+the `ESC )s18W` install fields, bucket-5 glyph/raster objects, bridged selector-7 rule
+object, `0x1ef6a` call order, dispatch targets `0x1f88e` and `0x1effe`, rule helper
+`0x1f596`, and composed output rows. Direct ROM evidence covers parser-driven
+page-stream composition because fixture `parser-driven downloaded glyph rule raster
+stream composes through 0x1ef6a` asserts the post-font page bytes, handlers `0x10e68`,
+`0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and `0x11f82`, delayed raster
+record `80 57 00 02 00 00`, payload offset `28`, bucket-5 chain, bridged rule list, and
+the same composed rows. Direct ROM evidence covers the ROM-effect names and failure
+behavior of every `0x16fae` validation-table entry, including the host-fetched
+invalid-type, first-code overflow, zero/high line-count, reversed/high range-count, and
+invalid-class no-install boundaries. The remaining boundary is the complete soft-font
+grammar because exact HP manual labels for pass-through descriptor fields remain
+external. The ROM-local selected-font residual is narrowed by
 [font-context-metrics.md](font-context-metrics.md#selected-font-residual-routing-checkpoint)
 to byte streams that change selected context records, active maps, source-object fields,
 copied metric fields, pending span fields, page-object fields, bridge context slots, or
@@ -9515,9 +9513,9 @@ to `00 00 00 00 01 07 a4 02 00 07 00 02 ff cc`, and the published rows render
 through `0x1ed84`/`0x1ef6a` with digest
 `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`.
 
-### Confidence
+### Evidence Status
 
-High for parser reachability, selector meanings, record count/stride,
+Direct ROM evidence covers parser reachability, selector meanings, record count/stride,
 current id storage, `0xe0a4` lookup/free/full status behavior, definition
 stop behavior, execute/call and non-replay frame mode bytes, frame field offsets
 `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only context-stack push, snapshot
@@ -9528,7 +9526,7 @@ initializer, `0x170c`/`0x1710` / `0x18b4` shared heap contract,
 `0xa904` replay, the `0xff1e` overlay detour, and page-record/render
 effects because those are covered by disassembly, generated parser-table
 reports, and executable fixtures.
-High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
+Direct ROM evidence covers the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 ### Fixtures
 
@@ -9966,23 +9964,21 @@ rectangle and raster page record feeds 0x1ed84 and 0x1ef6a`, and `addressed
 text/rule/raster field groups reach publication and render entry` pin the
 host-fetched and addressed publication forms of that same page-record contract.
 
-### Confidence
+### Evidence Status
 
-High for parser handler order, delayed snapshot bytes, delayed scratch layout,
-direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
-root boundary for beyond-extent versus negative rows, encoded object layout,
-bridge preservation, mode dispatch helpers, and ROM-derived row construction
-because those are supported by disassembly addresses and exercised as path
-drivers by named harness fixtures:
-`0x121cc..0x12262`, `0x105e4..0x106cc`, `0x10084..0x10218`,
-`0x13070..0x13250`, and `0x132b6..0x13382`. High for the covered raster-state
-effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
-selection, consecutive transfers, and lowercase same-family `*b` chaining
-because each has parser-dispatch, restored-record, object, and render-entry
-fixtures. Broader dense parser-produced page variants inside
-`0x105d0..0x13250` remain future documentation work only when they expose new
-ROM gate outcomes, encoded object fields, bridge fields, or row-construction
-branches.
+Direct ROM evidence covers parser handler order, delayed snapshot bytes, delayed scratch
+layout, direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
+root boundary for beyond-extent versus negative rows, encoded object layout, bridge
+preservation, mode dispatch helpers, and ROM-derived row construction because those are
+supported by disassembly addresses and exercised as path drivers by named harness
+fixtures: `0x121cc..0x12262`, `0x105e4..0x106cc`, `0x10084..0x10218`,
+`0x13070..0x13250`, and `0x132b6..0x13382`. Direct ROM evidence covers the covered
+raster-state effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
+selection, consecutive transfers, and lowercase same-family `*b` chaining because each
+has parser-dispatch, restored-record, object, and render-entry fixtures. Broader dense
+parser-produced page variants inside `0x105d0..0x13250` remain future documentation work
+only when they expose new ROM gate outcomes, encoded object fields, bridge fields, or
+row-construction branches.
 
 ### Fixtures
 
@@ -10340,18 +10336,17 @@ Supporting fixture anchors:
 - `addressed text plus rectangle stream matches page-record output`
 - `rectangle parser trace feeds no-room retry path`
 
-### Confidence
+### Evidence Status
 
-High for parser handler order, dimension/fill selector mapping, clipping and
-ignore gates, rule object bytes, ordered insertion, bridge normalization,
-solid and pattern dispatch, continuation mutation across bands, no-room retry
-output, and the covered mixed text/rule/raster publication streams because
-the disassembly and fixtures identify the ROM state path. New byte-stream
-variants matter only when they change a pixel-affecting ROM boundary outside
-those covered clusters: clipped source record, `0x1381c` allocation/rollover
-state, retry publication fields, rule object bytes, bridge state, render
-dispatch, or row-construction branch. The shared heap/free-list contract is
-documented in `Macro Definition And Data-Chain Replay`.
+Direct ROM evidence covers parser handler order, dimension/fill selector mapping,
+clipping and ignore gates, rule object bytes, ordered insertion, bridge normalization,
+solid and pattern dispatch, continuation mutation across bands, no-room retry output,
+and the covered mixed text/rule/raster publication streams because the disassembly and
+fixtures identify the ROM state path. New byte-stream variants matter only when they
+change a pixel-affecting ROM boundary outside those covered clusters: clipped source
+record, `0x1381c` allocation/rollover state, retry publication fields, rule object
+bytes, bridge state, render dispatch, or row-construction branch. The shared
+heap/free-list contract is documented in `Macro Definition And Data-Chain Replay`.
 
 ### Fixtures
 
@@ -10563,15 +10558,14 @@ rule node with reduced remaining rows after the first band; the later band
 renders the remaining rule rows and exits with no leftover rule or fixed-list
 state.
 
-### Confidence
+### Evidence Status
 
-High for parser handler order, delayed raster scratch, addressed stream
-object addresses, published page-record fields, render-entry call order,
-and visible rows because the documented route cites the parser, page-record,
-publication, bridge, scheduler, and render-dispatch handlers that own those
-fields. Broader page-root/display-list variants remain future work only when
-they expose new allocator transitions, object fields, bridge state, or visible
-rows.
+Direct ROM evidence covers parser handler order, delayed raster scratch, addressed
+stream object addresses, published page-record fields, render-entry call order, and
+visible rows because the documented route cites the parser, page-record, publication,
+bridge, scheduler, and render-dispatch handlers that own those fields. Broader
+page-root/display-list variants remain future work only when they expose new allocator
+transitions, object fields, bridge state, or visible rows.
 
 ### Fixtures
 
@@ -10930,15 +10924,14 @@ The reset-specific missing-root route is the opposite output boundary:
 handler `0xcc52`; `0xff1e` sees no valid current page root at `0x78297a` and
 takes the `0xffa2` clear/return branch, so no published page record is created.
 
-### Confidence
+### Evidence Status
 
-High for parser handler order, `0xa904` host-fetch draining, published pool
-header fields, command-specific page-size, page-length zero/default,
-orientation, copies, and paper-source side effects, render-record bridge
-fields, render-entry call order, and ROM-derived row construction, including
-addressed allocator state for the six addressed publication streams, because
-each cited edge has handler, field, or render-helper evidence; fixtures
-exercise the documented paths.
+Direct ROM evidence covers parser handler order, `0xa904` host-fetch draining, published
+pool header fields, command-specific page-size, page-length zero/default, orientation,
+copies, and paper-source side effects, render-record bridge fields, render-entry call
+order, and ROM-derived row construction, including addressed allocator state for the six
+addressed publication streams, because each cited edge has handler, field, or
+render-helper evidence; fixtures exercise the documented paths.
 
 ### Fixtures
 
@@ -11230,17 +11223,16 @@ band destinations. Supporting fixture names in this section identify that
 ROM-local route from page objects to rows. They are not comparisons against
 physical printer output.
 
-### Confidence
+### Evidence Status
 
-High for render-root ownership, `0x1ef6a` call order, bucket class split,
-compact subdispatch, segment-list layout, encoded raster mode split,
-rule-list selector dispatch, fixed-list consumption, destination pointer
-arithmetic, row-copy table targets, raster expansion tables, and ROM-derived
-row output for the cited paths. The remaining compact downloaded-glyph limits
-are the exact boundaries named by the downloaded-font owner: short compact
-fallback row counts above valid `0x1fe76` table index `128`, wrapped low-width
-mode-0 target selection through `0x1f034 -> 0x1f08e`, segmented-wide span-31
-fallback source offset `+0xb50` after `0x1f264`, and the restored
+Direct ROM evidence covers render-root ownership, `0x1ef6a` call order, bucket class
+split, compact subdispatch, segment-list layout, encoded raster mode split, rule-list
+selector dispatch, fixed-list consumption, destination pointer arithmetic, row-copy
+table targets, raster expansion tables, and ROM-derived row output for the cited paths.
+The remaining compact downloaded-glyph limits are the exact boundaries named by the
+downloaded-font owner: short compact fallback row counts above valid `0x1fe76` table
+index `128`, wrapped low-width mode-0 target selection through `0x1f034 -> 0x1f08e`,
+segmented-wide span-31 fallback source offset `+0xb50` after `0x1f264`, and the restored
 `ESC )s#W` payload-count cap before `0x16498` can install a glyph.
 
 ### Fixtures
@@ -11692,31 +11684,30 @@ the visible ROM outcome found in this cluster is `0x56c2 -> 0x1284`, with
 `0x1284` selecting `67 SERVICE` from string `0xb44b`. A pure byte-stream
 renderer can still start from already materialized canonical defaults.
 
-### Confidence
+### Evidence Status
 
-High for the immediate RAM producer edge from `0x780eda` records to
-`0x78219d`, `0x7821a2`, and `0x78219e`, because the writes are direct in the
-focused disassembly windows and fixture `0x5e80 loads selected default record
-into canonical defaults` exercises the selected-record load. High for
-field-specific producer writes through `0x5060`, `0x50be`, and `0x52ba`,
-because fixture `0x5060/0x50be/0x52ba update default record and dirty flags`
-proves the record byte/word updates, canonical default mirrors, and dirty-flag
-slots. High for ROM-table fallback writes from `0xba3e`/`0xba44` into
-`0x780eda`, because the writes are direct in the focused disassembly windows.
-Medium for naming the record family as control-panel/user defaults, because
-callers and manual behavior support that role. High for the panel/service-byte
-dispatch into the default-store cluster, the immediate `$8000.w` byte source,
-startup bulk-load through `0x5a16`, the retained-storage serial
-commit/readback register interface, active-record failure reporting through
-`0x56c2 -> 0x1284`, and the software-visible `$a400` phase encoding, because
-`0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x5a16`, `0x56c2`, `0x96c4`,
-`0x97e4`, `0x1284`, and `0x9a4a` directly connect those edges. Fixtures
-`0x5a16 forces retained-record read mask then clears it` and `0x56c2 selects
-active retained record or reports 67 SERVICE` now execute the bulk-read mask
-and active-record/error boundaries. Low for the external device/protocol that
-drives `$8000.w`, for the physical identity/pin names of the serial
-retained-storage device behind `$a400`/`$8c01`, and for reconciling manual
-NVRAM-failure fallback wording with the ROM paths found here.
+Direct ROM evidence covers the immediate RAM producer edge from `0x780eda` records to
+`0x78219d`, `0x7821a2`, and `0x78219e`, because the writes are direct in the focused
+disassembly windows and fixture `0x5e80 loads selected default record into canonical
+defaults` exercises the selected-record load. Direct ROM evidence covers field-specific
+producer writes through `0x5060`, `0x50be`, and `0x52ba`, because fixture
+`0x5060/0x50be/0x52ba update default record and dirty flags` proves the record byte/word
+updates, canonical default mirrors, and dirty-flag slots. Direct ROM evidence covers
+ROM-table fallback writes from `0xba3e`/`0xba44` into `0x780eda`, because the writes are
+direct in the focused disassembly windows. The remaining boundary is naming the record
+family as control-panel/user defaults, because callers and manual behavior support that
+role. Direct ROM evidence covers the panel/service-byte dispatch into the default-store
+cluster, the immediate `$8000.w` byte source, startup bulk-load through `0x5a16`, the
+retained-storage serial commit/readback register interface, active-record failure
+reporting through `0x56c2 -> 0x1284`, and the software-visible `$a400` phase encoding,
+because `0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x5a16`, `0x56c2`, `0x96c4`, `0x97e4`,
+`0x1284`, and `0x9a4a` directly connect those edges. Fixtures `0x5a16 forces
+retained-record read mask then clears it` and `0x56c2 selects active retained record or
+reports 67 SERVICE` now execute the bulk-read mask and active-record/error boundaries.
+The least documented boundary is the external device/protocol that drives `$8000.w`, for
+the physical identity/pin names of the serial retained-storage device behind
+`$a400`/`$8c01`, and for reconciling manual NVRAM-failure fallback wording with the ROM
+paths found here.
 
 ### Fixtures
 
@@ -12003,19 +11994,18 @@ but a board-level emulator must model its side effects because `0xc1c6` can
 enter non-returning service handlers and because `$8000.w` service bytes are
 shared with control-panel/default paths.
 
-### Confidence
+### Evidence Status
 
-High for the `0xba48` loop structure, `01 EXT READY` string identity,
-`0x85c0`/`68 SERVICE` display boundary, retained-storage commit-failure writer
-`0x571e -> 0x9bee(0x780e36, 0x00000008)`, status-shadow fields, register
-writes, and the `0xc0ae`/`0xc1c6` consumer behavior now exercised by
-`tools/render_fixture_harness.py`. Medium for calling the external register
-family a service/external interface, because the strings and loop behavior
-support that role but the board-level device is not identified. Low for
-reconciling the manual NVRAM-failure wording with ROM behavior: this
-checkpoint proves the failed-commit writer and the `0xc1c6 -> 0x85c0`
-consumer boundary separately, while `Default Environment Record Producers`
-proves startup bulk load and active-record failure reporting through
+Direct ROM evidence covers the `0xba48` loop structure, `01 EXT READY` string identity,
+`0x85c0`/`68 SERVICE` display boundary, retained-storage commit-failure writer `0x571e
+-> 0x9bee(0x780e36, 0x00000008)`, status-shadow fields, register writes, and the
+`0xc0ae`/`0xc1c6` consumer behavior now exercised by `tools/render_fixture_harness.py`.
+The remaining boundary is calling the external register family a service/external
+interface, because the strings and loop behavior support that role but the board-level
+device is not identified. The least documented boundary is reconciling the manual
+NVRAM-failure wording with ROM behavior: this checkpoint proves the failed-commit writer
+and the `0xc1c6 -> 0x85c0` consumer boundary separately, while `Default Environment
+Record Producers` proves startup bulk load and active-record failure reporting through
 `67 SERVICE`.
 
 ### Fixtures
@@ -12355,30 +12345,27 @@ checkpoints; the open output edge is optional-resource window data that changes
 the scratch slots, candidate pruning, current-record releases, canonical
 commit, or later page/font state that callers hand to rendering.
 
-### Confidence
+### Evidence Status
 
-High for the `0x19dd2..0x1a2e2` call order, local predicate branching,
-scratch-slot clearing, optional resource-window bases and limits, canonical
-versus scratch comparison predicates, `0x19fb8` trigger predicates,
-`0x1ba92` range selection and candidate-list counter/pointer decrements,
-`0x178fa` current-record release predicates, `0x19d9c` candidate dirty-bit
-writer, `0x1a4fa` range handoff to `0x1a616`, `0x1a900` active-context checks
-and canonical-table copy, `0x782894` scratch-pointer write, `0x780e8d` write,
-`0x9bee` status-mask call, and the three return paths because they are direct
-68000 disassembly evidence.
-Medium for treating the routine as a page/font scheduler handoff: caller
-locations and callee names support that role, and the shared helper interiors
-are covered by named sibling checkpoints. Fixture `0x19dd2 optional-window
-change composes refresh helpers` now drives a synthetic changed-window path
-through the long refresh chain, and fixture
-`0x19dd2 modeled unchanged and status branch exits` pins the unchanged and
-status-return contracts. Fixture `0x1a2e4 font scan ignores scheduler return`
-pins the font-resource scan caller after both scheduler `D7` polarities and the
-zero-candidate pre-scheduler error. Physical optional-resource contents and
-the `$8000.14/15` board-level meaning are not yet represented by hardware or
-emulator memory-map evidence. Low for any user-visible name assigned to
-`0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note deliberately
-leaves those names unresolved.
+Direct ROM evidence covers the `0x19dd2..0x1a2e2` call order, local predicate branching,
+scratch-slot clearing, optional resource-window bases and limits, canonical versus
+scratch comparison predicates, `0x19fb8` trigger predicates, `0x1ba92` range selection
+and candidate-list counter/pointer decrements, `0x178fa` current-record release
+predicates, `0x19d9c` candidate dirty-bit writer, `0x1a4fa` range handoff to `0x1a616`,
+`0x1a900` active-context checks and canonical-table copy, `0x782894` scratch-pointer
+write, `0x780e8d` write, `0x9bee` status-mask call, and the three return paths because
+they are direct 68000 disassembly evidence. The remaining boundary is treating the
+routine as a page/font scheduler handoff: caller locations and callee names support that
+role, and the shared helper interiors are covered by named sibling checkpoints. Fixture
+`0x19dd2 optional-window change composes refresh helpers` now drives a synthetic
+changed-window path through the long refresh chain, and fixture `0x19dd2 modeled
+unchanged and status branch exits` pins the unchanged and status-return contracts.
+Fixture `0x1a2e4 font scan ignores scheduler return` pins the font-resource scan caller
+after both scheduler `D7` polarities and the zero-candidate pre-scheduler error.
+Physical optional-resource contents and the `$8000.14/15` board-level meaning are not
+yet represented by hardware or emulator memory-map evidence. The least documented
+boundary is any user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
+`$8000.14/15`; this note deliberately leaves those names unresolved.
 
 ### Fixtures
 
@@ -12673,14 +12660,15 @@ from `0x9dbe` if `0x1bdba` cannot resolve a current default and from
 packed 12-subunit VMI. This path changes reset layout state only; it emits no
 page record or pixels by itself.
 
-### Confidence
+### Evidence Status
 
-High for `ESC E` handler order, page-root publication versus missing-root
-clearing, named reset writers, grouped RAM fields, fixture-visible compact text
-publication, and the immediate default-producer chain summarized by
-`Default Environment Record Producers`. Medium for field naming where roles are
-inferred from reset side effects rather than external HP terminology. Low for
-the physical retained-storage device identity behind `$a400`/`$8c01`.
+Direct ROM evidence covers `ESC E` handler order, page-root publication versus
+missing-root clearing, named reset writers, grouped RAM fields, fixture-visible compact
+text publication, and the immediate default-producer chain summarized by `Default
+Environment Record Producers`. The remaining boundary is field naming where roles are
+inferred from reset side effects rather than external HP terminology. The least
+documented boundary is the physical retained-storage device identity behind
+`$a400`/`$8c01`.
 
 ### Fixtures
 
@@ -13012,14 +13000,14 @@ streams that change the `0x10084 -> producer -> 0xff1e or 0x1ed84 ->
 0x1edc6 -> 0x1ef6a` chain: different pool-pointer topology, allocator
 failure, object layout, bridge-field value, dispatch root, or rendered rows.
 
-### Confidence
+### Evidence Status
 
-High for page-root creation side effects, stream allocator accounting,
-bucket reuse/new-head behavior, rule/fixed insertion order, root publication,
-and render-record field copies. High for the shared heap allocator contract by
-reference to `Macro Definition And Data-Chain Replay`, where `0x170c`,
-`0x1710`, and `0x18b4` are fixture-backed. Medium for scheduler breadth only
-where additional page-stream variants could change allocator topology, bridge
+Direct ROM evidence covers page-root creation side effects, stream allocator accounting,
+bucket reuse/new-head behavior, rule/fixed insertion order, root publication, and
+render-record field copies. Direct ROM evidence covers the shared heap allocator
+contract by reference to `Macro Definition And Data-Chain Replay`, where `0x170c`,
+`0x1710`, and `0x18b4` are fixture-backed. The remaining boundary is scheduler breadth
+only where additional page-stream variants could change allocator topology, bridge
 state, scheduler band words, or rendered rows.
 
 ### Fixtures
@@ -13818,36 +13806,32 @@ therefore the checked software contract for active rendering, while the
 unmapped connector signals are the physical contract a hardware emulator
 must satisfy.
 
-### Confidence
+### Evidence Status
 
-High for the distinction between protected pool head `0x780ea6` and
-scheduler cursor `0x780eaa`, the candidate selection stores into
-`0x780eaa`/`0x780eb2`, the `0x1fd4` candidate-slot insertion shift, the
-`0x1c04` state-3 staging boundary, the `0x1eea` state-4 release path,
-the protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
-two-work-record alternation, `0x783a18`, the `0x2126` pointer aliases,
-the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
-the `0x2456` source-address arithmetic, the `0x0fa2` threshold and
-pending-status transitions, the `0x1036` wait-object signal helper, the
-`0x1064`/`0x108e` pending-drain predicates, the `0x123a` priority-switch
-state updates, the copied trap vector map for traps `#0..#7`, the
-`0x10bc..0x10f2` trap-veneer argument shapes, the
-`0x1144..0x11f8` trap-handler wait-state transitions, the
-`0x1db0` status-copy path, the `0x1e44` escalated-status bridge, the
-`0x1cf8` wrapper branch predicates, the `0x1e80` attention variant, the
-`0x1ea8` timeout variant, the `0x1eba4` cleanup, throttle, capacity, and
-render-call branch predicates, the `0x1ee9e` geometry-change boundary,
-the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
-output for the selected source. Medium for the surrounding engine pacing
-loop because the fixture models firmware wait-state semantics but still
-does not name the board-level source of the interrupt/MMIO events that
-drive those states. High for `0x7828f9` bit 1/6 helper side effects,
-`0xa668`, and `0xa680` return polarity because the fixture covers set, clear,
-and test cases. High for classifying `0x780eb6` as initialized-only firmware
-bookkeeping: the long-reference scan finds only the `0x3164` initialization
-store. Medium for the physical meaning of `$8000`, `$a601`, `$a801`, and
-`$aa01` because the byte-level side effects and branch returns are pinned but
-not tied to measured engine timing yet.
+Direct ROM evidence covers the distinction between protected pool head `0x780ea6` and
+scheduler cursor `0x780eaa`, the candidate selection stores into `0x780eaa`/`0x780eb2`,
+the `0x1fd4` candidate-slot insertion shift, the `0x1c04` state-3 staging boundary, the
+`0x1eea` state-4 release path, the protected-head skip, `0x780eaa -> 0x780eae`,
+`0x780ea4/5`, the two-work-record alternation, `0x783a18`, the `0x2126` pointer aliases,
+the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern, the `0x2456`
+source-address arithmetic, the `0x0fa2` threshold and pending-status transitions, the
+`0x1036` wait-object signal helper, the `0x1064`/`0x108e` pending-drain predicates, the
+`0x123a` priority-switch state updates, the copied trap vector map for traps `#0..#7`,
+the `0x10bc..0x10f2` trap-veneer argument shapes, the `0x1144..0x11f8` trap-handler
+wait-state transitions, the `0x1db0` status-copy path, the `0x1e44` escalated-status
+bridge, the `0x1cf8` wrapper branch predicates, the `0x1e80` attention variant, the
+`0x1ea8` timeout variant, the `0x1eba4` cleanup, throttle, capacity, and render-call
+branch predicates, the `0x1ee9e` geometry-change boundary, the `0x1ed36..0x1ed6a`
+same-geometry reuse branch, and the render-entry output for the selected source. The
+remaining boundary is the surrounding engine pacing loop because the fixture models
+firmware wait-state semantics but still does not name the board-level source of the
+interrupt/MMIO events that drive those states. Direct ROM evidence covers `0x7828f9` bit
+1/6 helper side effects, `0xa668`, and `0xa680` return polarity because the fixture
+covers set, clear, and test cases. Direct ROM evidence covers classifying `0x780eb6` as
+initialized-only firmware bookkeeping: the long-reference scan finds only the `0x3164`
+initialization store. The remaining boundary is the physical meaning of `$8000`,
+`$a601`, `$a801`, and `$aa01` because the byte-level side effects and branch returns are
+pinned but not tied to measured engine timing yet.
 
 ### Fixtures
 
@@ -14439,39 +14423,36 @@ line 0 has channels `1,3,4,5,6,7,8,12,13,14,15,16`, line 61 has
 channels `2,3`, line 62 has channels `2,3,4,9`, line 63 has channel `3`,
 and line 64 has no default channel.
 
-### Confidence
+### Evidence Status
 
-High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
-same-family `w...W` delayed-record preservation, table bytes, reject
-cases, zero-count reset, text-bottom cache effect, and forward
-`0x1280a` in-text channel hit. High for before-top normalization through
-`0x128ae..0x128f4` when it rejoins the forward in-text hit path. High for
-the selector-zero target-equal early exit and selector-zero page-eject
-branch through `0x1299c..0x129c4` when
-`start_line <= text_last_line + 1`. High for the wrap-hit branch through
-`0x129c6..0x12af8` when a wrapped search finds a channel before the
-original start line and `start_line <= text_last_line + 1`. High for the
-target-after-text branch through `0x129ee..0x12b5a` when the found line
-is `63` and `start_line <= text_last_line + 1`. High for the
-non-publishing target-after-text branch through `0x129fc..0x12afc` when
-before-top normalization sets start line `0`. High for the
-start-after-text no-wrap branch through `0x12a02..0x12afc` when computed
-start line is `64` and the table has no selector-2 bit. High for the
-start-after-text wrap-after-text branch through `0x12a7a..0x12af8` when
-computed start line is `64` and the default table has selector 2 at line
-`1`. High for the start-after-text wrap bottom-recovery branch through
-`0x12a7a..0x12afc` when computed start line is `64` and the table has
-selector 2 only at line `63`. High for the selector-zero start-after-text
-recovery through
-`0x1299c..0x12b92` when computed start line is `64`. High for the
-alternate high-start entries through `0x12a02..0x12afc`,
-`0x12a7a..0x12afc`, `0x12afc..0x12b5a`, and `0x12b5e..0x12b92` because
-the direct fixture uses start line `80`, wrapped target line `70`, and
-selector zero from the same state block. High for the `0x12b96` default
-table channel convention because the fixture ties selector masks to
-generated table words and channel sets. High for the ROM-visible
-line-count roles of `0x782ede`/`0x782edf`/`0x782ee0`; their HP/manual
-names remain inferred from use rather than from HP terminology.
+Direct ROM evidence covers the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
+same-family `w...W` delayed-record preservation, table bytes, reject cases, zero-count
+reset, text-bottom cache effect, and forward `0x1280a` in-text channel hit. Direct ROM
+evidence covers before-top normalization through `0x128ae..0x128f4` when it rejoins the
+forward in-text hit path. Direct ROM evidence covers the selector-zero target-equal
+early exit and selector-zero page-eject branch through `0x1299c..0x129c4` when
+`start_line <= text_last_line + 1`. Direct ROM evidence covers the wrap-hit branch
+through `0x129c6..0x12af8` when a wrapped search finds a channel before the original
+start line and `start_line <= text_last_line + 1`. Direct ROM evidence covers the
+target-after-text branch through `0x129ee..0x12b5a` when the found line is `63` and
+`start_line <= text_last_line + 1`. Direct ROM evidence covers the non-publishing
+target-after-text branch through `0x129fc..0x12afc` when before-top normalization sets
+start line `0`. Direct ROM evidence covers the start-after-text no-wrap branch through
+`0x12a02..0x12afc` when computed start line is `64` and the table has no selector-2 bit.
+Direct ROM evidence covers the start-after-text wrap-after-text branch through
+`0x12a7a..0x12af8` when computed start line is `64` and the default table has selector 2
+at line `1`. Direct ROM evidence covers the start-after-text wrap bottom-recovery branch
+through `0x12a7a..0x12afc` when computed start line is `64` and the table has selector 2
+only at line `63`. Direct ROM evidence covers the selector-zero start-after-text
+recovery through `0x1299c..0x12b92` when computed start line is `64`. Direct ROM
+evidence covers the alternate high-start entries through `0x12a02..0x12afc`,
+`0x12a7a..0x12afc`, `0x12afc..0x12b5a`, and `0x12b5e..0x12b92` because the direct
+fixture uses start line `80`, wrapped target line `70`, and selector zero from the same
+state block. Direct ROM evidence covers the `0x12b96` default table channel convention
+because the fixture ties selector masks to generated table words and channel sets.
+Direct ROM evidence covers the ROM-visible line-count roles of
+`0x782ede`/`0x782edf`/`0x782ee0`; their HP/manual names remain inferred from use rather
+than from HP terminology.
 
 ### Fixtures
 

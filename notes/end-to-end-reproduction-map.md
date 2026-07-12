@@ -94,7 +94,7 @@ read or written by those instructions. Semantic names and output effects are
 interpretations derived from that static evidence. Fixture scripts and generated
 checks are model-consistency aids: they exercise the documented interpretation
 against selected byte streams, but they are not evidence from a running printer
-or an executing ROM. Evidence strength means how directly ROM bytes, decoded
+or an executing ROM. Evidence status means how directly ROM bytes, decoded
 tables, instruction listings, and RAM field accesses support a claim. Fixture
 citations are reproducible checks of the interpretation, not the deliverable
 and not an external pixel oracle.
@@ -8092,8 +8092,8 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [Fixed-List Outcome
   Matrix](page-record-storage.md#fixed-list-outcome-matrix) in
   [page-record-storage.md](page-record-storage.md).
-  Evidence strength is high for the pending state writers, metric gates,
-  object byte shapes, orientation split, bridge shape, and ROM-derived row
+  Direct ROM evidence covers the pending state writers, metric gates, object
+  byte shapes, orientation split, bridge shape, and ROM-derived row
   construction because each cited edge has handler, field, or render-helper
   evidence. Fixtures only exercise the documented path and state shape.
   No unresolved ROM-local middle edge remains for this pending-span-to-page
@@ -8155,7 +8155,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Shared
   Page-Record Storage And Allocator` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for first-root setup, shared stream allocation,
+  Direct ROM evidence covers first-root setup, shared stream allocation,
   producer roots, chunk rollover, no-room preservation, publication, bridge
   copies, and render-dispatch ownership because the cited disassembly and
   owner notes name multiple writer families and the shared consumers. Fixtures
@@ -8224,7 +8224,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
   Rectangle Rule` plus `Worked Path: Rectangle Rule Selectors And Clipping` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for parser handler order, selector mapping,
+  Direct ROM evidence covers parser handler order, selector mapping,
   clipping and reject gates, source-record bytes, rule object bytes, ordered
   insertion, bridge normalization, solid/pattern dispatch, band continuation,
   and no-room retry output.
@@ -8360,7 +8360,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   And Default Environment`, `Worked Path: FF Publication`, and `Worked Path:
   Publication Commands To ROM-Derived Page Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for parser handler order, pre-command object
+  Direct ROM evidence covers parser handler order, pre-command object
   preservation,
   reset/FF/geometry/page-length-zero/paper-source/copies side-effect ordering,
   pool-header defaults and copy-count field, current-root clearing, bridge
@@ -8430,7 +8430,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), surfaced first as
   `Worked Path: Published Record To Active Bands` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for source-root copying, context-slot copying,
+  Direct ROM evidence covers source-root copying, context-slot copying,
   rule/fixed normalization, render-root ownership, and ROM-derived row-write
   paths after the bridge.
   No unresolved ROM-local bridge edge remains for the documented compact,
@@ -8493,7 +8493,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
   Published Record To Active Bands` plus `Band Scheduling Route Index` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for pool-head versus cursor roles, candidate
+  Direct ROM evidence covers pool-head versus cursor roles, candidate
   selection, `0x780eaa -> 0x780eae`, work-record alternation, `0x783a18`,
   same-geometry reuse, active-loop branches, wait-object transitions, and the
   ROM-local path from scheduler-produced band words to render-entry calls.
@@ -8575,7 +8575,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Render
   Dispatch And Pixel Composition` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for render-root ownership, call order, bucket
+  Direct ROM evidence covers render-root ownership, call order, bucket
   class split, compact subdispatch, segment-list layout, encoded raster modes,
   rule/fixed selectors, destination arithmetic, row-copy table targets, and
   row-level output derived from the cited object and render-helper paths.
@@ -8648,7 +8648,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [page-raster-imaging.md](page-raster-imaging.md),
   [raster-graphics.md](raster-graphics.md), and
   [rectangle-graphics.md](rectangle-graphics.md).
-  Evidence strength is high for parser handler order, delayed raster scratch,
+  Direct ROM evidence covers parser handler order, delayed raster scratch,
   addressed object addresses, published page-record fields, bridge state,
   render call order, bucket-chain order, rule carry, and ROM-derived row
   construction.
@@ -8778,7 +8778,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Font
   Selection To Visible Glyphs` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for primary/secondary selection, symbol fallback,
+  Direct ROM evidence covers primary/secondary selection, symbol fallback,
   final-`X` success and non-selected exits, page-root slot install/reuse,
   glyph-map consumption, bridge preservation, and ROM-derived row construction.
   No unresolved ROM-local middle edge remains for the documented primary and
@@ -8921,7 +8921,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   `Downloaded Glyph`, `Downloaded Glyph Rule/Raster Composition`,
   `Nonzero Resource Payload`, and `Fixed-Record Resource Object` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Evidence strength is high for descriptor dispatch, current-record state,
+  Direct ROM evidence covers descriptor dispatch, current-record state,
   zero-drain success boundaries, resource allocation, candidate insertion,
   selected map consumption, short/wide/segmented downloaded glyph rendering, FF
   publication, and mixed rule/raster/downloaded-glyph composition in the cited
@@ -9385,7 +9385,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   coordinate `0x9001`; the covered `ESC &l0P` stream selects fallback page code
   `2`, mirrors `0x780e8f = 0x80`, signals `0x780e26 = 1`, writes text bottom
   `3240`, and reloads extent `3300`.
-  Evidence strength is high for table lookups, page-size/orientation state
+  Direct ROM evidence covers table lookups, page-size/orientation state
   writes, publication-before-mutation ordering, nonzero and zero page-length
   branches, and following printable placement because the cited handlers and
   fixtures cover both handler-level state and ROM-derived row construction.
@@ -9460,7 +9460,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   `host-fetched text rectangle and raster page record feeds 0x1ed84 and 0x1ef6a` and
   `addressed text/rule/raster field groups reach publication and render entry` exercises
   the documented page-root, publication, bridge, and band-render path shared by encoded
-  raster objects, compact text, and rule objects. Evidence strength is high for
+  raster objects, compact text, and rule objects. Direct ROM evidence covers
   delayed-record restore, `0x105d0` gate outcomes, root boundary, encoded object layout,
   bridge preservation, mode helpers, active-resolution behavior, lowercase `*b`
   chaining, dense capped-new-chunk/current-tail allocation through `0x132b6..0x13382`,
@@ -9565,7 +9565,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   the same rule list composes with compact text and encoded raster objects
   through the shared
   `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
-  Evidence strength is high for parser handler order, dimension and
+  Direct ROM evidence covers parser handler order, dimension and
   fill-selector mapping, clipping/reject gates, rule object bytes, ordered
   insertion, bridge normalization, solid/pattern dispatch, continuation
   mutation across bands, no-room retry output, and mixed text/rule/raster
@@ -9692,7 +9692,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   VFC channel jumps either move the following printable coordinate on the same
   page or publish the old page before the following printable queues on a fresh
   page.
-  Evidence strength is high for parser handler order, host-byte draining,
+  Direct ROM evidence covers parser handler order, host-byte draining,
   `0xff1e` pool headers, command side effects, VFC table bytes, delayed
   payload restoration, lowercase delayed-record preservation, cursor-only VFC
   paths, page-publishing VFC paths, render bridge fields, and final rows for
@@ -9818,7 +9818,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   adds replayed page objects to the page being finalized, and then publishes
   the combined base page plus overlay text/raster/span objects through the same
   bridge and render entry.
-  Evidence strength is high for selector dispatch, record lookup, payload
+  Direct ROM evidence covers selector dispatch, record lookup, payload
   chunk format, execute/call frame metadata, data-chain byte-source priority,
   replayed parser dispatch, bridge/render equivalence, overlay replay before
   publication, repeated overlay publication, and overlay skip gates.
@@ -10053,7 +10053,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   bounded to byte streams that change source-object fields, selected-map
   results, HMI/cursor advance, compact selector class, bridge context slots,
   helper dispatch, fallback splitting, or row-construction inputs.
-  Evidence strength is high for source field meanings, paired writer behavior,
+  Direct ROM evidence covers source field meanings, paired writer behavior,
   `0x12f2e` short/segmented object shapes, selector bits, queue no-room retry,
   compact subdispatch, and row output where the cited handlers and helpers
   define those fields. Broader source-class cross-products remain future

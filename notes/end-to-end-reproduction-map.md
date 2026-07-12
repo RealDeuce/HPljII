@@ -1015,6 +1015,12 @@ Matrix](page-record-storage.md#page-object-storage-outcome-matrix),
   `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` and selector-7 rule objects
   `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` /
   `00 00 00 00 01 17 4a 00 00 0c 00 05 00 05`.
+- Bucket-chain order:
+  source root `+0x1c` is a bucket-head array, not an unordered bag. Compact
+  and segment producers reuse matching objects until their counts reach
+  capacity; new compact/segment objects and new encoded-raster objects link at
+  the selected bucket head. Bridge `0x1edc6` preserves that head order, and
+  `0x1efc2` walks it from head to tail during band rendering.
 - Publication and render consumers:
   `0xff1e` snapshots page-root buckets, lists, context slots, and header
   fields into a page/control pool record rooted at `0x780ea6`. Scheduler
@@ -1659,7 +1665,13 @@ command-family and page-image structure:
    `+0x24`, fixed list under root `+0x28`, and selected context/resource longword
    slots under root `+0x2c..+0x68`. For compact text and downloaded glyphs, also record
    the compact object slot selector and the selected page-root slot `0x78297e`, because
-   those fields determine which copied render context `0x1f354` consumes.
+   those fields determine which copied render context `0x1f354` consumes. For any
+   object under root `+0x1c`, also record the bucket-chain order: `0x1387c` and
+   `0x13250` link new objects at the selected bucket head, reused compact/segment
+   objects keep appended entries inside the existing object, `0x1edc6` copies the
+   bucket array to render `+0x18`, and `0x1efc2` walks the selected bucket from head to
+   tail. The detailed owner contract is [Page Object To Visible Consumer
+   Map](page-record-storage.md#page-object-to-visible-consumer-map).
 6. Cross the publication and scheduler boundary:
    use [publication-commands.md](publication-commands.md),
    [page-record-storage.md](page-record-storage.md), and

@@ -2768,6 +2768,21 @@ listing.
   `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`, resolving glyph resources
   through context slots copied from root `+0x2c..+0x68` to render
   `+0x24..+0x60`.
+- Bucket-chain order for root `+0x1c`:
+  the same bucket array also carries portrait segment-list spans and encoded
+  raster rows. Producer order is ROM state: `0x1387c` indexes the bucket with
+  `0x782a7c`, reuses a matching compact/segment object until its count word
+  `+0x06` reaches the producer capacity, and otherwise links a new object at
+  the selected bucket head by copying the prior head to new link `+0x00`.
+  Raster helper `0x13250` also links new class-`0x80` encoded objects at the
+  selected bucket head. Bridge `0x1edc6` copies the bucket root to render
+  `+0x18` without reordering, and `0x1efc2` walks each selected bucket from
+  head to tail through object `+0x00`. Output effect: object order inside a
+  bucket is derived from producer reuse/new-head rules, not from a hidden
+  compositor. Evidence is
+  [Page Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map) and
+  [Object Class Dispatch](page-raster-imaging.md#object-class-dispatch).
 - Portrait text-span segment-list objects:
   span flush `0xf34a -> 0x12714` packages pending span state
   `0x783184..0x78318a`; portrait insertion uses

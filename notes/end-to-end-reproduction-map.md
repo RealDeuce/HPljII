@@ -933,7 +933,13 @@ Current completion-audit state:
   effects: publication/page control, direct controls, display/transparent
   readers, font and symbol selection, raster graphics, rectangle/rules,
   downloaded fonts, macros, VFC, host/status side channels, and resource ROM
-  paths.
+  paths. The first page-image or no-page-output boundary for those owners is
+  indexed in
+  [Command-Family To Page-Object
+  Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk):
+  it names compact/raster/rule/fixed-list producers, publication and status
+  boundaries, append/replay-only storage, and explicit no-page-object outcomes
+  before the route enters page-record storage or stops.
   Host/status side-channel ownership includes the `Operator-Panel Message
   Formatter` checkpoint in
   [errors-and-status.md](errors-and-status.md#operator-panel-message-formatter),

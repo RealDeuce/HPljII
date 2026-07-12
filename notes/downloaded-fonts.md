@@ -2004,16 +2004,17 @@ Output effect:
   selected, the queued compact object matches the baseline default-font `!`,
   and the rendered rows are derived from the baseline default-font path.
 
-Confidence:
+Evidence status:
 
-- High for the covered parser boundaries, failed entries, last staged fields,
+- The covered parser boundaries, failed entries, last staged fields,
   allocation skip, no-install result, resumed printable handler, default
-  compact object, and rendered rows because
-  `ESC )s#W validation failures preserve following printable output` asserts
-  all eight visible recovery cases.
-- High for ROM-internal rejecting validation coverage because only entries
-  `2`, `4`, `5`, `6`, and `7` can return failure; the remaining validation
-  table entries are pass-through, clamps, or field writers.
+  compact object, and rendered rows are anchored by fixture
+  `ESC )s#W validation failures preserve following printable output`, which
+  checks all eight visible recovery cases.
+- ROM-internal rejecting validation coverage is bounded by the validation
+  table: only entries `2`, `4`, `5`, `6`, and `7` can return failure; the
+  remaining validation table entries are pass-through, clamps, or field
+  writers.
 
 Fixture evidence:
 
@@ -3263,22 +3264,22 @@ Reproduction contract for row counts:
   over-cap products stop at the restored `ESC )s#W` payload-count boundary
   before installed glyph publication or render dispatch.
 
-Confidence:
+Evidence status:
 
-- High for rows `0x0001..0x00ff`, because the row-count matrix and threshold
-  fixtures assert parser restore, installed records, publication buckets,
+- Rows `0x0001..0x00ff` are anchored by the row-count matrix and threshold
+  fixtures, which check parser restore, installed records, publication buckets,
   render buckets, helper dispatch, row counts, and row digests.
-- High for the nonzero-high-byte selector truncation and short compact invalid
-  boundary, because the `0x0101..0x0103` fixtures preserve installed rows while
-  checking the low-byte page source; the `0x1fe76` overflow boundary is direct
-  ROM table evidence from `0x1fe76..0x2008e`.
-- High for the sampled segmented-wide high-row selected segment, because the
+- The nonzero-high-byte selector truncation and short compact invalid boundary
+  are anchored by the `0x0101..0x0103` fixtures, which preserve installed rows
+  while checking the low-byte page source. The `0x1fe76` overflow boundary is
+  direct ROM table evidence from `0x1fe76..0x2008e`.
+- The sampled segmented-wide high-row selected segment is anchored by the
   row-`0x0281`, `0x02xx`, `0x03xx`, below-cap `0x04xx`, and below-cap
-  `0x05xx` fixtures, plus the parser-limit matrix through row `0x0787`, extend
-  the same `0x1f264` success model beyond the earlier `0x01xx` samples. The
-  oversized fixtures classify the parser-count boundary separately from
-  renderer behavior. The row-byte boundary fixture collapses unsampled
-  high-row variants into row-low-byte selector choice plus span-driven
+  `0x05xx` fixtures, plus the parser-limit matrix through row `0x0787`, which
+  extend the same `0x1f264` success model beyond the earlier `0x01xx` samples.
+  The oversized fixtures classify the parser-count boundary separately from
+  renderer behavior. The row-byte boundary fixture collapses unsampled high-row
+  variants into row-low-byte selector choice plus span-driven
   renderer/parser-cap behavior.
 
 Unresolved middle edges:
@@ -4076,64 +4077,69 @@ The bit-30 delegate fixture proves the sibling offset-table release form:
 `00 00 02 40` to zero, refreshes the active secondary context, and clears the
 matching continuation fields.
 
-## Confidence
+## Evidence Status
 
-High for command dispatch, delayed-record restoration, current id/current
-character ownership, current-record mark/unmark, `0x16c14` install
-bookkeeping, table-driven descriptor staging, `0x17026`/`0x1719c` allocation
-headers, the split-plane and linear downloaded-character-to-rendered-row
-fixtures, and the `0x16606` and `0x15c4c` bit-30-clear
-resource-object-to-rendered-row fixtures.
+Command dispatch, delayed-record restoration, current id/current character
+ownership, current-record mark/unmark, `0x16c14` install bookkeeping,
+table-driven descriptor staging, `0x17026` / `0x1719c` allocation headers, the
+split-plane and linear downloaded-character routes, and the `0x16606` /
+`0x15c4c` bit-30-clear resource-object routes are backed by the disassembly
+and checked-in owner sections above.
 
-High for the modeled `0xff1e` publication fields of the combined downloaded
-glyph stream because fixture
-`combined font download FF publishes installed glyph page record` asserts the
-published bucket root, bucket array entries `1` and `9`, empty rule/fixed
-lists, context prefix, and FF parser handler. High for the even-span wide
-publication sibling because fixture
-`host-fetched even-span downloaded glyph FF publishes rendered page record`
-asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
+The `0xff1e` publication fields of the combined downloaded-glyph stream are
+anchored by fixture
+`combined font download FF publishes installed glyph page record`, which checks
+the published bucket root, bucket array entries `1` and `9`, empty rule/fixed
+lists, context prefix, and FF parser handler. The even-span wide publication
+sibling is anchored by fixture
+`host-fetched even-span downloaded glyph FF publishes rendered page record`,
+which checks the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
 `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
-target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control wide
-publication sibling because fixture
-`host-fetched payload-control downloaded glyph FF publishes page record`
-asserts the host-fetched `ESC )s18W` stream with `1a 58` normalization,
+target `0x1effe`, and final `0x1f0d2` rows. The payload-control wide
+publication sibling is anchored by fixture
+`host-fetched payload-control downloaded glyph FF publishes page record`, which
+checks the host-fetched `ESC )s18W` stream with `1a 58` normalization,
 mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, nonzero return
-drain `0x783140 = 1` consuming `&`, post-return FF handler `0xf0f0`,
-published bucket `1`, `0x1ed84` render word `1`, compact dispatch target
-`0x1effe`, and final modeled `0x1f0d2` rows. High for the modeled normal,
-row-`0x80`, and segmented publication siblings because fixture
-`downloaded normal row-0x80 and segmented glyph FF publications render page records`
-asserts host-fetched `ESC )s6W` plus `&`/FF, `ESC )s256W` plus `*`/FF, and
-`ESC )s258W` plus `'`/FF, tail handlers `0xd04a` and `0xf0f0`, published
+drain `0x783140 = 1` consuming `&`, post-return FF handler `0xf0f0`, published
+bucket `1`, `0x1ed84` render word `1`, compact dispatch target `0x1effe`, and
+final modeled `0x1f0d2` rows.
+
+The normal, row-`0x80`, and segmented publication siblings are anchored by
+fixture
+`downloaded normal row-0x80 and segmented glyph FF publications render page records`,
+which checks host-fetched `ESC )s6W` plus `&`/FF, `ESC )s256W` plus `*`/FF,
+and `ESC )s258W` plus `'`/FF, tail handlers `0xd04a` and `0xf0f0`, published
 buckets `1` and `9`, render bucket words `1` and `9`, compact target
 `0x1effe`, row-`0x80` selector `0x0003`, object bytes `0x00` and `0x20`, and
-final `0x1fe76`/`0x1f1f0` rows. High for the modeled
-published-record multi-bucket render because fixture
-`published downloaded glyph segmented buckets render across bands` walks
-bucket words `1` and `9`, proves the `0x1effe` dispatch for both compact
-objects, and records the ROM-derived page rows. High for publication-to-scheduler band
-progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`,
-`0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
-`0x1eba4 scheduler band words render published downloaded glyph` proves
-`0x1eba4` emits band words `0..9` through `0x1ef6a` and preserves the same
-visible row.
+final `0x1fe76` / `0x1f1f0` rows. The published-record multi-bucket route is
+anchored by fixture `published downloaded glyph segmented buckets render across
+bands`, which walks bucket words `1` and `9`, checks `0x1effe` dispatch for
+both compact objects, and records the ROM-derived page rows.
 
-High for the covered parser-produced metric combinations because the type-0, type-1,
-type-2, metric-variant, clamped, lower-bound, upper-bound, legal matrix, boundary,
-low-nibble rounding, and byte-boundary rounding fixtures all start from host-fetched
-`ESC )s80W`, run through `0x16fae`/`0x1719c`, and pin page-visible
-`0xd4ac`/`0xd8fc` output effects. Medium for the full PCL soft-font grammar because
-the validation table is executable but not every predicate has a manual-facing semantic
-name, and not every legal metric combination has a parser-produced page-record/render
-composition.
+Publication-to-scheduler band progression is tied to static disassembly and a
+supporting fixture: `0xff1e` at `0xffc8` clears root `+0x18`, `0x1ed84` copies
+that word into render `+0x10/+0x16`, and fixture
+`0x1eba4 scheduler band words render published downloaded glyph` checks
+`0x1eba4` emitting band words `0..9` through `0x1ef6a` while preserving the
+same visible row. These fixture checks exercise the documented ROM routes; they
+are not an external rendered-output oracle.
 
-High for the bit-30-clear boundary around a `0x1719c` payload. Disassembly
+The covered parser-produced metric combinations are anchored by type-0,
+type-1, type-2, metric-variant, clamped, lower-bound, upper-bound, legal
+matrix, boundary, low-nibble rounding, and byte-boundary rounding fixtures.
+Those streams start from host-fetched `ESC )s80W`, run through
+`0x16fae` / `0x1719c`, and pin page-visible `0xd4ac` / `0xd8fc` output
+effects. The remaining full-PCL-soft-font scope is explicit: the validation
+table is executable, but not every predicate has a manual-facing semantic name,
+and not every legal metric combination has a parser-produced
+page-record/render composition.
+
+The bit-30-clear boundary around a `0x1719c` payload is disassembly-bounded.
 `0x17026..0x1719c` proves allocation and sparse-header copy only; the normal
 integrated `0x16c14` install then publishes candidate longword `0x40000000`,
 so selected-font dispatch takes the bit-30 offset-table path. The
 bit-30-clear use of the same payload is deliberately a selected-candidate
-control case: forcing that candidate state selects `0x14e24`/`0x14eb6`, and
+control case: forcing that candidate state selects `0x14e24` / `0x14eb6`, and
 the fixed-record fixtures prove map construction, page-object queueing, and
 rendering through the same fixed-record renderer used by `0x16606` descriptor
 resource objects.

@@ -1323,28 +1323,28 @@ A byte-stream renderer must preserve:
 - page-record publication and ROM-derived render output after replayed macro
   bytes.
 
-## Confidence
+## Evidence Status
 
-High for parser reachability, selector meanings, record layout, chunk count
-math, `0xe0a4` lookup/free/full behavior, execute/call and non-replay frame
-field offsets, `0xa904` replay, `0xe22c` frame ending, heap unit allocation,
+Parser reachability, selector meanings, record layout, chunk count math,
+`0xe0a4` lookup/free/full behavior, execute/call and non-replay frame field
+offsets, `0xa904` replay, `0xe22c` frame ending, heap unit allocation,
 `0xe65c` font-context bridge, overlay detour, skip gates, and page-record
-output because the claims are backed by disassembly ranges
+output are backed by disassembly ranges
 `0xdd08..0xdfb8`, `0xdfba..0xe110`, `0xe002..0xe0a2`,
 `0xe418..0xe4f2`, `0xe4f4..0xe5e0`, `0xe22c..0xe408`, `0xe65c..0xe85e`,
 parser-table evidence, and the named byte-stream examples.
 
-High for the covered overlay payload matrix because each documented stream
-starts from a stored macro payload, re-enters parser handlers, preserves the
-page-record bridge, and reaches the ROM helpers that derive rows from the
-published objects. There is no external row oracle in this evidence standard.
+The covered overlay payload matrix is ROM-evidence-backed because each
+documented stream starts from a stored macro payload, re-enters parser
+handlers, preserves the page-record bridge, and reaches the ROM helpers that
+derive rows from the published objects. There is no external row oracle in
+this evidence standard.
 
-Medium for external/manual names for macro context and overlay state fields.
-High for the ROM-local over-deep macro context boundary: the reset, push, and
-pop instructions identify the eight-slot storage range, ninth-push address,
-and empty-pop address. Low for physical/user-visible failure symptoms after
-adjacent RAM is corrupted, because that is outside the ROM-local replay
-contract.
+External/manual names for macro context and overlay state fields remain
+unresolved. The ROM-local over-deep macro context boundary is exact: the reset,
+push, and pop instructions identify the eight-slot storage range, ninth-push
+address, and empty-pop address. Physical or user-visible failure symptoms after
+adjacent RAM is corrupted are outside the ROM-local replay contract.
 
 ## Remaining Edges
 

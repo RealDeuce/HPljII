@@ -230,6 +230,73 @@ not which external connector caused it.
   `0x780e90` / `0x780e2a`, then writes host-visible status bytes. It affects
   pixels only if a bidirectional host changes later input in response.
 
+### Parser-Entered Host Backchannel
+
+The parser can also write the host-output FIFO without creating page state. The concrete
+ROM-local command stream is the model-ID/status query route documented in
+[errors-and-status.md](errors-and-status.md#hoststatus-side-channel-decision-checkpoint).
+This section keeps the I/O owner note byte-centric: it starts with admitted host bytes,
+follows the parser wrapper, and stops at host-visible FIFO/status state.
+
+- `ESC *r1K 0x11` reaches parser mode `7`; sibling `ESC *s#^ 0x11` reaches
+  parser mode `6`. Both terminal rows call wrapper `0x12034`.
+- `0x12034` calls setup helper `0x11efe`, appending a synthetic six-byte
+  secondary/setup record whose active word `+2` is `1`, then calls producer
+  `0x122be`.
+- `0x122be..0x12326` rewinds command-record cursor `0x78299e` to the
+  synthetic record, fetches the following query byte through parser wrapper
+  `0xda9a`, and accepts only query byte `0x11` when active record word `+2`
+  is `1` or `-1`.
+- Accepted queries walk ROM literal `0x12280..0x12288`, the zero-terminated
+  bytes `33440A\r\n`, and enqueue each byte through blocking helper `0xb090`.
+  Nonmatching query bytes are reported through `0x9ec0` instead of entering
+  the FIFO.
+- `0xb090` retries enqueue helper `0xb0c0`; when FIFO count `0x783ed2` is
+  full, it waits on object `0x7801e2` until worker-side draining makes room.
+- Output worker `0xae2c` later consumes the same FIFO through dequeue helper
+  `0xb022`. Mode `0` writes accepted FIFO bytes through the normal output
+  backend and can emit service/status bytes first through `0xaece`; mode `1`
+  discards queued FIFO bytes; other nonzero modes route through the alternate
+  backend.
+
+Field grouping for this stream:
+
+- Canonical parser/backchannel state:
+  synthetic setup record from `0x12034 -> 0x11efe`, active parser cursor
+  `0x78299e`, query byte from `0xda9a`, active record word `+2`, and literal
+  bytes `0x12280..0x12288`.
+- Canonical host-output state:
+  FIFO storage `0x783e92..0x783ed1`, count `0x783ed2`, read pointer
+  `0x783ed4`, write pointer `0x783ed8`, backend selector `0x780e40`, and
+  wait object `0x7801e2`.
+- Parser scratch:
+  the query byte and synthetic command record while `0x122be..0x12326`
+  decides whether to enqueue `33440A\r\n` or reject through `0x9ec0`.
+- Firmware bookkeeping:
+  FIFO critical sections, full-FIFO wait/retry in `0xb090`, and output-worker
+  drain selection in `0xae2c`.
+- Hardware/external state:
+  physical protocol name for query byte `0x11`, physical output backend
+  identity, and any bidirectional-host reaction to emitted bytes.
+
+Output effect:
+no page root, page object, publication record, render record, or pixels are
+created by this route. Pixel output changes only indirectly if FIFO
+backpressure stalls a parser-side producer before later bytes are consumed, or
+if a host reacts to the returned `33440A\r\n` bytes by sending a different
+future stream.
+
+Evidence:
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` anchors
+`0x12034`, literal `0x12280`, and producer `0x122be..0x12326`;
+`generated/disasm/ic30_ic13_host_output_fifo_00b022.lst` anchors
+`0xb022`, `0xb090`, and `0xb0c0`; and
+`generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst` anchors output
+worker drain. Fixture
+`0x12034/0x122be model-ID response emits FIFO literal` is supporting evidence
+for both parser command entries, accepted `0x11`, rejected query bytes, and
+the literal FIFO bytes.
+
 State grouping for this matrix:
 
 - Canonical input state:

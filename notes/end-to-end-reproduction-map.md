@@ -919,16 +919,10 @@ Current completion-audit state:
   ROM-local byte-to-page-to-pixel model once a normalized byte stream has been
   admitted through `0xa904` and a published page/control record has reached
   `0x1ed84 -> 0x1ef6a`.
-- A final goal-completion claim still requires an audit pass over the supported
-  stream and owner indexes, not another isolated handler trace: every supported
-  row in [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix)
-  and every manual-family row in
-  [pcl4-language.md](pcl4-language.md#rom-semantic-index-for-quick-reference)
-  must have a checked-in owner route that names parsed inputs, RAM writers,
-  downstream consumers, page/output effect, evidence, and any exact boundary.
-  Any row that is still table-only, generated-only, or fixture-only must be
-  promoted into its owner note before the active documentation goal can be
-  marked complete.
+- The completion audit below is now the controlling check over the supported
+  stream and owner indexes. Any future row found to be table-only,
+  generated-only, or fixture-only must be promoted into its owner note before
+  the active documentation goal can remain complete.
 
 - Host input handling and parser state transitions:
   [host-byte-fetch.md](host-byte-fetch.md#owner-summary) owns `0xa904..0xab8a`, source
@@ -1531,6 +1525,24 @@ ROM-disassembly objective. A requirement is only counted here when the linked
 checked-in notes describe behavior, state fields, evidence, and any remaining
 boundary; generated reports and fixture names are supporting evidence, not the
 controlling artifact.
+
+Current audit result:
+
+- The primary owner notes named below have checked-in owner summaries plus
+  outcome matrices or decision checkpoints for their part of the route:
+  host-byte fetch, parser core, command dispatch, direct controls,
+  transparent/display readers, macro replay, raster, rectangle/rules,
+  downloaded fonts, VFC, publication, page-record storage, active rendering,
+  pixel generation, and unresolved boundaries.
+- The current command-map and language indexes do not leave a supported row at
+  generated-table ownership only. A route is considered incomplete only if a
+  concrete supported stream changes a parser outcome, command-family field,
+  page-object byte, bridge field, render-helper input, or exact boundary that
+  is not named by the owner note.
+- Exact ROM stops, such as the restored `ESC )s#W` payload-count cap, are
+  counted as documented terminal behavior when the parser/payload state and
+  absence of later page/render state are both recorded. They are not unknown
+  pixels.
 
 - Host input handling and parser state transitions:
   covered by [host-byte-fetch.md](host-byte-fetch.md),

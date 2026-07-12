@@ -155,15 +155,17 @@ page at `0xff1e`; they do not write final rows while the VFC handler runs.
   `0xf06e` / `0xf34a` without calling `0xf124`. The following printable byte
   consumes the committed cursor through `0xd04a -> 0x1393a -> 0x12f2e` and
   queues a compact object under root `+0x1c`; compact row stores later run
-  through `0x1ef6a -> 0x1efc2 -> 0x1effe` and the compact helper selected by
-  that object.
+  through
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354`, then the row-copy
+  table selected by the compact glyph width writes the shifted rows.
 - Publishing channel movement:
   selector-zero page eject, wrap-hit, wrap-no-hit, and publishing
   target-after-text branches call `0xf124 -> 0xff1e` before committing the
   next printable position. The old page root is published as a page/control
-  record, then rendered through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`; the
-  post-VFC printable queues on the fresh root and renders only when that page
-  is later published.
+  record, then rendered through `0x1ed84 -> 0x1edc6 -> 0x1ef6a` and the
+  object-class row-store helpers for the objects already queued on that root;
+  the post-VFC printable queues on the fresh root and renders only when that
+  page is later published.
 - Alternate/data table payload:
   restore `0x12218` diverts through `0x12358(0x1228a)` while
   `0x782c18` is set. Positive payload bytes are consumed through `0xdace` and
@@ -721,7 +723,9 @@ Downstream consumers:
   `0x12f2e` / `0x1387c` under current page root `0x78297a`.
 - Publication and render consume the resulting root through
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Compact text then dispatches
-  through bucket root `+0x18`, `0x1efc2`, and compact renderer `0x1effe`.
+  through bucket root `+0x18`,
+  `0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354`, and the compact row-copy table
+  rooted at `0x1fa5c..0x207ac`.
 - Page-boundary VFC branches split the stream: objects queued before the VFC
   command are published on the old root, while the following printable queues
   on a fresh root after `0xff1e` clears `0x78297a`.

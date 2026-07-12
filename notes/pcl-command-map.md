@@ -238,7 +238,9 @@ Use the row class before assigning a byte to a command-family owner:
 - Font-designation terminal rows:
   `ESC (#A..^` and `ESC )#A..^` route through `0x120be`. Their command-family
   effects are owned by
-  [symbol-set-selection.md](symbol-set-selection.md#owner-summary), with
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary), especially
+  [Symbol State To Visible Consumer
+  Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map), with
   selected-font context and metric consumers in
   [font-context-metrics.md](font-context-metrics.md#owner-summary). Map
   mutation after a selected context is rebuilt is owned by

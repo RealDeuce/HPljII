@@ -65,7 +65,9 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   [display-functions.md](display-functions.md#owner-summary),
   [transparent-print-data.md](transparent-print-data.md#owner-summary),
   [font-context-metrics.md](font-context-metrics.md#owner-summary),
-  [symbol-set-selection.md](symbol-set-selection.md#owner-summary),
+  [symbol-set-selection.md](symbol-set-selection.md#owner-summary) and its
+  [Symbol State To Visible Consumer
+  Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map),
   [errors-and-status.md](errors-and-status.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary),

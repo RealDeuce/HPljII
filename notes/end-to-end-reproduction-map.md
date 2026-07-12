@@ -1105,11 +1105,13 @@ write pixels.
   requested symbol words `0x782ef4` / `0x782f04`, dirty flags
   `0x782f2c` / `0x782f2d`, selected contexts `0x782ee6` / `0x782ef6`,
   active maps `0x782f32` / `0x783032`, and page-root context slot state
-  through `0x13eb8`, `0x14c64`, `0x14f16`, and `0xc428`. No page object is
-  queued by the selection command itself. The first render-visible effect is
-  the next printable byte: `0xd04a -> 0x1393a` reads selected slot
-  `0x782f06`, maps the host byte through the active map, and queues compact
-  text under root `+0x1c`.
+  through `0x13eb8`, `0x14c64`, `0x14f16`, and `0xc428`. The
+  [Symbol State To Visible Consumer
+  Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map)
+  owns this delayed effect. No page object is queued by the selection command
+  itself. The first render-visible effect is the next printable byte:
+  `0xd04a -> 0x1393a` reads selected slot `0x782f06`, maps the host byte
+  through the active map, and queues compact text under root `+0x1c`.
   Font attribute wrappers `0x12046`, `0x1206e`, `0x12082`, `0x12096`,
   `0x120aa`, and `0x1205a` write point/style/spacing/pitch/stroke/typeface
   request fields before the same refresh boundary. Pitch-mode `ESC &k#S/s`

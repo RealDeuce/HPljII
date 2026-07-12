@@ -112,6 +112,94 @@ Output effect:
   do not change requested symbol words, selected contexts, maps, page-root
   context slots, page objects, publication records, or render inputs.
 
+### Symbol State To Visible Consumer Map
+
+This map is the symbol/font-designation answer to "what does the command
+actually do?" The command family is parser-visible immediately, but it becomes
+pixel-visible only when later printable bytes consume the selected context and
+map.
+
+- Parser and requested-word producers:
+  normal `ESC (` reaches `0x1201e -> 0x11f26`, normal `ESC )` reaches
+  `0x12008 -> 0x11efe`, and terminal wrapper `0x120be` calls
+  `0x1be22 -> 0xc580`. Ordinary finals write requested words
+  `0x782ef4` / `0x782f04` and dirty flags `0x782f2c` / `0x782f2d`.
+  Final `X` routes through `0x1c066 -> 0x17708` and final `@` routes through
+  table `0x1bde2`. These writes are canonical command state, not page objects.
+- Refresh and selected-state consumers:
+  `0xc580` consumes dirty flag `0x782f2c`, parsed slot, selected slot
+  `0x782f06`, and page-root context availability. Dirty-1 paths call
+  `0x13eb8`; final-`X` dirty-2 paths can skip `0x13eb8` and install the
+  candidate already selected by `0x17708`. `0x156de` resolves requested,
+  remembered, and fallback symbol words, `0x144d2` writes current contexts
+  `0x782ee6` / `0x782ef6`, `0x14c64` rebuilds maps `0x782f32` /
+  `0x783032`, and `0x14f16` applies the documented Roman-8-compatible patch
+  cases.
+- Page-root context exposure:
+  selected-slot refresh can call `0xc428(slot)`, which exposes the selected
+  current-font context through current page-root context state. Non-selected
+  slot refresh updates that slot's selected context/map but has no visible
+  effect until SO/SI changes `0x782f06` or a later printable byte selects that
+  slot.
+- Printable byte consumer:
+  later printable route `0xd04a -> 0x1393a` reads selected slot `0x782f06`,
+  current context `0x782ee6` or `0x782ef6`, and active map `0x782f32` or
+  `0x783032`. It writes source/glyph bytes, then `0xd3b2` or `0xd824` marks
+  the page-root context slot live and `0x12f2e -> 0x1387c` queues compact text
+  under root `+0x1c`.
+- Pixel/output consumer:
+  the queued compact object is published and rendered through the shared route
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`, then the
+  compact helper selected by the object reads the context/map-derived glyph
+  source. Already queued compact objects are not rewritten by a later
+  symbol-set command.
+- Alternate/data boundary:
+  alternate/data wrappers `0x11fe4` / `0x11fd2` preserve parser grouping, but
+  ordinary final rows `@..^` are blank terminal rows. They do not call
+  `0x120be`, write requested words or dirty flags, run refresh, expose a
+  context, queue a page object, publish, or create render input. Stored bytes
+  become meaningful only if macro/data-chain replay later feeds them through
+  the normal parser route.
+
+State classification for this map:
+
+- Canonical state:
+  requested words `0x782ef4/0x782f04`, active words
+  `0x783144/0x783146`, selected slot `0x782f06`, current contexts
+  `0x782ee6/0x782ef6`, active maps `0x782f32/0x783032`, current page-root
+  context slot `0x78297e`, and compact page objects produced by later
+  printable bytes.
+- Derived/cache:
+  remembered words `0x782f08/0x782f0a`, fallback/default words
+  `0x782f0c..0x782f28`, selected-candidate window state, map patch bytes
+  `0x783132/0x783133`, and compact object keys/coordinates derived after
+  printable consumption.
+- Parser scratch:
+  synthetic setup records from `0x11f26` / `0x11efe`, terminal records at
+  `0x78299e`, final byte, integer and fractional parameter words, and
+  alternate/data setup records that terminate without `0x120be`.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c/0x782f2d`, final-`X` marker `0x78287b`,
+  transient full-root flag `0x78298f`, candidate active marks, and `0xc4fc`
+  full-status result `0x11`.
+- Hardware/external and unknown:
+  no hardware state is part of the ROM-local built-in or inline/downloaded
+  route. Optional cartridge/resource contents can add candidate data, but the
+  ROM-local writers, refresh consumers, printable consumer, and render route
+  remain the addresses above. No unresolved parser-to-map-to-printable middle
+  edge remains for the documented built-in, final-`@`, final-`X`,
+  remembered/fallback, non-Roman, and alternate/data non-dispatch paths.
+
+Evidence:
+`generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`,
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+[Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix),
+and the visible-output streams named in
+[Evidence And Boundaries](#evidence-and-boundaries).
+
 ## Symbol/Font Designation Outcome Matrix
 
 This matrix composes the delayed-output command family from parsed `ESC (` /

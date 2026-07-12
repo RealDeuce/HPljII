@@ -1453,26 +1453,33 @@ active raster byte `0x783182` can suppress later `ESC *t#R` updates until `ESC *
 clears it. Evidence: [raster-graphics.md](raster-graphics.md),
 [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-raster-transfer-gates-and-modes),
 [page-raster-imaging.md](page-raster-imaging.md).
-- Rectangle/rule graphics:
-  `ESC *c` mode `16` routes width/height/fill writers `0x10e68`, `0x10e22`,
-  `0x10dce`, and fill command `0x10898`. Size/id handlers write
-  `0x783166..0x78316e`; `0x10898` clips the active rectangle and queues
-  rule-list objects through `0x13386` / `0x133aa`. Solid and patterned rules
-  render through `0x1f446`, `0x1f596`, and `0x1f4e0`, including
-  band-crossing continuation, then write destination rows through `0x1f626`.
-  Area-fill stream `ESC *c50g2P` writes
-  `0x78316e = 50` through `0x10dce`; `0x10898` maps `2P` gray percentages
-  from `0x78316e` to selectors `0..7`, maps `3P` pattern ids `1..6` to
-  selectors `8..13`, and applies landscape remaps for pattern ids `1..4`.
-  Selector `7` renders through solid helper `0x1f596`; gray selectors `0..6`
-  and HP-pattern selectors `8..13` render through pattern helper `0x1f4e0`.
-  Concrete stream `ESC *c12a5b0P` queues selector-7 rule object
-  `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` under page-root `+0x24`;
-  bridge `0x1edc6` copies the rule list to render-record `+0x1c`, and
-  `0x1f446` dispatches selector `7` to solid helper `0x1f596`, which writes
-  through destination helper `0x1f626`.
-  Evidence:
-  [rectangle-graphics.md](rectangle-graphics.md) and
+- Rectangle/rule graphics: `ESC *c` mode `16` routes width/height/fill writers
+  `0x10e68`, `0x10e22`, `0x10dce`, and fill command `0x10898`. Size/id handlers write
+  `0x783166..0x78316e`; `0x10898` clips the active rectangle and queues rule-list
+  objects through `0x13386` / `0x133aa`. Solid and patterned rules render through
+  `0x1f446`, `0x1f596`, and `0x1f4e0`, including band-crossing continuation, then write
+  destination rows through `0x1f626`. Area-fill stream `ESC *c50g2P` writes `0x78316e =
+  50` through `0x10dce`; `0x10898` maps `2P` gray percentages from `0x78316e` to
+  selectors `0..7`, maps `3P` pattern ids `1..6` to selectors `8..13`, and applies
+  landscape remaps for pattern ids `1..4`. Selector `7` renders through solid helper
+  `0x1f596`; gray selectors `0..6` and HP-pattern selectors `8..13` render through
+  pattern helper `0x1f4e0`. Concrete stream `ESC *c12a5b0P` queues selector-7 rule
+  object `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` under page-root `+0x24`; bridge
+  `0x1edc6` copies the rule list to render-record `+0x1c`, and `0x1f446` dispatches
+  selector `7` to solid helper `0x1f596`, which writes through destination helper
+  `0x1f626`. Non-solid variants use the same clipped source, rule-list producer, bridge,
+  and page-root `+0x24` storage, but they change rule object selector byte `+0x05` and
+  the render helper. Stream `! ESC *c12a5b50g2P` writes area-fill id `50` through
+  `0x10dce`; `0x10898` maps final `2P` to gray selector `4`, `0x133aa` queues the same
+  14-byte rule shape with selector byte `+0x05 = 4`, `0x1edc6` bridges it as selector
+  `0x14`, and `0x1f446` dispatches to pattern helper `0x1f4e0`. Stream `! ESC
+  *c12a5b2g3P` writes area-fill id `2`, maps final `3P` to portrait HP-pattern selector
+  `9`, bridges it as selector `0x19`, and reaches the same `0x1f4e0` pattern path. In
+  both cases, the canonical command state is the fill id plus width/height fields;
+  canonical page state is the rule object selector byte; derived render state is the
+  bridge-added `0x10` selector bit and continuation word `+0x0c`. Evidence:
+  [rectangle-graphics.md](rectangle-graphics.md),
+  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-rectangle-rule-selectors-and-clipping),
   [page-raster-imaging.md](page-raster-imaging.md).
 - Direct margin and vertical-placement controls: manual `ESC 9` reaches handler
   `0xe9ba`, clears left margin `0x782dd6`, copies page width `0x782db8` into right

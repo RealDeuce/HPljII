@@ -327,6 +327,24 @@ fields, continue in that owner note before claiming equivalent output.
   Map](display-functions.md#display-byte-to-visible-consumer-map),
   `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`, and
   `generated/analysis/ic30_ic13_pcl_command_map.md`.
+- Host/status backchannel `ESC *r1K 0x11` / `ESC *s#^ 0x11`: command bytes
+  enter through `0xa904 -> 0xda9a -> 0x11774`. The `*r#K` and `*s#^` parser
+  forms both dispatch wrapper `0x12034`, which calls setup helper `0x11efe`
+  and enters producer `0x122be..0x12326`. The producer rewinds parser record
+  cursor `0x78299e`, fetches the following query byte through `0xda9a`, and
+  accepts only query byte `0x11` when the active record word is `1` or `-1`.
+  Accepted queries enqueue literal response bytes `33440A\r\n` from
+  `0x12280..0x12288` through blocking FIFO helper `0xb090`; other query bytes
+  are reported through `0x9ec0` without page output. The durable state is host
+  FIFO `0x783e92..0x783ed8`, wait object `0x7801e2`, backend selector
+  `0x780e40`, and status-worker state consumed later by `0xae2c` / `0xaece`.
+  This route does not call `0x10084`, `0xff1e`, `0x1ed84`, `0x1edc6`, or
+  `0x1ef6a`; it can affect pixels only indirectly if a bidirectional host
+  sends different future input after seeing the response. Evidence:
+  [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix),
+  `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`, and fixture
+  `0x12034/0x122be model-ID response emits FIFO literal`.
 - Vertical forms control `ESC &l4W 00 00 00 02 !` / `! ESC &l0V !`: table-load bytes
   enter through `0xa904 -> 0xda9a -> 0x11774`; `ESC &l#W` dispatches to arming handler
   `0x11f6e`, which schedules delayed VFC reader `0x12cfe` through `0x121cc`. Restore

@@ -426,7 +426,8 @@ parser route, field value, object layout, bridge copy, or helper input.
   glyph-row evidence.
 - [downloaded-fonts.md](downloaded-fonts.md#owner-summary) - documented soft-font
   descriptor, payload, validation/no-install, current-record, and
-  downloaded-glyph render paths.
+  downloaded-glyph render paths, with a [Downloaded Font To Visible Consumer
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map).
 - [font-sample-page.md](font-sample-page.md#owner-summary) - documented
   firmware-generated font sample printout from resource candidates through page-record
   segments, multi-probe continuation preflight, and rendered surfaces.

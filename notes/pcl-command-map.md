@@ -787,9 +787,10 @@ at the first owner map that names downstream consumers.
   handlers `0x15a18`, `0x15a56`, `0x16df6`, `0x15d0a`, and `0x16c14`
   continue through [Font State To Visible Consumer
   Map](font-context-metrics.md#font-state-to-visible-consumer-map) and
-  [downloaded-fonts.md](downloaded-fonts.md#owner-summary). These commands
-  are delayed state or resource installers until a later printable byte queues
-  compact text/downloaded glyph output.
+  [Downloaded Font To Visible Consumer
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map). These
+  commands are delayed state or resource installers until a later printable
+  byte queues compact text/downloaded glyph output.
 - VFC command stream:
   delayed table load `0x11f6e -> 0x12218 -> 0x12cfe` and channel jump
   `0x1280a` continue through [VFC State To Visible Consumer

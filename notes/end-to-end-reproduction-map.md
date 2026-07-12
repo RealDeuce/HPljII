@@ -7694,7 +7694,8 @@ Address-level cluster map:
   `ESC )s#W` descriptor/character streams followed by printable output or
   rule/raster composition. Start with
   the downloaded-font rows in [pcl-command-map.md](pcl-command-map.md),
-  then [downloaded-fonts.md](downloaded-fonts.md), followed by the
+  then [Downloaded Font To Visible Consumer
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map), followed by the
   downloaded-glyph worked paths and boundaries in
   [firmware-dataflow-model.md](firmware-dataflow-model.md). The key parser
   branch is `0x11f96`: zero-count streams enter `0x15d0a`, nonzero payloads

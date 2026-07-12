@@ -306,6 +306,106 @@ Evidence and boundaries:
   manual soft-font fields. These do not block the documented installed-glyph
   route from host bytes to page-record and compact render output.
 
+### Downloaded Font To Visible Consumer Map
+
+This map composes the downloaded-font family from parsed font-control and
+`W` payload streams to the first visible downloaded-glyph consumers. The
+branch ledger remains in `Downloaded-Font Outcome Matrix`,
+`Downloaded-Glyph Render Decision Checkpoint`, `Compact Selector Outcome
+Matrix`, and `Fixed-Record Render Decision Checkpoint`; this section is the
+reader route from command bytes to output.
+
+- Command-state writers:
+  `ESC *c#D` enters `0x15a56` and writes current downloaded font id
+  `0x782f2e`; `ESC *c#E` enters `0x15a18` and writes current character word
+  `0x782f30`; `ESC *c#F` enters `0x16df6` and then `0x17108` / `0x17150` or
+  release helpers. These handlers change downloaded-font state but queue no
+  page object.
+- Delayed payload restore:
+  `ESC )s#W` / `ESC (s#W` enter `0x11f96 -> 0x121cc`; restore `0x12218`
+  calls `0x15d0a` for zero-count descriptor/current-record payloads or
+  `0x16c14` for nonzero resource/header payloads. Alternate/data restore
+  calls `0x12358 -> 0xdace -> 0xe002`, preserving bytes without descriptor
+  validation, candidate install, selected-map refresh, or page output.
+- Descriptor and character writers:
+  `0x15d0a` routes descriptor/current-record and continuation payloads through
+  `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Downloaded-character bitmap
+  bytes are copied by `0x16498 -> 0x16874 -> 0x168dc/0x16942` into installed
+  glyph records and continuation fields. Completed records are resources for
+  later printable bytes, not immediate pixels.
+- Resource install and selection:
+  `0x16c14 -> 0x16fae -> 0x17026 -> 0x1719c` validates and installs current
+  records, payload pointers, candidate longwords, counters, and installed
+  counts. Candidate insertion `0x1bc38`, selection `0x17708`, map rebuild
+  `0x14c64`, and inline/downloaded map helper `0x14e24` make installed
+  payloads visible to later printable source capture.
+- Printable/page-object consumer:
+  a later printable byte consumes the selected downloaded map and context
+  through `0x1393a` / `0xd04a`, then queues compact output through
+  `0x12f2e -> 0x1387c` under page-root bucket `+0x1c`. This is the first page
+  object produced by a successful install; failed validation, no-install, and
+  failed-resume exits preserve the following printable byte on the prior or
+  default font path.
+- Publication and render consumers:
+  `0xff1e -> 0x1ed84 -> 0x1edc6` copies bucket roots and context slots into
+  render records. `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches compact selector
+  classes `0x0003`, `0x1003`, `0x2003`, and `0x3003` to `0x1f034`,
+  `0x1f0d2`, `0x1f1f0`, or `0x1f264`. Row bytes come from installed glyph
+  records, copied context/resource longwords, compact payload bytes, and the
+  selected row-copy helper.
+
+State groups for this map:
+
+- Canonical command state:
+  current downloaded font id `0x782f2e`, current character word `0x782f30`,
+  parser/device mode byte `0x782a92`, and restored command records.
+- Canonical installed-resource state:
+  current records `0x782640..0x782776`, counts `0x782782/0x782786`, record id
+  `+0x00`, flags `+0x02`, payload pointer `+0x06`, candidate counters and
+  cursors, candidate longword bits, glyph pointer tables, downloaded-character
+  records, and bitmap payload bytes.
+- Canonical page/render state:
+  selected maps, printable source fields from `0x1393a`, compact bucket
+  objects from `0x12f2e`, page-root bucket `+0x1c`, published bucket arrays
+  from `0xff1e`, render roots from `0x1edc6`, and compact selectors
+  `0x0003/0x1003/0x2003/0x3003`.
+- Derived/cache state:
+  selected-map bytes from `0x14e24`, compact object keys, row/span products,
+  render work words, row-copy helper indexes, segment source offsets, and
+  wide-mode caches.
+- Parser scratch:
+  delayed payload fields `0x782a1a`, `0x782a1c`, `0x782a20..0x782a25`,
+  payload budget `0x783140`, staged descriptor/header bytes
+  `0x7827de..0x7827e9`, staging pointer `0x782862`, symbol bytes
+  `0x782842..0x782856`, and bitmap parse fields
+  `0x7827be/0x7827c2/0x7827c4`.
+- Firmware bookkeeping:
+  candidate insertion `0x1bc38`, continuation fields `0x7827c6..0x7827da`,
+  release helpers `0x1887a`, `0x18b92`, `0x18bf2`, `0x17a24`, `0x17d7c`,
+  dirty context refresh, default refresh `0x1b04c`, and alternate/data append
+  sink `0xe002`.
+- Hardware/external and unknown:
+  no hardware/MMIO edge is involved in the ROM-local installed-glyph route.
+  Remaining exact stop points are manual names for `0x16fae..0x17016`
+  validation fields, invalid compact helper targets, segmented-wide source
+  boundaries, parser payload-count caps, and missing external resource bytes
+  named in `Remaining Edges` and
+  [unresolved-boundaries.md](unresolved-boundaries.md).
+
+Evidence:
+`generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`,
+`generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+`generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`,
+`generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`,
+`generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`,
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
+[Font State To Visible Consumer
+Map](font-context-metrics.md#font-state-to-visible-consumer-map), [Page Object
+To Visible Consumer
+Map](page-record-storage.md#page-object-to-visible-consumer-map), and [Render
+Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
 ## Downloaded-Font Outcome Matrix
 
 This matrix is the command-family contract for downloaded-font streams. It

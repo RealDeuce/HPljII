@@ -99,9 +99,10 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   later replay or later printable input.
 - Supported stream audit progress is tracked in
   [supported-stream-dispatch-audit.md](supported-stream-dispatch-audit.md).
-  It records which dispatch clusters have been verified against checked-in
-  owner notes and which clusters remain pending for the final completion
-  audit.
+  It records the checked dispatch clusters and now has no remaining named
+  pending row class; future dispatch work should start only from streams that
+  change an owner route, page-object field, bridge field, render helper, or
+  exact boundary.
 - Manual PCL command names and syntax rows are indexed by
   [pcl4-language.md](pcl4-language.md#owner-summary). Its ROM Semantic Index maps PCL
   Level IV families to first parser handlers, representative byte streams, page-object

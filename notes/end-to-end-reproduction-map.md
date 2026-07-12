@@ -207,7 +207,7 @@ fields, continue in that owner note before claiming equivalent output.
   from context `0xc008004c` plus mapped glyph byte `0x00`. Evidence: `Minimal Font
   Selection Walkthrough` in this file and `Worked Path: Font Selection To Visible
   Glyphs` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-font-selection-to-visible-glyphs).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Underline/span output `ESC &d3D ! ESC &d@`: command bytes enter through `0xa904 ->
   0xda9a -> 0x11774`; `ESC &d3D` dispatches to tokenizer/handler `0x12622`, which writes
   underline/text-attribute selector `0x783185 = 1` and arms pending span state through
@@ -224,7 +224,7 @@ fields, continue in that owner note before claiming equivalent output.
   Evidence: `Minimal Span Flush Walkthrough` in this file,
   [direct-control-codes.md](direct-control-codes.md#underline-and-span-outcome-matrix),
   and `Worked Path: Text Span Flush And Fixed-Width Spans` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-text-span-flush-and-fixed-width-spans).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Landscape fixed-list span `ESC &l1O ESC &d3D ! ESC &d@`: orientation command bytes
   enter through `0xa904 -> 0xda9a -> 0x11774` and dispatch to `0x10220`, which writes
   orientation byte `0x782da3 = 1` after any required pre-change publication. The
@@ -307,7 +307,7 @@ fields, continue in that owner note before claiming equivalent output.
   -> 0x1effe` and the selected compact row-store helper. Evidence: `Minimal Display
   Functions Walkthrough` in this file and `Worked Path: Display Functions Direct Reader`
   in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-display-functions-direct-reader).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Local Control-Z terminals `SUB SUB` / `SUB X`: the first `0x1a` byte enters
   normal parser mode `0`, reaches setup handler `0x11ea4`, and switches to
   mode `2` instead of directly queueing text. In normal mode `2`, nested
@@ -363,7 +363,7 @@ fields, continue in that owner note before claiming equivalent output.
   published. Evidence: `Minimal VFC Walkthrough` in this file, [VFC State To Visible
   Consumer Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map), and
   `Worked Path: VFC Table And Channel Branch Matrix` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-vfc-table-and-channel-branch-matrix).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Reset/page boundary `! ESC E !`: the first `!` enters through `0xa904 -> 0xda9a ->
   0x11774` and queues the compact object `00 00 00 00 00 00 00 01 20 00 01` through the
   ordinary printable path under current root `0x78297a`. `ESC E` dispatches to reset
@@ -466,7 +466,7 @@ fields, continue in that owner note before claiming equivalent output.
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#raster-transfer-decision-checkpoint), and
   `Worked Path: Raster Transfer Gates And Modes` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-raster-transfer-gates-and-modes).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Dense raster split `ESC *t300R ESC *r1A ESC *b300W <300 bytes>`: parser and delayed
   transfer setup are the same as the simple raster row through
   `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0`. The transfer handler writes accepted count
@@ -868,7 +868,7 @@ fields, continue in that owner note before claiming equivalent output.
   Evidence: `Minimal Ignored/No-Output Parser Walkthrough` in this file,
   [pcl-parser-core.md](pcl-parser-core.md#inbound-byte-outcome-contract), and `Worked
   Path: Explicit No-Output Parser Rows` in
-  [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-explicit-no-output-parser-rows).
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Host/status side channel `ESC *r1K 0x11`: command bytes enter through
   `0xa904 -> 0xda9a -> 0x11774`; `ESC *r#K` dispatches wrapper `0x12034`,
   which calls setup helper `0x11efe`, appends a synthetic six-byte record with
@@ -1031,7 +1031,7 @@ Current completion-audit state:
   ROM-local unresolved caller, missing resource data, exact ROM stop, hardware/MMIO
   boundary, optional external data, or manual/physical correlation.
 
-Completion audit queue:
+Completion audit status:
 
 - Dispatch audit:
   compare every supported row in
@@ -1046,8 +1046,14 @@ Completion audit queue:
   boundary if any. A generated table row, fixture name, or handler listing
   alone does not pass this audit. The checked-in working ledger is
   [supported-stream-dispatch-audit.md](supported-stream-dispatch-audit.md);
-  it currently records the transparent/display/status byte-reader cluster and
-  leaves the remaining command families explicitly pending.
+  it currently records transparent/display/status byte readers, printable and
+  direct controls, cursor/motion/margin/span commands, page environment,
+  publication, VFC, raster transfer, rectangle/rule imaging,
+  font/downloaded-glyph state, macro replay, parser-only/no-output rows, and
+  the page/render owner crosswalk. The ledger has no remaining named pending
+  row class; future dispatch work starts only from streams that change a
+  documented owner route, page-object field, bridge field, render helper, or
+  exact boundary.
 - Owner-route audit:
   for each command-family owner, verify that the first semantic effect is
   classified as page-image object, delayed state, append/replay input,

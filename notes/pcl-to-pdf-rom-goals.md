@@ -42,10 +42,11 @@ notes. CPU clock source, live printer output, physical paper timing, and
 connector signal names are not prerequisites for documenting parser behavior,
 page-object construction, render dispatch, or ROM-derived row construction.
 
-The current ROM-local stops are exact boundaries, not open-ended blockers:
-downloaded-glyph invalid helper/source cases and payload-count caps stop at the
-addresses named in
+The current ROM-local stops are exact boundaries, not open-ended blockers.
+Downloaded-glyph invalid helper/source cases stop at the addresses named in
 [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries).
+Payload-count caps are terminal parser/payload stops: the ROM does not create a
+glyph object, page root, bridge record, or render helper after that cap.
 The optional active-pool pattern helper bodies `0x247c..0x2746` are decoded but stop
 at a ROM-local unresolved-caller boundary; ordinary active rendering still
 routes through `0xff1e`, `0x1ed84` / `0x1edc6`, `0x1ef6a`, and `0x22f4`.
@@ -385,11 +386,11 @@ Expected remaining validation and boundary work:
   [unresolved-boundaries.md](unresolved-boundaries.md) is now the source of
   truth for residual stop points. Pixel-affecting ROM-local stops are
   downloaded-glyph invalid helper/source cases at `0x1fe76..0x1fe88`,
-  `0x1f034 -> 0x1f08e`, and `0x1f264`, plus the exact parser payload-count
-  stop for oversized restored `ESC )s#W` streams. These are not parser,
-  page-object, publication, bridge, or scheduler gaps; the upstream routes are
-  documented before the model reaches the exact helper/source or payload-budget
-  stop.
+  `0x1f034 -> 0x1f08e`, and `0x1f264`. Oversized restored `ESC )s#W`
+  streams have an exact parser payload-count stop instead: upstream parser and
+  delayed-payload state is documented, and no page-object or render route is
+  created past that cap. These are not parser, page-object, publication,
+  bridge, or scheduler gaps.
 - ROM-local unresolved helper caller:
   optional active-pool pattern helper bodies `0x247c..0x2746` have decoded
   accumulator, pattern-pointer, and destination writes, but no static caller,

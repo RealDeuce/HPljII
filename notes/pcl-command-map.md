@@ -3842,11 +3842,42 @@ stream `ESC *b2w2W`: lowercase `w` records the delayed transfer and
 leaves parser mode in the `*b` family, while uppercase `W` triggers the
 `0x12218` restore and the single following payload.
 
-## Next RE Targets
+## Residual Completion-Audit Checkpoint
 
-The next work should follow the dataflow checkpoints in
-[semantic-state-model.md](semantic-state-model.md) and should start at
-unresolved byte-stream-to-pixel edges, not already-composed handlers.
+The supported dispatch matrix and the ROM Semantic Index now route the current
+supported byte-stream families into checked-in owner notes. This checkpoint is
+the control point for remaining work: start only from a stream or boundary that
+changes a documented parser field, command-family state field, page-object
+byte, bridge field, render-helper input, or exact unresolved boundary. Do not
+restart from already-composed handler clusters unless that handler changes one
+of those documented outputs.
+
+Completion-audit result for the command-map layer:
+
+- No parser-table handler in the current supported matrix lacks an assigned
+  checked-in owner note. The supporting rows are the `Parser Handler Owner
+  Matrix`, `Supported Stream Dispatch Matrix`, the manual
+  [ROM Semantic Index For Quick
+  Reference](pcl4-language.md#rom-semantic-index-for-quick-reference), and the
+  checked ledger in
+  [supported-stream-dispatch-audit.md](supported-stream-dispatch-audit.md).
+- State-only rows are not complete merely because their handler is named. They
+  pass this layer only where the owner note also names the first downstream
+  consumer that can turn the state into compact text, span output, raster
+  rows, rule-list output, publication, replay, or an explicit no-page stop.
+  The current consumer index is in
+  [pcl4-language.md](pcl4-language.md#rom-semantic-index-for-quick-reference).
+- Pixel-producing rows pass this layer only where the owner note reaches a
+  page-object producer and the shared object-to-pixel route:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` plus the object-class renderer.
+  The shared evidence is the `Command-Family To Page-Object Crosswalk`,
+  `Page Object Shape Route Index`, and `Band Scheduling Route Index` in
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+- Residual work is not a generic dispatch gap. It is limited to exact
+  boundary-changing streams, especially the pixel-affecting boundaries named
+  in
+  [unresolved-boundaries.md](unresolved-boundaries.md#pixel-affecting-boundaries)
+  and byte-stream variants that change a documented owner/output field.
 
 - Treat the dense raster handoff as documented for ROM semantics. The checkpoint `Raster
   Transfer Gate And Encoded Rows` documents parser scratch, field groups, writers,

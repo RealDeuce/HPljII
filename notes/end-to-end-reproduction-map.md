@@ -906,13 +906,14 @@ Current completion-audit state:
   Index](firmware-dataflow-model.md#page-object-shape-route-index), and the
   [Band Scheduling Route
   Index](firmware-dataflow-model.md#band-scheduling-route-index).
-- The exact residual pixel-affecting stops are not generic blockers or hardware asks.
-  They are the named entries in
+- The exact residual stops are not generic blockers or hardware asks. The
+  pixel-affecting stops are the named invalid render/source entries in
   [unresolved-boundaries.md](unresolved-boundaries.md#unresolved-boundary-outcome-matrix):
   downloaded-glyph invalid render targets/sources at `0x1fe76..0x1fe88`, `0x1f034 ->
   0x1f08e`, and `0x1f264`; the secondary segment-57 resource continuation
-  `0x0c0000..0x0c0321`; and the exact parser payload-count stop through `0xdb74`,
-  `0x121cc -> 0x12218`, and budget `0x783140`.
+  `0x0c0000..0x0c0321`. The restored `ESC )s#W` payload-count cap through `0xdb74`,
+  `0x121cc -> 0x12218`, and budget `0x783140` is a terminal parser/payload stop: no
+  glyph object, page root, bridge record, or render helper exists after that cap.
 - Hardware/MMIO and physical timing entries are completion blockers only for
   physical device naming or timing correlation. They are not blockers for the
   ROM-local byte-to-page-to-pixel model once a normalized byte stream has been

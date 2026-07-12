@@ -725,23 +725,35 @@ fields, continue in that owner note before claiming equivalent output.
   `0x782dce`, `0x782dd2`, and derived limit `0x782dc2`. Evidence:
   [direct-control-codes.md](direct-control-codes.md#layout-state-to-output-checkpoint).
 - HT/BS cursor placement `ESC &k0G HT BS !`: command bytes enter through
-  `0xa904 -> 0xda9a -> 0x11774`. `ESC &k0G` dispatches to line-termination
-  handler `0xedf8`, which rewinds the six-byte parser record and clears mode
-  byte `0x78318f`. HT byte `0x09` reaches `0xf1cc`: `0xf1cc..0xf24c` reads
-  HMI `0x78315c`, left margin `0x782dd6`, and current x `0x782c8a`, computes
-  the next eight-column tab-stop candidate, and `0xf24e..0xf2a4` clamps it to
-  right margin `0x782dda` or page width `0x782db8` before writing
-  `0x782c8a`. BS byte `0x08` reaches `0xf2a8`: it ensures current root
-  `0x78297a`, subtracts either latched previous width
-  `0x782a5a/0x78318e` or HMI `0x78315c`, clamps against left margin/zero, and
-  writes the committed x back to `0x782c8a` while setting previous-width latch
-  `0x782a58`. Neither control queues a page object; the following `!` is the
-  visible consumer, reaching `0xd04a -> 0x12f2e -> 0x1387c` with the committed
-  cursor and queuing a compact object at coordinate `0x0a01`. Later
-  publication and render use the ordinary compact path
-  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`. Evidence:
-  [direct-control-codes.md](direct-control-codes.md#direct-control-outcome-matrix)
-  and [direct-control-codes.md](direct-control-codes.md#hmi-route-checkpoint).
+  `0xa904 -> 0xda9a -> 0x11774`.
+
+  `ESC &k0G` dispatches to line-termination handler `0xedf8`, which rewinds
+  the six-byte parser record and clears mode byte `0x78318f`.
+
+  HT byte `0x09` reaches `0xf1cc`. Boundaries `0xf1cc..0xf24c` read HMI
+  `0x78315c`, left margin `0x782dd6`, and current x `0x782c8a`, then compute
+  the next eight-column tab-stop candidate. Boundaries `0xf24e..0xf2a4`
+  clamp that candidate to right margin `0x782dda` or page width `0x782db8`
+  before writing `0x782c8a`.
+
+  BS byte `0x08` reaches `0xf2a8`. It ensures current root `0x78297a`,
+  subtracts HMI `0x78315c` in normal metric mode or previous width
+  `0x782a5a << 16` when alternate metric byte `0x78318e` is set, clamps
+  against left margin/zero, and writes the committed x back to `0x782c8a`
+  while setting previous-width latch `0x782a58`.
+
+  Neither control queues a page object; the following `!` is the visible
+  consumer. Printable placement `0xd16a..0xd24e` or `0xd586..0xd680`
+  consumes the committed cursor and may consume pending-width state
+  `0x782a58/0x782a5a/0x782a5c`, then reaches
+  `0xd04a -> 0x12f2e -> 0x1387c` and queues a compact object at coordinate
+  `0x0a01`. Later publication and render use the ordinary compact path
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe`.
+
+  Evidence:
+  [direct-control outcome](direct-control-codes.md#direct-control-outcome-matrix),
+  [HMI route](direct-control-codes.md#hmi-route-checkpoint), and
+  [previous-width](direct-control-codes.md#previous-width-backspace-checkpoint).
 - Half-line feed placement `ESC = !`: command bytes enter through
   `0xa904 -> 0xda9a -> 0x11774`; parser dispatch reaches handler
   `0xf176`. `0xf176..0xf1ca` ensures current root `0x78297a`, flushes

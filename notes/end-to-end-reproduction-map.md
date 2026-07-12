@@ -7336,6 +7336,33 @@ Address-level cluster map:
   is absent for the verified built-in streams; optional cartridge or
   post-`0x0bffff` resource-window contents are external data inputs to the
   same selection/render path, not parser-dispatch gaps.
+  Selected-font transition audit result: the ROM-local gate from parsed font
+  request to later printable output is the `0xc580` branch cluster, not the
+  parser table row alone. Dirty-`1` selector-mismatch branches call
+  `0x13eb8(slot)` and skip `0xc428`, so the nonselected slot is refreshed but
+  cannot affect pixels until SI/SO selects it. Dirty-`1` selector-match
+  branches either call `0x13eb8(slot)` plus `0xc428(slot)`, or take the
+  full-root probe path through transient flag `0x78298f`, context probe
+  `0xc4fc(0x782992)`, and status `0x11`, preserving the prior installed
+  context when the page-root context table is full. Dirty-`2` final-`X`
+  branches skip `0x13eb8`; selected-slot cases install the context already
+  selected by `0x17708`, while selector-mismatch cases copy the remembered
+  word and leave current page-root context state unchanged. These outcomes are
+  evidenced by fixtures `0xc580 dirty primary branch installs page-root font
+  context`, `0xc580 dirty secondary branch installs page-root font context`,
+  `0xc580 full live-slot branch reuses matching page-root font context`,
+  `0xc580 full live-slot branch skips install when c4fc reports full`,
+  `0xc580 selector-mismatch branch refreshes candidate without context
+  install`, `0xc580 dirty-2 selector-match branch installs current context
+  only`, `0xc580 dirty-2 secondary selector-match branch installs current
+  context only`, and `0xc580 dirty-2 selector-mismatch branch only copies
+  remembered word`, with disassembly in
+  `generated/disasm/ic30_ic13_font_update_common_00c580.lst`.
+  Therefore a new font-selection stream is a ROM-local documentation target
+  only when it changes a concrete `0xc580` branch outcome, `0x13eb8` /
+  `0x156de` candidate filtering result, `0x17708` final-`X` status,
+  `0x14c64` map rebuild, `0x14f16` map patch, page-root context slot,
+  compact object bytes, bridge context slot, or row-construction input.
 - Page/font scheduler handoff cluster:
   quiesce and resource callers reach `0x19dd2` from `0x447a`, `0x4760`,
   `0xbb16`, and `0x1a3c2`; teardown and scan paths include

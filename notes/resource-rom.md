@@ -142,8 +142,12 @@ glyph payload.
   `0xff1e -> 0x1ed84 -> 0x1edc6` copies the page-root context slot into the
   render record. `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` consumes the
   compact object, copied context, glyph table entry, glyph-entry fields
-  `+0/+2/+4/+5/+6/+8`, and bitmap payload bytes. This is the first path where
-  resource bytes become ROM-derived rows.
+  `+0/+2/+4/+5/+6/+8`, and bitmap payload bytes. Row-copy helpers selected
+  from the compact render path then store generated rows through the
+  destination model in
+  [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map). This is the first path
+  where resource bytes become ROM-derived rows.
 - Continuation boundary:
   secondary `LINE_PRINTER` segment `57` for glyph `0x5f` reaches verified
   source bytes `0x0bfe22..0x0bffff`, then needs firmware bytes
@@ -178,9 +182,10 @@ Evidence:
 [Candidate Windows To Visible Consumer
 Map](built-in-resource-scan.md#candidate-windows-to-visible-consumer-map),
 [symbol-set-selection.md](symbol-set-selection.md#symbol-state-to-visible-consumer-map),
-[font-context-metrics.md](font-context-metrics.md#printable-source-capture),
+[Byte-To-Glyph Flow](font-context-metrics.md#byte-to-glyph-flow),
+[Printable Source Capture](font-context-metrics.md#printable-source-capture),
 [page-record-storage.md](page-record-storage.md#page-object-to-visible-consumer-map),
-[page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
+[Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map),
 `generated/analysis/ic32_ic15_font_records.md`,
 `generated/analysis/ic32_ic15_resource_glyph_probe.md`,
 `generated/analysis/ic30_ic13_font_context_bridge.md`,
@@ -297,16 +302,17 @@ Printable compact object path:
 - Readers / consumers:
   page publication `0xff1e`, render-record bridge `0x1ed84 -> 0x1edc6`,
   active render entry `0x1ef6a`, compact object dispatcher
-  `0x1efc2 -> 0x1effe`, and built-in glyph resolver `0x1f354`.
+  `0x1efc2 -> 0x1effe`, built-in glyph resolver `0x1f354`, and row-store
+  helpers reached from the compact path.
 - Output effect:
   turns selected resource state and printable host bytes into compact
   page-object fields. The renderer later uses the copied render context slot,
   compact glyph index, source-class flag, and resource glyph-entry fields to
-  emit built-in text pixels.
+  emit built-in text pixels through the row-store primitives.
 - Evidence:
-  [font-context-metrics.md](font-context-metrics.md#printable-source-capture),
+  [Printable Source Capture](font-context-metrics.md#printable-source-capture),
   [page-record-storage.md](page-record-storage.md),
-  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map),
   `generated/analysis/ic30_ic13_text_glyph_index_flow.md`, and
   `generated/analysis/ic30_ic13_font_context_bridge.md`.
 
@@ -326,10 +332,10 @@ Built-in glyph resolver:
   `+0/+2/+4/+5/+6/+8`, and bitmap payload bytes. Row-copy helpers consume the
   returned source pointers, span byte count, and row count.
 - Output effect:
-  emits the ROM-derived glyph rows used by built-in text, subject to the
-  explicit continuation boundary below.
+  emits the ROM-derived glyph rows used by built-in text through the compact
+  row-store primitives, subject to the explicit continuation boundary below.
 - Evidence:
-  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary),
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map),
   `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
   `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`,
   and `generated/analysis/ic32_ic15_resource_glyph_probe.md`.

@@ -112,6 +112,9 @@ later printable bytes turn that selected state into page objects and pixels.
   context slots into a render record. `0x1ef6a -> 0x1efc2 -> 0x1effe` reaches
   compact glyph resolution, where `0x1f354` consumes the selected context,
   captured glyph byte, resource glyph table entry, and bitmap payload bytes.
+  Row-copy helpers then store the generated glyph rows through the destination
+  model documented in
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
 - Boundary split:
   verified built-in records and glyph rows through firmware address
   `0x0bffff` are ROM-local resource data. Optional cartridge windows and the
@@ -154,6 +157,7 @@ Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map),
 Map](font-context-metrics.md#font-state-to-visible-consumer-map),
 [Page Object To Visible Consumer
 Map](page-record-storage.md#page-object-to-visible-consumer-map),
+[Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map),
 `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`,
 `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`,
 `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
@@ -506,15 +510,18 @@ Glyph/render handoff:
   `+0x16`, mark live flag `0x78297f + slot`, and call `0x12f2e`.
   Publication and bridge copy root context slots to render-record
   `+0x24..+0x60`; compact glyph renderers consume the compact payload glyph
-  byte and copied context slot.
+  byte and copied context slot, then row-store helpers write the generated
+  rows.
 - Output effect:
   this is the field bridge from selected resource candidate to compact text
   page object. Visible text rows later come from the selected resource bitmap
-  rows rendered through `0x1f354`.
+  rows rendered through `0x1f354` and stored through the compact row-store
+  primitives.
 - Evidence:
-  [font-context-metrics.md](font-context-metrics.md#printable-source-capture),
+  [Printable Source Capture](font-context-metrics.md#printable-source-capture),
   [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
   [page-record-storage.md](page-record-storage.md#context-slot-preservation-checkpoint),
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map),
   `generated/analysis/ic30_ic13_font_context_bridge.md`, and
   `generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
 

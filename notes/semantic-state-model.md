@@ -9120,9 +9120,13 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   `notes/font-context-metrics.md`.
 - Parser scratch:
   - normal macro parser table mode 17 entries at `0x11262..0x11286`
-    route `y/Y` to `0xe112` and `x/X` to `0xdd08`.
+    route `s/S` to `0xf75e`, `y/Y` to `0xe112`, and `x/X` to `0xdd08`.
   - alternate/data parser table `0x116f6` keeps `x/X -> 0xdd08` while
-    disabling normal macro-id parsing during definition payload storage.
+    disabling sibling state writers during definition payload storage:
+    uppercase `S/Y` rows are blank, and lowercase `s/y` rows rewind through
+    `0x11f4c`. Cursor-stack state `0x782c96..0x782d36` and current macro id
+    `0x783164` are not written by stored payload syntax until replay through
+    normal table `0x112a4`.
   - definition-mode flags `0x782c18` and `0x782c19` gate start/stop
     behavior and auto-prefix cleanup.
   Evidence: `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`;

@@ -235,10 +235,13 @@ dropping into the command-family detail notes. The longer ledger is
   `Downloaded Glyph`, `Nonzero Resource Payload`, and
   `Fixed-Record Resource Object`.
 - Macro/data-chain replay:
-  `ESC &f#Y` and `ESC &f#X` route to `0xe112` and `0xdd08`; definition
-  appends through `0xe002`; execute/call frames are built by `0xe418`;
-  overlay publication frames are built by `0xe4f4` from `0xff1e`; frame end
-  cleanup is `0xe22c`. Replayed bytes become ordinary parser input because
+  normal-table `ESC &f#Y` and `ESC &f#X` route to `0xe112` and `0xdd08`;
+  definition appends through `0xe002`; execute/call frames are built by
+  `0xe418`; overlay publication frames are built by `0xe4f4` from `0xff1e`;
+  frame end cleanup is `0xe22c`. Alternate/data table `0x116f6` keeps
+  `ESC &f#X/x -> 0xdd08` so definition stop/control can run, but suppresses
+  sibling `S/Y` state writers through blank uppercase rows and `0x11f4c`
+  lowercase rewinds. Replayed bytes become ordinary parser input because
   `0xa904` prioritizes the active `0x782d76` data-chain frame. Owner worked
   paths are `Macro Execute Replay` and
   `Macro Overlay Replay Publication`.
@@ -1354,6 +1357,12 @@ Append-versus-execute split:
   reader `0x12120`; Control-Z siblings append/report through `0x1210c` /
   `0x121b2`; delayed payload restore uses `0x12358`; reset `ESC E` still
   reaches `0xcc52`.
+- The same `ESC &f` family has explicit same-family suppressions:
+  alternate/data `ESC &f#S` and `ESC &f#Y` uppercase rows are blank, while
+  lowercase `s/y` rows rewind through `0x11f4c`. Cursor-stack handler
+  `0xf75e` and macro-id handler `0xe112` therefore do not write stack
+  `0x782c96..0x782d36` or current macro id `0x783164` until stored bytes are
+  replayed through normal table `0x112a4`.
 
 Command-family consequences:
 
@@ -1386,6 +1395,11 @@ Macro definition and stored bytes:
 - `ESC &f#X` handler `0xdd08` rewinds command-record cursor `0x78299e`,
   resolves the macro record through `0xe0a4`, and dispatches selectors
   `0..10`.
+- In alternate/data table `0x116f6`, `X/x` still reaches `0xdd08`, but
+  `S/Y` uppercase rows are blank and `s/y` lowercase rows rewind through
+  `0x11f4c`. Stored payload syntax therefore cannot push/pop cursor stack
+  `0x782c96..0x782d36` or change current id `0x783164` at definition time;
+  those effects require later replay through normal table `0x112a4`.
 - Selector `0` starts definition mode through `0xdd86`, setting definition
   flag `0x782c18` and using append sink `0xe002` for following bytes.
 - `0xe002` writes macro definition bytes into linked 0x100-byte chunks rooted
@@ -2086,7 +2100,9 @@ Parser-table handoff anchors:
   positions `&a#C/#H/#R/#V` reach `0xf39e`, `0xf416`, `0xf560`, and
   `0xf60a`; HMI, line termination, and pitch mode `&k#H/#G/#S` reach
   `0xca8c`, `0xedf8`, and `0xc390`; cursor stack `&f#S` reaches `0xf75e`;
-  macro id/control `&f#Y/#X` reach `0xe112` and `0xdd08`.
+  macro id/control `&f#Y/#X` reach `0xe112` and `0xdd08`. In alternate/data
+  mode, the `&f` family is split: `X/x` still reaches `0xdd08`, while `S/Y`
+  are blank and `s/y` rewind through `0x11f4c`.
 - Raster, rectangle, and dot-position terminals:
   raster resolution/start/end `*t#R`, `*r#A`, and `*r#B` reach `0x10808`,
   `0x1075a`, and `0x107fa`; raster transfer `*b#W` schedules
@@ -9492,7 +9508,10 @@ Definition storage:
   raw count `+0x04` is greater than `1`.
 - Alternate/data parser table `0x116f6` still routes `x/X` to `0xdd08`, so
   the later `ESC &f1X` can stop the definition while ordinary payload
-  controls are appended.
+  controls are appended. The sibling mode-17 rows suppress `S/s` and `Y/y`:
+  uppercase `S/Y` are blank and lowercase `s/y` rewind through `0x11f4c`, so
+  cursor-stack handler `0xf75e` and macro-id handler `0xe112` do not run
+  during definition storage.
 - `0xe002` appends bytes into linked 0x100-byte chunks rooted by macro record
   `+0x00`. Each chunk has a four-byte next pointer followed by 252 payload
   bytes.

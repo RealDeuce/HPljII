@@ -169,7 +169,9 @@ owner, and whether visible pixels can result.
 
 - Reset, FF, page size, orientation, paper source, copies:
   handlers `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and
-  `0xeef0`; owner [Publication Outcome
+  `0xeef0`; owner [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map)
+  and [Publication Outcome
   Matrix](publication-commands.md#publication-outcome-matrix).
   These handlers either publish the old current root through snapshot boundary
   `0xff1e` before mutating page environment, or stage page-control fields
@@ -180,6 +182,8 @@ owner, and whether visible pixels can result.
 - Direct controls and text placement:
   C0 rows `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`; SO/SI
   `0xc6b8` / `0xc68a`; and cursor/margin helpers are owned by
+  [Delayed State To Visible Consumer
+  Map](direct-control-codes.md#delayed-state-to-visible-consumer-map) and
   [Direct-Control Outcome
   Matrix](direct-control-codes.md#direct-control-outcome-matrix).
   These commands change cursor, selected text slot, line-termination, span,
@@ -198,12 +202,18 @@ owner, and whether visible pixels can result.
   `0x1f756 -> 0x1f7b0`.
 - Printable text and font/symbol selection:
   printable fallback `0xd04a`; owners
-  [Font Request Outcome Matrix](font-context-metrics.md#font-request-outcome-matrix),
-  [Resource ROM Outcome Matrix](resource-rom.md#resource-rom-outcome-matrix),
-  [symbol-set-selection.md](symbol-set-selection.md), and
-  [symbol-map-patching.md](symbol-map-patching.md). Selection commands update
-  font contexts, candidate/resource selection, symbol maps, HMI, and map patch
-  state. Built-in resource candidates come from startup scan
+  [Font State To Visible Consumer
+  Map](font-context-metrics.md#font-state-to-visible-consumer-map),
+  [Candidate Windows To Visible Consumer
+  Map](built-in-resource-scan.md#candidate-windows-to-visible-consumer-map),
+  [Resource Bytes To Visible Consumer
+  Map](resource-rom.md#resource-bytes-to-visible-consumer-map),
+  [Symbol State To Visible Consumer
+  Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map), and
+  [Map Patch To Visible Consumer
+  Map](symbol-map-patching.md#map-patch-to-visible-consumer-map). Selection
+  commands update font contexts, candidate/resource selection, symbol maps,
+  HMI, and map patch state. Built-in resource candidates come from startup scan
   `0x1a2e4 -> 0x1a616 -> 0x1a9be`, while parser-visible font commands consume
   those candidates through selectors such as `0x1569c`, `0x156de`,
   `0x14398`, `0x144d2`, and `0x14c64`. Printable bytes then consume the
@@ -213,9 +223,11 @@ owner, and whether visible pixels can result.
 - Transparent and display readers:
   delayed transparent handler `0x11f5a -> 0x12452` and display readers
   `0x12536` / `0x12120`; owners
-  [Transparent Payload Outcome
-  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
-  [display-functions.md](display-functions.md). These are direct byte readers:
+  [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map)
+  and [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map). These are
+  direct byte readers:
   normal transparent payload restores through
   `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`, while normal `ESC Y` reaches
   loop reader `0x12536`. In both normal cases, payload values are not parsed
@@ -230,7 +242,9 @@ owner, and whether visible pixels can result.
   returns them through `0xa904`.
 - Raster graphics:
   `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
-  producer `0x13070`; owner [Raster Transfer Decision
+  producer `0x13070`; owners [Raster State To Visible Consumer
+  Map](raster-graphics.md#raster-state-to-visible-consumer-map) and [Raster
+  Transfer Decision
   Checkpoint](raster-graphics.md#raster-transfer-decision-checkpoint). Raster
   commands set resolution/mode state and queue encoded raster row objects under
   page-root bucket `+0x1c` through `0x13070 -> 0x13250 -> 0x138de`. Publication
@@ -248,6 +262,8 @@ owner, and whether visible pixels can result.
   rectangle dimension and fill handlers `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, `0x10dce`, and `0x10898`; object insertion
   `0x13386` / `0x133aa`; owner
+  [Rectangle State To Visible Consumer
+  Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map) and
   [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix).
   Width/height and selector state become ordered rule-list objects under
   page-root `+0x24`. Bridge `0x1edc6` copies that list to render-record
@@ -255,8 +271,10 @@ owner, and whether visible pixels can result.
   rule nodes through `0x1f446`, solid selector helper `0x1f596`, or patterned
   helper `0x1f4e0`.
 - VFC and vertical layout: VMI/LPI, page length, VFC table load, and channel jumps;
-  owners [VFC Outcome Matrix](vertical-forms-control.md#vfc-outcome-matrix) and the
-  shared geometry refresh consumer in
+  owners [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map), [VFC Outcome
+  Matrix](vertical-forms-control.md#vfc-outcome-matrix), and the shared geometry refresh
+  consumer in
   [publication-commands.md](publication-commands.md#shared-geometry-refresh-consumer-checkpoint).
   `ESC &l#W` schedules delayed payload handler `0x12cfe` through `0x11f6e -> 0x121cc ->
   0x12218`; normal restore consumes bytes through `0xdace`, writes VFC table
@@ -271,6 +289,8 @@ owner, and whether visible pixels can result.
 - Macros and alternate/data replay:
   macro controls under `0xdd08`, data-chain builders `0xe418` / `0xe4f4`,
   and replay through `0xa904`; owner
+  [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map) and
   [Macro Replay Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
   Definition selector `0` changes parser source behavior: ordinary payload
   bytes append through `0xe002` into macro chunks rooted at record pool
@@ -287,6 +307,8 @@ owner, and whether visible pixels can result.
   downloaded-font control writers `0x15a56`, `0x15a18`, and `0x16df6`,
   descriptor/character payload readers `0x15d0a` and `0x16c14`, plus active
   object dispatch around `0x14ba4`; owner
+  [Downloaded Font To Visible Consumer
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map) and
   [Downloaded-Font Outcome
   Matrix](downloaded-fonts.md#downloaded-font-outcome-matrix).
   `ESC *c#D/#E/#F` sets current id `0x782f2e`, current character
@@ -1637,6 +1659,10 @@ Delayed state-to-output resolution:
   rather than blending against previous destination contents.
   Physical engine consumption of those rendered buffers is the formatter/DC
   boundary, not another parser command effect. Evidence:
+  [Scheduler To Renderer
+  Ownership](active-render-scheduler.md#scheduler-to-renderer-ownership),
+  [Page Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map),
   [Render Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix),
   [active-render-scheduler.md](active-render-scheduler.md), and
   [page-record-storage.md](page-record-storage.md).

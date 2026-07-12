@@ -1067,6 +1067,11 @@ Command-family suppression and exception matrix:
   siblings rewind through `0x11f4c`. The immediate effect is parser
   synchronization or stored syntax, not writes to cursor, margin, HMI/VMI,
   wrap/perforation, paper, orientation, or dot-position state.
+- Underline/span family:
+  alternate/data `ESC &d` is also a blank terminal row. It does not call
+  underline/span handler `0x12622`, so selector byte `0x783185`, pending span
+  fields `0x783184..0x78318a`, generic `W/w` drain scheduling, page-root span
+  objects, publication state, and render inputs remain unchanged until replay.
 - Rectangle, raster-control, and raster-resolution families:
   uppercase alternate/data rows for `ESC *c#A/B/D/E/F/G/H/P/V`,
   `ESC *r#A/B/K`, `ESC *s#^`, and `ESC *t#R` are blank, while lowercase

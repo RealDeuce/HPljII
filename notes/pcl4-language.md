@@ -1093,7 +1093,9 @@ State-only consumer index:
   and arms pending span state through `0x126e2`. The first printable
   consumers are span helpers `0xd4ac` / `0xd8fc`, which read `0x783185`
   while updating pending bounds; the later materializing consumer is span
-  flush `0xf34a -> 0x12714`.
+  flush `0xf34a -> 0x12714`. In alternate/data mode, the `ESC &d` terminal
+  row is blank, so `0x12622` is not called and selector/pending-span/page
+  state remains unchanged until replay.
 - `ESC &f#Y/#X`: writers `0xe112` and `0xdd08` store macro id, records, and
   frames. First visible consumers are replay byte source `0xa904` and overlay
   publication `0xff1e`.

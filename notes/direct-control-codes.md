@@ -1737,6 +1737,15 @@ segment-list or fixed-list page objects consumed by render entry.
   scheduling generic drain handler `0x1228a` through `0x121cc`. This is
   parser bookkeeping for the `&d` family; the normal underline streams covered
   here do not image a binary payload.
+- Alternate/data underline boundary:
+  alternate/data table `0x116f6` has a blank terminal row for `ESC &d`.
+  Handler `0x12622` is not called, so the parser does not tokenize the local
+  `&d` stream, does not schedule the generic `W/w` drain, does not call
+  `0x12218`, does not write selector byte `0x783185`, and does not call
+  `0x126e2` or `0x12714`. Pending span byte `0x783184`, span bounds
+  `0x783186..0x78318a`, page-root bucket `+0x1c`, segment/fixed-list objects,
+  publication state, bridge roots, and render inputs remain unchanged until
+  stored bytes replay through normal parser mode.
 - Printable span update:
   After the selector is armed, a printable byte reaches
   `0xd04a -> 0x1393a`. The flagged source path uses
@@ -1799,7 +1808,8 @@ State grouping for this matrix:
   `0x1edc6`, and render-band caches from `0x1ef86`.
 - Parser scratch:
   six-byte `ESC &d` records, lookahead byte from `0xda9a`, lowercase family
-  continuation state, and any generic `W/w` drain record.
+  continuation state, any generic `W/w` drain record, and the alternate/data
+  blank terminal row before it is discarded by parser terminal reset.
 - Firmware bookkeeping:
   delayed-restore call `0x12218`, span re-arm helper `0x126e2`, allocation
   cursors, retry publication flag, publication flag `0x782996`, and bridge
@@ -1808,16 +1818,20 @@ State grouping for this matrix:
   none for the ROM-local underline/span path after bytes are admitted.
 - Unknown:
   no ROM-local middle edge remains for the documented selector write,
-  printable span update, terminal/control flush, portrait segment-list,
-  landscape fixed-list, retry, bridge, or render dispatch. New work belongs
-  here only if a stream changes one of those fields, object bytes, bridge
-  roots, or row-construction inputs.
+  printable span update, terminal/control flush, alternate/data no-state
+  boundary, portrait segment-list, landscape fixed-list, retry, bridge, or
+  render dispatch. New work belongs here only if a stream changes one of those
+  fields, object bytes, bridge roots, or row-construction inputs.
 
 Evidence:
 
 - Handler and re-arm disassembly:
   `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
   `0x12622..0x12712`.
+- Parser-table evidence:
+  `generated/analysis/ic30_ic13_pcl_command_map.md` lists normal `ESC & d`
+  mode-`5` terminal row handler `0x012622` and alternate/data `ESC & d`
+  mode-`5` terminal row with no handler.
 - Span producer disassembly:
   `generated/disasm/ic30_ic13_text_span_flush_012714.lst` and
   `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`.

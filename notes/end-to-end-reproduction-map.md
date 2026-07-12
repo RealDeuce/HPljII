@@ -7946,8 +7946,12 @@ Address-level cluster map:
   `ESC &l A/C/D/E/F/H/L/O/P/T/V/X` rows in table `0x116f6` are blank or
   `0x11f4c` outcomes, so page-size, page-length, orientation, paper-source,
   copies, VMI/HMI, and VFC-target fields are not written and no page
-  publication runs from those rows. The active exceptions remain `ESC E`
-  reset and `ESC &l#W/w` VFC payload storage. Evidence is
+  publication runs from those rows. `ESC &d` is another blank terminal row in
+  alternate/data mode: it does not call `0x12622`, does not write underline
+  selector `0x783185`, does not arm or flush pending span state
+  `0x783184..0x78318a`, and does not create segment/fixed-list objects. The
+  active exceptions remain `ESC E` reset and `ESC &l#W/w` VFC payload
+  storage. Evidence is
   [direct-control-codes.md](direct-control-codes.md#owner-summary) and
   [publication-commands.md](publication-commands.md#owner-summary).
 

@@ -120,7 +120,8 @@ Output effect:
   selector/context/count fields in `+0x04/+0x05/+0x06/+0x08` and payload
   entries beginning at `+0x0a`; bridge `0x1ed84 -> 0x1edc6` later copies root
   `+0x1c` to render root `+0x18`, and render entry `0x1ef6a -> 0x1efc2 ->
-  0x1effe` selects the compact glyph/fixed-space helper.
+  0x1effe` selects the compact glyph/fixed-space helper and the compact
+  row-store path selected by the queued object.
 - Alternate/data `ESC Y` creates no immediate pixels. It preserves bytes in
   the append sink for later macro/data-chain replay. Its local
   `0x1a 0x58 -> 0x7f` call to `0xd99a` is status-only because
@@ -213,8 +214,9 @@ Writers, readers, and output effect:
 - Page objects and pixels are downstream of the compact route
   `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, publication `0xff1e`, bridge
   `0x1ed84 -> 0x1edc6`, and render dispatch `0x1ef6a -> 0x1efc2 ->
-  0x1effe`. Alternate append paths do not touch those roots until replayed
-  bytes re-enter the normal parser route through `0xa904`.
+  0x1effe` plus the selected compact row-store helper. Alternate append paths
+  do not touch those roots until replayed bytes re-enter the normal parser
+  route through `0xa904`.
 
 Evidence and unresolved boundary:
 
@@ -254,7 +256,8 @@ followable without tracing every loop branch.
   `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e -> 0x1387c`. The first
   page-image state is a compact bucket object under current root `+0x1c`;
   publication and rendering then follow `0xff1e -> 0x1ed84 -> 0x1edc6 ->
-  0x1ef6a -> 0x1efc2 -> 0x1effe`. Display functions has no private renderer.
+  0x1ef6a -> 0x1efc2 -> 0x1effe` and the selected compact row-store helper.
+  Display functions has no private renderer.
 - Normal fixed-space output:
   default-filtered C0 or high-control values routed to `0xd0f0` produce the
   same fixed-space/text-state effects as transparent data. Depending on the
@@ -529,7 +532,8 @@ state with no page object.
   nonzero, local `0x1a 0x58` represented as `0x7f`, and the terminating
   `ESC Z` pair before the local flag exits the loop. The downstream consumer
   path is `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, then publication and
-  render through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  render through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 ->
+  0x1effe` and the selected compact row-store helper.
 - Alternate/data `ESC Y` reader:
   alternate/data mode dispatches `ESC Y` to `0x12120`. The handler writes
   literal `ESC Y` through `0xe002`, then appends each normalized loop value

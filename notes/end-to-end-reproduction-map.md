@@ -303,8 +303,9 @@ fields, continue in that owner note before claiming equivalent output.
   through `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c` under page-root bucket `+0x1c`, with
   glyph bytes `0x20`, `0x20`, and `0x59` at compact coordinates `0x0001`, `0x0403`, and
   `0x0405`. Publication/render uses `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2
-  -> 0x1effe`. Evidence: `Minimal Display Functions Walkthrough` in this file and
-  `Worked Path: Display Functions Direct Reader` in
+  -> 0x1effe` and the selected compact row-store helper. Evidence: `Minimal Display
+  Functions Walkthrough` in this file and `Worked Path: Display Functions Direct Reader`
+  in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-display-functions-direct-reader).
 - Vertical forms control `ESC &l4W 00 00 00 02 !` / `! ESC &l0V !`: table-load bytes
   enter through `0xa904 -> 0xda9a -> 0x11774`; `ESC &l#W` dispatches to arming handler
@@ -9302,9 +9303,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   only when the local high-control filter is zero; all other values route to
   `0xd04a`. Printable routes then use the ordinary text path
   `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84/0x1edc6 ->
-  0x1ef6a`. Alternate/data `0x12120` writes literal `ESC Y` and each
-  normalized value through append sink `0xe002` into macro/data-chain storage,
-  so it has no immediate page objects. Neighboring `ESC z` at `0xcd86` is a
+  0x1ef6a -> 0x1efc2 -> 0x1effe` and the selected compact row-store helper.
+  Alternate/data `0x12120` writes literal `ESC Y` and each normalized value
+  through append sink `0xe002` into macro/data-chain storage, so it has no
+  immediate page objects. Neighboring `ESC z` at `0xcd86` is a
   status edge, not the `ESC Y` reader: it reads active data-chain frame
   pointer `0x782d76`, tests frame byte `+9`, and calls `0x9c2c` only when that
   byte is zero; `0x9c2c` sets `0x7821cc` / `0x7822db`, signals bit `0x8` in

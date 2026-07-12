@@ -52,7 +52,13 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   are the branch-level owners for deciding whether a normalized byte becomes
   printable output, alternate/data append, a matched command handler, a
   zero-handler reset, a no-match fallback, callback continuation, or
-  parser-external return.
+  parser-external return. The low-level parser firmware grouping is
+  [Parser Firmware Outcome
+  Matrix](pcl-parser-firmware.md#parser-firmware-outcome-matrix): it owns the
+  route from `0xda9a` / `0xdaf0` / `0xdb74` through setup handlers
+  `0x11ea4..0x12034`, synthetic records, delayed restore, generic counted
+  drains, append/no-output paths, and terminal handler entry before any
+  command-family semantics are applied.
 - Command dispatch is indexed by
   [pcl-command-map.md](pcl-command-map.md#reproduction-contract):
   parser rows are classified as prefix/setup state, terminal handler
@@ -183,10 +189,14 @@ checked-in ROM model:
    [D7 Caller Return Checkpoint](semantic-state-model.md#d7-caller-return-checkpoint).
 3. Classify the parser outcome in [Admitted Byte Outcome
    Bridge](end-to-end-reproduction-map.md#admitted-byte-outcome-bridge), then
-   [pcl-parser-core.md](pcl-parser-core.md#owner-summary): follow `0xda9a` / `0xdaf0` /
-   `0xdb74` into parser loop `0x11774`, preserving parser mode `0x782999`, six-byte
-   records at `0x78299e..`, alternate/data flag `0x782c18`, and delayed restore `0x121cc
-   -> 0x12218`. For counted binary payload commands, use [Binary Payload
+   [pcl-parser-core.md](pcl-parser-core.md#owner-summary) and
+   [Parser Firmware Outcome
+   Matrix](pcl-parser-firmware.md#parser-firmware-outcome-matrix): follow
+   `0xda9a` / `0xdaf0` / `0xdb74` into parser loop `0x11774`, preserving
+   parser mode `0x782999`, six-byte records at `0x78299e..`,
+   alternate/data flag `0x782c18`, setup-handler effects, synthetic records,
+   and delayed restore `0x121cc -> 0x12218`. For counted binary payload
+   commands, use [Binary Payload
    Lifecycle](firmware-dataflow-model.md#binary-payload-lifecycle) and [Stream Trace
    Procedure](end-to-end-reproduction-map.md#stream-trace-procedure) to split normal
    restore from alternate/data restore: normal restore calls saved handlers such as
@@ -394,6 +404,10 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [pcl-parser-core.md](pcl-parser-core.md#owner-summary) - documented parser byte
   wrapper, tokenizer, dispatch loop, delayed-payload handoff, and semantic
   checkpoint.
+- [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix) -
+  low-level parser firmware outcome matrix for `0xda9a`, `0xdaf0`, `0xdb74`,
+  setup handlers, synthetic records, delayed restore, generic counted drains,
+  append/no-output rows, and terminal handler entry.
 - [display-functions.md](display-functions.md#owner-summary) - documented
   `ESC Y ... ESC Z` display-functions loop, alternate append path, Control-Z
   siblings, and `ESC z` status edge, with a
@@ -453,8 +467,6 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [font-sample-page.md](font-sample-page.md#owner-summary) - documented
   firmware-generated font sample printout from resource candidates through page-record
   segments, multi-probe continuation preflight, and rendered surfaces.
-- [pcl-parser-firmware.md](pcl-parser-firmware.md#parser-firmware-outcome-matrix) -
-  current host-byte fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md#dispatch-class-checkpoint) -
   firmware parser-table dispatch classes, handler-owner matrix, supported
   stream dispatch matrix, [Inbound Byte To Visible Consumer

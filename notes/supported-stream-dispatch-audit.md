@@ -17,8 +17,7 @@ Audit state:
   below; page environment, publication, VFC, raster transfer, rectangle/rule,
   and font/downloaded-glyph clusters below.
 - Still pending in this ledger:
-  macro definition/replay, parser-only rows, and page/render owner crosswalk
-  rows.
+  parser-only rows and page/render owner crosswalk rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -1170,3 +1169,182 @@ compact bucket objects through `0x1effe` and the selected compact helper.
 Remaining audit-ledger work starts from macro replay, parser-only behavior, or
 the final page/render owner crosswalk rather than from font/downloaded-glyph
 dispatch.
+
+## Macro Definition And Data-Chain Replay
+
+This cluster covers the supported `ESC &f` macro family from parsed macro id
+and selector rows through definition storage, execute/call replay, overlay
+publication replay, data-chain byte-source equivalence, context refresh, and
+ordinary page-object/render consumers. It starts at parser dispatch for
+`ESC &f#Y` and `ESC &f#X`, and ends at record-only state, stored input,
+replayed parser input through `0xa904 -> 0x11774`, overlay skip/publication
+boundaries, or the normal command-family page objects created by replayed
+bytes.
+
+### Audited Rows
+
+- Macro id selection:
+  `ESC &f#Y` reaches handler `0xe112`, rewinds the six-byte command record at
+  `0x78299e`, takes the absolute parsed parameter, and writes current macro id
+  `0x783164`. It creates no macro record, frame, page object, or pixels by
+  itself. Later selector handler `0xdd08`, lookup helper `0xe0a4`, and
+  overlay publication consume the selected id. Owner evidence is
+  [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix) and
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`.
+
+- Macro selector dispatch:
+  `ESC &f#X` reaches handler `0xdd08`. The selector consumes current id
+  `0x783164`, selected record pointer `0x782d7a`, active data-chain frame
+  `0x782d76`, frame kind byte `+0x09`, definition byte `0x782c18`, and parser
+  record state. Selectors `0..10` route to definition start/stop,
+  execute/call frame creation, overlay enable/disable, delete-all,
+  delete-temporary, delete-current, and permanence writes. Guard exits while
+  definition or active-chain state is incompatible preserve macro state and
+  produce no page output. Owner evidence is
+  [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
+
+- Definition storage:
+  selector `0` starts definition mode at `0xdd86..0xddfa`, writes definition
+  byte `0x782c18`, selects or clears a record, copies current id into record
+  `+0x08`, and may seed lowercase `ESC &f` or uppercase zero bytes through
+  `0xe002` / `0xddf2..0xddf4`. While definition mode is active,
+  alternate/data routing appends bytes through `0xe002`; `0xe002` allocates
+  linked 0x100-byte chunks, stores 252 payload bytes per chunk after the next
+  pointer, updates record raw count `+0x04`, and sets append-error byte
+  `0x782c19` on allocation failure. Selector `1` at `0xddfc..0xde7a`
+  normalizes the count, clears empty or auto-prefix-only records through
+  `0xdfba`, and clears `0x782c18` / `0x782c19`. Output effect is stored input
+  only. Owner evidence is [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map).
+
+- Record lookup, delete, and permanence:
+  lookup helper `0xe0a4` scans 32 records at `0x782a98`, matching id word
+  `+0x08` only when record head `+0x00` is nonzero; otherwise it selects the
+  first free head-zero slot or reports a full-pool miss by clearing
+  `0x782d7a`. Selectors `6..10` clear all records, clear temporary records,
+  clear the selected record, clear permanence byte `+0x0a`, or set
+  permanence byte `+0x0a`. These paths mutate record-pool state only; later
+  execute/call/overlay selectors observe the changed pool. Owner evidence is
+  [Field Groups](macro-data-chain.md#field-groups) and
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`.
+
+- Execute and call replay:
+  selectors `2` and `3` require a selected nonempty record and frame space,
+  then call `0xe418(2)` or `0xe418(3)`. `0xe418` writes active frame
+  `0x782d76` with record head/count at `+0x00/+0x04`, source offset
+  `+0x08 = 4`, kind `+0x09 = 2` for execute or `3` for call, and snapshot
+  pointer `+0x0a`; call mode also pushes macro context state. `0xa904` gives
+  that frame priority over live input, and data-chain reader `0x9f6a` returns
+  stored payload bytes to the same parser wrapper and dispatch loop as live
+  host bytes. Owner evidence is
+  [Data-Chain Source-Equivalence
+  Checkpoint](macro-data-chain.md#data-chain-source-equivalence-checkpoint).
+
+- Frame-end cleanup and macro font context:
+  when `0xa904` reaches frame count marker `+0x04 = -1`, cleanup
+  `0xe22c..0xe408` unwinds frames, frees snapshots, restores context, clears
+  host gate bit `0x780e66.1` when appropriate, and resumes the previous byte
+  source. Call and overlay returns can run `0xe65c(0)`: `0xe65c` consumes
+  macro context bytes `+8/+9`, refreshes selected font state through
+  `0x13eb8`, `0x144d2`, and `0x14c64`, and calls `0xc428` to install the
+  selected page-root context slot. This can change later printable glyphs, but
+  creates no page object at `0xe65c`. Owner evidence is
+  [Macro Context To Font Slot
+  Checkpoint](macro-data-chain.md#macro-context-to-font-slot-checkpoint).
+
+- Replayed byte consumers:
+  after `0xa904 -> 0xda9a -> 0x11774`, macro payload bytes belong to ordinary
+  owners. Printable replay uses `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`;
+  direct-control replay uses the direct-control owner; transparent replay uses
+  delayed handler `0x12452`; raster replay uses `0x105d0`; rectangle replay
+  uses `0x10898`; span-producing replay uses `0xf34a -> 0x12714`. Macro replay
+  therefore creates compact, raster, rule, segment-list, fixed-list, or no
+  page objects only by reaching those normal handlers. Owner evidence is
+  [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map).
+
+- Overlay enable, skip, and replay at publication:
+  selector `4` enables overlay only when current-id lookup succeeds, writing
+  overlay state `0x782a92 = 1` and saved id `0x782a94`; selector `5` clears
+  `0x782a92`. Publication helper `0xff1e` is the first visible consumer. When
+  overlay state is enabled, saved-record lookup succeeds, and page-root retry
+  flag `root+0x14.0` is clear, `0xff1e` calls `0xe4f4` to create kind-4
+  non-replay frame `0x782d4c`, re-enters `0xa904 -> 0x11774`, lets replayed
+  bytes mutate the current page-root object graph, and then continues
+  publication. Disabled state, missing/empty record, or retry flag preserve
+  base publication without overlay page-object mutation. Owner evidence is
+  [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
+
+- Publication and render after replay:
+  replay-produced objects use the shared page pipeline:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Compact text/downloaded glyphs
+  dispatch through `0x1effe`, encoded raster through `0x1f88e`, rules through
+  `0x1f446`, segment lists through `0x1f812`, and fixed lists through
+  `0x1f756`. Macro has no private renderer or row writer; it only selects
+  ordinary command-family paths by replaying stored bytes. Owner evidence is
+  [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map) and
+  [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map).
+
+### Field Classification
+
+- Canonical macro state:
+  current id `0x783164`, 32-record pool `0x782a98`, selected record pointer
+  `0x782d7a`, record fields `+0x00/+0x04/+0x08/+0x0a`, active frame pointer
+  `0x782d76`, frame fields `+0x00/+0x04/+0x08/+0x09/+0x0a`, overlay state
+  `0x782a92`, saved overlay id `0x782a94`, and page-root retry flag
+  `root+0x14.0`.
+- Canonical context/font state:
+  macro context records `0x782c1e..0x782c6d`, context stack pointer
+  `0x782c6e`, static context record `0x782c64`, selected slot `0x782f06`,
+  selected current-font context records `0x782ee6` / `0x782ef6`, selected
+  page-root slot `0x78297e`, and page-root context slots `+0x2c..+0x68`.
+- Canonical page/image state:
+  only the downstream owner-created objects are page/image state: compact,
+  raster, span, and text buckets under root `+0x1c`, rule list `+0x24`,
+  fixed-list root `+0x28`, context slots `+0x2c..+0x68`, and their published
+  and bridged render roots.
+- Derived/cache state:
+  normalized macro payload counts, replay cursor address
+  `frame(+0x00) + frame(+0x08)`, selected context refresh results, replayed
+  command-family page objects, and row products produced by normal render
+  helpers after replay.
+- Parser scratch:
+  definition-mode byte `0x782c18`, append-error byte `0x782c19`, append chunk
+  cursor `0x782c1a`, parser record cursor `0x78299e`, alternate/data table
+  routing, replayed `D7` bytes returned by `0xa904`, and parser records or
+  delayed-payload counters built later by `0xdaf0` / `0xdb74`.
+- Firmware bookkeeping:
+  host gate bit `0x780e66.1`, heap allocation state, allocation-failure report
+  `0xe8f0 -> 0x9b5e(0x780e2e, 4)`, snapshot chains, frame cleanup
+  `0xe22c`, context helpers `0xe996`, `0xe972`, and `0xe65c`, publication
+  flag `0x782996`, and scheduler progress after publication.
+- Hardware/external state:
+  none for the ROM-local macro replay model once stored bytes re-enter the
+  parser through `0xa904`.
+- Unknown:
+  no ROM-local middle edge remains for documented definition, execute/call
+  replay, source equivalence, overlay publication, overlay skip gates, macro
+  font-context refresh, and listed overlay payload families. Remaining exact
+  macro boundaries are external/manual names for context-stack and overlay
+  latches and the unchecked over-deep context pointer range; physical symptoms
+  after adjacent RAM corruption are outside the ROM-local pixel contract.
+
+### Output And Boundary Result
+
+Macro id, record delete, permanence, and definition selectors are record or
+stored-input state only. Execute and call selectors become visible only by
+building frames consumed by `0xa904`, which returns stored bytes to the normal
+parser and command-family owners. Overlay selectors become visible only at
+publication when `0xff1e` builds a kind-4 frame and replays stored bytes before
+continuing page publication.
+
+No macro-specific page image or renderer exists. The first page-image effect
+is whichever ordinary replayed handler queues an object; pixel generation
+starts only after the shared publication/bridge/render path reaches
+`0x1ef6a`. Remaining audit-ledger work starts from parser-only rows or the
+final page/render owner crosswalk rather than from macro replay.

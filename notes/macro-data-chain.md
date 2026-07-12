@@ -556,6 +556,82 @@ Unresolved boundaries:
   dispatch, page-object bytes, bridge roots, continuation fields, selected
   context input, or ROM-derived row construction.
 
+### Macro Replay To Visible Consumer Map
+
+This map is the shortest checked-in route from a macro command byte stream to
+the next visible consumer. It preserves the selector and frame ledger above
+while avoiding a false macro-specific renderer: after `0xa904` returns a
+payload byte, the ordinary parser and command-family owners are responsible for
+page objects and pixels.
+
+- Macro id and record selection:
+  `ESC &f#Y -> 0xe112` writes current id `0x783164`; `ESC &f#X -> 0xdd08`
+  and lookup helper `0xe0a4` consume that id and select record pointer
+  `0x782d7a` under pool `0x782a98`. The first visible consumer is not a
+  renderer; it is a later selector that either appends bytes, builds a frame,
+  enables overlay, deletes a record, or marks permanence. Output effect is
+  record-state only until selector `2`, `3`, or publication-time overlay
+  replay observes the selected record. Evidence: selector ranges
+  `0xdd08..0xdd80`, lookup range `0xe0a4..0xe110`, and examples
+  `0xe112 stores absolute parsed macro id` and
+  `0xe0a4 macro record lookup uses head presence and first free slot`.
+- Definition storage:
+  selector `0` reaches `0xdd86..0xddfa` and makes alternate/data payload bytes
+  append through `0xe002..0xe0a2`. The canonical state is record
+  `+0x00/+0x04/+0x08`, append chunk cursor `0x782c1a`, definition byte
+  `0x782c18`, and append-error byte `0x782c19`. The first non-macro consumer is
+  still absent: stored bytes are input data, not page objects. Selector `1`
+  at `0xddfc..0xde7a` normalizes the count and either clears the record through
+  `0xdfba` or leaves it available for replay. Boundary: no page/root/render
+  edge exists before a replay frame or overlay publication consumes the
+  retained record.
+- Execute/call replay:
+  selectors `2` and `3` reach `0xde7c` / `0xdea2`, then `0xe418..0xe4f2`
+  writes active frame `0x782d76` with record head/count at `+0x00/+0x04`,
+  source offset `+0x08 = 4`, kind `+0x09 = 2` or `3`, and snapshot pointer
+  `+0x0a`. `0xa904` is the first consumer outside the macro selector layer;
+  it gives that frame priority over live host input, and `0x9f6a` reads the
+  payload bytes. The next boundary is exact:
+  `0xa904 -> 0xda9a -> 0x11774`; from there, replayed bytes belong to normal
+  owners such as printable `0xd04a`, CR `0xf02c`, line-termination `0xedf8`,
+  raster payload `0x105d0`, rectangle/rule `0x10898`, or transparent data
+  `0x12452`.
+- Replay-created page objects:
+  when the replayed stream reaches text owners, `0xd04a -> 0x1393a ->
+  0xd3b2/d824 -> 0x12f2e -> 0x1387c` stores compact objects under current
+  root `+0x1c`. Raster replay stores mode-0 raster objects through the raster
+  owner; rectangle/rule replay stores selector-rule objects through
+  `0x10898` / page-record storage; span-producing replay stores selector
+  `0x4000` segment-list objects through `0xf34a -> 0x12714`. The first render
+  consumers are shared with live bytes:
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`, then compact text `0x1effe`,
+  encoded raster `0x1f88e`, segment list `0x1f812`, rule/fixed-list helpers,
+  or row-store primitive `0x1effe`-family consumers named in
+  [page-raster-imaging.md](page-raster-imaging.md#pixel-generation-owner-summary).
+  Macro replay contributes no row writer beyond selecting the ordinary
+  replayed command family.
+- Overlay publication:
+  selector `4` at `0xdec8..0xdefa` writes overlay state `0x782a92` and saved
+  id `0x782a94`, but does not replay immediately. Publication helper `0xff1e`
+  is the first visible consumer. If overlay state is enabled, lookup of saved
+  id succeeds, and root flag `+0x14.0` is clear, `0xff1e` calls
+  `0xe4f4..0xe5e0` to build kind-4 frame `0x782d4c`, re-enters
+  `0xa904 -> 0x11774`, mutates the same current page-root object graph as live
+  bytes, and then continues publication. Disabled state, missing/empty record,
+  or retry flag preserve base publication without an overlay frame. Evidence:
+  examples `macro overlay finalization replays before page publication`,
+  `macro overlay replays across repeated page publications`, and
+  `macro overlay skip gates preserve base page publication`.
+- Frame cleanup and font-context effects:
+  frame-end marker handling in `0xa904` calls `0xe22c..0xe408`. Execute cleanup
+  restores snapshot data and resumes the previous source; call and overlay
+  cleanup can run `0xe65c(0)` to refresh selected-font context before later
+  printable bytes. The visible consumer of `0xe65c` is not the macro engine;
+  it is `0xc428` page-root context-slot install followed by the next
+  printable route `0xd04a -> 0x1393a -> 0x12f2e` and compact render
+  `0x1effe -> 0x1f354`. Boundary: context refresh can change later glyph
+  selection, but it creates no page object at `0xe65c`.
+
 ## Writers
 
 - `0xe112` writes current macro id `0x783164`.

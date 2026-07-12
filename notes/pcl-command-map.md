@@ -354,7 +354,9 @@ boundaries:
 - Model-ID/status backchannel commands `ESC *r#K` and `ESC *s#^`, including the `0x12034
   -> 0x122be` `33440A\r\n` producer and host-output FIFO: [Host/Status Side-Channel
   Decision Checkpoint](errors-and-status.md#hoststatus-side-channel-decision-checkpoint)
-  and [host-byte-fetch.md](host-byte-fetch.md).
+  plus [Parser-Entered Host
+  Backchannel](io-interfaces.md#parser-entered-host-backchannel) and
+  [host-byte-fetch.md](host-byte-fetch.md).
 - Rectangle dimensions, fill selector, area-fill id, and rule publication:
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary), with rule/span render
   helpers and bitmap composition in
@@ -754,7 +756,8 @@ output class that a byte-stream reader should follow next.
   model/status queries use `0x12034 -> 0x122be` and FIFO helper `0xb090`.
   Continue in [Host/Status Outcome
   Matrix](errors-and-status.md#hoststatus-outcome-matrix) and
-  [io-interfaces.md](io-interfaces.md). Output class:
+  [Parser-Entered Host
+  Backchannel](io-interfaces.md#parser-entered-host-backchannel). Output class:
   host-visible response bytes with no page-object output.
 
 ### Inbound Byte To Visible Consumer Index

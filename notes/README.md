@@ -367,7 +367,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   Matrix](control-panel-nvram-selftest.md#control-panel-default-outcome-matrix)
   for ROM-visible default outcomes.
 - [io-interfaces.md](io-interfaces.md#owner-summary) - Centronics, RS-232C, RS-422,
-  flow control, buffers.
+  flow control, buffers, and the
+  [Parser-Entered Host
+  Backchannel](io-interfaces.md#parser-entered-host-backchannel).
 - [pcl4-language.md](pcl4-language.md#owner-summary) - PCL Level IV semantics,
   environment, command syntax, command quick reference.
 - [pcl-to-pdf-rom-goals.md](pcl-to-pdf-rom-goals.md) - current ROM

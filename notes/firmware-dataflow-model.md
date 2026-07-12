@@ -220,6 +220,8 @@ dropping into the command-family detail notes. The longer ledger is
   when the active data-chain frame kind byte is zero. These routes create
   host-visible status/service effects, not page objects or render work. Owner
   worked paths are `Host Interface Output FIFO And Model-ID Backchannel`,
+  [Parser-Entered Host
+  Backchannel](io-interfaces.md#parser-entered-host-backchannel),
   `Page Environment Status Bridge`, and `External Ready Service Preemption`.
 - Font selection and downloaded glyphs:
   symbol-set and font-designation terminals `ESC (` / `ESC )`, final `X`, and
@@ -4184,7 +4186,7 @@ Output effect:
 Evidence and unresolved boundary:
 
 - Detail notes: [errors-and-status.md](errors-and-status.md),
-  [io-interfaces.md](io-interfaces.md), and
+  [io-interfaces.md](io-interfaces.md#parser-entered-host-backchannel), and
   [host-byte-fetch.md](host-byte-fetch.md).
 - Command index: [pcl-command-map.md](pcl-command-map.md) rows for
   `ESC *r#K`, `ESC *s#^`, and handler `0x12034`.

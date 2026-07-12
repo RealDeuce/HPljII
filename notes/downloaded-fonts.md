@@ -4195,6 +4195,14 @@ A byte-stream renderer must preserve:
 - the page-record bridge through `0x1edc6` and active render entry
   `0x1ed84`/`0x1ef6a`.
 
+Evidence for the alternate/data `ESC *c#D/#E/#F` preservation rule is the
+alternate/data table decode in
+`generated/analysis/ic30_ic13_pcl_command_map.md`, the suppression matrix in
+[pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint),
+and the normal-mode handler listings
+`generated/disasm/ic30_ic13_assign_font_id_015a56.lst` and
+`generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`.
+
 ## Remaining Edges
 
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and

@@ -1225,7 +1225,10 @@ Delayed state-to-output resolution:
   `0x1393a` build text source state, `0x12f2e` writes compact bucket
   objects, and controls mutate cursor and pending-span state. Compact text
   reaches `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, compact renderers, and
-  compact row-copy helpers.
+  compact row-copy helpers. BS additionally sets previous-width state
+  `0x782a58/0x782a5a/0x782a5c`, whose visible consumer is the next printable
+  placement path documented in
+  [previous-width](direct-control-codes.md#previous-width-backspace-checkpoint).
   Normal-table `NUL`, `BEL`, and `VT` rows (`0x00`, `0x07`, `0x0b`) are
   explicit zero-handler parser entries: they reset parser mode and create no
   page object, state mutation, publication request, or render work.

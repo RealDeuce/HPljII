@@ -701,7 +701,8 @@ output class that a byte-stream reader should follow next.
   encoded raster object under current-root bucket `+0x1c` with fields
   `+0x04 = 0x80`, `+0x05` mode, `+0x06` count, `+0x08` packed key, and
   payload `+0x0a..`; bridge `0x1edc6` copies bucket `+0x1c` to render
-  `+0x18`, then `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders it.
+  `+0x18`, then `0x1ef6a -> 0x1efc2 -> 0x1f88e` selects the mode helper that
+  writes rows.
 - Rectangle/rule bytes:
   `ESC *c#A/#B/#H/#V/#G/#P` route to `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, `0x10dce`, and `0x10898`; fill reaches rule producer
@@ -731,7 +732,8 @@ output class that a byte-stream reader should follow next.
   `+0x1c`, fixed records, or downloaded-glyph compact objects whose exact
   helper/source stops are owned by the downloaded-font boundary notes. Visible
   installed-glyph output uses the same `0xff1e -> 0x1ed84 -> 0x1edc6 ->
-  0x1ef6a` path after a printable byte selects the installed resource.
+  0x1ef6a` path plus the selected compact row-store helper after a printable
+  byte selects the installed resource.
 - Macro and alternate/data bytes:
   macro id/control handlers `0xe112` and `0xdd08`, append sink `0xe002`,
   execute/call frame builder `0xe418`, and overlay frame builder `0xe4f4`
@@ -742,7 +744,8 @@ output class that a byte-stream reader should follow next.
   stored input, replayed parser input, overlay publication mutation, or skip
   gate with base publication. Replayed bytes become ordinary owner outputs:
   compact text, transparent text, raster objects, rules, or span objects before
-  the same `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
+  the same `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path and
+  object-class row-store endpoint.
 - Host/status side-channel commands:
   model/status queries use `0x12034 -> 0x122be` and FIFO helper `0xb090`.
   Continue in [Host/Status Outcome
@@ -767,7 +770,7 @@ at the first owner map that names downstream consumers.
   Object To Visible Consumer
   Map](page-record-storage.md#page-object-to-visible-consumer-map). First
   page producer is compact text under root `+0x1c`; first render consumers
-  are `0x1ef6a -> 0x1efc2 -> 0x1effe`.
+  are `0x1ef6a -> 0x1efc2 -> 0x1effe`, followed by compact row-copy helpers.
 - Direct-control byte or cursor/layout command:
   C0 handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`, `0xc6b8`,
   and `0xc68a`, plus cursor/layout handlers such as `0xeb58`, `0xedb0`,
@@ -791,7 +794,8 @@ at the first owner map that names downstream consumers.
   Object To Visible Consumer
   Map](page-record-storage.md#page-object-to-visible-consumer-map). First
   page producer is class-`0x80` bucket state under root `+0x1c`; first raster
-  render consumer is `0x1ef6a -> 0x1efc2 -> 0x1f88e`.
+  render consumer is `0x1ef6a -> 0x1efc2 -> 0x1f88e`, followed by the selected
+  encoded-raster mode helper.
 - Rectangle/rule graphics byte stream:
   dimension/fill handlers `0x10e68`, `0x10e22`, `0x10a40`, `0x10ae0`,
   `0x10dce`, and `0x10898` continue through [Rectangle State To Visible
@@ -799,7 +803,8 @@ at the first owner map that names downstream consumers.
   and [Page Object To Visible Consumer
   Map](page-record-storage.md#page-object-to-visible-consumer-map). First page
   producer is a rule-list node under root `+0x24`; first render consumer is
-  `0x1ef6a -> 0x1f446`.
+  `0x1ef6a -> 0x1f446`, followed by `0x1f596` or `0x1f4e0` and destination
+  helper `0x1f626`.
 - Font, symbol, and downloaded-font command stream:
   font writers `0xc390`, `0xc6ec`, `0xc780`, `0xc7e0`, `0xc840`, `0xc89c`,
   `0xc930`, terminal wrappers `0x12046..0x120be`, and downloaded-font
@@ -1456,7 +1461,8 @@ Outcome owners:
   boundaries can flush pending span objects through `0x12714`, while FF
   publishes a root through the page-finalization path. Bridge/render consumers
   are `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers under
-  `0x1effe`.
+  `0x1effe`; final row writes use the compact row-copy helpers named by the
+  row-store owner.
 
   The pending-span path has a concrete page-object form, not just a state
   side effect. `ESC &d3D ! ESC &d@` sets underline/text-attribute selector
@@ -1558,8 +1564,8 @@ Outcome owners:
   state-only commands: the following printable byte reaches `0xd04a`, derives
   compact coordinates from `0x782c8a` / `0x782c8e`, queues through
   `0x12f2e -> 0x1387c`, and later renders through `0x1ed84 -> 0x1edc6 ->
-  0x1ef6a`; raster and rectangle commands consume the same cursor fields as
-  origins.
+  0x1ef6a` and the compact row-store helper selected by the queued object;
+  raster and rectangle commands consume the same cursor fields as origins.
 
   Evidence is [direct-control-codes.md](direct-control-codes.md),
   `generated/analysis/ic30_ic13_direct_control_code_flow.md`,
@@ -1872,14 +1878,15 @@ Outcome owners:
   clamped at `99`, to `0x782da4`; it does not publish until a later FF or
   other publication path copies that word into published root `+0x0c`.
 
-  The render handoff is the ROM-local pixel boundary for these commands.
+  The render handoff is the ROM-local page-to-pixel boundary for these commands.
   `0xff1e` consumes root `0x78297a` and pending header flags, marks the root
   published with byte `+4 = 2`, writes page/header bytes such as `+0x07`,
   `+0x0a`, and `+0x0c`, sets `0x780ea6` / `0x782996`, and clears the current
   root. It does not draw rows itself. Bridge helpers `0x1ed84` / `0x1edc6`
   copy the published bucket roots, rule/fixed-list roots, and context slots
   into the active render record; `0x1ef6a` then dispatches bucket chains such
-  as compact text through `0x1effe`.
+  as compact text through `0x1effe` and onward to the selected row-store
+  helper.
 
   For the representative streams `! ESC E`, `! ESC &l1A`, `! ESC &l1O`,
   `! ESC &l2H`, and `! ESC &l2X FF`, the pre-command printable queues this
@@ -1979,10 +1986,10 @@ Outcome owners:
   functions feed payload values into the text-output path: filtered C0 and
   high-control values call `0xd0f0`, while printable or filter-enabled values
   call `0xd04a`; downstream text source creation, compact object queueing,
-  bridge, and render dispatch are the ordinary
+  bridge, render dispatch, and row stores are the ordinary
   `0xd04a -> 0x1393a -> 0xd140/0xd550 -> 0x12f2e -> 0x1ed84 ->
-  0x1edc6 -> 0x1ef6a` path. Alternate/data readers append preserved bytes
-  through `0xe002` and create no immediate page object. Normal Control-Z
+  0x1edc6 -> 0x1ef6a -> 0x1effe` compact path. Alternate/data readers append
+  preserved bytes through `0xe002` and create no immediate page object. Normal Control-Z
   siblings either enter `0xd04a`, synthesize `0x100` through `0xd04a`, or do
   nothing on the false branch of `0x120d2`; alternate siblings append through
   `0xe002`. `ESC z` is a guarded host/status edge and creates no page object,
@@ -2080,7 +2087,8 @@ Outcome owners:
   allocates a fresh root, and retries the same source record. Publication and
   bridge copy the rule list through `0x1ed84` / `0x1edc6`; render dispatch
   enters `0x1ef6a -> 0x1f446`, where selector `7` uses solid helper
-  `0x1f596` and selectors `0..6` / `8..13` use patterned helper `0x1f4e0`.
+  `0x1f596` and selectors `0..6` / `8..13` use patterned helper `0x1f4e0`,
+  then destination helper `0x1f626` writes current-band or fallback rows.
 
   For the primary `ESC *c12a5b0P` stream, the page-root rule object before
   bridge is:
@@ -2120,7 +2128,8 @@ Outcome owners:
   rows through `0xdace`, queues accepted rows through
   `0x10084 -> 0x13070 -> 0x13250`, and leaves encoded raster objects under
   page-root bucket `+0x1c` for publication/render dispatch through `0x1ed84`,
-  `0x1edc6`, `0x1ef6a`, `0x1efc2`, and `0x1f88e`.
+  `0x1edc6`, `0x1ef6a`, `0x1efc2`, `0x1f88e`, and the selected encoded-raster
+  mode helper.
 
   Mode `14` is also the exact parser boundary for unsupported-looking
   raster-transfer siblings. Generated table
@@ -2157,7 +2166,8 @@ Outcome owners:
   `0x1f88e` consumes object byte `+5 & 3` to select mode helpers: mode `0`
   renders literal rows, mode `1` expands bytes into two rows, mode `2`
   expands byte pairs into three rows and can clip into fallback buffers, and
-  mode `3` expands bytes into four rows.
+  mode `3` expands bytes into four rows. These mode helpers are the row-store
+  endpoints for accepted raster objects.
 
   For the primary `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` stream,
   accepted mode-0 transfer queues this encoded raster object:
@@ -2309,13 +2319,15 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   These commands create no text object by themselves; following printable
   bytes consume the selected slot, map, and context through
   `0xd04a -> 0x1393a -> 0x12f2e`, mark the page-root font slot live, publish
-  through `0xff1e`, and render through `0x1ed84` / `0x1edc6` / `0x1ef6a`.
+  through `0xff1e`, and render through `0x1ed84` / `0x1edc6` / `0x1ef6a`
+  before compact row-store writes.
   The concrete `X` final output edge is now tied to visible object records.
   Host-fetched `ESC (7X!!` reaches `0xa904`, parser handlers `0x11eb6`,
   `0x1201e`, and `0x120be`, selects built-in context `0xc0089fb0` through
   `0x17708`, and the following printable `!!` queues compact text-object
   prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02` before the
-  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path. The secondary sibling
+  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path and compact row-store helper.
+  The secondary sibling
   host-fetched `ESC )8X SO !!` uses setup `0x12008`, selects context
   `0xc00ae122`, crosses SO handler `0xc6b8`, reuses page-root slot `1`
   through `0xc4fc`, and queues prefix
@@ -2371,16 +2383,17 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   `0x12328`, and release helpers `0x17a24` and `0x1887a`.
 
   The output effect of downloaded `W` payloads is delayed. Descriptor,
-  resource-header, and character-payload commands do not draw at install
-  time. Accepted installs change the later printable-byte path:
+  resource-header, and character-payload commands do not draw at install time.
+  Accepted installs change the later printable-byte path:
   `0xd04a -> 0x1393a -> 0xd824` or `0xd3b2 -> 0x12f2e -> 0x1387c` queues
   compact downloaded-glyph objects under page-root bucket state, then
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` publishes and renders those
-  objects through compact helpers including `0x1fe76`, `0x1f0d2`,
-  `0x1f1f0`, and `0x1f264`. No-install and validation-failure exits drain or
-  skip their payload bytes and leave the following printable byte on the
-  previous/default font path unless a documented replacement/release path has
-  intentionally changed installed state.
+  objects through compact helpers including `0x1fe76`, `0x1f0d2`, `0x1f1f0`,
+  and `0x1f264`, with the same compact row-copy tables/helpers as built-in
+  text. No-install and validation-failure exits drain or skip their payload
+  bytes and leave the following printable byte on the previous/default font
+  path unless a documented replacement/release path has intentionally changed
+  installed state.
 
   The normal offset-table downloaded-glyph path has a concrete command stream.
   Host-fetched `ESC )s80W` restores parser record `80 57 00 50 00 00`, enters
@@ -2485,7 +2498,8 @@ mode-3 raster object expands queued bytes into four rows`. Owner notes:
   selector `4` stores `0x782a92` / `0x782a94`; publication `0xff1e` may
   resolve that id, build a non-replay frame through `0xe4f4`, re-enter
   `0x11774`, and publish the replayed page objects through the normal
-  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path.
+  `0x1ed84` / `0x1edc6` / `0x1ef6a` render path and the row-store endpoint
+  selected by the replay-produced object class.
 
   Field grouping for macro replay is explicit. Canonical macro state is
   current id `0x783164`, macro record pool `0x782a98`, selected record pointer
@@ -3099,11 +3113,11 @@ fetch before pinning the `0x1edc6` rule-list bridge contract and the
 maps black rule, gray-scale, and HP-pattern selectors, clips the
 current-cursor rectangle against page extents, and queues a 14-byte
 rule-list object through `0x13386` / `0x133aa`; the black selector-7
-path is rendered through `0x1f446` / `0x1f596`, including a
+path is rendered through `0x1f446` / `0x1f596` / `0x1f626`, including a
 band-crossing continuation case, and gray selectors `0..6` plus HP
-pattern selectors `8..13` are rendered through `0x1f446` / `0x1f4e0`,
-including sub-byte shifted, band-crossing, and two-band page-assembly
-HP-pattern cases. The harness also pins a parser-to-retry boundary for
+pattern selectors `8..13` are rendered through `0x1f446` / `0x1f4e0` /
+`0x1f626`, including sub-byte shifted, band-crossing, and two-band
+page-assembly HP-pattern cases. The harness also pins a parser-to-retry boundary for
 the same `ESC *c12a5b0P` stream: after handlers `0x10e68`, `0x10e22`,
 and `0x10898` select the rule object, the `0x10d22` no-room path marks
 root flag bit 0, publishes through `0xff1e`, allocates a fresh root
@@ -3508,7 +3522,8 @@ ring-fed through modeled `0xa904`, proving their complete descriptor or payload
 bytes reach the same parser handlers, delayed records, installed or rendered
 objects, and rows where applicable; the fetched downloaded-pointer objects now
 also preserve the `0x1edc6` bucket/context bridge contract and feed the
-`0x1ed84`/`0x1ef6a` render-entry path before rendering.
+`0x1ed84`/`0x1ef6a` render-entry path before compact row-store helpers write
+rows.
 A combined fetched `ESC *c4660d37e5F` + `ESC )s2193W` + printable `%`
 stream now carries current character `0x25` through the installed glyph,
 restores payload record `80 57 08 91 00 01`, queues segment buckets `9`
@@ -3803,7 +3818,8 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
 - Treat the dense raster handoff as documented for ROM semantics. The checkpoint `Raster
   Transfer Gate And Encoded Rows` documents parser scratch, field groups, writers,
   consumers, row-construction inputs, fixtures, and disassembly for `0x11f82 -> 0x121cc
-  -> 0x12218 -> 0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x1f88e`. Existing fixtures
+  -> 0x12218 -> 0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x1f88e` and its
+  mode helpers. Existing fixtures
   cover parser dispatch, delayed record restore, capped/drained rows, lower-resolution
   modes, consecutive rows, same-family lowercase `*b` chaining, bridge fields, and the
   object/helper data used to derive final rows. Continue raster work only for byte

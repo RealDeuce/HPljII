@@ -342,7 +342,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   `DC Boundary Outcome Matrix` for ROM-visible engine-boundary effects.
 - [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) -
   keys, menu state, resets, service mode, self tests. Start with
-  `Control Panel Default Outcome Matrix` for ROM-visible default outcomes.
+  [Control Panel Default Outcome
+  Matrix](control-panel-nvram-selftest.md#control-panel-default-outcome-matrix)
+  for ROM-visible default outcomes.
 - [io-interfaces.md](io-interfaces.md#owner-summary) - Centronics, RS-232C, RS-422,
   flow control, buffers.
 - [pcl4-language.md](pcl4-language.md#owner-summary) - PCL Level IV semantics,
@@ -368,7 +370,10 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [errors-and-status.md](errors-and-status.md#owner-summary) - status, attendance,
   error, service codes, host-output FIFO/status bytes, and terminal report
   sinks `0x1284` / `0x128c` with cached report bytes
-  `0x783ef0..0x783ef1`.
+  `0x783ef0..0x783ef1`. Start with
+  [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix) for explicit
+  no-page-output status and backchannel outcomes.
 - [external-ready-service.md](external-ready-service.md#owner-summary) - documented
   external-ready/service loop status bits, messages, register shadows, and
   scheduler/status teardown.
@@ -379,7 +384,10 @@ parser route, field value, object layout, bridge copy, or helper input.
   hashes, package markings, interleave order, and rejected order probes. Start
   with `ROM Dump Outcome Matrix` for provenance boundaries.
 - [firmware-startup.md](firmware-startup.md#owner-summary) - first annotated 68000
-  reset/startup findings from the executable ROM pair.
+  reset/startup findings from the executable ROM pair. Start with
+  [Startup Outcome Matrix](firmware-startup.md#startup-outcome-matrix) for
+  reset-vector, heap, host-buffer, scheduler-seed, and hardware-boundary
+  state.
 - [host-byte-fetch.md](host-byte-fetch.md#owner-summary) - documented
   `0xa904` host byte-source multiplexer, direct I/O handshakes, caller
   semantics, and semantic checkpoint.

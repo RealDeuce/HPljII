@@ -392,7 +392,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   publication-adjacent state.
 - [transparent-print-data.md](transparent-print-data.md#owner-summary) -
   documented `ESC &p#X` delayed payload handling, text/fixed-space routing,
-  page-record re-entry, and the secondary segmented resource boundary.
+  page-record re-entry, and the secondary segmented resource boundary, with a
+  [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map).
 - [raster-graphics.md](raster-graphics.md#owner-summary) - documented `ESC *t`,
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output, with a
   [Raster State To Visible Consumer

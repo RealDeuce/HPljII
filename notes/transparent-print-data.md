@@ -411,6 +411,64 @@ Evidence and unresolved boundary:
   boundary is only the physical/resource-window data for
   `0x0c0000..0x0c0321`.
 
+### Transparent Payload To Visible Consumer Map
+
+This map is the short route from a counted transparent byte to the first
+state, page-object, or render consumer. It keeps the detailed decision
+checkpoint above but makes the payload splice followable as a byte stream.
+
+- Arming and restore:
+  `ESC &p#X -> 0x11f5a -> 0x121cc` writes delayed-payload state
+  `0x782a1a`, saved handler `0x782a1c = 0x12452`, and saved record
+  `0x782a20..0x782a25`. Restore `0x12218` copies the record back to
+  `0x78299e` and calls `0x12452` in normal parser mode. No payload byte is
+  consumed and no page root, compact object, bridge field, or render input
+  changes before this restore boundary.
+- Alternate/data append:
+  with alternate/data flag `0x782c18` set, restore redirects to
+  `0x12358(0x1228a)`. Because saved handler `0x782a1c` is transparent reader
+  `0x12452`, not wrapper `0x1228a`, positive counts are consumed through
+  `0xdace` and appended through `0xe002`. The first visible consumer is a
+  later macro/data-chain replay frame that returns those stored bytes through
+  `0xa904`; this handler instance itself does not call `0x12452`, `0xd04a`,
+  `0xd0f0`, `0x12f2e`, `0xff1e`, or a renderer.
+- Payload byte normalization:
+  `0x12452..0x12534` reads count word `+2`, fetches bytes through `0xa904`,
+  and treats local pair `0x1a 0x58` as routed value `0x7f`. Pair `0x1a xx`
+  with `xx != 0x58` routes `xx`. Helper `0xd99a` is firmware bookkeeping for
+  the local `0x1a 0x58` case; it does not replace the later printable or
+  fixed-space routing decision.
+- Printable consumer:
+  bytes outside the filtered control ranges, and filtered control bytes with
+  nonzero filter state, call `0xd04a`. The first page-image consumer is the
+  ordinary text path `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e ->
+  0x1387c`, which writes compact objects under page-root `+0x1c`. Publication
+  and rendering then follow `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a ->
+  0x1efc2 -> 0x1effe`.
+- Fixed-space consumer:
+  default-filtered C0 and high-control values call `0xd0f0`. In flagged
+  built-in contexts, the visible effect is spacing/cursor movement without a
+  compact glyph object. In unflagged fixed-record contexts, `0xd0f0 -> 0xd140
+  -> 0xd3b2` can queue a substituted host-space compact object under the same
+  page-root bucket `+0x1c` and render through the same compact path.
+- Secondary high-control boundary:
+  after `SO` selects secondary context, high-control payload values can route
+  through printable handling into segmented compact objects. The ROM-local
+  consumer path is documented through `0xd04a`, `0x12f2e`, bridge, and compact
+  dispatch; the exact pixel stop is external resource-window bytes
+  `0x0c0000..0x0c0321` after verified suffix `0x0bfe22..0x0bffff`.
+- State grouping:
+  canonical parser state is the delayed record and handler fields
+  `0x782a1a/0x782a1c/0x782a20..0x782a25`; canonical text/page state is
+  selected slot `0x782f06`, filter bytes, current root `0x78297a`, compact
+  bucket `+0x1c`, and compact object fields; derived/cache state is the
+  selected filter word, normalized routed value, source scratch `0x782d7e`,
+  compact coordinates, and copied render bucket roots; parser scratch is the
+  fetched payload byte stream and local `0x1a` probe; firmware bookkeeping is
+  delayed restore, `0xd99a`, `0x12358`, drain helpers, and append sink
+  `0xe002`; hardware/external state is only the secondary segment-57 resource
+  window.
+
 ## Command Boundary
 
 `ESC &p#X` reaches handler `0x11f5a`. The handler is only an arming stub:

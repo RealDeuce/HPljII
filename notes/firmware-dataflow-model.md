@@ -2905,7 +2905,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0xa904` replays the stored bytes into ordinary parser owners. Overlay
   publication is the related special case: `0xff1e -> 0xe4f4` builds a
   non-replay data-chain frame before the same `0xa904 -> 0x11774`
-  parser/page-object owners run.
+  parser/page-object owners run. Transparent byte routing details are in
+  [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map).
 - Host/status side-channel commands:
   model-ID/status forms `ESC *r#K`, `ESC *s#^`, and guarded display-off
   `ESC z` route through `0x12034 -> 0x122be..0x12326` or `0xcd86 -> 0x9c2c`.

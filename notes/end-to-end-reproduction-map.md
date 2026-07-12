@@ -254,7 +254,10 @@ fields, continue in that owner note before claiming equivalent output.
   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`; transparent print
   data has no separate renderer. Evidence: `Minimal Transparent Payload Walkthrough` in
   this file and
-  [transparent-print-data.md](transparent-print-data.md#transparent-payload-outcome-matrix).
+  [Transparent Payload Outcome
+  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) plus
+  [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map).
 - Transparent filtered controls `ESC &p4X!\x05\x85!`: arming and delayed restore follow
   the same `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452` path, but the restored command
   record is `80 58 00 04 00 00` and the counted payload values are `21 05 85 21`. Reader

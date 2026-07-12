@@ -727,7 +727,9 @@ Firmware bookkeeping:
 - `0x783184`: pending text span flush enable tested by `0xf34a`.
 - `0x783185`: underline/text-attribute y-offset selector written by
   `ESC &d` handler `0x12622` and consumed by span helpers `0xd4ac` /
-  `0xd8fc`.
+  `0xd8fc`. ROM selector `0` is written by accepted non-`3D` forms such as
+  `ESC &d0D`; selector `1` is written only when the absolute parameter is
+  `3` and final byte is `D`.
 - `0x78318e`: alternate metric mode copied from font/context records by
   `0xc428`, `0xcbd4`, and `0x10220` paths. Printable advance, printable
   prechecks, and BS consume it at `0xd16a`, `0xd29e`, `0xd586`, `0xd6e0`,
@@ -736,8 +738,10 @@ Firmware bookkeeping:
 Unknown:
 
 - Manual-facing HP names for latches `0x782a57`, `0x782a58`, `0x782a5a`,
-  `0x782a5c`, `0x782a6d`, `0x78318e`, and `0x783185` remain unknown. Their
-  ROM-local roles above are not provisional for the cited handlers.
+  `0x782a5c`, `0x782a6d`, and `0x78318e` remain unknown. Field `0x783185` is
+  the ROM underline/span offset selector: non-`3D` accepted underline forms
+  write `0`, while absolute `3D` writes `1`. Their ROM-local roles above are
+  not provisional for the cited handlers.
 - Broader source-object variants should be added only when they expose new
   `0xd04a` field values, a new `0x12f2e` queueing shape, or different
   ROM-defined row-construction inputs. The existing direct-control byte
@@ -777,7 +781,8 @@ Unknown:
   vertical layout, perforation skip, text-bottom, and page-length state.
 - `0xf75e` pushes or pops cursor-stack entries.
 - `0x12622` tokenizes `ESC &d` underline/text-attribute commands and writes
-  `0x783185` for the covered absolute `3D` selector path.
+  `0x783185`: accepted non-`3D` forms such as `0D`, `1D`, and `2D` write
+  selector `0`, while absolute `3D` writes selector `1`.
 
 ## Readers And Consumers
 
@@ -1759,9 +1764,10 @@ Producer cases:
 - Underline/text-attribute path: fixture
   `ESC &d underline selector materializes span output` drives
   `ESC &d3D! ESC &d@` through `0x12622`, `0xd04a`, and `0x12622`. Selector
-  `3D` writes `0x783185 = 1`, printable output lets the flagged text source
-  update span high-y through alternate offset word `+0x1a`, and final `&d@`
-  flushes selector-`0x4000` span object
+  `3D` writes `0x783185 = 1`; accepted non-`3D` forms such as `0D`, `1D`,
+  and `2D` write `0x783185 = 0` and still arm the same pending span path.
+  Printable output lets the flagged text source update span high-y through
+  the selected offset word, and final `&d@` flushes selector-`0x4000` span object
   `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`.
 
 Underline/text-attribute instruction boundaries:
@@ -1791,7 +1797,9 @@ Underline/text-attribute instruction boundaries:
 - `0x126aa..0x126d4` reads the parsed parameter word from the current
   six-byte record, normalizes it to an absolute value, and writes
   `0x783185 = 1` only for final byte `D` with parameter `3`. Other accepted
-  selector terminals write `0x783185 = 0`.
+  selector terminals, including `0D`, `1D`, and `2D`, write
+  `0x783185 = 0`. This still enables underline/span collection because
+  `0x126da..0x126e0` calls `0x126e2` after the selector write.
 - `0x126da..0x126e0` calls `0x126e2` after a selector write. `0x126e2`
   initializes pending span state only when `0x783184` was clear: it writes
   `0x783184 = 1`, seeds low/high x words `0x783186` and `0x783188` from
@@ -1814,12 +1822,14 @@ State classification for this cluster:
   should add only cursor/font/span variants that change the object bytes,
   bucket choice, bridge state, or row-construction inputs.
 
-`ESC &d3D! ESC &d@` is the underline/text-attribute route into the same span
-machinery. Handler `0x12622` writes selector byte `0x783185 = 1`; the
-printable byte updates the flagged text span through alternate offset fields;
-the terminating `ESC &d@` flushes a selector-`0x4000` segment-list object
-beside the compact glyph. Supporting fixture anchor:
-`ESC &d underline selector materializes span output`.
+`ESC &d3D! ESC &d@` is the documented alternate-offset underline route into
+the same span machinery. Handler `0x12622` writes selector byte
+`0x783185 = 1`; the printable byte updates the flagged text span through
+alternate offset fields; the terminating `ESC &d@` flushes a
+selector-`0x4000` segment-list object beside the compact glyph. The fixed or
+default-offset forms, including `ESC &d0D`, take the same arming path but
+write `0x783185 = 0` before the printable span consumers run. Supporting
+fixture anchor: `ESC &d underline selector materializes span output`.
 
 ### Underline And Span Outcome Matrix
 
@@ -1833,10 +1843,10 @@ segment-list or fixed-list page objects consumed by render entry.
   the lookahead byte through `0xda9a`, rewinds `0x78299e` for non-`W/w`
   lookahead, restores pending delayed payload state through `0x12218`, and
   writes selector byte `0x783185`. Parameter `3` with final byte `D` writes
-  `0x783185 = 1`; other accepted selector terminals write `0`. It then calls
-  `0x126e2`, which arms pending span byte `0x783184`, seeds low/high x words
-  `0x783186` / `0x783188` from cursor x `0x782c8a`, and clears high-y word
-  `0x78318a`.
+  `0x783185 = 1`; other accepted selector terminals, including `0D`, `1D`,
+  and `2D`, write `0`. It then calls `0x126e2`, which arms pending span byte
+  `0x783184`, seeds low/high x words `0x783186` / `0x783188` from cursor x
+  `0x782c8a`, and clears high-y word `0x78318a`.
 - Generic payload boundary:
   `0x12638..0x12654` treats `W/w` lookahead as a counted payload command by
   scheduling generic drain handler `0x1228a` through `0x121cc`. This is

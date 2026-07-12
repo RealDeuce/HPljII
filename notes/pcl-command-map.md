@@ -1679,8 +1679,10 @@ Outcome owners:
 - Underline/text-attribute commands:
   `ESC &d` dispatches terminal handler `0x12622` directly from the `ESC &`
   family. It tokenizes the local `&d` form, writes underline/span selector
-  state `0x783185` for covered selectors such as `3D`, and uses the pending
-  span block `0x783184` / `0x783186` / `0x783188` / `0x78318a`. Printable
+  state `0x783185`, and uses the pending span block `0x783184` /
+  `0x783186` / `0x783188` / `0x78318a`. The ROM writes selector `1` only for
+  absolute `3D`; accepted non-`3D` underline forms such as `0D`, `1D`, and
+  `2D` write selector `0` but still call `0x126e2` to arm the span. Printable
   text updates that span block through selected-font metric consumers
   `0xd4ac` / `0xd8fc`; CR, margin, vertical-cursor, and underline terminal
   commands can flush it through `0xf34a -> 0x12714 -> 0x126e2`. The flush
@@ -1709,11 +1711,12 @@ Outcome owners:
   `0xd4ac` / `0xd8fc`.
 
   Output effect requires both a span-producing selector and a flush boundary.
-  `ESC &d3D` writes `0x783185 = 1`; following printable text reaches
-  `0xd04a` and updates the span block through selected-font metrics; final
-  `ESC &d@`, CR, margin changes, or vertical cursor changes can then call
-  `0xf34a`, which routes the pending block through `0x12714 -> 0x126e2` into
-  a selector-`0x4000` page object. Evidence is
+  `ESC &d#D` writes selector `0` for accepted non-`3D` parameters and selector
+  `1` for absolute `3D`; following printable text reaches `0xd04a` and
+  updates the span block through selected-font metrics; final `ESC &d@`, CR,
+  margin changes, or vertical cursor changes can then call `0xf34a`, which
+  routes the pending block through `0x12714 -> 0x126e2` into a
+  selector-`0x4000` page object. Evidence is
   `generated/disasm/ic30_ic13_text_span_flush_012714.lst`,
   `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`,
   `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`, fixture
@@ -2784,8 +2787,9 @@ documented in the owner notes.
   `0x12358 -> 0xdace -> 0xe002`.
 - `ESC &d...`, handler `0x012622`: underline/text-attribute tokenizer;
   schedules `W/w` payloads, flushes pending span state for bit-2-clear
-  terminal bytes, and writes selector `0x783185` before re-arming span
-  bounds for the `3D` alternate-offset case.
+  terminal bytes, writes selector `0x783185 = 0` for accepted non-`3D` `D`
+  forms, writes selector `1` for absolute `3D`, and then re-arms span bounds
+  through `0x126e2`.
 - `ESC &s#C`, handler `0x00edb0`: end-of-line wrap mode.
 - `ESC *t#R`, handler `0x010808`: raster resolution.
 - `ESC *r#A`, handler `0x01075a`: start raster graphics.

@@ -2189,10 +2189,11 @@ VMI state before object queueing, then cross the same `0x1387c`,
     set to `0xff` by FF after page eject.
   - `0x783184`: pending text span flush enable tested by helper
     `0xf34a`.
-  - `0x783185`: alternate y-offset/span selector written by `ESC &d`
-    terminal handler `0x12622` for the absolute `3D` case and consumed
-    by text source span consumers documented in
-    `Text Source Objects And Compact Buckets`.
+  - `0x783185`: underline/span y-offset selector written by `ESC &d`
+    terminal handler `0x12622`. Accepted non-`3D` `D` forms write
+    selector `0`; absolute `3D` writes selector `1`. Text source span
+    consumers documented in `Text Source Objects And Compact Buckets` read
+    this selector.
   - `0x78318e`: alternate previous-width mode tested by BS.
   Evidence: generated direct-control report state scan and shared-helper
   table; disassembly `0x12622..0x126e2` for the `0x783185` writer; fixtures
@@ -2265,7 +2266,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `0x78299e` for lookahead that belongs to the current record, calls
   `0x12218` for terminal bytes `0x40..0x5e`, flushes pending span state via
   `0x12714` when terminal bit 2 is clear, and otherwise writes
-  `0x783185 = 1` only for absolute selector `3D` before calling `0x126e2`.
+  `0x783185 = 1` only for absolute selector `3D`. Accepted non-`3D`
+  underline forms such as `0D`, `1D`, and `2D` write `0x783185 = 0`.
+  Both selector outcomes then call `0x126e2` to arm pending span state.
 
 ### Readers And Consumers
 
@@ -2386,12 +2389,15 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `ESC &d` terminal records have no immediate glyph payload in this
   checkpoint. Handler `0x12622..0x126e2` either publishes pending span state
   through `0x12714` or writes `0x783185` and re-arms span bounds; subsequent
-  text source consumers turn that selector into alternate y-offset behavior.
+  text source consumers turn that selector into default or alternate y-offset
+  behavior.
   In the `ESC &d3D! ESC &d@` route, `3D` writes `0x783185 = 1` and re-arms
   span bounds at x `10`, the printable updates `0xd8fc` high-y to `3` through
   alternate offset word `+0x1a = 18`, and `&d@` flushes a selector-`0x4000`
   span object `00 00 00 00 40 00 00 01 3a 00 03 00 00 12` beside the compact
-  glyph. Supporting fixture anchor:
+  glyph. Manual fixed underline `0D` takes the same selector-write and
+  re-arm path but leaves `0x783185 = 0`, so the later span consumer uses the
+  default y-offset branch. Supporting fixture anchor:
   `ESC &d underline selector materializes span output`.
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
   perforation-skip, and page-length state into following printable

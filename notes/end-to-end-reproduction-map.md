@@ -209,19 +209,20 @@ fields, continue in that owner note before claiming equivalent output.
   Glyphs` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
 - Underline/span output `ESC &d3D ! ESC &d@`: command bytes enter through `0xa904 ->
-  0xda9a -> 0x11774`; `ESC &d3D` dispatches to tokenizer/handler `0x12622`, which writes
-  underline/text-attribute selector `0x783185 = 1` and arms pending span state through
-  `0x126e2` in fields `0x783184`, `0x783186`, `0x783188`, and `0x78318a`. The printable
-  `!` follows the ordinary compact glyph path through `0xd04a -> 0x1393a -> 0xd550 ->
-  0xd824 -> 0x12f2e`, then span consumer `0xd8fc` updates pending bounds from
-  selected-context metric words `+0x16`, `+0x18`, and selector-dependent alternate
-  offset `+0x1a`. Final `ESC &d@` returns to `0x12622` and takes the terminal flush path
-  through `0x12714`; portrait orientation routes `0x12714 -> 0x13520 -> 0x1354a ->
-  0x135f0`, storing a class-`0x40` segment-list span object under page-root bucket
-  `+0x1c` with prefix `00 00 00 00 40 00 00 01 3a 00 03 00 00 12`. Publication preserves
-  both the compact glyph and span object; bridge `0x1edc6` copies root `+0x1c` to render
-  `+0x18`; render dispatch `0x1ef6a -> 0x1efc2` sends the span to `0x1f812 -> 0x1f862`.
-  Evidence: `Minimal Span Flush Walkthrough` in this file,
+  0xda9a -> 0x11774`; `ESC &d#D` dispatches to tokenizer/handler `0x12622`, which writes
+  underline/text-attribute selector `0x783185`. Accepted non-`3D` terminals, including
+  `0D`, write selector `0`; absolute `3D` writes selector `1`. Both selector outcomes
+  arm pending span state through `0x126e2` in fields `0x783184`, `0x783186`,
+  `0x783188`, and `0x78318a`. The printable `!` follows the ordinary compact glyph path
+  through `0xd04a -> 0x1393a -> 0xd550 -> 0xd824 -> 0x12f2e`, then span consumer
+  `0xd8fc` updates pending bounds from selected-context metric words `+0x16`, `+0x18`,
+  and selector-dependent alternate offset `+0x1a`. Final `ESC &d@` returns to `0x12622`
+  and takes the terminal flush path through `0x12714`; portrait orientation routes
+  `0x12714 -> 0x13520 -> 0x1354a -> 0x135f0`, storing a class-`0x40` segment-list span
+  object under page-root bucket `+0x1c` with prefix `00 00 00 00 40 00 00 01 3a 00 03 00
+  00 12`. Publication preserves both the compact glyph and span object; bridge `0x1edc6`
+  copies root `+0x1c` to render `+0x18`; render dispatch `0x1ef6a -> 0x1efc2` sends the
+  span to `0x1f812 -> 0x1f862`. Evidence: `Minimal Span Flush Walkthrough` in this file,
   [direct-control-codes.md](direct-control-codes.md#underline-and-span-outcome-matrix),
   and `Worked Path: Text Span Flush And Fixed-Width Spans` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
@@ -2440,8 +2441,10 @@ Parser and span-state dispatch:
 - Host bytes enter through `0xa904`, parser wrapper `0xda9a`, and parser loop
   `0x11774`.
 - `ESC &d3D` dispatches to underline/text-attribute tokenizer `0x12622`.
-- For the documented selector, `0x12622` writes underline/text-attribute
-  selector byte `0x783185 = 1`.
+- For absolute `3D`, `0x12622` writes underline/text-attribute selector byte
+  `0x783185 = 1`. Accepted non-`3D` `D` forms, including manual fixed
+  underline `0D`, write `0x783185 = 0` and still call `0x126e2` to arm
+  pending span state.
 - Printable byte `0x21` then reaches `0xd04a` and follows the ordinary
   source-object and compact queue path.
 - Final `ESC &d@` dispatches to `0x12622` again and takes the terminal flush
@@ -6987,10 +6990,11 @@ Address-level cluster map:
   These placement commands draw only through following printable, raster-start,
   rectangle/rule, VFC, or publication consumers of the committed cursor fields.
   Underline/text-attribute command `ESC &d...` reaches tokenizer/handler
-  `0x12622`: selector stream `ESC &d3D` writes underline/span selector
-  `0x783185 = 1` and re-arms pending span state through `0x126e2`, while
-  following printable text updates pending span fields `0x783184`,
-  `0x783186`, `0x783188`, and `0x78318a` through metric consumers
+  `0x12622`: accepted non-`3D` `D` forms, including `ESC &d0D`, write
+  underline/span selector `0x783185 = 0`; absolute `ESC &d3D` writes
+  selector `1`. Both selector outcomes re-arm pending span state through
+  `0x126e2`, while following printable text updates pending span fields
+  `0x783184`, `0x783186`, `0x783188`, and `0x78318a` through metric consumers
   `0xd4ac` / `0xd8fc`. A later `ESC &d@`, CR, left-margin change, or vertical
   cursor change can flush that pending block through `0xf34a -> 0x12714 ->
   0x126e2`, materializing selector-`0x4000` segment-list objects under

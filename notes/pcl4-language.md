@@ -1093,12 +1093,14 @@ State-only consumer index:
   `0x11f4c`, so this stack state is not written until the stored command is
   replayed through the normal table.
 - `ESC &d#D`: writer `0x12622` stores underline/span selector `0x783185`
-  and arms pending span state through `0x126e2`. The first printable
-  consumers are span helpers `0xd4ac` / `0xd8fc`, which read `0x783185`
-  while updating pending bounds; the later materializing consumer is span
-  flush `0xf34a -> 0x12714`. In alternate/data mode, the `ESC &d` terminal
-  row is blank, so `0x12622` is not called and selector/pending-span/page
-  state remains unchanged until replay.
+  and arms pending span state through `0x126e2`. The ROM treats absolute
+  `3D` as selector `1`; accepted non-`3D` forms, including manual fixed
+  underline `0D`, write selector `0` while still arming the span. The first
+  printable consumers are span helpers `0xd4ac` / `0xd8fc`, which read
+  `0x783185` while updating pending bounds; the later materializing consumer
+  is span flush `0xf34a -> 0x12714`. In alternate/data mode, the `ESC &d`
+  terminal row is blank, so `0x12622` is not called and
+  selector/pending-span/page state remains unchanged until replay.
 - `ESC &f#Y/#X`: writers `0xe112` and `0xdd08` store macro id, records, and
   frames. First visible consumers are replay byte source `0xa904` and overlay
   publication `0xff1e`. Alternate/data mode suppresses `Y/y` rows but keeps
@@ -1309,10 +1311,12 @@ Delayed state-to-output resolution:
   pending/right-limit latches, and lets the following printable queue from the
   restored cursor instead of the intervening `ESC &a2C` position.
   Underline stream `ESC &d3D! ESC &d@` uses handler `0x12622`, printable path
-  `0xd04a`, and handler `0x12622` again. `ESC &d3D` writes underline/span
-  selector `0x783185 = 1` and re-arms pending span state through `0x126e2`;
-  the printable updates pending span fields `0x783184`, `0x783186`,
-  `0x783188`, and `0x78318a` through `0xd4ac` / `0xd8fc`; final `ESC &d@`
+  `0xd04a`, and handler `0x12622` again. Accepted non-`3D` `D` forms,
+  including fixed/default `ESC &d0D`, write underline/span selector
+  `0x783185 = 0`; absolute `ESC &d3D` writes selector `1`. Both selector
+  outcomes re-arm pending span state through `0x126e2`. The printable
+  updates pending span fields `0x783184`, `0x783186`, `0x783188`, and
+  `0x78318a` through `0xd4ac` / `0xd8fc`; final `ESC &d@`
   flushes through `0x12714 -> 0x126e2`, materializing a selector-`0x4000`
   segment-list object under page-root `+0x1c` that publishes and renders
   through `0x1edc6 -> 0x1f812 -> 0x1f862`.

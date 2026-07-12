@@ -6450,8 +6450,9 @@ Parser dispatch:
 - The command bytes enter through host fetch `0xa904`, parser wrapper
   `0xda9a`, and parser loop `0x11774`.
 - `ESC &d3D` dispatches to underline/text-attribute tokenizer `0x12622`.
-- `0x12622` writes selector byte `0x783185 = 1` for the covered `3D`
-  selector path.
+- `0x12622` writes selector byte `0x783185 = 1` for absolute `3D`.
+  Accepted non-`3D` `D` forms, including `ESC &d0D`, write
+  `0x783185 = 0` and still call `0x126e2` to arm pending span state.
 - Printable byte `0x21` then routes through `0xd04a`.
 - Final `ESC &d@` dispatches to `0x12622` again, takes the terminal flush
   path, and calls `0x12714` before `0x126e2` re-arms span state.

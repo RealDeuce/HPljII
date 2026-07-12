@@ -250,7 +250,8 @@ owner, and whether visible pixels can result.
   page-root bucket `+0x1c` through `0x13070 -> 0x13250 -> 0x138de`. Publication
   and bridge preserve that bucket chain as render-record root `+0x18`; bucket
   walker `0x1efc2` dispatches class-`0x80` raster objects to `0x1f88e`, whose
-  mode branches use `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`.
+  mode branches use `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6` to write
+  destination rows.
   The ROM-backed `*b` family is transfer-only: generated parser table
   `generated/analysis/ic30_ic13_parser_dispatch_tables.md` lists mode `14`
   entries only for lowercase `w` and uppercase `W`, both routed to `0x11f82`.
@@ -269,7 +270,7 @@ owner, and whether visible pixels can result.
   page-root `+0x24`. Bridge `0x1edc6` copies that list to render-record
   `+0x1c` and initializes continuation word `+0x0c`; render entry consumes
   rule nodes through `0x1f446`, solid selector helper `0x1f596`, or patterned
-  helper `0x1f4e0`.
+  helper `0x1f4e0`, then writes rows through destination helper `0x1f626`.
 - VFC and vertical layout: VMI/LPI, page length, VFC table load, and channel jumps;
   owners [VFC State To Visible Consumer
   Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map), [VFC Outcome
@@ -363,9 +364,15 @@ record bridge `0x1ed84 -> 0x1edc6`, and bucket/list walking through
 `+0x28` to render root `+0x20`, and context slots `+0x2c..+0x68` to render
 slots `+0x24..+0x60`. Render entry then walks bucket objects through
 `0x1efc2`, rule objects through `0x1f446`, and fixed-list objects through
-`0x1f756`. Rows that say "no immediate page object" still matter to exact
-reproduction because they update fields consumed by a later row in this
-matrix.
+`0x1f756`. The row-store endpoint is object-class specific: compact text and
+downloaded glyphs continue through `0x1effe` to `0x1f034`, `0x1f0d2`,
+`0x1f1f0`, or `0x1f264`; segment-list spans continue to
+`0x1f812 -> 0x1f862`; encoded raster continues to `0x1f88e` mode helpers
+`0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`; rules continue to
+`0x1f596` or `0x1f4e0` and destination helper `0x1f626`; and fixed-list spans
+continue to `0x1f756 -> 0x1f7b0`. Rows that say "no immediate page object"
+still matter to exact reproduction because they update fields consumed by a
+later row in this matrix.
 
 The current ROM notes do not treat LaserJet III / PCL5-only features as part
 of the LaserJet II reproduction target. Scalable typefaces, RET, HP-GL/2,
@@ -922,8 +929,13 @@ notes. The required ROM-visible behavior is:
   roots `+0x18/+0x1c/+0x20` and context slots `+0x24..+0x60`; bucket class byte `+0x04`
   then selects compact dispatch `0x1effe`, segment-list dispatch `0x1f812`, or
   encoded-raster dispatch `0x1f88e`, while rule and fixed roots dispatch through
-  `0x1f446` and `0x1f756`. The render-owner lookup is [Render Helper Boundary
-  Index](page-raster-imaging.md#render-helper-boundary-index).
+  `0x1f446` and `0x1f756`. Pixel routes then continue to the row-store helpers
+  named in [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map): compact routes use
+  `0x1f034` / `0x1f0d2` / `0x1f1f0` / `0x1f264` plus row-copy tables/helpers,
+  segment-list spans use `0x1f862`, encoded raster uses `0x1f8da` / `0x1f8e6` /
+  `0x1f920` / `0x1f9c6`, rules use `0x1f596` / `0x1f4e0` plus `0x1f626`, and
+  fixed-list spans use `0x1f7b0`.
 - Unsupported or no-output rows are reproduced by consuming exactly the ROM
   syntax and then following the documented no-output path; they should not be
   treated as unknown imaging commands.
@@ -1011,7 +1023,8 @@ Manual-family owner audit result:
   `0x105d0 -> 0x13070 -> 0x13250`; rectangle fill uses
   `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`; downloaded glyphs use
   `0x16498` plus later printable selection; publication uses `0xff1e`; and all
-  rendered rows pass through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  rendered rows pass through `0x1ed84 -> 0x1edc6 -> 0x1ef6a` before terminating
+  in the row-store primitive selected by the object class.
 - Non-page command families are explicit terminal routes, not documentation
   holes: alternate/data appends through `0xe002`, macro replay returns stored
   bytes through `0xa904`, display/transparent append siblings store bytes
@@ -1114,7 +1127,8 @@ Delayed state-to-output resolution:
   and page-root context slots. The text path then queues compact bucket objects
   through `0xd3b2` or `0xd824` into `0x12f2e -> 0x1387c`, publishes through
   `0xff1e`, bridges through `0x1ed84 -> 0x1edc6`, and renders through
-  `0x1ef6a -> 0x1efc2 -> 0x1effe`.
+  `0x1ef6a -> 0x1efc2 -> 0x1effe` before the compact helper writes rows through
+  the row-copy tables/helpers.
 - Pending span and underline rows first resolve in the printable span helpers
   and then at terminal flush. `0x12622` writes selector byte `0x783185` and
   `0x126e2` arms span flag `0x783184`; following printable text calls
@@ -1123,7 +1137,8 @@ Delayed state-to-output resolution:
   flag `0x783184` makes `0xf34a -> 0x12714 -> 0x126e2` materialize a
   selector-`0x4000` segment-list object under page-root `+0x1c`; bridge
   `0x1ed84 -> 0x1edc6` copies that root to render `+0x18`, and
-  `0x1ef6a -> 0x1efc2 -> 0x1f812` renders the span object.
+  `0x1ef6a -> 0x1efc2 -> 0x1f812 -> 0x1f862` renders the span object and writes
+  destination rows through `0x1f3d4` / `0x1f414`.
 - Vertical-layout, perforation, and VFC rows resolve through the same cursor
   and publication consumers. `0xf36c` reads cursor y `0x782c8e`, bottom limit
   `0x782dc2`, and perforation byte `0x783191` before page eject
@@ -1136,7 +1151,8 @@ Delayed state-to-output resolution:
   `0x80` bucket objects. Rectangle setup and fill use the same layout bounds
   before `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa` queues rule-list objects.
   Those objects then follow the common bridge/render routes named in the page
-  object handoff matrix.
+  object handoff matrix and terminate in the row-store owner for their object
+  class.
 - Macro state rows resolve by replay, not by a separate imaging path. `0xdd08`
   / `0xe112` create macro records and frames; replay feeds bytes back through
   `0xa904`, so the visible output is whatever owner receives the replayed
@@ -1190,7 +1206,8 @@ Delayed state-to-output resolution:
   use `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8`. `0xd04a` /
   `0x1393a` build text source state, `0x12f2e` writes compact bucket
   objects, and controls mutate cursor and pending-span state. Compact text
-  reaches `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and compact renderers.
+  reaches `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, compact renderers, and
+  compact row-copy helpers.
   Normal-table `NUL`, `BEL`, and `VT` rows (`0x00`, `0x07`, `0x0b`) are
   explicit zero-handler parser entries: they reset parser mode and create no
   page object, state mutation, publication request, or render work.
@@ -1202,16 +1219,18 @@ Delayed state-to-output resolution:
   byte is `1`. Normal `0x1a X` reaches `0x1219e` and calls `0xd04a(0x100)`.
   Those `0xd04a` calls are text-output entries, so any visible output follows
   the ordinary printable route through source creation, `0x12f2e`, page-root
-  bucket `+0x1c`, publication, bridge, and compact render dispatch. The false
-  branch of `0x120d2` queues nothing. Alternate/data siblings `0x1210c` and
-  `0x121b2` append literal `0x1a` or normalized `0x7f` through `0xe002` and
-  create no immediate page object until replay. `ESC ?` is consumed inside
+  bucket `+0x1c`, publication, bridge, compact render dispatch, and compact
+  row stores. The false branch of `0x120d2` queues nothing. Alternate/data
+  siblings `0x1210c` and `0x121b2` append literal `0x1a` or normalized
+  `0x7f` through `0xe002` and create no immediate page object until replay.
+  `ESC ?` is consumed inside
   wrapper `0xda9a`; `ESC Z` belongs to the local `ESC Y ... ESC Z` direct
   readers, not a global drawing command.
   The concrete baseline `!!` stream maps bytes `21 21` to built-in
   `LINE_PRINTER` glyph `0x20`, compact object
   `00 00 00 00 00 00 00 02 20 00 01 20 02 02`, bridge context slot `0`, and
-  render route `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354`;
+  render route `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354` plus the
+  compact row-copy table;
   command-family variants should be compared against that spine when they
   change cursor state, selected context/map, object shape, or row helper
   inputs.
@@ -1234,14 +1253,16 @@ Delayed state-to-output resolution:
   compact object `00 00 00 00 00 00 00 01 20 00 01`, then reset publishes
   through `0xff1e`, stores the published pointer in `0x780ea6`, sets
   publication flag `0x782996`, clears current root `0x78297a`, and renders
-  the preserved page through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Paper-source
+  the preserved page through `0x1ed84 -> 0x1edc6 -> 0x1ef6a` and the compact
+  row-store route selected by the queued object. Paper-source
   stream `! ESC &l2H` reaches `0xef62`, publishes the queued compact object
   before state mutation, then writes selector value `0x80` to paper-source
   byte `0x782da6`, mirrors `0x780e8f = 0x80`, signals `0x780e26`, and sets
   pending refresh byte `0x782998 = 1`. Copy-count stream `! ESC &l2X FF`
   reaches `0xeef0`, stores `0x782da4 = 2` without publishing, and the
   following FF publication copies that value into pool-header word `+0x0c`
-  before the same `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
+  before the same `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path and selected
+  row-store helper.
   Evidence:
   [publication-commands.md](publication-commands.md),
   [Paper Source Selector Matrix](publication-commands.md#paper-source-selector-matrix),
@@ -1273,7 +1294,7 @@ Delayed state-to-output resolution:
   `0x783188`, and `0x78318a` through `0xd4ac` / `0xd8fc`; final `ESC &d@`
   flushes through `0x12714 -> 0x126e2`, materializing a selector-`0x4000`
   segment-list object under page-root `+0x1c` that publishes and renders
-  through `0x1edc6 -> 0x1f812`.
+  through `0x1edc6 -> 0x1f812 -> 0x1f862`.
   Evidence:
   [direct-control-codes.md](direct-control-codes.md) and
   `Text Cursor And Direct Controls` in
@@ -1371,7 +1392,8 @@ Delayed state-to-output resolution:
   `0x783170..0x783182`, gate transfer counts, allocate encoded-span objects
   through `0x13070` / `0x13250`, and copy payload via `0x138de`. Encoded
   raster objects publish through page roots and render via
-  `0x1ef6a -> 0x1efc2 -> 0x1f88e`; dense split allocation is bounded at
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e`, then the selected mode helper `0x1f8da`,
+  `0x1f8e6`, `0x1f920`, or `0x1f9c6`; dense split allocation is bounded at
   `0x132b6..0x13382`. Resolution handler `0x10808` updates encoded mode
   `0x783178` and scale `0x78317e` only while active byte `0x783182` is clear.
   Start handler `0x1075a` also exits early while `0x783182` is set; otherwise
@@ -1395,7 +1417,8 @@ Delayed state-to-output resolution:
   `0x783166..0x78316e`; `0x10898` clips the active rectangle and queues
   rule-list objects through `0x13386` / `0x133aa`. Solid and patterned rules
   render through `0x1f446`, `0x1f596`, and `0x1f4e0`, including
-  band-crossing continuation. Area-fill stream `ESC *c50g2P` writes
+  band-crossing continuation, then write destination rows through `0x1f626`.
+  Area-fill stream `ESC *c50g2P` writes
   `0x78316e = 50` through `0x10dce`; `0x10898` maps `2P` gray percentages
   from `0x78316e` to selectors `0..7`, maps `3P` pattern ids `1..6` to
   selectors `8..13`, and applies landscape remaps for pattern ids `1..4`.
@@ -1404,7 +1427,8 @@ Delayed state-to-output resolution:
   Concrete stream `ESC *c12a5b0P` queues selector-7 rule object
   `00 00 00 00 01 07 4a 00 00 0c 00 05 00 00` under page-root `+0x24`;
   bridge `0x1edc6` copies the rule list to render-record `+0x1c`, and
-  `0x1f446` dispatches selector `7` to solid helper `0x1f596`.
+  `0x1f446` dispatches selector `7` to solid helper `0x1f596`, which writes
+  through destination helper `0x1f626`.
   Evidence:
   [rectangle-graphics.md](rectangle-graphics.md) and
   [page-raster-imaging.md](page-raster-imaging.md).
@@ -1491,12 +1515,13 @@ Delayed state-to-output resolution:
   following byte.
   Selected maps affect later printable bytes; downloaded glyphs install
   records that later queue compact objects and render through `0x1effe` /
-  `0x1f0d2` / `0x1f1f0` / `0x1f264`. Concrete final-`X` stream
+  `0x1f034` / `0x1f0d2` / `0x1f1f0` / `0x1f264` and their row-copy helpers.
+  Concrete final-`X` stream
   `ESC (7X!!` selects built-in context `0xc0089fb0` and queues prefix
   `00 00 00 00 00 00 00 02 00 89 00 00 87 02`. Concrete downloaded glyph
   stream `ESC )s80W ... ESC )s3W f0 f0 f0 !` installs glyph `0x21`, queues
   compact object `00 00 00 00 00 00 00 01 21 5a 00`, and renders through the
-  same publication/bridge/compact-render pipeline.
+  same publication/bridge/compact-render/row-store pipeline.
   The bit-30-clear fixed-record sibling is a selected-resource route, not a
   second text renderer. Parsed zero-count `ESC )s0W` descriptors restore
   through `0x11f96 -> 0x121cc -> 0x12218 -> 0x15d0a`. Current-record status
@@ -1511,7 +1536,8 @@ Delayed state-to-output resolution:
   active-context rebuild through `0x16770..0x16870` / `0x14c64`. The output
   effect is delayed until a later printable selects that rebuilt map through
   `0xd04a -> 0x1393a`, queues selector `0x0003` through `0x12f2e`, and
-  publishes/renders through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  publishes/renders through `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` and the
+  compact row-store helper selected by the queued object.
   Evidence is the
   [Fixed-Record Render Decision
   Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint),
@@ -1526,9 +1552,10 @@ Delayed state-to-output resolution:
   through `0xd04a -> 0x1393a -> 0x12f2e` consumes the selected glyph as a
   page-source object and derives compact selector/bucket state. Publication
   `0xff1e`, bridge `0x1ed84` / `0x1edc6`, and render dispatch `0x1ef6a ->
-  0x1effe` then feed helper `0x1fe76` for short compact rows, `0x1f0d2` for
-  wide compact rows, `0x1f1f0` for segmented rows, or `0x1f264` for
-  segmented-wide rows. The exact ROM-local output boundaries are the unchecked
+  0x1effe` then feed the compact row-store owner: `0x1f034` / `0x1fe76` for
+  short compact rows, `0x1f0d2` for wide compact rows, `0x1f1f0` for
+  segmented rows, or `0x1f264` for segmented-wide rows. The exact ROM-local
+  output boundaries are the unchecked
   short-helper fallback table read `0x1fe76 -> 0x1fe8a` above valid index
   `128`, wrapped low-width mode-0 helper targets through `0x1f034 ->
   0x1f08e`, segmented-wide span-31 fallback source offset `+0xb50`, and

@@ -17,7 +17,7 @@ Audit state:
   below; page environment, publication, VFC, raster transfer, rectangle/rule,
   and font/downloaded-glyph clusters below.
 - Still pending in this ledger:
-  parser-only rows and page/render owner crosswalk rows.
+  page/render owner crosswalk rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -1348,3 +1348,149 @@ is whichever ordinary replayed handler queues an object; pixel generation
 starts only after the shared publication/bridge/render path reaches
 `0x1ef6a`. Remaining audit-ledger work starts from parser-only rows or the
 final page/render owner crosswalk rather than from macro replay.
+
+## Parser-Only And Explicit No-Output Rows
+
+This cluster covers admitted bytes and parser table rows that do not
+immediately enter a page-producing command owner. It starts at byte wrapper
+`0xda9a`, parser loop `0x11774`, normal table `0x112a4`, alternate/data table
+`0x116f6`, delayed restore `0x12218`, no-match paths, and generic drains. It
+ends at parser scratch reset, swallowed wrapper bytes, append-only stored
+input, delayed-handler restore, parser-external service return, or an explicit
+no-page-output boundary.
+
+### Audited Rows
+
+- Private wrapper and reported-byte paths:
+  byte wrapper `0xda9a` owns parser-visible byte normalization after `0xa904`
+  has admitted a byte. `ESC ? 0x11` is swallowed entirely inside the wrapper:
+  the third byte check at `0xdab2..0xdabe` restarts without returning `ESC`,
+  `?`, or `0x11` to parser loop `0x11774`. Other `ESC ? X` siblings rejoin
+  the first-byte comparison, and non-question ESC lookahead bytes are reported
+  through `0x9ec0` before the parser receives `ESC`. Owner evidence is
+  [No-Output And Reported-Byte
+  Checkpoint](pcl-parser-core.md#no-output-and-reported-byte-checkpoint) and
+  `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`.
+
+- Normal zero-handler C0 rows:
+  normal mode-zero C0 bytes `0x00`, `0x07`, and `0x0b` match explicit rows in
+  table `0x112a4` with zero handler longwords. They take
+  `0x119a6..0x119f4`, write the row's next mode, call delayed restore
+  `0x12218` when the row returns to mode zero, and reset command-record cursor
+  `0x78299e`, nonnumeric scratch `0x782a26`, numeric scratch `0x782a3e`, and
+  alternate echo latch `0x782a56`. They do not fall through to printable
+  handler `0xd04a` or neighboring C0 handlers. Owner evidence is
+  [Parser Artifact And No-Output
+  Boundary](firmware-dataflow-model.md#parser-artifact-and-no-output-boundary).
+
+- Alternate/data blank rows and no-match append:
+  when alternate/data selector `0x782c18` is set, table `0x116f6` handles
+  mode-zero blank C0 rows `0x00` and `0x07..0x0f` through
+  `0x11930..0x11ab8`. That path flushes byte scratch through `0x123ae`,
+  numeric scratch through `0x123de`, appends the matched byte through
+  macro/data sink `0xe002`, and rejoins terminal reset. Alternate/data
+  mode-zero no-match bytes append through `0x11b82..0x11b8a -> 0xe002`.
+  These bytes are stored input; they can affect pixels only if macro/data
+  replay later returns them through `0xa904`. Owner evidence is
+  [Alternate/Data Dispatch Decision
+  Checkpoint](pcl-command-map.md#alternatedata-dispatch-decision-checkpoint)
+  and [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix).
+
+- Delayed restore and generic drains:
+  delayed scheduler `0x121cc` stores flag `0x782a1a`, handler pointer
+  `0x782a1c`, and saved record `0x782a20..0x782a25`; restore `0x12218`
+  either calls the saved handler in normal mode or routes alternate/data
+  payloads through `0x1228a` / `0x12358`. Generic drain
+  `0x1228a -> 0x12328` consumes absolute payload counts through `0xdace`
+  without echoing printable bytes or queueing page objects. Normal restored
+  handlers are owned by their command-family notes; alternate/data drains are
+  append or synchronization state. Owner evidence is
+  [Parser Core Outcome
+  Matrix](pcl-parser-core.md#parser-core-outcome-matrix) and
+  [Binary Payload Lifecycle](firmware-dataflow-model.md#binary-payload-lifecycle).
+
+- Display-reader terminator and unimplemented parser artifacts:
+  `ESC Z` is not a standalone parser-table output command. It is consumed by
+  display readers `0x12536` and `0x12120` inside their direct `0xa904` loops
+  before returning to the main parser. `ESC &lT/t` is a parser-table artifact:
+  uppercase `T` has no terminal handler, and lowercase `t` reaches lowercase
+  rewind helper `0x11f4c` without writing page environment, page objects, or
+  render inputs. Owner evidence is
+  [No-Output And Reported-Byte
+  Checkpoint](pcl-parser-core.md#no-output-and-reported-byte-checkpoint) and
+  [Inbound Byte Outcome
+  Classes](pcl-command-map.md#inbound-byte-outcome-classes).
+
+- No-match and callback continuations:
+  normal mode-zero no-match path `0x118b2..0x11900` reads selected context byte
+  `0x782ee6 + 16 * 0x782f06 + 5`. Value `1` routes the byte to printable
+  `0xd04a`; any other value ignores the byte and fetches again without page
+  object output. Nonzero-mode no-match path `0x11b32..0x11b7e` calls active
+  callback pointer `0x78299a`; callback return to mode zero clears parser
+  cursors and pending delayed byte `0x782a1a`, while nonzero return keeps the
+  parser in the command-family mode. Owner evidence is
+  [Main Parser Branch
+  Boundaries](pcl-parser-core.md#main-parser-branch-boundaries).
+
+- Parser-external service return:
+  no-byte path `0x117d2..0x11818` clears service latch `0x780e3b`, services
+  wait object `0x780202` through `0x10c8`, rewrites macro/page state byte
+  `0x782a92` from `0x63` to `1` when that predicate matches, and returns from
+  the parser loop instead of dispatching a command byte. It produces no
+  parser-dispatched page state. Owner evidence is
+  [Parser Core Outcome
+  Matrix](pcl-parser-core.md#parser-core-outcome-matrix) and
+  [Host/Status Outcome
+  Matrix](errors-and-status.md#hoststatus-outcome-matrix).
+
+### Field Classification
+
+- Canonical parser state:
+  mode byte `0x782999`, alternate/data selector `0x782c18`, command-record
+  cursor `0x78299e`, six-byte records rooted at `0x7829a2`, table roots
+  `0x112a4` / `0x116f6`, selected context index `0x782f06`, and delayed fields
+  `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`.
+- Parser scratch:
+  byte scratch cursor `0x782a26`, numeric scratch cursor `0x782a3e`, scratch
+  buffers `0x782a2a..` and `0x782a42..`, matched-byte buffer
+  `0x783196..0x783199`, tokenizer local digits, lookahead bytes, and
+  alternate/data append scratch.
+- Derived/cache state:
+  saved delayed handler pointer, restored record copies, payload budget
+  `0x783140`, alternate/data echo latch `0x782a56`, and generated table
+  extracts used to name rows.
+- Firmware bookkeeping:
+  reported-byte helper `0x9ec0`, append sink `0xe002`, terminal restore
+  helper `0x12218`, scratch flush helpers `0x123ae` / `0x123de`, payload
+  reader `0xdace`, generic drain helpers `0x1228a` / `0x12328` / `0x12358`,
+  active callback pointer `0x78299a`, no-byte latch `0x780e3b`, wait object
+  `0x780202`, macro/page byte `0x782a92`, and setup-handler state.
+- Canonical page/render state:
+  none for the rows in this cluster. Page roots, page objects, publication,
+  render roots, and row buffers can only be written by a restored saved
+  handler, later replayed appended bytes, a no-match byte that reaches
+  `0xd04a`, or following parser input.
+- Hardware/external state:
+  none after `0xa904` has admitted a byte into parser-local code. Direct host
+  MMIO and service-preemption details remain in host/status owner notes.
+- Unknown:
+  no ROM-local branch remains anonymous for the documented zero-handler rows,
+  alternate/data append rows, `ESC ? 0x11`, display terminator `ESC Z`,
+  `ESC &lT/t`, generic counted drains, no-match fallback, callback
+  continuation, or parser-external service return.
+
+### Output And Boundary Result
+
+Parser-only rows produce no immediate page root, page object, publication,
+render work, or pixels. Their output is one of: swallowed input, reported
+lookahead, parser scratch reset, delayed-handler restore, append-only stored
+input, counted drain, no-match ignore, callback continuation, or parser
+service return.
+
+The only routes from this cluster to pixels are explicit later routes: a
+restored saved handler can enter its command-family owner; alternate/data
+stored bytes can replay through `0xa904`; normal no-match can call `0xd04a`
+only when the selected context predicate accepts it; or later host bytes can
+enter a page-producing owner. Remaining audit-ledger work is the final
+page/render owner crosswalk.

@@ -17,7 +17,8 @@ Audit state:
   below; page environment, publication, VFC, raster transfer, rectangle/rule,
   and font/downloaded-glyph clusters below.
 - Still pending in this ledger:
-  page/render owner crosswalk rows.
+  none. Further work should start from streams that change an owner note,
+  page-object field, bridge field, render helper, or unresolved boundary.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -1494,3 +1495,158 @@ stored bytes can replay through `0xa904`; normal no-match can call `0xd04a`
 only when the selected context predicate accepts it; or later host bytes can
 enter a page-producing owner. Remaining audit-ledger work is the final
 page/render owner crosswalk.
+
+## Page And Render Owner Crosswalk
+
+This final checkpoint connects the audited dispatch clusters above to the
+shared page-image and render owners. It starts after a command-family owner has
+either produced page state or explicitly stopped at no-output/status/stored
+input, and ends at the first render helper or exact non-render boundary. It
+does not replace family notes; it names the common page roots, bridge roots,
+dispatch order, and row-store routes a reader should follow after any
+supported byte stream reaches page-image state.
+
+### Audited Rows
+
+- Compact text, transparent printable bytes, macro-replayed printable bytes,
+  and downloaded glyphs:
+  first page-image state is a compact bucket object under page-root `+0x1c`,
+  produced through `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`. The object
+  carries class/selector/count/key fields `+0x04/+0x05/+0x06/+0x08` and
+  compact payload bytes at `+0x0a..`; font context lives in page-root slots
+  `+0x2c..+0x68`. Publication and bridge copy bucket root `+0x1c` to render
+  root `+0x18` and context slots to render slots `+0x24..+0x60`. First render
+  consumer is `0x1ef6a -> 0x1efc2 -> 0x1effe`; row-store helpers are
+  `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264` plus row-copy tables. Owner
+  evidence is [Command-Family To Page-Object
+  Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk)
+  and [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map).
+
+- Segment-list and fixed-list text spans:
+  pending span flush reaches `0xf34a -> 0x12714`. Portrait spans become
+  segment-list bucket objects under root `+0x1c` through
+  `0x13520/0x135f0`; landscape/fixed spans become fixed-list objects under
+  root `+0x28` through `0x136d2`. Bridge maps root `+0x1c` to render `+0x18`
+  and root `+0x28` to render `+0x20`. First render consumers are
+  `0x1efc2 -> 0x1f812 -> 0x1f862` for segment lists and
+  `0x1ef6a -> 0x1f756 -> 0x1f7b0` for fixed lists. Owner evidence is
+  [Page Object Shape Route
+  Index](firmware-dataflow-model.md#page-object-shape-route-index) and
+  [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
+- Encoded raster rows:
+  accepted delayed `ESC *b#W` payloads reach
+  `0x105d0 -> 0x13070 -> 0x13250`, creating encoded raster bucket objects
+  under root `+0x1c`. The object carries high-bit class byte `+0x04`, mode
+  byte `+0x05`, count/capacity `+0x06`, key `+0x08`, and payload bytes
+  `+0x0a..`. Bridge maps root `+0x1c` to render `+0x18`. First render
+  consumer is `0x1efc2 -> 0x1f88e`; mode helpers are `0x1f8da`, `0x1f8e6`,
+  `0x1f920`, and `0x1f9c6`. Owner evidence is [Raster State To Visible
+  Consumer Map](raster-graphics.md#raster-state-to-visible-consumer-map) and
+  [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map).
+
+- Rectangle/rule objects:
+  valid `ESC *c#P` paths reach
+  `0x10898 -> 0x10b80 -> 0x13386 -> 0x133aa`, creating ordered rule-list
+  objects under page-root `+0x24`. Rule fields include selector `+0x05`, key
+  `+0x06`, width `+0x08`, height `+0x0a`, and continuation `+0x0c`. Bridge
+  maps root `+0x24` to render root `+0x1c`, ORs selector byte `+0x05` with
+  `0x10`, and copies height into continuation. First render consumer is
+  `0x1ef6a -> 0x1f446`, then solid helper `0x1f596` or pattern helper
+  `0x1f4e0`. Owner evidence is
+  [Rectangle State To Visible Consumer
+  Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map) and
+  [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
+- Publication, bridge, and band scheduling:
+  publication helper `0xff1e` turns current root state into protected
+  page/control pool state rooted at `0x780ea6`, sets publication flag
+  `0x782996`, and clears current root `0x78297a` as appropriate. Scheduler
+  paths select source record `0x780eae`; work-record selection writes active
+  render pointer `0x783a18`; bridge `0x1ed84 -> 0x1edc6` copies bucket,
+  rule, fixed, and context roots into render roots `+0x18/+0x1c/+0x20` and
+  slots `+0x24..+0x60`. Band entry `0x1eba4` calls `0x1ef6a` only on render
+  outcomes; cleanup/throttle/capacity-wait outcomes do not render rows. Owner
+  evidence is [Band Scheduling Route
+  Index](firmware-dataflow-model.md#band-scheduling-route-index) and
+  [Render Entry Outcome
+  Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
+
+- Render dispatch and pixel composition order:
+  `0x1ef6a` derives band caches through `0x1ef86`, renders bucket-chain root
+  `+0x18` first through `0x1efc2`, rule root `+0x1c` second through
+  `0x1f446`, and fixed root `+0x20` last through `0x1f756`. Within bucket
+  objects, class byte `+0x04` selects compact/text `0x00..0x3f`,
+  segment-list `0x40..0x7f`, or encoded raster `0x80..0xff`. The ROM-local
+  composition model is direct stores in this call order; there is no hidden
+  shared blend layer outside the object helpers. Owner evidence is
+  [Pixel Generation Owner
+  Summary](page-raster-imaging.md#pixel-generation-owner-summary) and
+  [Pixel Composition
+  Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint).
+
+- Explicit non-render outcomes:
+  host/status side channels, parser-only rows, alternate/data append-only
+  rows, generic drains, font/map state before printable consumption, raster
+  setup before transfer, rectangle size/fill state before `ESC *c#P`, macro
+  definition state before execute/call/overlay replay, and failed validation
+  or no-install exits have no page-object root, bridge root, first render
+  consumer, or row-store endpoint at that byte. Their owner notes name the
+  exact state that remains for a later byte or replay path to consume.
+
+### Field Classification
+
+- Canonical page/image state:
+  current root `0x78297a`, compact/raster/span bucket root `+0x1c`, rule root
+  `+0x24`, fixed-list root `+0x28`, font context slots `+0x2c..+0x68`,
+  published page/control pool rooted at `0x780ea6`, source record
+  `0x780eae`, active render pointer `0x783a18`, render roots
+  `+0x18/+0x1c/+0x20`, and render context slots `+0x24..+0x60`.
+- Canonical object state:
+  bucket object fields `+0x04/+0x05/+0x06/+0x08/+0x0a`, rule fields
+  `+0x05/+0x06/+0x08/+0x0a/+0x0c`, fixed-list fields `+0x04..+0x0d`, compact
+  payload glyph/resource bytes, raster payload bytes, and copied context
+  longwords.
+- Derived/cache state:
+  bucket/key fields `0x782a7c..0x782a7e`, render band row count `0x783a20`,
+  remainder `0x783a22`, destination base `0x783a28`, destination stride
+  `0x783a1c`, compact context cache `0x783a2c`, row-offset tables, phase
+  bytes, fallback buffer base `0x7810b4 + byte_pair_offset`, and object
+  continuation fields normalized by `0x1edc6`.
+- Parser scratch:
+  none after a page object has been published and bridged. Parser records,
+  delayed payload snapshots, and replay bytes have already become owner state,
+  page objects, status/no-output outcomes, or stored input.
+- Firmware bookkeeping:
+  allocator cursors, retry bits, publication flag `0x782996`, scheduler source
+  and work-record selection fields, render-work alternation, throttle/capacity
+  state, and cleanup/release cursors.
+- Hardware/external state:
+  physical consumption after ROM row-buffer writes is outside this ROM-local
+  crosswalk. Physical timing does not change which parser owner, page root,
+  bridge root, render dispatcher, or row-store helper the documented byte
+  stream reaches.
+- Unknown:
+  no crosswalk edge remains unresolved for the documented page-object classes,
+  bridge roots, render dispatch order, or row-store primitive families.
+  Remaining exact boundaries are the object-owner boundaries already named in
+  their notes, such as invalid compact helper targets, missing external
+  resource bytes, or hardware after ROM row writes.
+
+### Output And Boundary Result
+
+For any audited supported stream, the page/render path is now explicit:
+command-family owner writes either no page state or one of the canonical page
+roots; publication and bridge copy those roots into render roots; `0x1ef6a`
+dispatches bucket, rule, and fixed-list roots in ROM order; and row-store
+helpers derive pixels from object fields plus copied context/resource state.
+
+This dispatch audit ledger has no remaining named pending row class. The full
+ROM documentation goal still requires any future completion claim to audit the
+broader checked-in documentation against the objective, but this ledger's
+supported-stream dispatch composition is closed until new disassembly evidence
+changes a named owner boundary.

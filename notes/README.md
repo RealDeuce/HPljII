@@ -390,7 +390,8 @@ parser route, field value, object layout, bridge copy, or helper input.
   replay to page-record output.
 - [reset-default-environment.md](reset-default-environment.md#owner-summary) -
   documented `ESC E` reset, default-record producers, retained-record paths,
-  and reset publication behavior.
+  and reset publication behavior, with a [Reset Default To Visible Consumer
+  Map](reset-default-environment.md#reset-default-to-visible-consumer-map).
 - [publication-commands.md](publication-commands.md#owner-summary) -
   documented publication owner boundary, reset, FF, page-size, page-length
   zero/default, orientation, paper-source, and copies routes to rendered page records or

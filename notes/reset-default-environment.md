@@ -168,6 +168,104 @@ Evidence and boundaries:
   retained-storage identity, panel/service protocol, and manual names for
   reset latches.
 
+### Reset Default To Visible Consumer Map
+
+This map composes `ESC E`, default-record producers, retained/default
+maintenance, environment rebuild, parser/data-chain reset, and reset
+publication into the consumer paths that can affect visible output. Reset has
+two different effects: it can publish pre-reset page objects immediately, and
+it can rebuild state that later host bytes consume.
+
+- Reset entry and pre-reset publication:
+  parser dispatch reaches `0xcc52`; helper `0xcc70` flushes pending span/text
+  state through `0xf34a`, then calls publication helper `0xff1e` before
+  environment rebuild. With a valid current root `0x78297a`, `0xff1e` exposes
+  pre-reset page objects to scheduler/render through
+  `0x780ea6 -> 0x780eaa -> 0x780eae -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`. With
+  no current root, the same path clears current-root state without publishing.
+- Environment rebuild consumers:
+  `0xcda2` consumes defaults `0x78219d`, `0x78219e`, `0x7821a2`, reset gate
+  `0x7810b2`, and current-font context `0x782ee6`. It rebuilds page/control
+  records at `0x780f02`, bucket-array pointers `+0x1c`, reset environment
+  word `0x782da4`, gated paper/environment byte `0x782da6`, pending bytes
+  `0x782997/0x782998`, HMI `0x78315c`, VMI `0x783160`, top offset
+  `0x782dce`, and raster state block `0x783170`. These fields are consumed by
+  following printable, font, layout, raster, rectangle, VFC, and publication
+  handlers.
+- Default-record producers:
+  `0x5e80`, menu/update handlers `0x5060`, `0x50be`, `0x52ba`, retained
+  maintenance `0x56c2`, `0x571e`, and `0x5a62` write or preserve selected
+  backing records under `0x780eda`, staged bytes `0x782283/0x782290`, and
+  reset-consumed defaults `0x78219d`, `0x78219e`, and `0x7821a2`. These
+  producers have no direct page output; they become visible only when a later
+  reset consumes the defaults.
+- Metric and font refresh consumers:
+  `0xcbd4` refreshes HMI and active-symbol snapshots from current-font context
+  and active symbol words. Reset VMI conversion uses `0xcfea`, `0xcf52`, and
+  `0x104d8`; helper `0x1bdba` selects page table `0x9dbe` or `0x9d86` from
+  current-default resolver state. The result changes later text placement and
+  page-boundary behavior rather than drawing immediately.
+- Parser/data-chain consumers:
+  `0xe146` resets data-chain pointer `0x782d76`, current macro pointer
+  `0x782d7a`, macro id `0x783164`, alternate/data bytes
+  `0x782c18/0x782c19`, parser/device byte `0x782a92`, text accumulation bytes
+  `0x783196..0x783199`, parser/control records `0x782c1e..0x782c6d`, and
+  parser cursor `0x782c6e`. Following host bytes therefore start from reset
+  parser and replay state.
+- Service/retained-state boundary:
+  service poll `0x0bbb2` and retained-storage helpers preserve or update
+  status/default shadow state while serial retained traffic is active. Their
+  visible effect is through later reset/default or status/service consumers,
+  not direct page objects.
+
+State groups for this map:
+
+- Canonical reset inputs:
+  defaults `0x78219d/0x78219e/0x7821a2`, reset gate `0x7810b2`, selected
+  backing records under `0x780eda`, selector `0x7822d5`, and current-default
+  resolver fields `0x78289e/0x78289f/0x7828a0/0x7828a4`.
+- Canonical page/control state:
+  current root `0x78297a`, page/control records `0x780f02`, bucket-array
+  pointers `+0x1c`, published root `0x780ea6`, publication flag `0x782996`,
+  reset environment word `0x782da4`, gated byte `0x782da6`, and pending bytes
+  `0x782997/0x782998`.
+- Canonical parser/data-chain state:
+  scratch pointer `0x782a26`, cursor-stack pointer `0x782d36`, data-chain
+  pointer `0x782d76`, current macro pointer `0x782d7a`, parser/control
+  records `0x782c1e..0x782c6d`, parser cursor `0x782c6e`, alternate/data
+  bytes, parser/device byte `0x782a92`, and text accumulation
+  `0x783196..0x783199`.
+- Derived/cache state:
+  HMI `0x78315c`, VMI `0x783160`, top offset `0x782dce`, layout scratch
+  `0x782dd0`, raster block `0x783170`, active-symbol snapshots, page-table
+  selector from `0x1bdba`, and render-record state after a pre-reset
+  publication.
+- Firmware bookkeeping:
+  reset pending bytes, reset-cleared latches, reset-set latches
+  `0x782a6d/0x783191`, retained-record dirty flags `0x780eba..0x780ed8`,
+  maintenance counter `0x780ef0`, readback buffer `0x782252..0x782270`, and
+  reset completion byte `0x782a93`.
+- Hardware/external and unknown:
+  physical retained-storage identity behind `$a400` / `$8c01`, external
+  panel/service protocol for `$8000.w`, and manual-facing names for reset
+  latches remain external or manual boundaries. No ROM-local reset/default
+  producer-to-consumer edge remains open for the documented paths.
+
+Evidence:
+`generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+`generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`,
+`generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`,
+`generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`,
+`generated/disasm/ic30_ic13_default_env_load_005e80.lst`,
+`generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`,
+`generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`,
+`generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+[Publication State To Visible Consumer
+Map](publication-commands.md#publication-state-to-visible-consumer-map), and
+[Font State To Visible Consumer
+Map](font-context-metrics.md#font-state-to-visible-consumer-map).
+
 ## Reset Default Outcome Matrix
 
 This matrix composes reset/default behavior into the byte-stream-to-output

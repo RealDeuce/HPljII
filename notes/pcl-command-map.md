@@ -340,7 +340,8 @@ boundaries:
 - Reset, FF publication, page size, page-length zero/default, orientation, paper source,
   and copies: [publication-commands.md](publication-commands.md#owner-summary) plus
   reset provenance in
-  [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix).
+  [Reset Default To Visible Consumer
+  Map](reset-default-environment.md#reset-default-to-visible-consumer-map).
 - Transparent print data `ESC &p#X`:
   [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix).
@@ -650,8 +651,8 @@ output class that a byte-stream reader should follow next.
   render entry `0x1ef6a` are the first render handoff.
   Continue in [Publication Outcome
   Matrix](publication-commands.md#publication-outcome-matrix) and
-  [Reset Default Outcome
-  Matrix](reset-default-environment.md#reset-default-outcome-matrix). Output
+  [Reset Default To Visible Consumer
+  Map](reset-default-environment.md#reset-default-to-visible-consumer-map). Output
   class: environment state, current-root publication, or no-publication reset
   clear.
 - Vertical forms control:

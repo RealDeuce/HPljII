@@ -7937,6 +7937,9 @@ State classification:
 Evidence:
 
 - Detail note: [reset-default-environment.md](reset-default-environment.md).
+- State-to-consumer map:
+  [Reset Default To Visible Consumer
+  Map](reset-default-environment.md#reset-default-to-visible-consumer-map).
 - Outcome matrix:
   [Reset Default Outcome
   Matrix](reset-default-environment.md#reset-default-outcome-matrix).

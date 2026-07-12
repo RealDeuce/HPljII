@@ -4029,7 +4029,8 @@ State classification:
 
 Evidence:
 
-- Checked-in explanations:
+- Checked-in explanations: [Reset Default To Visible Consumer
+  Map](reset-default-environment.md#reset-default-to-visible-consumer-map),
   [reset-default-environment.md](reset-default-environment.md#reset-default-outcome-matrix),
   `Control Panel Default Outcome Matrix` in
   [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md), `Worked Path:

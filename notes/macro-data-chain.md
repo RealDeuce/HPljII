@@ -516,10 +516,12 @@ boundary.
   payloads re-enter ordinary owners for printable text, line termination,
   cursor positioning, margins, transparent data, raster rows, and span flush.
   Page objects then publish through `0xff1e`, bridge through
-  `0x1ed84 -> 0x1edc6`, and render through `0x1ef6a`. Evidence: overlay
-  examples listed in `Output Effect`, including mixed-control, cursor,
-  vertical-decipoint, chained-margin, transparent, raster, multi-row raster,
-  and span-flush payloads.
+  `0x1ed84 -> 0x1edc6`, and render through `0x1ef6a` plus the object-class
+  row-store helpers named in
+  [page-raster-imaging.md](page-raster-imaging.md#row-store-primitive-map).
+  Evidence: overlay examples listed in `Output Effect`, including
+  mixed-control, cursor, vertical-decipoint, chained-margin, transparent,
+  raster, multi-row raster, and span-flush payloads.
 
 State grouping:
 
@@ -878,7 +880,9 @@ Readers and consumers:
   `0xf02c`, and `0xd04a`.
 - Page-record consumers are the ordinary text pipeline:
   `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e`, followed by page publication
-  `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, and render entry `0x1ef6a`.
+  `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, render entry `0x1ef6a`, compact
+  dispatch `0x1efc2 -> 0x1effe -> 0x1f034 -> 0x1f354`, and the selected
+  compact row-copy helper.
 
 Output effect:
 
@@ -1095,7 +1099,9 @@ Evidence and unresolved boundaries:
   `0x782f06`, and current font context fields before calling the existing
   `0x13eb8` / `0x144d2` / `0x14c64` / `0xc428` bridge.
 - Page-record consumers are shared: `0x1387c` / `0x1381c` build objects,
-  `0x1edc6` bridges context/buckets, and `0x1ed84` / `0x1ef6a` render rows.
+  `0x1edc6` bridges context/buckets, and `0x1ed84` / `0x1ef6a` feed the
+  ordinary compact, raster, segment-list, rule, and fixed-list row-store
+  helpers.
 
 ## Output Effect
 
@@ -1128,8 +1134,8 @@ with selector-7 rule and mode-0 raster objects in one render band.
 
 The mixed-control execute example stores `ESC &k1G!\r!`, builds an execute
 frame, replays through `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then follows
-the direct mixed-stream bridge/render path through `0x1edc6`, `0x1ed84`, and
-`0x1ef6a`.
+the direct mixed-stream bridge/render path through `0x1edc6`, `0x1ed84`,
+`0x1ef6a`, compact dispatch, and the selected compact row-copy helpers.
 
 Overlay publication enters from `0xff1e`, not from the host parser directly.
 With selector `4` enabled, `0xff1e` resolves `0x782a94` through `0xe0a4`,
@@ -1248,10 +1254,11 @@ inputs:
   `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`.
 
 All covered overlay payloads publish through `0xff1e`, bridge through
-`0x1edc6`, and render through `0x1ed84` / `0x1ef6a`. Remaining edges are no
-longer inside the listed payload paths. A new overlay stream matters here only
-if it exposes different ROM-local output fields or a different row derivation
-path inside the ROM render helpers.
+`0x1edc6`, and render through `0x1ed84` / `0x1ef6a` plus the object-class
+row-store helpers selected by the replay-produced page objects. Remaining
+edges are no longer inside the listed payload paths. A new overlay stream
+matters here only if it exposes different ROM-local output fields or a
+different row derivation path inside the ROM render helpers.
 
 Overlay variant boundary map:
 
@@ -1285,7 +1292,8 @@ Overlay variant boundary map:
   bytes: `0x1ed84` copies the published record, `0x1edc6` bridges bucket,
   rule, fixed-list, and context roots, `0x1ef6a` runs bucket/rule/fixed-list
   dispatch, and helpers such as `0x1effe`, `0x1f88e`, `0x1f596`, `0x1f4e0`,
-  `0x1f756`, and `0x1f812` derive rows from those objects.
+  `0x1f756`, and `0x1f812` derive rows from those objects through the
+  row-store primitives named by the page/imaging owner.
 
 Remaining overlay work is therefore not "does overlay replay work"; it must
 change at least one concrete boundary above: replay-frame fields, skip-gate

@@ -4151,6 +4151,13 @@ A byte-stream renderer must preserve:
 - command-family parser state for `ESC *c#D`, `ESC *c#E`, `ESC *c#F`, and
   `ESC )s#W` / `ESC (s#W`;
 - current font id `0x782f2e` and current character `0x782f30`;
+- alternate/data table behavior for `ESC *c#D/#E/#F`: uppercase rows in
+  table `0x116f6` have no terminal handler and lowercase `d/e/f` rows rewind
+  through `0x11f4c`, so `0x15a56`, `0x15a18`, and `0x16df6` are not called
+  at append time. Current id `0x782f2e`, current character `0x782f30`,
+  current-record flag/count state, selected maps, page objects, and render
+  inputs remain unchanged until the stored bytes replay through normal parser
+  mode.
 - parser/device mode byte `0x782a92` for `ESC *c#F`: mode `2` suppresses
   destructive or refresh selectors `0`, `1`, `2`, `3`, and `6`, while mark
   and unmark selectors `4` and `5` still run through `0x17150` / `0x17108`;

@@ -1500,10 +1500,14 @@ Delayed state-to-output resolution:
   themselves; later `ESC (s#W` / `ESC )s#W` descriptor or payload handlers
   consume the selected id/character/current-record state before printable text
   can queue a downloaded-glyph compact object. In alternate/data mode, delayed
-  font `W/w` payload restore reaches `0x12358 -> 0xdace -> 0xe002` instead of
-  `0x15d0a` or `0x16c14`, so no descriptor validation, current-record install,
-  selected-map refresh, page object, or render input is produced until appended
-  bytes replay later. Concrete chain
+  `ESC *c#D/#E/#F` rows are state-preserving parser outcomes: uppercase
+  `D/E/F` rows in alternate/data table `0x116f6` are blank, lowercase
+  `d/e/f` rows rewind through `0x11f4c`, and handlers `0x15a56`, `0x15a18`,
+  and `0x16df6` do not run. Delayed font `W/w` payload restore reaches
+  `0x12358 -> 0xdace -> 0xe002` instead of `0x15d0a` or `0x16c14`, so no
+  current id/character update, descriptor validation, current-record install,
+  selected-map refresh, page object, or render input is produced until
+  appended bytes replay later. Concrete chain
   `ESC *c4660d37e5F` stays in parser mode `16` across lowercase finals:
   `4660d` writes `0x782f2e = 0x1234` through `0x15a56`, `37e` writes
   `0x782f30 = 0x25` through `0x15a18`, and `5F` dispatches through

@@ -727,7 +727,11 @@ output class that a byte-stream reader should follow next.
   Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map), [Font State To
   Visible Consumer Map](font-context-metrics.md#font-state-to-visible-consumer-map),
   and [Downloaded Font To Visible Consumer
-  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map). Output class:
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map). In
+  alternate/data mode, `ESC *c#D/#E/#F` terminal rows preserve parser syntax
+  without calling `0x15a56`, `0x15a18`, or `0x16df6`; the current id,
+  character, current-record state, selected maps, page objects, and render
+  inputs remain unchanged until replay. Output class:
   selected-font state, installed resources, later compact text under root
   `+0x1c`, fixed records, or downloaded-glyph compact objects whose exact
   helper/source stops are owned by the downloaded-font boundary notes. Visible

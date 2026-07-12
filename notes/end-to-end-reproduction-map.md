@@ -7929,9 +7929,14 @@ Address-level cluster map:
   Imaging command families now have explicit no-output/storage consequences
   from this branch: alternate/data `ESC *c` rows leave rectangle fields
   `0x78316a`, `0x783166`, `0x78316e`, source record `0x782a88`, and rule-list
-  root `+0x24` unchanged; alternate/data `ESC *t` / `ESC *r` rows leave raster
-  block `0x783170` unchanged; and alternate/data `ESC *b#W/w` restores through
-  `0x12358` without calling `0x105d0`, `0x13070`, `0x13250`, or `0x138de`.
+  root `+0x24` unchanged. The same alternate/data `ESC *c` family also leaves
+  downloaded-font control state unchanged for `D/E/F` rows: `0x15a56`,
+  `0x15a18`, and `0x16df6` are not called, so current id `0x782f2e`, current
+  character `0x782f30`, current-record flag/count state, selected maps, page
+  objects, and render inputs are preserved until replay. Alternate/data
+  `ESC *t` / `ESC *r` rows leave raster block `0x783170` unchanged; and
+  alternate/data `ESC *b#W/w` restores through `0x12358` without calling
+  `0x105d0`, `0x13070`, `0x13250`, or `0x138de`.
   These bytes can affect imaging only after stored input replays through the
   normal parser route.
   Direct-control and publication-adjacent families have the same explicit

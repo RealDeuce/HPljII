@@ -6614,9 +6614,12 @@ Evidence:
 - Checked-in explanations: `Boundary: Short Compact Downloaded-Glyph High Rows`,
   `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`, `Boundary: Segmented-Wide
   Downloaded-Glyph Fallback Source`, and `Boundary: Downloaded-Glyph Payload Count Cap`
-  in [firmware-dataflow-model.md](firmware-dataflow-model.md), `Downloaded-Glyph Render
-  Decision Checkpoint` in
-  [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+  in [firmware-dataflow-model.md](firmware-dataflow-model.md),
+  [Downloaded-Glyph Render Decision
+  Checkpoint](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint) and
+  [Downloaded-Glyph Residual Boundary
+  Crosswalk](downloaded-fonts.md#downloaded-glyph-residual-boundary-crosswalk) in
+  [downloaded-fonts.md](downloaded-fonts.md),
   `Downloaded Glyph Renderer Boundary State` in
   [semantic-state-model.md](semantic-state-model.md), and compact row-copy sections in
   [page-raster-imaging.md](page-raster-imaging.md).
@@ -6655,21 +6658,24 @@ or from a byte stream that changes a named field in the family sections.
   candidate-scan consequences, so the remaining evidence needed is the
   physical decode source for that continuation range.
 - ROM-local downloaded-glyph renderer/payload boundaries:
-  `Boundary: Short Compact Downloaded-Glyph High Rows` documents the unchecked
-  `0x1fe76` fallback row-copy table read for short compact rows
+  [Downloaded-Glyph Residual Boundary
+  Crosswalk](downloaded-fonts.md#downloaded-glyph-residual-boundary-crosswalk)
+  is the owner-level route from parser/install/page state to each exact stop.
+  `Boundary: Short Compact Downloaded-Glyph High Rows` documents the
+  unchecked `0x1fe76` fallback row-copy table read for short compact rows
   `0x0101..0x0103`; valid entries end at index `128`, while fallback counts
   `199..201` read code bytes as target pointers, with row `0x0102` reaching
   `0x329ad3c0`. `Boundary: Downloaded-Glyph Wrapped Width Low Bytes`
   documents the low-byte width truncation that can send preserved installed
-  spans through compact mode-0 invalid targets such as `0x0102 -> 0x0066cc`.
-  `Boundary: Segmented-Wide Downloaded-Glyph Fallback Source` documents the
-  span-31 fallback A2 source-read boundary at offset `+0xb50` after
-  `0x1f264` selected-segment dispatch. `Boundary: Downloaded-Glyph Payload
-  Count Cap` is the exact ROM-stop sibling: oversized segmented-wide high-row
-  streams exceed the restored `ESC )s#W` count cap `0x7fff`, so they stop with
-  parser/payload budget state before installed-glyph publication or render
-  dispatch. These are ROM-local byte-to-output boundaries, not page-object
-  publication or bridge gaps.
+  spans through compact mode-0 invalid targets such as `0x0102 -> 0x0066cc`
+  after `0x1f034 -> 0x1f08e`. `Boundary: Segmented-Wide Downloaded-Glyph
+  Fallback Source` documents the span-31 fallback A2 source-read boundary at
+  offset `+0xb50` after `0x1f264` selected-segment dispatch. `Boundary:
+  Downloaded-Glyph Payload Count Cap` is the exact ROM-stop sibling:
+  oversized segmented-wide high-row streams exceed the restored `ESC )s#W`
+  count cap `0x7fff`, so they stop with parser/payload budget state before
+  installed-glyph publication or render dispatch. These are ROM-local
+  byte-to-output boundaries, not page-object publication or bridge gaps.
 - Host physical interface:
   `0xa904..0xab8a` is documented as the normalized byte-source contract for
   parser reproduction. Remaining work is physical bus/MMIO naming for host
@@ -10347,7 +10353,13 @@ shape, publication boundary, or render helper inputs.
    Checkpoint](downloaded-fonts.md#fixed-record-render-decision-checkpoint) and
    [Inline/Downloaded Compact Render
    Path](downloaded-fonts.md#inlinedownloaded-compact-render-path) in
-   [downloaded-fonts.md](downloaded-fonts.md).
+   [downloaded-fonts.md](downloaded-fonts.md). The owner-level stop map for
+   downloaded-glyph residuals is
+   [Downloaded-Glyph Residual Boundary
+   Crosswalk](downloaded-fonts.md#downloaded-glyph-residual-boundary-crosswalk);
+   use it when the stream reaches an installed glyph but ends at an invalid
+   compact helper target, a segmented-wide source boundary, or the
+   parser-payload count cap rather than reproduced rows.
 
    Command and resource route:
 
@@ -10419,9 +10431,12 @@ shape, publication boundary, or render helper inputs.
      execution after documented invalid compact-helper jumps, such as wrapped
      source-width span `0x0102` selecting `0x0066cc` through `0x1f034` /
      `0x1f08e`, where the target is control/status code rather than a
-     row-copy helper; and any future glyph row/span or continuation variant
-     only if it changes a documented field, object, bridge state, or
-     row-construction helper.
+     row-copy helper; short compact high-row fallback counts above row-target
+     table entry `128`; segmented-wide span-31 fallback source offset
+     `+0xb50`; the oversized segmented-wide payload-count stop before
+     `0x16498`; and any future glyph row/span or continuation variant only if
+     it changes a documented field, object, bridge state, or row-construction
+     helper.
 
    Return and drain boundaries:
 
@@ -10461,6 +10476,8 @@ shape, publication boundary, or render helper inputs.
      [semantic-state-model.md](semantic-state-model.md),
      `Downloaded-Glyph Render Decision Checkpoint` in
      [downloaded-fonts.md](downloaded-fonts.md#downloaded-glyph-render-decision-checkpoint),
+     [Downloaded-Glyph Residual Boundary
+     Crosswalk](downloaded-fonts.md#downloaded-glyph-residual-boundary-crosswalk),
      `Fixed-Record Render Decision Checkpoint` in
      [downloaded-fonts.md](downloaded-fonts.md#fixed-record-render-decision-checkpoint),
      `Descriptor Metric Semantic Checkpoint` in

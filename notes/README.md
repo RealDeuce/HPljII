@@ -71,11 +71,17 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   [errors-and-status.md](errors-and-status.md#owner-summary),
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
-  [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary) and its
+  [Downloaded Font To Visible Consumer
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map) plus
+  [Downloaded-Glyph Residual Boundary
+  Crosswalk](downloaded-fonts.md#downloaded-glyph-residual-boundary-crosswalk),
   [macro-data-chain.md](macro-data-chain.md#owner-summary) and its
   [Macro Replay To Visible Consumer
   Map](macro-data-chain.md#macro-replay-to-visible-consumer-map), and
-  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
+  [vertical-forms-control.md](vertical-forms-control.md#owner-summary) and its
+  [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map).
   Those notes, not generated tables, own parsed inputs, RAM fields,
   downstream consumers, page/output effects, cited evidence, and exact
   residual boundaries for the selected terminal handler.

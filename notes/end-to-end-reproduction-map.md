@@ -308,6 +308,25 @@ fields, continue in that owner note before claiming equivalent output.
   Functions Walkthrough` in this file and `Worked Path: Display Functions Direct Reader`
   in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-display-functions-direct-reader).
+- Local Control-Z terminals `SUB SUB` / `SUB X`: the first `0x1a` byte enters
+  normal parser mode `0`, reaches setup handler `0x11ea4`, and switches to
+  mode `2` instead of directly queueing text. In normal mode `2`, nested
+  `0x1a` dispatches to `0x120d2`; that handler reads selected slot
+  `0x782f06`, tests Control-Z context byte `0x782eeb + 0x10 * slot`, and
+  calls `0xd04a(0x1a)` only when the byte is `1`. Normal `0x1a X` dispatches
+  to `0x1219e`, which calls `0xd04a(0x100)`. Those calls rejoin the ordinary
+  printable source path, so any visible output follows
+  `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, publication
+  `0xff1e`, bridge `0x1ed84 -> 0x1edc6`, and compact render dispatch
+  `0x1ef6a -> 0x1efc2 -> 0x1effe`. The false branch of `0x120d2` creates no
+  page object. In alternate/data mode, the same mode-2 rows dispatch to
+  `0x1210c` and `0x121b2`, appending literal `0x1a` or normalized `0x7f`
+  through `0xe002`; those bytes are not visible until a later macro/data-chain
+  replay frame feeds them back through `0xa904`. Evidence:
+  [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map),
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`, and
+  `generated/analysis/ic30_ic13_pcl_command_map.md`.
 - Vertical forms control `ESC &l4W 00 00 00 02 !` / `! ESC &l0V !`: table-load bytes
   enter through `0xa904 -> 0xda9a -> 0x11774`; `ESC &l#W` dispatches to arming handler
   `0x11f6e`, which schedules delayed VFC reader `0x12cfe` through `0x121cc`. Restore

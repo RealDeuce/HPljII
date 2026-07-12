@@ -982,6 +982,43 @@ Current completion-audit state:
   ROM-local unresolved caller, missing resource data, exact ROM stop, hardware/MMIO
   boundary, optional external data, or manual/physical correlation.
 
+Completion audit queue:
+
+- Dispatch audit:
+  compare every supported row in
+  [Supported Stream Dispatch
+  Matrix](pcl-command-map.md#supported-stream-dispatch-matrix) with the owner
+  route named in
+  [ROM Semantic Index For Quick
+  Reference](pcl4-language.md#rom-semantic-index-for-quick-reference). A row
+  passes only when a checked-in owner note names the admitted bytes, parser
+  record or local direct-reader state, handler address, RAM fields written,
+  downstream consumer, output/no-output effect, evidence, and exact residual
+  boundary if any. A generated table row, fixture name, or handler listing
+  alone does not pass this audit.
+- Owner-route audit:
+  for each command-family owner, verify that the first semantic effect is
+  classified as page-image object, delayed state, append/replay input,
+  host/status output, publication/environment state, or explicit no-output.
+  If the first effect is delayed state, the same owner or a linked owner must
+  name the later consumer that can make pixels: printable source capture,
+  raster origin, rectangle clipping, span flush, VFC jump, page publication,
+  macro replay, or render helper input.
+- Page/render audit:
+  every page-producing owner must name the current-root field, object bytes or
+  no-allocation result, publication boundary, bridge root, first render helper,
+  and row-source or stop rule. Compact, segment-list, fixed-list, raster, and
+  rule/list objects pass only when their source object, bridge state, and
+  first pixel-writer family are all documented in the checked-in notes.
+- Residual-boundary audit:
+  any route that stops short of rows must link to
+  [unresolved-boundaries.md](unresolved-boundaries.md) with an exact address,
+  range, or field and a reason class. Valid stop classes are ROM-local invalid
+  target/source, ROM-local unresolved caller, missing resource data, exact ROM
+  stop, hardware/MMIO, optional external data, or manual/physical correlation.
+  Hardware or physical correlation is not a blocker for ROM-local parser,
+  page-object, publication, bridge, or renderer documentation.
+
 ## Shared Page-Object Contract
 
 The current checked-in model treats page content as queued ROM objects, not as a

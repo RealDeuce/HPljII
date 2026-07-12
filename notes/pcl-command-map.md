@@ -1490,13 +1490,16 @@ Outcome owners:
   row-store owner.
 
   The pending-span path has a concrete page-object form, not just a state
-  side effect. `ESC &d3D ! ESC &d@` sets underline/text-attribute selector
-  byte `0x783185 = 1` through `0x12622`; the intervening printable byte
-  routes through `0xd04a -> 0xd550 -> 0xd824`, and flagged span consumer
-  `0xd8fc` updates pending span state `0x783184..0x78318a` from selected
-  context words `+0x16`, `+0x18`, and `+0x1a`. Final `ESC &d@` reaches
-  `0x12622`, calls `0x12714`, and emits this portrait segment-list object
-  under page-root `+0x1c`:
+  side effect. `ESC &d#D` reaches `0x12622`; accepted non-`3D` values write
+  underline/text-attribute selector byte `0x783185 = 0`, while absolute `3D`
+  writes selector `1`. Both selector outcomes arm the same pending span state
+  through `0x126e2`. In the documented alternate-offset stream
+  `ESC &d3D ! ESC &d@`, the intervening printable byte routes through
+  `0xd04a -> 0xd550 -> 0xd824`, and flagged span consumer `0xd8fc` updates
+  pending span state `0x783184..0x78318a` from selected context words
+  `+0x16`, `+0x18`, and `+0x1a`. Final `ESC &d@` reaches `0x12622`, calls
+  `0x12714`, and emits this portrait segment-list object under page-root
+  `+0x1c`:
 
 ```text
 00 00 00 00 40 00 00 01 3a 00 03 00 00 12

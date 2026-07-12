@@ -80,6 +80,9 @@ confirming it.
   findings.
 - `notes/pcl-command-map.md`: Firmware-derived high-value PCL
   command-to-handler map.
+- `notes/parameter-domain-audit.md`: Checked audit for places where a
+  fixture stream could accidentally stand in for a full parameterized
+  command family.
 - `notes/page-raster-imaging.md`: Page geometry, raster state,
   page-object queues, render-record bridge, bitmap dispatch,
   text/raster/rule rendering paths.

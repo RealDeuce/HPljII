@@ -534,6 +534,72 @@ State classification for the matrix:
   object byte, retry field, bridge field, helper dispatch, continuation
   mutation, or row construction before this matrix changes.
 
+### Rectangle State To Visible Consumer Map
+
+This map composes the delayed `ESC *c` state writers with the first consumer
+that can make them visible. It is the short route to use when a byte stream
+changes rectangle width, height, fill id, clipping, allocation, bridge, or rule
+render input.
+
+- Size and fill-id state:
+  dot handlers `0x10e68` / `0x10e22`, decipoint handlers `0x10a40` /
+  `0x10ae0`, and area-fill handler `0x10dce` write canonical command fields
+  `0x78316a`, `0x783166`, and `0x78316e`. The first visible consumer is
+  final-fill handler `0x10898`. Until `0x10898` accepts a `#P` selector and
+  nonzero dimensions, no page root is allocated, no source record is durable,
+  and publication/render state is unchanged. Evidence: command-boundary
+  ranges `0x10e68..0x10eac`, `0x10e22..0x10e66`,
+  `0x10a40..0x10ade`, `0x10ae0..0x10b7e`, and
+  `0x10dce..0x10e20`.
+- Fill selector and zero-output gates:
+  `0x10898..0x109fc` reads parser record `+2`, area-fill id `0x78316e`,
+  orientation byte `0x782da3`, width `0x78316a`, and height `0x783166`.
+  Missing or zero `#P` maps to solid selector `7`; `2P` maps percent fill
+  ids to selectors `0..7`; `3P` maps pattern ids to selectors `8..13` with
+  landscape remaps for ids `1..4`. Invalid selector/id combinations and zero
+  dimensions exit before `0x10b80`, so the output effect is no page object and
+  no render input. Selector scratch in `0x782a88+8` is not page-image state
+  until the clip/queue path accepts a rectangle.
+- Clipped source record:
+  accepted `#P` calls `0x10b80`, which consumes cursor
+  `0x782c8a/0x782c8e`, page extents `0x782db8/0x782db6`, orientation
+  `0x782da3`, and stored dimensions. Portrait path
+  `0x10c42..0x10d0a` writes source x/y/width/height to
+  `0x782a88+0/+2/+4/+6`; landscape path `0x10c74..0x10dcc` writes the swapped
+  source record. Off-page and empty-after-clip paths return before
+  `0x13386`, so the first durable page-image state exists only after
+  `0x10084 -> 0x13386` accepts the clipped record.
+- Rule-list object and retry:
+  `0x13386 -> 0x134d6 -> 0x133aa` consumes source record `0x782a88`,
+  horizontal phase `0x782dc0`, and stream allocator state
+  `0x782a70/0x782a72/0x782a76`. Allocation success writes a 14-byte rule node
+  under page-root `+0x24`: bucket byte `+0x04`, selector byte `+0x05`,
+  packed key `+0x06`, width `+0x08`, height `+0x0a`, and continuation
+  `+0x0c`. Allocation failure returns zero without changing root `+0x24`;
+  caller `0x10d22..0x10d3e` then sets retry bit `root+0x15.0`, publishes
+  through `0xff1e`, ensures a fresh root through `0x10084`, and retries the
+  same source record.
+- Bridge and rule rendering:
+  publication preserves page-root rule list `+0x24`. Bridge `0x1edc6` copies
+  that list to render-record `+0x1c`, ORs selector byte `+0x05` with `0x10`,
+  and copies height `+0x0a` into continuation word `+0x0c`. Render entry
+  `0x1ef6a` calls rule walker `0x1f446`; selector low nibble `7` reaches
+  solid helper `0x1f596`, and selector nibbles `0..6` or `8..13` reach pattern
+  helper `0x1f4e0`. Pixel rows are defined by the bridged key, width,
+  continuation, destination helper `0x1f626`, and, for patterned rules, mask
+  helper `0x1f6ee` plus pattern table `0x2fefe`.
+- State grouping:
+  canonical command state is `0x78316a`, `0x783166`, and `0x78316e`;
+  canonical page/image state is clipped source `0x782a88`, root `+0x24`, and
+  the rule node fields; derived/cache state is `0x782a7c..0x782a7e`,
+  bridged selector bit `0x10`, continuation `+0x0c`, masks, and pattern-base
+  selection; parser scratch is the chained six-byte `ESC *c` records and
+  pre-queue selector scratch; firmware bookkeeping is allocator state, retry
+  bit `root+0x15.0`, publication flag, and render scheduler progress.
+  Unresolved work begins only when a stream changes one of those fields or
+  reaches a render-helper input not covered by the rule-list, solid, or
+  pattern routes above.
+
 ## Fill Selector At 0x10898
 
 `0x10898` handles `ESC *c#P`. It rewinds the parsed record and maps the fill

@@ -3065,7 +3065,8 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0x10dce` are canonical graphics-state writers. Their output effect remains
   latent until final fill `0x10898` clips through `0x10b80`, queues a
   rule-list node through `0x13386 -> 0x133aa`, and later render dispatch
-  reaches `0x1f446`.
+  reaches `0x1f446`; the field-to-consumer detail is in [Rectangle State To
+  Visible Consumer Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map).
 - Page publication commands such as FF, reset, page-size, orientation,
   paper-source, and copies:
   command-family handlers flush pending state, call publication helper `0xff1e`,

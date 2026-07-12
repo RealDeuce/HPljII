@@ -10537,20 +10537,22 @@ Priority ROM-local documentation targets:
    start only when they change a clipped source field, allocation/rollover outcome,
    retry publication field, rule object byte, bridge field, render dispatch,
    continuation mutation, or row construction beyond the [rectangle outcome
-   matrix](rectangle-graphics.md#rectangle-outcome-matrix), [rule-list outcome
-   matrix](page-record-storage.md#rule-list-outcome-matrix), and [remaining-edge owner
-   note](rectangle-graphics.md#remaining-edges). Publication examples for reset, FF,
-   page-size, orientation, paper-source, and copies are now owned by [Page Environment
-   Outcome Matrix](publication-commands.md#page-environment-outcome-matrix); new
-   publication work should start only from streams that change pool-header fields,
-   source-record selection, bridge values, or a render helper input. The allocator
-   rollover path across `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now
-   owned by [page-record-storage.md](page-record-storage.md#output-effect), including
-   concrete stream chunks, object addresses, final cursors, and downstream render
-   consumers. New allocator work should start only from byte streams that change the
-   root topology, object shape, no-room/retry state, or bridge fields. The owner update
-   must name the handler, fields written, later consumers, page-object bytes or
-   no-output outcome, and the first render boundary reached.
+   matrix](rectangle-graphics.md#rectangle-outcome-matrix), [Rectangle State To Visible
+   Consumer Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map),
+   [rule-list outcome matrix](page-record-storage.md#rule-list-outcome-matrix), and
+   [remaining-edge owner note](rectangle-graphics.md#remaining-edges). Publication
+   examples for reset, FF, page-size, orientation, paper-source, and copies are now
+   owned by [Page Environment Outcome
+   Matrix](publication-commands.md#page-environment-outcome-matrix); new publication
+   work should start only from streams that change pool-header fields, source-record
+   selection, bridge values, or a render helper input. The allocator rollover path
+   across `0x10084`, `0x1381c`, `0x1387c`, `0x133aa`, and `0x136d2` is now owned by
+   [page-record-storage.md](page-record-storage.md#output-effect), including concrete
+   stream chunks, object addresses, final cursors, and downstream render consumers. New
+   allocator work should start only from byte streams that change the root topology,
+   object shape, no-room/retry state, or bridge fields. The owner update must name the
+   handler, fields written, later consumers, page-object bytes or no-output outcome, and
+   the first render boundary reached.
 2. Parser-to-family route work should start only from an exact missing row/stream, not
    from the parser tables in the abstract. The current checked-in parser audit assigns
    the supported rows in [Supported Stream Dispatch

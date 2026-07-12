@@ -396,7 +396,9 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [raster-graphics.md](raster-graphics.md#owner-summary) - documented `ESC *t`,
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
 - [rectangle-graphics.md](rectangle-graphics.md#owner-summary) - documented
-  `ESC *c` rectangle/rule path to solid and patterned rule rendering.
+  `ESC *c` rectangle/rule path to solid and patterned rule rendering, with a
+  [Rectangle State To Visible Consumer
+  Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map).
 - [vertical-forms-control.md](vertical-forms-control.md#owner-summary) -
   documented `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump
   output effects.

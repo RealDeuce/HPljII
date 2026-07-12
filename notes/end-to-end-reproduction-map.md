@@ -941,7 +941,8 @@ Current completion-audit state:
   `0x78297a`, compact/raster bucket root `+0x1c`, rule-list root `+0x24`, fixed-list
   root `+0x28`, context slots `+0x2c..+0x68`, stream allocation through `0x1381c` /
   `0x1387c`, and publication `0xff1e`. Shared object shape and render bridge context are
-  summarized in `Shared Page-Object Contract` below, with the
+  summarized in `Shared Page-Object Contract` below and the [Page Object To Visible
+  Consumer Map](page-record-storage.md#page-object-to-visible-consumer-map), with the
   producer/root/object/bridge route grouped by class in `Page Object Shape Route Index`
   in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#page-object-shape-route-index).

@@ -438,9 +438,10 @@ parser route, field value, object layout, bridge copy, or helper input.
   raster graphics imaging path.
 - [page-record-storage.md](page-record-storage.md#owner-summary) - documented
   page-root, stream allocator, object-list, publication, and render-record
-  bridge contracts. Start with `Page Image Shape And Band Contract` when answering
-  whether a stream produces page roots, bucket/list objects, bands, fallback rows, or a
-  parser-time bitmap.
+  bridge contracts, including the [Page Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map). Start with
+  `Page Image Shape And Band Contract` when answering whether a stream produces page
+  roots, bucket/list objects, bands, fallback rows, or a parser-time bitmap.
 - [active-render-scheduler.md](active-render-scheduler.md#owner-summary) -
   documented published-record selection, render-work alternation, wait-object
   state, and band-render scheduler contracts.

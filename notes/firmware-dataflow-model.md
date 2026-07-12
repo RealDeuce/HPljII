@@ -2684,8 +2684,10 @@ The storage-owner version of this contract is
 [Page Image Shape And Band
 Contract](page-record-storage.md#page-image-shape-and-band-contract). It is
 the canonical short answer for current root shape, source roots, render roots,
-band caches, fallback rows, and renderer order; this section expands that
-model into the full host-byte-to-render spine.
+band caches, fallback rows, and renderer order. The storage-to-render consumer
+route is summarized in [Page Object To Visible Consumer
+Map](page-record-storage.md#page-object-to-visible-consumer-map); this section
+expands that model into the full host-byte-to-render spine.
 
 `0xff1e` publishes a valid current root into the page/control pool, writes the
 published state, sets `0x782996`, and clears `0x78297a`. Publication separates

@@ -273,6 +273,101 @@ Evidence:
   [Render Entry Outcome
   Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
 
+### Page Object To Visible Consumer Map
+
+This map composes the shared page-record state block from typed object
+producers to the render consumers that first write ROM-local rows. It preserves
+the detailed allocator and object ledgers below, but gives the canonical route
+for following queued page objects into visible output.
+
+- Root and stream state:
+  visible producers first ensure current root `0x78297a` through `0x10084`;
+  initializer `0x10110` clears bucket/list roots and installs the selected
+  context slot. Variable-size payloads allocate storage through `0x1381c`,
+  which mutates stream cursor fields `0x782a70`, `0x782a72`, and `0x782a76`.
+  These helpers create the page-image object graph; they do not render rows.
+- Bucket-root consumers:
+  root `+0x1c` is the source bucket root for compact text/downloaded glyphs
+  from `0xd04a -> 0x1393a -> 0x12f2e -> 0x1387c`, portrait span objects from
+  `0x12714 -> 0x13520/0x1354a/0x135f0 -> 0x1387c`, and encoded raster
+  objects from `0x105d0 -> 0x13070/0x13250 -> 0x138de`. Publication and bridge
+  copy this root to render `+0x18`; `0x1ef6a -> 0x1efc2` then dispatches
+  object byte `+4` to compact `0x1effe`, segment-list `0x1f812`, or
+  encoded-raster `0x1f88e`.
+- Rule-list consumers:
+  rectangle/rule producers `0x10898 -> 0x13386 -> 0x133aa` write ordered nodes
+  under root `+0x24`. Bridge `0x1edc6` copies that root to render `+0x1c`,
+  normalizes selector byte `+5` and continuation word `+0x0c`, and
+  `0x1ef6a -> 0x1f446` consumes the render rule list through solid
+  `0x1f596` or patterned `0x1f4e0`.
+- Fixed-list consumers:
+  landscape/fixed-width span flush `0x12714 -> 0x136d2` writes fixed-list
+  nodes under root `+0x28`. Bridge `0x1edc6` maps that root to render
+  `+0x20`, normalizes continuation fields `+0x0a/+0x0c/+0x0d`, and
+  `0x1ef6a -> 0x1f756 -> 0x1f7b0` writes fixed-list pattern rows.
+- Context-slot consumers:
+  root slots `+0x2c..+0x68` are written by `0x10110`, `0xc428 -> 0xc4fc`,
+  and printable placement `0xd3b2` / `0xd824` via selected slot `0x78297e`.
+  Bridge `0x1edc6` copies them to render slots `+0x24..+0x60`;
+  `0x1effe..0x1f022` loads the selected slot into `0x783a2c`, and
+  `0x1f354` resolves compact glyph rows from the copied context longword and
+  compact mapped glyph byte.
+- Publication and scheduler bridge:
+  `0xff1e` publishes active root state, links the source through pool head
+  `0x780ea6`, sets publication flag `0x782996`, and clears `0x78297a`.
+  Scheduler promotion selects active source `0x780eae`; `0x1ed84 -> 0x1edc6`
+  copies source roots and context slots to the active render work record; only
+  the capacity-approved active-loop branch `0x1ec8e..0x1ecac` calls
+  `0x1ef6a`.
+- Render order and output effect:
+  `0x1ef6a` renders bucket chain `+0x18`, then rule list `+0x1c`, then fixed
+  list `+0x20`. Page-record storage therefore defines typed object inputs and
+  render order, not a parser-time bitmap. ROM-local rows are written only
+  after scheduler-approved render entry derives band caches through `0x1ef86`.
+
+State groups for this map:
+
+- Canonical page/image state:
+  current root `0x78297a`, root state byte `+0x04`, source roots
+  `+0x1c/+0x24/+0x28`, context slots `+0x2c..+0x68`, published pool head
+  `0x780ea6`, active source `0x780eae`, render roots
+  `+0x18/+0x1c/+0x20`, and render context slots `+0x24..+0x60`.
+- Canonical object state:
+  bucket object link `+0`, class byte `+4`, selector/mode byte `+5`,
+  count/capacity `+6`, coordinate/key `+8`, payload bytes, and rule/fixed
+  selector, dimension, key, and continuation fields.
+- Derived/cache state:
+  stream allocator fields `0x782a70/0x782a72/0x782a76`, producer-key fields
+  `0x782a7a..0x782a7e`, active render pointer `0x783a18`, band caches
+  `0x783a20/0x783a22/0x783a28`, stride `0x783a1c`, and active compact context
+  cache `0x783a2c`.
+- Parser scratch:
+  none in this state block. Parser records and delayed payload cursors have
+  already become command-family state, page objects, or no-output outcomes
+  before these consumers run.
+- Firmware bookkeeping:
+  pending-root latches `0x782c72/0x782c73`, transient root byte `0x782990`,
+  publication flag `0x782996`, allocator and pool headers, scheduler cursors,
+  work-record alternation, and bridge-normalized continuation fields.
+- Hardware/external and unknown:
+  physical engine consumption begins after ROM row-buffer writes. No
+  ROM-local middle edge remains for the documented source-root to render-root
+  mapping, object-class dispatch order, or context-slot copy. New work belongs
+  here only if a stream changes a named producer, source-root field, bridge
+  destination, render-root consumer, object-class selector, or row-helper
+  input.
+
+Evidence:
+`generated/disasm/ic30_ic13_page_root_allocate_010084.lst`,
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+`generated/disasm/ic30_ic13_display_list_helpers_013386.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+[active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
+and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
+
 ## Page Assembly Decision Checkpoint
 
 This checkpoint composes the page/image assembly decision made after parser

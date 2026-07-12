@@ -165,8 +165,8 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
 - Exact remaining stop points are indexed in
   [unresolved-boundaries.md](unresolved-boundaries.md), grouped as ROM-local
   invalid-target/source, ROM-local unresolved caller, missing external
-  resource data, hardware/MMIO, optional external data, or manual/physical
-  correlation.
+  resource data, exact ROM stop, hardware/MMIO, optional external data, or
+  manual/physical correlation.
 
 ## Stream Trace Workflow
 

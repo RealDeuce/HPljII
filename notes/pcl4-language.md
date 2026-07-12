@@ -226,7 +226,9 @@ owner, and whether visible pixels can result.
   [Transparent Payload To Visible Consumer
   Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map)
   and [Display Byte To Visible Consumer
-  Map](display-functions.md#display-byte-to-visible-consumer-map). These are
+  Map](display-functions.md#display-byte-to-visible-consumer-map), plus
+  [Append-State Reentry
+  Boundary](display-functions.md#append-state-reentry-boundary). These are
   direct byte readers:
   normal transparent payload restores through
   `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`, while normal `ESC Y` reaches
@@ -238,8 +240,9 @@ owner, and whether visible pixels can result.
   `0x1efc2 -> 0x1effe`. In alternate/data mode, transparent restore diverts
   through `0x12358 -> 0xdace -> 0xe002`, and alternate display reader
   `0x12120` appends literal `ESC Y` plus normalized loop bytes through
-  `0xe002`; those stored bytes affect pixels only if later macro/data replay
-  returns them through `0xa904`.
+  `0xe002`; those stored bytes affect pixels only when macro execute/call or
+  overlay publication builds a data-chain frame and later replay returns them
+  through `0xa904 -> 0x11774`.
 - Raster graphics:
   `ESC *t#R`, `ESC *r#A/B`, delayed `ESC *b#W` through `0x105d0`, and object
   producer `0x13070`; owners [Raster State To Visible Consumer
@@ -1353,8 +1356,11 @@ Delayed state-to-output resolution:
   `ESC &p#X` / `x` record does not call `0x12452`: `0x12218` diverts to
   `0x12358`, which drains positive payload counts through `0xdace` and
   appends normalized bytes through `0xe002`, leaving no immediate page
-  object until later replay. Normal display-functions reader `0x12536` is
-  also page-affecting: it fetches loop bytes through `0xa904` until local
+  object until later replay; see
+  [Append-State Reentry
+  Boundary](display-functions.md#append-state-reentry-boundary). Normal
+  display-functions reader `0x12536` is also page-affecting: it fetches loop
+  bytes through `0xa904` until local
   `ESC Z` termination, routes values through `0xd04a` or `0xd0f0`, and
   consumes the terminating pair as routed values before exit. Alternate/data
   reader `0x12120` appends literal `ESC Y` and loop values through `0xe002`

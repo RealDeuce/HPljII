@@ -413,7 +413,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   `ESC Y ... ESC Z` display-functions loop, alternate append path, Control-Z
   siblings, and `ESC z` status edge, with a
   [Display Byte To Visible Consumer
-  Map](display-functions.md#display-byte-to-visible-consumer-map).
+  Map](display-functions.md#display-byte-to-visible-consumer-map) and
+  [Append-State Reentry
+  Boundary](display-functions.md#append-state-reentry-boundary).
 - [direct-control-codes.md](direct-control-codes.md#owner-summary) - documented
   CR/LF/FF/HT/BS, line-termination mode, cursor stack, and cursor/margin
   control paths to page-record output.

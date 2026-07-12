@@ -628,8 +628,9 @@ fields, continue in that owner note before claiming equivalent output.
   path, prefix `00 00 00 00 00 00 00 01 20 00 01`, under page-root bucket array `+0x1c`.
   Later publication/render uses `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 ->
   0x1effe -> 0x1f354`; macro replay has no separate pixel renderer. Evidence:
-  [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix) and `Worked
-  Path: Macro Execute Replay` in
+  [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), [Macro Replay
+  To Visible Consumer Map](macro-data-chain.md#macro-replay-to-visible-consumer-map),
+  and `Worked Path: Macro Execute Replay` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-macro-execute-replay).
 - Overlay publication replay
   `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X` plus a later page boundary: live setup

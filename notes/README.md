@@ -70,7 +70,9 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   [raster-graphics.md](raster-graphics.md#owner-summary),
   [rectangle-graphics.md](rectangle-graphics.md#owner-summary),
   [downloaded-fonts.md](downloaded-fonts.md#owner-summary),
-  [macro-data-chain.md](macro-data-chain.md#owner-summary), and
+  [macro-data-chain.md](macro-data-chain.md#owner-summary) and its
+  [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map), and
   [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
   Those notes, not generated tables, own parsed inputs, RAM fields,
   downstream consumers, page/output effects, cited evidence, and exact

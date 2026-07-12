@@ -1744,6 +1744,17 @@ segment-list or fixed-list page objects consumed by render entry.
   calls span consumer `0xd8fc` when `0x783184` is set. With selector
   `0x783185 = 1`, `0xd8fc` uses selected-context offset word `+0x1a` while
   updating pending span bounds `0x783186..0x78318a`.
+- Span-consumer branch outcomes:
+  `0xd4ac..0xd548` consumes unflagged selected-context bytes
+  `+0x2b/+0x2c/+0x2d`; `0xd8fc..0xd992` consumes flagged selected-context
+  words `+0x16/+0x18/+0x1a`. Both first require pending-span byte
+  `0x783184` to be set. Both can exit before changing the page image when the
+  current y is below the selected-context lower bound or when the derived
+  high-y exceeds page extent `0x782db6`. Both update high-y watermark
+  `0x78318a` and high-x watermark `0x783188` when the span remains open. When
+  current x falls below low-x watermark `0x783186`, both flush the old pending
+  span through `0x12714`, then re-arm through `0x126e2`; the current printable
+  compact glyph has already queued through `0x12f2e`.
 - Terminal flush:
   Accepted final bytes whose bit 2 is clear take `0x1268e..0x126a0`; after
   `0x12218`, `0x12622` calls `0x12714`. The covered `ESC &d@` stream uses
@@ -1818,6 +1829,13 @@ Evidence:
   `Worked Path: Text Span Flush And Fixed-Width Spans` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md) and
   [page-record-storage.md](page-record-storage.md#segment-list-outcome-matrix).
+- Span-consumer owner:
+  [Span Metric Consumers](font-context-metrics.md#span-metric-consumers)
+  documents the `0xd4ac` / `0xd8fc` branch family, selected-context metric
+  fields, low-watermark flush behavior, descriptor metric variants, and the
+  supporting fixtures `flagged printable d8fc low-watermark flush renders
+  span`, `unflagged printable d4ac low-watermark flush renders span`, and
+  `d4ac and d8fc span consumer branch family controls flush output`.
 
 Vertical-layout helper fixtures pin the shared VMI/text-boundary state that
 feeds both direct controls and later printable placement. `0xc992 ESC &l#D

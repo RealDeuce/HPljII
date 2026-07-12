@@ -406,6 +406,87 @@ To Visible Consumer
 Map](page-record-storage.md#page-object-to-visible-consumer-map), and [Render
 Entry Outcome Matrix](page-raster-imaging.md#render-entry-outcome-matrix).
 
+### Downloaded-Glyph Residual Boundary Crosswalk
+
+This crosswalk is the owner-level route for downloaded-glyph byte streams that
+do not end in ordinary reproduced rows. It preserves the detailed ledgers in
+the render-decision checkpoints below, but states the semantic handoff a reader
+needs when following a host stream through parser, install, page object, and
+renderer state.
+
+- Wrapped width low-byte stream:
+  host-fetched `ESC )s#W` payloads can install full width words such as
+  `0x0102` through `0x16c14 -> 0x16498`. The later printable byte reaches
+  `0xd04a -> 0x1393a -> 0x12f2e`; `0x12f2e` consumes only the low source width
+  byte, queues selector `0x0003` for low bytes `0x00..0x10`, and publishes
+  bucket `0` through `0xff1e`. The first render consumer is
+  `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe -> 0x1f034`. The exact stop is
+  the unchecked mode-0 table lookup at `0x1f08e`: span `0x0102` indexes
+  `0x1f496`, reads target `0x0066cc`, and enters code that is not a row-copy
+  helper. Canonical state is the installed glyph record, full width word,
+  bitmap bytes, compact bucket object, published bucket, and render bucket;
+  derived/cache state is the low source byte, selector `0x0003`, table index
+  `D5 << 2`, and invalid target. Evidence:
+  `Wrapped Width Low-Byte Invalid Helper Checkpoint`, fixture
+  `downloaded glyph width-byte boundary truncates page-record span`,
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`, and
+  `generated/disasm/ic30_ic13_invalid_compact_mode0_target_0066c0.lst`.
+- Short compact high-row stream:
+  installed row words `0x0101..0x0103` survive `0x16498`, but the printable
+  source exposes low row bytes `0x01..0x03` to `0x12f2e`, so the page object is
+  still short selector `0x0003` in bucket `1`. Publication and bridge are the
+  ordinary `0xff1e -> 0x1ed84 -> 0x1edc6` path; render dispatch reaches
+  `0x1ef6a -> 0x1effe -> 0x1fe76`. Current-band rows are derived up to the
+  split, but fallback counts `199..201` exceed the valid `0x1fe8a` row-target
+  table. Row `0x0102` uses fallback count `200` and reads target
+  `0x329ad3c0`. Canonical state is the installed row word, compact selector,
+  bucket `1`, published page object, and render bucket; derived/cache state is
+  the current/fallback split from `0x1f414`, fallback count, table base
+  `0x1fe8a`, and computed target. Evidence:
+  `Downloaded-Glyph Render Decision Checkpoint`, fixture
+  `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`, fixture `downloaded glyph high-row truncation matrix
+  preserves installed rows`, and
+  `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`.
+- Segmented-wide span-31 fallback stream:
+  below-cap high-row payloads install full row/span words through
+  `0x16c14 -> 0x16498`; the printable source exposes a low row byte above
+  `0x80`, so `0x12f2e` queues selector `0x3003` objects in buckets `8` and
+  `0`. Bridge and render dispatch consume bucket `8` as selected segment `1`
+  through `0x1ef6a -> 0x1effe -> 0x1f264`. Neighboring spans `17`, `18`, and
+  `32` derive current and fallback rows from the installed bitmap; span `31`
+  follows the same route but stops when the fallback pass restores A2 from
+  `0x783a48` and reaches modeled source offset `+0xb50`. Canonical state is
+  the installed glyph, selector `0x3003`, bucket `8` / segment `1`, and render
+  bucket; derived/cache state is the `0x80` row skip, segment-adjusted A2/A3,
+  `0x1f414` split, full-chunk/remainder metadata, `0x783a42`, `0x783a48`, and
+  fallback source offset. Evidence:
+  `Segmented-Wide Fallback Source Checkpoint`, the span-31 fallback fixtures
+  named there, and
+  `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
+- Segmented-wide payload-count cap stream:
+  oversized row/span products stop before any installed glyph can become page
+  state. Tokenizer `0xdb74` clamps the `ESC )s#W` record word to `0x7fff`;
+  `0x121cc` snapshots that six-byte record; `0x12218` restores it; and
+  `0x15d0a` / `0x16c14` copy the absolute count into payload budget
+  `0x783140`. Since segmented-wide output requires span at least `17`,
+  row `0x0787` at span `17` is the last below-cap sibling, while
+  `0x0788 * 17 = 0x7ff8` stops inside the payload budget before `0x16498`
+  can complete a glyph record. Canonical page/render state is absent for the
+  stopped stream; parser scratch is the clamped command record, delayed
+  snapshot, restored cursor, payload budget, and host stop offset. Evidence:
+  `Segmented-Wide Payload Count Cap Checkpoint`,
+  `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`,
+  `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`, and
+  `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`.
+
+Output effect:
+valid siblings render through the same compact pipeline named in
+`Downloaded Font To Visible Consumer Map`; invalid helper/source siblings
+preserve the ROM-derived upstream state and then stop at the exact target,
+source, or parser-budget boundary above. These stops are not parser dispatch,
+publication, bridge, or scheduler gaps.
+
 ## Downloaded-Font Outcome Matrix
 
 This matrix is the command-family contract for downloaded-font streams. It

@@ -23,6 +23,7 @@ below.
 - `notes/pcl-parser-core.md`
 - `notes/semantic-state-model.md`
 - `notes/transparent-print-data.md`
+- `notes/macro-data-chain.md`
 
 Primary fixtures:
 
@@ -235,6 +236,53 @@ Evidence and unresolved boundary:
   Control-Z terminals, or `ESC z` status route. Remaining work is external
   status-consumer naming or new byte streams that expose different filter,
   append, page-object, or status fields.
+
+### Append-State Reentry Boundary
+
+This checkpoint connects the display-functions append-only paths to their
+later visible consumer. It covers the state block with multiple writers
+`0x12120`, `0x1210c`, and `0x121b2`, and the later consumers `0xe418`,
+`0xe4f4`, `0xa904`, and the ordinary parser owners reached during replay.
+
+- Writers:
+  alternate/data `ESC Y` handler `0x12120` writes literal `ESC Y`, each
+  normalized loop value, and the terminating `ESC Z` pair through append sink
+  `0xe002`; alternate/data local Control-Z handler `0x1210c` appends literal
+  `0x1a`; alternate/data `0x121b2` calls `0xd99a` for local `1a 58`
+  normalization and appends `0x7f`.
+- Canonical stored-input state:
+  `0xe002` writes linked macro/data chunks rooted by the selected macro record;
+  the display owner does not allocate page root `0x78297a`, bucket objects, or
+  render roots on these append-only branches.
+- Later consumers:
+  macro execute/call selectors build data-chain frames through `0xe418`, and
+  overlay publication can build a non-replay frame through `0xe4f4`. Byte
+  source `0xa904` gives active frame `0x782d76` priority over live host bytes,
+  so the stored display bytes re-enter parser loop `0x11774`.
+- Output effect:
+  appended display bytes have no row-store endpoint until replay. After replay
+  they are ordinary parser input: printable values can reach `0xd04a`, nested
+  display readers can reach `0x12536` or `0x12120`, and command bytes use the
+  normal command-family owner. The append branch itself does not create a
+  display-specific page object or renderer.
+- State grouping:
+  canonical append state is `0xe002` chunk storage and macro record head/count
+  fields; parser scratch is the local `ESC Y` reader state before append;
+  firmware bookkeeping is `0xd99a` and macro frame construction; canonical
+  page/image state begins only after replay reaches an ordinary page-object
+  producer.
+- Evidence:
+  display writers are in
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst` and
+  `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`. Replay
+  consumers are documented in [Macro Replay Outcome
+  Matrix](macro-data-chain.md#macro-replay-outcome-matrix) and [Macro Replay
+  To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map), with data
+  chain byte-source details in [host-byte-fetch.md](host-byte-fetch.md). The
+  fixture `0x12120 ESC Y alternate append stores normalized display bytes`
+  pins the stored byte sequence; macro replay fixtures pin the later
+  `0xa904 -> 0x11774` reentry.
 
 ### Display Byte To Visible Consumer Map
 

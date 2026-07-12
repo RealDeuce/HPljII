@@ -438,9 +438,11 @@ checkpoint above but makes the payload splice followable as a byte stream.
   `0x12358(0x1228a)`. Because saved handler `0x782a1c` is transparent reader
   `0x12452`, not wrapper `0x1228a`, positive counts are consumed through
   `0xdace` and appended through `0xe002`. The first visible consumer is a
-  later macro/data-chain replay frame that returns those stored bytes through
-  `0xa904`; this handler instance itself does not call `0x12452`, `0xd04a`,
-  `0xd0f0`, `0x12f2e`, `0xff1e`, or a renderer.
+  later macro/data-chain replay frame from `0xe418` or `0xe4f4` that returns
+  those stored bytes through `0xa904 -> 0x11774`; this handler instance itself
+  does not call `0x12452`, `0xd04a`, `0xd0f0`, `0x12f2e`, `0xff1e`, or a
+  renderer. The replay consumer is documented in [Macro Replay To Visible
+  Consumer Map](macro-data-chain.md#macro-replay-to-visible-consumer-map).
 - Payload byte normalization:
   `0x12452..0x12534` reads count word `+2`, fetches bytes through `0xa904`,
   and treats local pair `0x1a 0x58` as routed value `0x7f`. Pair `0x1a xx`
@@ -1100,7 +1102,8 @@ For `ESC &p#X`:
   bytes through `0xdace` and append each normalized byte through `0xe002`;
   nonpositive counts return without consuming payload. This branch creates no
   page root, page object, bridge record, render dispatch, or pixels unless the
-  appended bytes are replayed later.
+  appended bytes are replayed later through the macro/data-chain frame path
+  documented in [macro-data-chain.md](macro-data-chain.md).
 - On the normal `0x12452` branch, let printable transparent bytes update
   cursor, page-record text objects, and rendered rows exactly like normal
   printable host bytes.

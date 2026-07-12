@@ -69,7 +69,8 @@ Primary routes:
 - Output route:
   SI/SO handlers `0xc68a` / `0xc6b8` choose primary or secondary selected
   slot `0x782f06`. Later printable bytes read the selected context and map,
-  queue compact text, and reach rendering through the font-context owner.
+  queue compact text, and reach rendering through the font-context owner and
+  the compact row-store helpers named by the page/imaging owner.
 
 Field groups:
 
@@ -107,7 +108,8 @@ Output effect:
 - It does not alter compact text objects already queued on the page.
 - Later printable bytes are the visible consumers: they read the selected map
   and context through the font-context bridge, then publication/render code
-  turns the resulting compact text objects into pixels.
+  turns the resulting compact text objects into pixels through compact
+  dispatch, glyph resolution, and row-copy helpers.
 - Alternate/data ordinary font-designation rows preserve parser structure but
   do not change requested symbol words, selected contexts, maps, page-root
   context slots, page objects, publication records, or render inputs.
@@ -149,10 +151,13 @@ map.
   under root `+0x1c`.
 - Pixel/output consumer:
   the queued compact object is published and rendered through the shared route
-  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`, then the
-  compact helper selected by the object reads the context/map-derived glyph
-  source. Already queued compact objects are not rewritten by a later
-  symbol-set command.
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`.
+  Built-in/short compact output then reaches `0x1f034 -> 0x1f354` and the
+  compact row-copy table rooted at `0x1fa5c..0x207ac`; other compact selector
+  classes follow the row-store routes named in
+  [page-raster-imaging.md](page-raster-imaging.md#row-store-primitive-map).
+  Already queued compact objects are not rewritten by a later symbol-set
+  command.
 - Alternate/data boundary:
   alternate/data wrappers `0x11fe4` / `0x11fd2` preserve parser grouping, but
   ordinary final rows `@..^` are blank terminal rows. They do not call
@@ -197,6 +202,7 @@ Evidence:
 `generated/disasm/ic30_ic13_font_id_select_017708.lst`,
 `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
 [Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix),
+[Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map),
 and the visible-output streams named in
 [Evidence And Boundaries](#evidence-and-boundaries).
 
@@ -532,8 +538,10 @@ The printable path then consumes this derived map:
 - `0xd04a` handles a later printable byte.
 - `0x1393a` maps the original host byte through the selected map.
 - `0x12f2e` queues compact text objects.
-- `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe` carries those objects to compact
-  glyph rendering.
+- `0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1effe -> 0x1f034 -> 0x1f354` carries
+  built-in/short compact objects to glyph resolution and the compact row-copy
+  table. Other compact selector classes use the row-store routes named in
+  [page-raster-imaging.md](page-raster-imaging.md#row-store-primitive-map).
 
 Thus a symbol-set command changes future glyph selection and row bytes. It
 does not mutate compact text objects already queued on a page.

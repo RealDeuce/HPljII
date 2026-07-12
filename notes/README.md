@@ -394,7 +394,8 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [publication-commands.md](publication-commands.md#owner-summary) -
   documented publication owner boundary, reset, FF, page-size, page-length
   zero/default, orientation, paper-source, and copies routes to rendered page records or
-  publication-adjacent state.
+  publication-adjacent state, with a [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map).
 - [transparent-print-data.md](transparent-print-data.md#owner-summary) -
   documented `ESC &p#X` delayed payload handling, text/fixed-space routing,
   page-record re-entry, and the secondary segmented resource boundary, with a

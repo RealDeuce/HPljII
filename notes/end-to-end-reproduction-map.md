@@ -1208,6 +1208,8 @@ write pixels.
   after a valid publication is scheduler promotion through
   `0x780ea6 -> 0x780eaa -> 0x780eae`, bridge `0x1ed84 -> 0x1edc6`, and render
   entry `0x1ef6a`; the branch contract is
+  [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map) and
   [Publication Outcome Matrix](publication-commands.md#publication-outcome-matrix).
 - Raster graphics:
   `ESC *t#R` uses `0x10808`; `ESC *r#A/#B` use `0x1075a` / `0x107fa`;

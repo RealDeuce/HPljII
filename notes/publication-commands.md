@@ -181,6 +181,107 @@ with disassembly listings `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
 `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`.
 
+### Publication State To Visible Consumer Map
+
+This map composes reset, FF, page-environment, paper-source, copies, VFC page
+eject, and no-room publication routes from parser-visible handlers to the
+first render consumers of the published page/control record. It is the
+page-boundary route for content already queued by text, span, raster, rule,
+fixed-list, macro-overlay, or VFC owners.
+
+- Publication-trigger writers:
+  reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
+  orientation `0x10220`, paper source `0xef62`, VFC/page-eject helper
+  `0xf124`, and no-room retry paths can flush pending span state through
+  `0xf34a` and then call `0xff1e`. Copies `0xeef0` writes copy count
+  `0x782da4` for a later publication. These handlers decide which queued
+  current-root content is finalized before environment or page-control state
+  changes.
+- Page-control state writers:
+  page-control handlers write line-termination byte `0x78318f`, orientation
+  `0x782da3`, copy count `0x782da4`, paper-source byte `0x782da6`, pending
+  header bytes `0x782997/0x782998`, status byte `0x780e99`, and paper-source
+  mirrors `0x780e8f/0x780e26`. These fields are either copied into published
+  header state or consumed by later placement/environment owners.
+- Publication boundary:
+  `0xff1e` consumes current root `0x78297a`, root state byte `+0x04`,
+  pending header/control fields, copy/paper-source state, and macro overlay
+  state `0x782a92/0x782a94`. For an active root it writes root state
+  `+0x04 = 2`, header bytes `+0x07/+0x08/+0x0a/+0x0c`, protected pool head
+  `0x780ea6`, publication flag `0x782996`, and clears current root
+  `0x78297a`. No-root reset takes the no-publication clear branch.
+- Page-object consumers:
+  the published source still contains the object graph built before
+  publication: bucket root `+0x1c`, rule root `+0x24`, fixed root `+0x28`,
+  and context slots `+0x2c..+0x68`. Publication itself does not interpret
+  compact text, spans, raster objects, rules, fixed-list records, or context
+  slots; those remain the consumers documented by the page-record and render
+  owners.
+- Scheduler and bridge consumers:
+  scheduler promotion moves the published source through
+  `0x780ea6 -> 0x780eaa -> 0x780eae`. `0x1ed84 -> 0x1edc6` copies source
+  roots to render roots `+0x18/+0x1c/+0x20` and context slots to
+  `+0x24..+0x60`. Only a capacity-approved active-loop branch calls
+  `0x1ef6a`.
+- Render consumers:
+  `0x1ef6a` renders bucket-chain objects through `0x1efc2`, rule-list objects
+  through `0x1f446`, and fixed-list objects through `0x1f756`. Publication
+  commands are therefore visible because they expose an existing page-object
+  graph to scheduler/render code, not because reset, FF, page-size, paper
+  source, or copies write pixels directly.
+- No-output and alternate/data boundaries:
+  missing-root reset has no published page record. Alternate/data
+  page-environment rows in table `0x116f6` are blank or lowercase
+  `0x11f4c` rows for ordinary `ESC &l` finals; they do not call page
+  environment handlers or `0xff1e` except for active exceptions already owned
+  by reset and delayed VFC payload storage.
+
+State groups for this map:
+
+- Canonical page/image state:
+  current root `0x78297a`, root state byte `+0x04`, source roots
+  `+0x1c/+0x24/+0x28`, context slots `+0x2c..+0x68`, published pool head
+  `0x780ea6`, scheduler cursors `0x780eaa/0x780eae`, publication flag
+  `0x782996`, and render roots copied by `0x1edc6`.
+- Canonical page-control state:
+  copy count `0x782da4`, paper-source byte `0x782da6`, orientation byte
+  `0x782da3`, pending header bytes `0x782997/0x782998`, status byte
+  `0x780e99`, pending page-eject byte `0x782a6d`, and paper-source mirrors
+  `0x780e8f/0x780e26`.
+- Derived/cache state:
+  refreshed geometry, VMI/HMI-derived placement state, render-record roots,
+  band caches `0x783a20/0x783a22/0x783a28`, and scheduler-selected active
+  render pointer `0x783a18`.
+- Parser scratch:
+  six-byte command records consumed by `0xcc52`, `0xf0f0`, `0xfc74`,
+  `0xf9e8`, `0x10220`, `0xef62`, and `0xeef0`; alternate/data `ESC &l`
+  records that stop at blank or lowercase terminal rows remain parser scratch.
+- Firmware bookkeeping:
+  allocator cursors `0x782a70/0x782a72/0x782a76`, root retry state, macro
+  overlay state `0x782a92/0x782a94`, wait helper `0x9ac2`, macro replay
+  helpers `0xe0a4/e4f4`, scheduler cursors, and work-record alternation.
+- Hardware/external and unknown:
+  physical engine timing begins after ROM-visible rendered buffers exist. No
+  ROM-local middle edge remains for the documented publication, bridge, or
+  render-entry handoff. Remaining work must change a named current-root
+  field, header flag, overlay predicate, scheduler pool field, bridge root,
+  render input, or physical/MMIO boundary.
+
+Evidence:
+`generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+`generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`,
+`generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`,
+`generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+`generated/disasm/ic30_ic13_orientation_handler_010220.lst`,
+`generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`,
+`generated/disasm/ic30_ic13_copies_handler_00eef0.lst`,
+`generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+[Page Object To Visible Consumer
+Map](page-record-storage.md#page-object-to-visible-consumer-map), and
+[Scheduler Outcome Matrix](active-render-scheduler.md#scheduler-outcome-matrix).
+
 ## Publication Decision Checkpoint
 
 This checkpoint composes the publication command family as branch decisions

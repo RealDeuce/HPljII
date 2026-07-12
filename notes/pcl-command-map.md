@@ -807,8 +807,9 @@ at the first owner map that names downstream consumers.
   reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
   orientation `0x10220`, paper source `0xef62`, copies `0xeef0`, and
   page-eject helper `0xf124` continue through
-  [publication-commands.md](publication-commands.md#owner-summary), [Page
-  Object To Visible Consumer
+  [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map),
+  [Page Object To Visible Consumer
   Map](page-record-storage.md#page-object-to-visible-consumer-map), and
   [Scheduler Outcome Matrix](active-render-scheduler.md#scheduler-outcome-matrix).
   Publication snapshots existing page objects; it is not itself a row writer.

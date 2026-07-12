@@ -1162,7 +1162,9 @@ Readers and output effect:
   root, such as compact text from `0xd04a -> 0x12f2e -> 0x1387c`, raster
   objects from `0x13070 -> 0x13250`, or rules from `0x13386 -> 0x133aa`.
   Publication commands decide which root and header state are visible to those
-  later render dispatches.
+  later render dispatches. The compact route is in [Publication State To
+  Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map).
 
 State classification:
 
@@ -2307,8 +2309,10 @@ terminators such as `ESC Z`; they are not anonymous imaging commands.
   [direct-control-codes.md](direct-control-codes.md) documents cursor
   movement, text span flushing, and compact text objects.
 - `ESC E`, FF, page setup, and publication commands:
+  [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map) and
   [Publication Outcome
-  Matrix](publication-commands.md#publication-outcome-matrix) documents
+  Matrix](publication-commands.md#publication-outcome-matrix) document
   environment reset, page finalization, and published records.
 - `ESC &p#X` transparent data:
   [Transparent Payload Outcome
@@ -3086,7 +3090,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   page/control pool record, protected head `0x780ea6`, publication flag
   `0x782996`, and cleared current root `0x78297a`. The first render consumer is
   scheduler source selection and bridge `0x1ed84 -> 0x1edc6` before the next
-  `0x1ef6a` render call.
+  `0x1ef6a` render call; the state-to-consumer detail is in [Publication State
+  To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map).
 
 State classification:
 

@@ -15,7 +15,8 @@ Audit state:
   transparent/display/status byte-reader cluster below; printable/direct C0
   control cluster below; cursor, motion, margin, and span command cluster
   below; page environment, publication, VFC, raster transfer, rectangle/rule,
-  and font/downloaded-glyph clusters below.
+  font/downloaded-glyph, macro replay, parser-only/no-output, and page/render
+  crosswalk clusters below.
 - Still pending in this ledger:
   none. Further work should start from streams that change an owner note,
   page-object field, bridge field, render helper, or unresolved boundary.

@@ -765,6 +765,12 @@ Supported stream rendering rule:
   `0x7839d8..0x7839f7`, and the seven-row column writes from `0x270c..0x2746`;
   otherwise ordinary active rendering still follows `0x22f4` for engine row
   copies and `0x1ef6a` for page-object rendering.
+- The state feeding that optional helper is still ROM-visible: active-pool
+  setup `0x1a9c..0x1bf6` writes `0x7839a4`, `0x7839a8`, `0x78399a`, and clears
+  `0x7839d4`; copy loops `0x1db0..0x1e2e` and `0x2038..0x211c` advance or
+  recompute `0x783992` before the ordinary `0x22f4` copy. The unresolved edge
+  is only the missing entry into `0x247c`, `0x26de`, or `0x270c`, not the
+  meaning of those scheduler/copy-window fields.
 
 ## Evidence Status
 
@@ -805,8 +811,10 @@ register-to-signal names are still board-level evidence.
   `generated/analysis/ic30_ic13_long_reference_scan.md`, local returns at `0x2330` and
   `0x247a` before the separate helper body in
   `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`, and the expanded helper body
-  in `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. The broader
-  decoded-search result does not add a caller: hits outside the helper body are
-  unrelated opcodes or data values, not control-flow entries. Closing this edge requires
-  a static caller, computed target, trap/vector entry, or scheduler-entry proof into
-  `0x247c`, `0x26de`, or `0x270c`.
+  in `generated/disasm/ic30_ic13_engine_copy_pattern_00247c.lst`. State writers and
+  consumers around the boundary are located: `0x1a9c..0x1bf6` seeds the copy-window
+  fields, `0x1db0..0x1e2e` and `0x2038..0x211c` advance `0x783992`, and `0x22f4..0x2454`
+  consumes the ordinary copy route. The broader decoded-search result does not add a
+  caller: hits outside the helper body are unrelated opcodes or data values, not
+  control-flow entries. Closing this edge requires a static caller, computed target,
+  trap/vector entry, or scheduler-entry proof into `0x247c`, `0x26de`, or `0x270c`.

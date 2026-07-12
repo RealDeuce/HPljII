@@ -216,6 +216,17 @@ Host and formatter/MMIO boundaries:
   writing seven words per pattern column into the destination rooted at
   `0x78399a`. Ordinary active rendering still reaches page-band objects
   through `0x1ef6a` and copied rows through `0x22f4`.
+- State provenance:
+  `0x1a9c..0x1abe` and `0x1b2c..0x1b46` write `0x7839a8` and
+  `0x7839a4` from the active-pool width calculation; `0x1bd0` writes
+  destination row base `0x78399a`; and `0x1bf6` clears accumulator
+  `0x7839d4` before the copy window. Later active-pool copy loops
+  `0x1db0..0x1e2e` and `0x2038..0x211c` either advance `0x783992` by
+  `0x7839a0`, recompute it through `0x2456`, or call ordinary copy helper
+  `0x22f4`. The unresolved optional helper would read the same state at
+  `0x247c` (`0x783992`, `0x78399a`, `0x7839a4`, `0x7839a8`), update
+  `0x7839d4` at `0x26c4`, fill `0x7839d8..0x7839f7` at `0x26de..0x270a`,
+  and consume that cache at `0x270c..0x2746`.
 - Output effect:
   do not treat `0x247c..0x2746` as an ordinary page-object pixel route unless
   a caller is located. If later ROM evidence proves an entry into `0x247c`,

@@ -4409,6 +4409,16 @@ Other checked leads:
 
 ## Next Targets
 
+Use this section as render-documentation guidance, not as a request for more
+standalone fixture output. A new render/imaging slice belongs here only when
+the checked-in owner note can state the producer handler, page-root object
+fields, publication/bridge roots, render helper, row-store primitive, state
+classification, disassembly evidence, and exact residual boundary. The compact
+handoff after a render helper is [Row-Store Primitive
+Map](#row-store-primitive-map): if a new stream reaches the same object fields,
+destination helper, row-copy table, fallback split, and row-store operation as
+an existing row, it should be treated as the same documented semantic path.
+
 - Keep downloaded-font work focused on byte streams that change installed
   records, source/page objects, bridge state, or ROM-derived row-construction
   inputs, not selector-family rediscovery. Fixtures

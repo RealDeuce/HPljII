@@ -121,7 +121,8 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   Dispatch Checkpoint](page-raster-imaging.md#render-selector-dispatch-checkpoint). The
   shared row-store order, current-band/fallback destination model, and overwrite
   composition rule are in [Pixel Composition
-  Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint).
+  Checkpoint](page-raster-imaging.md#pixel-composition-checkpoint) and the
+  [Row-Store Primitive Map](page-raster-imaging.md#row-store-primitive-map).
 - The broad host-byte-to-pixel walkthrough and residual-boundary index is
   [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md). Its
   [Objective Coverage Matrix](end-to-end-reproduction-map.md#objective-coverage-matrix)
@@ -475,7 +476,9 @@ parser route, field value, object layout, bridge copy, or helper input.
 - [page-raster-imaging.md](page-raster-imaging.md#owner-summary) -
   page geometry lookup tables, orientation state, page-record storage,
   active-render, bitmap object-dispatch, compact row-copy checkpoints, and
-  raster graphics imaging path.
+  raster graphics imaging path. Use [Row-Store Primitive
+  Map](page-raster-imaging.md#row-store-primitive-map) when tracing the final
+  render-helper-to-row-store step.
 - [page-record-storage.md](page-record-storage.md#owner-summary) - documented
   page-root, stream allocator, object-list, publication, and render-record
   bridge contracts, including the [Page Object To Visible Consumer

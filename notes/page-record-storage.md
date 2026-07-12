@@ -184,33 +184,36 @@ object graph is ready for publication, bridge copy, and render entry.
   The allocator writes bucket objects under root `+0x1c` with object byte
   `+4` in `0x00..0x3f`, count/capacity `+6`, compact coordinate/key `+8`,
   and compact payload bytes. Output effect: bridge `0x1edc6` later maps this
-  root to render `+0x18`, where `0x1efc2 -> 0x1effe` consumes compact objects.
+  root to render `+0x18`, where `0x1efc2 -> 0x1effe` consumes compact objects
+  and the selected compact helper writes rows through the row-copy tables or
+  wide-copy helper.
 
 - Segment-list span objects:
   Portrait span flush `0x12714 -> 0x13520/0x1354a/0x135f0 -> 0x1387c`
   writes class-`0x40` bucket objects under root `+0x1c`. Output effect:
   bridge exposes them at render `+0x18`, and render dispatch reaches
-  `0x1f812`.
+  `0x1f812 -> 0x1f862`.
 
 - Encoded raster bucket objects:
   Delayed raster transfer `0x105d0 -> 0x13070 / 0x13250 -> 0x138de` writes
   class-`0x80` bucket objects under root `+0x1c`; dense rows can split through
   `0x132b6` into multiple encoded-span objects. Output effect: bridge exposes
-  them at render `+0x18`, and render dispatch reaches `0x1f88e`.
+  them at render `+0x18`, and render dispatch reaches `0x1f88e` plus the
+  selected encoded-raster mode helper.
 
 - Rule-list objects:
   Rectangle/rule paths reach `0x10898 -> 0x13386 -> 0x133aa`, which allocates
   ordered rule nodes under root `+0x24`. No-room returns leave root `+0x24`,
   existing nodes, and stream bookkeeping unchanged. Output effect: bridge maps
   root `+0x24` to render `+0x1c`, normalizes continuation fields, and render
-  dispatch reaches `0x1f446`.
+  dispatch reaches `0x1f446 -> 0x1f596/0x1f4e0 -> 0x1f626`.
 
 - Fixed-list span objects:
   Landscape span flush reaches `0x12714 -> 0x136d2`, which allocates ordered
   fixed-list nodes under root `+0x28`. No-room returns preserve root `+0x28`
   and existing nodes. Output effect: bridge maps root `+0x28` to render
   `+0x20`, normalizes continuation fields, and render dispatch reaches
-  `0x1f756`.
+  `0x1f756 -> 0x1f7b0 -> 0x1f626`.
 
 - Context/resource slots:
   Root initializer `0x10110`, current-font install path `0xc428 -> 0xc4fc`,
@@ -716,7 +719,8 @@ Renderer-facing object class map:
   producer `0x12714` reaches `0x13520` / `0x1354a` / `0x135f0` in portrait
   orientation and writes class-`0x40` objects under root `+0x1c` through
   `0x1387c`. Bridge `0x1ed84 -> 0x1edc6` exposes them at render `+0x18`;
-  render entry `0x1ef6a -> 0x1efc2` selects segment-list consumer `0x1f812`.
+  render entry `0x1ef6a -> 0x1efc2` selects segment-list consumer
+  `0x1f812 -> 0x1f862`.
 - Encoded raster objects:
   delayed raster handler `0x105d0` calls `0x13070 -> 0x13250`, writing
   class-`0x80` bucket objects under root `+0x1c`; dense rows may split through
@@ -734,13 +738,14 @@ Renderer-facing object class map:
   producer `0x12714` reaches `0x136d2` in landscape orientation, writing
   fixed-width objects under root `+0x28`. Bridge `0x1ed84 -> 0x1edc6` copies
   and normalizes that list into render `+0x20`; render entry
-  `0x1ef6a -> 0x1f756` consumes it on five-band boundaries.
+  `0x1ef6a -> 0x1f756 -> 0x1f7b0` consumes it on five-band boundaries and
+  writes through destination helper `0x1f626`.
 
-This map is the storage-side join between command-family output and bitmap dispatch. It
-does not replace the detailed renderer contracts in
-[page-raster-imaging.md](page-raster-imaging.md#owner-summary); it identifies the
-canonical page-root field a command writes and the exact render-root field and consumer
-that later derives pixels from it.
+This map is the storage-side join between command-family output and bitmap
+dispatch. It does not replace the detailed renderer contracts in
+[page-raster-imaging.md](page-raster-imaging.md#owner-summary); it identifies
+the canonical page-root field a command writes, the exact render-root field,
+the first consumer, and the row-store owner that later derives pixels from it.
 
 Canonical publication and bridge state:
 
@@ -1016,9 +1021,9 @@ Evidence: producer listing
 ## Segment-List Outcome Matrix
 
 This matrix composes the portrait text-span route from pending-span flush to
-bucket-chain object bytes and the first render consumer. It is the owner
-checkpoint for segment-list variants that change entry count, split buckets,
-object payload bytes, or `0x1f812` inputs.
+bucket-chain object bytes, first render consumer, and row-store helper. It is
+the owner checkpoint for segment-list variants that change entry count, split
+buckets, object payload bytes, `0x1f812` inputs, or `0x1f862` row writes.
 
 - Landscape sibling:
   `0x12714 -> 0x13520 -> 0x1366c -> 0x136d2` does not write a segment-list
@@ -1168,16 +1173,16 @@ root-to-render bridge.
 ### Fixed-List Outcome Matrix
 
 This matrix composes the landscape span route from parsed command side effects
-to page-root object shape and the first render consumer. It is the owner
-checkpoint for fixed-list variants that do not change parser dispatch but do
-change object bytes, root `+0x28`, bridge `+0x20`, continuation fields, or
-`0x1f756` inputs.
+to page-root object shape, first render consumer, and row-store helper. It is
+the owner checkpoint for fixed-list variants that do not change parser
+dispatch but do change object bytes, root `+0x28`, bridge `+0x20`,
+continuation fields, `0x1f756` inputs, or `0x1f7b0` / `0x1f626` row writes.
 
 - Portrait span sibling:
   `0x12714 -> 0x13520 -> 0x1354a -> 0x135f0` uses bucket root `+0x1c`, not
   the fixed-list root. The fixed-list outcome for those streams is no
-  root-`+0x28` write; render later reaches segment-list consumer `0x1f812`
-  through bucket root `+0x18`.
+  root-`+0x28` write; render later reaches segment-list consumer
+  `0x1f812 -> 0x1f862` through bucket root `+0x18`.
 - Empty fixed-list insertion:
   `0x1366c -> 0x137a2 -> 0x136d2` allocates one 14-byte object through
   `0x1381c`, stores it as page-root `+0x28`, clears object link `+0x00`, and
@@ -1322,8 +1327,8 @@ Evidence: `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
   encoded-span objects through `0x13070` / `0x13250`.
 - Span flush through `0x12714` consumes pending span state and then branches by
   orientation: portrait spans become root `+0x1c` segment-list bucket objects
-  consumed by `0x1f812`, while landscape spans become root `+0x28` fixed-list
-  objects consumed by `0x1f756`.
+  consumed by `0x1f812 -> 0x1f862`, while landscape spans become root `+0x28`
+  fixed-list objects consumed by `0x1f756 -> 0x1f7b0 -> 0x1f626`.
 - Publication through `0xff1e` consumes bucket/list/context root fields.
 - Rendering through `0x1ed84` / `0x1edc6` / `0x1ef6a` consumes the published or
   active page record and dispatches compact, encoded-span, rule, and fixed-list
@@ -1337,7 +1342,8 @@ their order, and the root fields later consumed by publication and rendering.
 Mixed page-record route: compact text, selector-7 rule, and mode-0 raster
 objects can share one addressed page-record state. The shared root publishes
 through `0xff1e`, bridges through `0x1ed84` / `0x1edc6`, and renders through
-`0x1ef6a`; the producers do not create independent page images.
+`0x1ef6a` before the selected row-store helpers write current-band or fallback
+rows; the producers do not create independent page images.
 
 Shared stream route: `0x10084` seeds `0x782a72 = root + 0x20`; seven compact
 writers through `0x12f2e` / `0x1387c` allocate objects at `0x00d05004`,
@@ -1363,11 +1369,13 @@ therefore sees the prior visible objects, not a partial failed insertion.
 
 Span storage route: `0x12714` splits storage by orientation and producer.
 Portrait spans queue selector-`0x4000` segment-list objects under bucket class
-`0x40`, copied through render root `+0x18` and consumed by `0x1f812`.
+`0x40`, copied through render root `+0x18` and consumed by
+`0x1f812 -> 0x1f862`.
 Landscape spans queue fixed-width objects through `0x136d2`, copied through
-render root `+0x20` and consumed by `0x1f756`. Parsed CR, left-margin, and
-vertical-cursor commands can all materialize the same portrait
-selector-`0x4000` segment-list object before following compact text is queued.
+render root `+0x20` and consumed by `0x1f756 -> 0x1f7b0 -> 0x1f626`. Parsed
+CR, left-margin, and vertical-cursor commands can all materialize the same
+portrait selector-`0x4000` segment-list object before following compact text is
+queued.
 
 Raster storage also has a per-object capacity split beneath the same root
 `+0x1c` bucket array. `0x132b6` may return only the current chunk tail or a
@@ -1423,7 +1431,8 @@ Assembly sequence:
    `+0x18/+0x1c/+0x20/+0x24..+0x60`.
 7. Render entry `0x1ef6a` derives band/destination state with `0x1ef86`, then
    calls bucket dispatcher `0x1efc2`, rule-list dispatcher `0x1f446`, and
-   fixed-list dispatcher `0x1f756` in that order.
+   fixed-list dispatcher `0x1f756` in that order; each selected object class
+   then writes rows through its row-store helper.
 
 Concrete mixed byte-stream route:
 
@@ -1448,7 +1457,7 @@ Concrete mixed byte-stream route:
   `+0x2c..+0x68` to render slots `+0x24..+0x60`.
 - Render entry `0x1ef6a` calls `0x1efc2` first, so the compact/raster bucket
   chain renders before the selector-7 rule list that `0x1f446` sends to solid
-  helper `0x1f596`.
+  helper `0x1f596` and destination helper `0x1f626`.
 
 The addressed stream records concrete object state for this route: compact
 text object at `0x00d0c004`, selector-7 rule object at `0x00d0c02a`,
@@ -1465,9 +1474,10 @@ Composition and overlap rule:
   segment-list spans to `0x1f812`, and encoded raster rows to `0x1f88e`.
 - Rule-list output is written second through `0x1f446`, using solid helper
   `0x1f596` for selector `7` or patterned helper `0x1f4e0` for other
-  documented selectors.
+  documented selectors, then destination helper `0x1f626`.
 - Fixed-list output is written last through `0x1f756` / `0x1f7b0` when the
-  current band satisfies the five-band gate.
+  current band satisfies the five-band gate, then destination helper
+  `0x1f626`.
 - Pixel composition at this shared layer is ordered direct writing. The
   renderer helpers compute destination addresses from `0x783a20`,
   `0x783a22`, `0x783a28`, and object coordinates, then store generated bytes,
@@ -1577,7 +1587,9 @@ Writers and readers:
 - Render readers are `0x1ef6a`, bucket dispatcher `0x1efc2`, rule dispatcher
   `0x1f446`, fixed-list dispatcher `0x1f756`, compact dispatcher `0x1effe`,
   segment-list helper `0x1f812`, encoded-raster helper `0x1f88e`, and the
-  rule/fixed row helpers under `0x1f4e0`, `0x1f596`, and `0x1f7b0`.
+  row-store helpers under `0x1f034`, `0x1f0d2`, `0x1f1f0`, `0x1f264`,
+  `0x1f862`, `0x1f8da`, `0x1f8e6`, `0x1f920`, `0x1f9c6`, `0x1f4e0`,
+  `0x1f596`, `0x1f7b0`, and destination helpers `0x1f414` / `0x1f626`.
 
 Output effect:
 
@@ -1627,7 +1639,7 @@ A byte-stream renderer must preserve:
   portrait segment-list spans, and encoded raster rows;
 - bucket class dispatch after bridge: `+0x04` in `0x00..0x3f` reaches
   `0x1effe`, `0x40..0x7f` reaches `0x1f812`, and `0x80..0xff` reaches
-  `0x1f88e`;
+  `0x1f88e`, then the object-class row-store owner;
 - portrait text-span storage as class-`0x40` segment-list bucket objects under
   root `+0x1c`;
 - landscape text-span storage as fixed-list objects under root `+0x28`;

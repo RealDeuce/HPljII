@@ -52,7 +52,9 @@ Primary route:
 - Parser command: `ESC &p#X -> 0x11f5a`.
 - Delayed record: `0x11f5a -> 0x121cc -> 0x12218 -> 0x12452`.
 - Printable output: `0x12452 -> 0xd04a -> 0x1393a -> 0x12f2e ->
-  0x1387c -> 0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a`.
+  0x1387c -> 0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 ->
+  0x1effe`, followed by the compact row-store helper selected by the queued
+  object.
 - Fixed-space/control output: `0x12452 -> 0xd0f0`, which can either advance
   spacing only in the flagged built-in path or queue substituted host-space
   text in the documented unflagged fixed-record path.
@@ -71,7 +73,8 @@ Field groups:
   `0x782c8a`, current page root `0x78297a`, compact bucket root `+0x1c`,
   short compact object fields `+0x04` class, `+0x05` context slot, `+0x06`
   entry count, payload entries from `+0x0a`, and downstream publication /
-  bridge fields consumed by `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+  bridge fields consumed by `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and
+  the compact row-store helpers.
 - Derived/cache state: local filter word `A6-2`, normalized payload value
   `D5`, selected-slot scale result from `0x332ee`, text source scratch
   `0x782d7e`, compact coordinates such as `0x0001` and `0x0604`, and renderer
@@ -135,7 +138,8 @@ Readers and consumers:
   space under the current source class.
 - `0x12f2e` and `0x1387c` consume compact source/object state and current root
   topology. `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a` consume queued text
-  objects for publication, bridge, and compact text rendering.
+  objects for publication, bridge, and compact text rendering through the
+  selected compact row-store helper.
 
 Output effect:
 
@@ -248,7 +252,9 @@ state is read or written, and what page or pixel effect follows.
   root. Output effect: payload values queue compact text objects whose short
   form carries class/context/count in `+0x04/+0x05/+0x06` and glyph/coordinate
   pairs from `+0x0a`; publication copies current root bucket `+0x1c` through
-  `0xff1e -> 0x1ed84 -> 0x1edc6`, and compact rendering begins at `0x1ef6a`.
+  `0xff1e -> 0x1ed84 -> 0x1edc6`, and compact rendering continues through
+  `0x1ef6a -> 0x1efc2 -> 0x1effe` to the compact row-store helper selected by
+  the object.
 
 - Fixed-space payload:
   Default-filtered C0 and `0x80..0x9f` values call `0xd0f0`. In a flagged
@@ -265,8 +271,9 @@ state is read or written, and what page or pixel effect follows.
   object, and renders until resource read `0x1f354 -> 0x1f1f0` requires
   firmware bytes `0x0c0000..0x0c0321`. Output effect: parser dispatch,
   payload count, filter choice, page-object queueing, bridge, and compact
-  render dispatch are ROM-local documented; the remaining pixel boundary is
-  missing external resource-window data.
+  render dispatch are ROM-local documented through the segmented compact
+  row-store route; the remaining pixel boundary is missing external
+  resource-window data.
 
 State grouping:
 
@@ -276,7 +283,8 @@ State grouping:
   `0x782efa`, `0x783132`, `0x783133`, `0x782c8a`, page root `0x78297a`,
   page-root bucket `+0x1c`, short compact object fields
   `+0x04/+0x05/+0x06/+0x0a`, and downstream bridge/render roots consumed by
-  `0xff1e`, `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+  `0xff1e`, `0x1ed84`, `0x1edc6`, `0x1ef6a`, and the compact row-store
+  helpers.
 - Derived/cache state: local filter word `A6-2`, routed value `D5`,
   selected-slot scale result from `0x332ee`, source scratch `0x782d7e`,
   compact coordinates, and render segment/bucket caches.
@@ -300,7 +308,8 @@ Evidence:
   especially `0x12452..0x12534`.
 - Page and render consumers: `0xd04a`, `0xd0f0`, `0xd550`, `0xd140`,
   `0xd3b2`, `0x12f2e`, `0x1387c`, `0xff1e`, `0x1ed84`, `0x1edc6`,
-  and `0x1ef6a`, with fixture names listed in this note's evidence block.
+  `0x1ef6a`, `0x1efc2`, `0x1effe`, and the compact row-store helpers, with
+  fixture names listed in this note's evidence block.
 - Unresolved boundary: secondary segment-57 source bytes `0x0c0000..0x0c0321` are
   missing external resource-window data. This is not an unresolved parser, page-object,
   bridge, or compact-render dispatch edge. The global stop-point owner is
@@ -348,8 +357,8 @@ Decision route:
 - Render branch: any queued compact object publishes through `0xff1e`, bridges
   through `0x1ed84 -> 0x1edc6` by copying current-root bucket `+0x1c` to
   render-record `+0x18`, and renders through `0x1ef6a -> 0x1efc2 ->
-  0x1effe` using the same compact renderer contracts as ordinary printable
-  bytes.
+  0x1effe` using the same compact renderer contracts and row-store helpers as
+  ordinary printable bytes.
 
 State classification:
 
@@ -444,13 +453,13 @@ checkpoint above but makes the payload splice followable as a byte stream.
   ordinary text path `0xd04a -> 0x1393a -> 0xd3b2/d824 -> 0x12f2e ->
   0x1387c`, which writes compact objects under page-root `+0x1c`. Publication
   and rendering then follow `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a ->
-  0x1efc2 -> 0x1effe`.
+  0x1efc2 -> 0x1effe` and the selected compact row-store helper.
 - Fixed-space consumer:
   default-filtered C0 and high-control values call `0xd0f0`. In flagged
   built-in contexts, the visible effect is spacing/cursor movement without a
   compact glyph object. In unflagged fixed-record contexts, `0xd0f0 -> 0xd140
   -> 0xd3b2` can queue a substituted host-space compact object under the same
-  page-root bucket `+0x1c` and render through the same compact path.
+  page-root bucket `+0x1c` and render through the same compact row-store path.
 - Secondary high-control boundary:
   after `SO` selects secondary context, high-control payload values can route
   through printable handling into segmented compact objects. The ROM-local
@@ -636,7 +645,8 @@ Output effect:
 - Visible output appears only after `0xd04a` queues compact text through
   `0x12f2e -> 0x1387c` or after `0xd0f0` advances/substitutes fixed-space
   state; publication and rendering still proceed through `0xff1e`,
-  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+  `0x1ed84`, `0x1edc6`, `0x1ef6a`, compact dispatch, and the selected
+  row-store helper.
 
 Evidence:
 

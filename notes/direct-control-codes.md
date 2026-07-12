@@ -242,7 +242,7 @@ row-store endpoint when the state becomes visible.
   low-water paths can call `0xf34a -> 0x12714`. Portrait spans become
   segment-list root `+0x1c` objects consumed by
   `0x1ef6a -> 0x1efc2 -> 0x1f812 -> 0x1f862`; landscape spans become fixed
-  root `+0x28` objects consumed by `0x1f756 -> 0x1f7b0`.
+  root `+0x28` objects consumed by `0x1f756 -> 0x1f7b0 -> 0x1f626`.
 - Raster and rectangle placement consumers:
   raster start `0x1075a` can seed raster origin from the active cursor, and
   delayed transfer `0x105d0 -> 0x13070 -> 0x13250` later queues encoded raster
@@ -289,7 +289,7 @@ Decision rules:
   `0x1393a`, choose flagged or unflagged text advance through `0xd550` or
   `0xd140`, and queue compact objects through `0x12f2e -> 0x1387c`.
   Publication and pixels then follow `0xff1e -> 0x1ed84 -> 0x1edc6 ->
-  0x1ef6a -> 0x1effe`.
+  0x1ef6a -> 0x1effe` and the selected compact row-store helper.
 - `ESC &k#G` writes line-termination mode byte `0x78318f` through `0xedf8`.
   CR `0xf02c` consumes bit `7`, LF `0xf08c` consumes bit `6`, and FF
   `0xf0f0` consumes bit `5`; the bits decide whether those controls also run
@@ -527,7 +527,8 @@ context longword `0x782ee6`, or secondary map `0x783032` with context longword
 page-root font slot live before `0x12f2e -> 0x1387c` appends the compact text
 object under current root `+0x1c`. Publication and render then carry both the
 compact object and root context slots through `0xff1e`, `0x1ed84`, `0x1edc6`,
-and compact render dispatch `0x1ef6a -> 0x1effe`.
+and compact render dispatch `0x1ef6a -> 0x1effe`; compact row-store helpers
+write the rows after resolver `0x1f354` consumes the copied context slot.
 
 Field grouping for this checkpoint:
 
@@ -794,7 +795,8 @@ Unknown:
 - `0xf36c` consumes `0x782c8e`, `0x782dc2`, and `0x783191` to decide whether
   vertical overflow triggers page eject.
 - `0x1edc6` bridges queued page-record text/span objects into render-record
-  shape, and `0x1ed84` / `0x1ef6a` render the active band rows.
+  shape, and `0x1ed84` / `0x1ef6a` render the active band rows through the
+  object-class row-store helpers.
 - Raster start consumes `0x782c8a` or `0x782c8e` depending on orientation, as
   documented in `notes/raster-graphics.md`.
 
@@ -804,7 +806,8 @@ The normal printable byte path is the first direct-control path that creates
 page pixels from an ordinary host byte. It is not a fixture-only shortcut:
 `0xd04a` builds source scratch, `0xd140` or `0xd550` advances and checks the
 cursor, `0xd3b2` or `0xd824` positions the source, and `0x12f2e` writes the
-compact bucket object later rendered through `0x1effe`.
+compact bucket object later rendered through `0x1effe` and compact row-copy
+helpers.
 
 Exact disassembly boundaries:
 

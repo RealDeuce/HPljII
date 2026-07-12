@@ -398,6 +398,16 @@ resource records into the row text that later becomes compact page objects.
   passed without an explicit name pointer, it masks the selected context to a
   24-bit record address, reads bytes `+0x26` and `+0x27`, and either uses
   resource-chain helper `0x1d4ee` or fallback helper `0x1d460`.
+  For explicit-name callers, `0x1d1d6..0x1d20a` first emits the name through
+  `0x1d5fa`, then reads the same two formatter roles from record bytes
+  `+0x2f` and `+0x30`. The first role byte controls the trailing style text:
+  value `1` emits local string `0x1d183` (`ITALIC`), value `2` emits
+  `0x1d17c` (`SLANT`), and other nonzero values are converted to decimal
+  digits at `0x1d38a..0x1d448`. The second role byte controls the weight
+  suffix: positive values emit `0x1d192` (`BOLD`), negative values emit
+  `0x1d18b` (`LIGHT`), and zero emits no weight suffix. These strings are
+  emitted through `0x1d6ea`, so they become ordinary compact text objects via
+  `0xd04a`.
 - `0x1d460` walks resource container records starting at the masked record
   address. It follows `FONT` and lowercase `font` records by adding longword
   `+0x2e`, follows `TABL`, lowercase `tabl`, and `DUMY` records by adding
@@ -447,14 +457,17 @@ State classification for this helper cluster:
   `0x1e18e..0x1e1a0`.
 - Derived/cache state: the masked 24-bit record address, trimmed fixed-length
   strings, fallback family/style names from tables `0x1c0a6` and `0x1c11a`,
-  and the 25-column cap enforced before the next row field.
+  local suffix strings `0x1d17c`, `0x1d183`, `0x1d18b`, and `0x1d192`, numeric
+  style digits derived at `0x1d38a..0x1d448`, and the 25-column cap enforced
+  before the next row field.
 - Parser scratch: no host byte is fetched; all helper output rejoins the
   ordinary printable path by calling `0xd04a` directly.
 - Firmware bookkeeping: local retained-length counters and row-availability
   flags returned in `D7`.
-- Unknown: manual-facing names for bytes `+0x26`, `+0x27`, and the
-  `0x782640` row flags remain unresolved; their ROM-local formatting roles
-  are pinned by
+- Unknown: manual-facing names for bytes `+0x26`, `+0x27`, `+0x2f`,
+  `+0x30`, and the `0x782640` row flags remain unresolved. Their ROM-local
+  formatting roles are pinned by `0x1d1b6..0x1d260`,
+  `0x1d1f6..0x1d20a`, `0x1d2f8..0x1d448`, and
   `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`.
 
 Unknown:

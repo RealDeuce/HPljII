@@ -5500,6 +5500,12 @@ Candidate and row selection:
 - Row formatter `0x1cabe` emits row prefix, font name/style, pitch/height,
   symbol-set text, and sample columns through `0xd04a`, `0xd0f0`, and
   horizontal advance helper `0x1d152`.
+- Name/style helper `0x1d198` turns selected resource record bytes into the
+  25-column visible name field before those bytes reach `0xd04a`: fixed-form
+  records use bytes `+0x26/+0x27`, explicit-name records use bytes
+  `+0x2f/+0x30`, `0x1d2f8..0x1d448` emits `ITALIC`, `SLANT`, `BOLD`, `LIGHT`,
+  or numeric style digits, and the owner contract is
+  [Row Text Helper Ledger](font-sample-page.md#row-text-helper-ledger).
 - Sample-run helper `0x1cf34` emits ROM run table `0x1c1cf`, optionally
   advances to an alternate sample row, emits run table `0x1c1e9`, and writes
   the caller page-break flag.
@@ -5540,8 +5546,9 @@ State classification:
   accepted resource count `0x78278e`, class counts `0x782798` / `0x782790`,
   candidate pointer/count windows, current and alternate selected contexts,
   source labels at `0x1c170`, sample run tables `0x1c1cf` and `0x1c1e9`,
-  current page root, page-root context slots, vertical cursor `0x782c8e`, and
-  page-limit word `0x782db6`.
+  resource name/style bytes `+0x26/+0x27` and `+0x2f/+0x30`, current page
+  root, page-root context slots, vertical cursor `0x782c8e`, and page-limit
+  word `0x782db6`.
 - Derived/cache state:
   row-height cache `0x783f06`, recent-context count/list
   `0x783f08` / `0x783f0a`, row-to-row y advance from `0x1d050`, alternate-row

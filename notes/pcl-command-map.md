@@ -618,17 +618,22 @@ output class that a byte-stream reader should follow next.
 
 - Plain printable bytes: normal mode-zero no-row-match dispatch reaches `0xd04a`; the
   text owner then uses `0x1393a` and `0x12f2e` to create compact bucket objects.
-  Continue in [Direct-Control Outcome
-  Matrix](direct-control-codes.md#direct-control-outcome-matrix),
-  [font-context-metrics.md](font-context-metrics.md), and
-  [page-raster-imaging.md](page-raster-imaging.md). Output class: page-object producer,
-  then compact render.
+  Continue in [Printable Source Outcome
+  Matrix](direct-control-codes.md#printable-source-outcome-matrix), [Font State To
+  Visible Consumer Map](font-context-metrics.md#font-state-to-visible-consumer-map),
+  and [Page Object To Visible Consumer
+  Map](page-record-storage.md#page-object-to-visible-consumer-map). Output class:
+  page-object producer, then compact render through [Render Helper Boundary
+  Index](page-raster-imaging.md#render-helper-boundary-index).
 - Direct C0 controls: CR/LF/FF/HT/BS/SO/SI route to `0xf02c`, `0xf08c`, `0xf0f0`,
-  `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`. Continue in [Direct-Control Outcome
-  Matrix](direct-control-codes.md#direct-control-outcome-matrix) and
-  [publication-commands.md](publication-commands.md) for cursor movement, selected-slot
-  switching, span flush, or page publication. Output class: state-only, span/page-object
-  producer, or publication depending on the control.
+  `0xf1cc`, `0xf2a8`, `0xc6b8`, or `0xc68a`. Continue in [Delayed State To Visible
+  Consumer Map](direct-control-codes.md#delayed-state-to-visible-consumer-map),
+  [Printable Source Outcome
+  Matrix](direct-control-codes.md#printable-source-outcome-matrix), and
+  [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map) for cursor
+  movement, selected-slot switching, span flush, or page publication. Output class:
+  state-only, span/page-object producer, or publication depending on the control.
 - Parser artifacts and explicit no-output rows:
   normal zero-handler rows `0x00`, `0x07`, `0x0b`, wrapper-handled `ESC ?`,
   display-reader terminator `ESC Z`, and `ESC &lT/t` do not own imaging state.
@@ -637,10 +642,10 @@ output class that a byte-stream reader should follow next.
   parser bookkeeping or explicit no-output.
 - Cursor, margin, text-motion, and dot-position commands: handlers `0xeb58`, `0xec0c`,
   `0xedb0`, `0xedf8`, `0xee64`, `0xf39e`, `0xf416`, `0xf48c`, `0xf560`, `0xf60a`, and
-  `0xf692` write placement, wrap, HMI/VMI, or span state. Continue in [Direct-Control
-  Outcome Matrix](direct-control-codes.md#direct-control-outcome-matrix). Output class:
-  state-only until later printable text, rectangle/raster placement, span flush, VFC, or
-  publication consumes the fields.
+  `0xf692` write placement, wrap, HMI/VMI, or span state. Continue in [Delayed State To
+  Visible Consumer Map](direct-control-codes.md#delayed-state-to-visible-consumer-map).
+  Output class: state-only until later printable text, rectangle/raster placement, span
+  flush, VFC, or publication consumes the fields.
 - Page environment and publication commands:
   reset `0xcc52`, FF `0xf0f0`, page-size `0xfc74`, page-length `0xf9e8`,
   orientation `0x10220`, paper source `0xef62`, and copies `0xeef0` update
@@ -651,8 +656,9 @@ output class that a byte-stream reader should follow next.
   protected head `0x780ea6`; scheduler selection
   `0x780ea6 -> 0x780eaa -> 0x780eae`, bridge `0x1ed84 -> 0x1edc6`, and
   render entry `0x1ef6a` are the first render handoff.
-  Continue in [Publication Outcome
-  Matrix](publication-commands.md#publication-outcome-matrix) and
+  Continue in [Publication State To Visible Consumer
+  Map](publication-commands.md#publication-state-to-visible-consumer-map), [Publication
+  Outcome Matrix](publication-commands.md#publication-outcome-matrix), and
   [Reset Default To Visible Consumer
   Map](reset-default-environment.md#reset-default-to-visible-consumer-map). Output
   class: environment state, current-root publication, or no-publication reset
@@ -662,7 +668,8 @@ output class that a byte-stream reader should follow next.
   in normal mode, while alternate/data restore diverts through
   `0x12358 -> 0xdace -> 0xe002` without writing VFC table state.
   `ESC &l#V` reaches channel consumer `0x1280a`. Continue in
-  [vertical-forms-control.md](vertical-forms-control.md#owner-summary).
+  [VFC State To Visible Consumer
+  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map).
   Output class: VFC table state, cursor-only movement before later compact
   text under root `+0x1c`, or old-root publication through `0xf124 ->
   0xff1e` before the ordinary scheduler/bridge/render handoff.
@@ -671,9 +678,10 @@ output class that a byte-stream reader should follow next.
   reader `0x12452`, while alternate/data restore reaches
   `0x12358 -> 0xdace -> 0xe002`. `ESC Y ... ESC Z` uses readers `0x12536`
   or `0x12120`.
-  Continue in [Transparent Payload Outcome
-  Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) and
-  [display-functions.md](display-functions.md). Output class:
+  Continue in [Transparent Payload To Visible Consumer
+  Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map) and
+  [Display Byte To Visible Consumer
+  Map](display-functions.md#display-byte-to-visible-consumer-map). Output class:
   routed printable text under current-root bucket `+0x1c` with short compact
   fields `+0x04/+0x05/+0x06/+0x0a`, spacing-only fixed-space motion,
   alternate/data append, display/status side effect, or explicit reader
@@ -685,8 +693,11 @@ output class that a byte-stream reader should follow next.
   restores to transfer reader `0x105d0` in normal mode, or to
   `0x12358 -> 0xdace -> 0xe002` in alternate/data mode without writing raster
   block or page-object state. Continue in
-  [raster-graphics.md](raster-graphics.md) and
-  [page-raster-imaging.md](page-raster-imaging.md). Output class:
+  [Raster State To Visible Consumer
+  Map](raster-graphics.md#raster-state-to-visible-consumer-map), [Encoded Raster
+  Object Outcome Matrix](raster-graphics.md#encoded-raster-object-outcome-matrix), and
+  [Render Helper Boundary
+  Index](page-raster-imaging.md#render-helper-boundary-index). Output class:
   encoded raster object under current-root bucket `+0x1c` with fields
   `+0x04 = 0x80`, `+0x05` mode, `+0x06` count, `+0x08` packed key, and
   payload `+0x0a..`; bridge `0x1edc6` copies bucket `+0x1c` to render
@@ -695,7 +706,9 @@ output class that a byte-stream reader should follow next.
   `ESC *c#A/#B/#H/#V/#G/#P` route to `0x10e68`, `0x10e22`, `0x10a40`,
   `0x10ae0`, `0x10dce`, and `0x10898`; fill reaches rule producer
   `0x13386 -> 0x133aa`. Continue in
-  [rectangle-graphics.md](rectangle-graphics.md) and
+  [Rectangle State To Visible Consumer
+  Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map),
+  [Rectangle Outcome Matrix](rectangle-graphics.md#rectangle-outcome-matrix), and
   [page-record-storage.md](page-record-storage.md#rule-list-outcome-matrix).
   Output class: 14-byte rule-list object under current-root `+0x24` with
   selector `+0x05`, packed key `+0x06`, width `+0x08`, height `+0x0a`, and
@@ -709,9 +722,11 @@ output class that a byte-stream reader should follow next.
   use delayed setup `0x11f96`, normal descriptor handler `0x15d0a`, normal
   resource handler `0x16c14`, character install `0x16498`, or alternate/data
   restore `0x12358 -> 0xdace -> 0xe002` with no font install. Continue in
-  [symbol-set-selection.md](symbol-set-selection.md),
-  [font-context-metrics.md](font-context-metrics.md), and
-  [downloaded-fonts.md](downloaded-fonts.md). Output class:
+  [Symbol State To Visible Consumer
+  Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map), [Font State To
+  Visible Consumer Map](font-context-metrics.md#font-state-to-visible-consumer-map),
+  and [Downloaded Font To Visible Consumer
+  Map](downloaded-fonts.md#downloaded-font-to-visible-consumer-map). Output class:
   selected-font state, installed resources, later compact text under root
   `+0x1c`, fixed records, or downloaded-glyph compact objects whose exact
   helper/source stops are owned by the downloaded-font boundary notes. Visible
@@ -721,8 +736,9 @@ output class that a byte-stream reader should follow next.
   macro id/control handlers `0xe112` and `0xdd08`, append sink `0xe002`,
   execute/call frame builder `0xe418`, and overlay frame builder `0xe4f4`
   store or replay byte streams through the same `0xa904` source contract.
-  Continue in [Macro Replay Outcome
-  Matrix](macro-data-chain.md#macro-replay-outcome-matrix). Output class:
+  Continue in [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map) and [Macro Replay
+  Outcome Matrix](macro-data-chain.md#macro-replay-outcome-matrix). Output class:
   stored input, replayed parser input, overlay publication mutation, or skip
   gate with base publication. Replayed bytes become ordinary owner outputs:
   compact text, transparent text, raster objects, rules, or span objects before

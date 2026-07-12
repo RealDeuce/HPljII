@@ -175,7 +175,8 @@ State classification for this map:
   middle edge remains unknown for the documented built-in glyph paths.
 
 Evidence:
-[built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
+[Candidate Windows To Visible Consumer
+Map](built-in-resource-scan.md#candidate-windows-to-visible-consumer-map),
 [symbol-set-selection.md](symbol-set-selection.md#symbol-state-to-visible-consumer-map),
 [font-context-metrics.md](font-context-metrics.md#printable-source-capture),
 [page-record-storage.md](page-record-storage.md#page-object-to-visible-consumer-map),

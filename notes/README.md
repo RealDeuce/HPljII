@@ -430,7 +430,8 @@ parser route, field value, object layout, bridge copy, or helper input.
   Map](symbol-map-patching.md#map-patch-to-visible-consumer-map).
 - [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary) - documented
   IC32/IC15 resource scan, candidate windows, built-in record filters, and
-  glyph-row evidence.
+  glyph-row evidence, with a [Candidate Windows To Visible Consumer
+  Map](built-in-resource-scan.md#candidate-windows-to-visible-consumer-map).
 - [downloaded-fonts.md](downloaded-fonts.md#owner-summary) - documented soft-font
   descriptor, payload, validation/no-install, current-record, and
   downloaded-glyph render paths, with a [Downloaded Font To Visible Consumer

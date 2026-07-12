@@ -4629,7 +4629,8 @@ State classification for this path:
   remain inferred from decoded-height and chooser behavior.
 
 Evidence for this path is in
-[built-in-resource-scan.md](built-in-resource-scan.md),
+[Candidate Windows To Visible Consumer
+Map](built-in-resource-scan.md#candidate-windows-to-visible-consumer-map),
 [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
 [font-context-metrics.md](font-context-metrics.md), and
 [semantic-state-model.md](semantic-state-model.md), section

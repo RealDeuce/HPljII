@@ -78,6 +78,88 @@ Output effect:
   selection, glyph table entry interpretation, and explicit physical resource
   continuation boundary.
 
+### Candidate Windows To Visible Consumer Map
+
+This map composes the built-in resource scan into the visible text route. The
+scan produces candidate state; later parser/font commands select from it, and
+later printable bytes turn that selected state into page objects and pixels.
+
+- Resource scan producers:
+  `0x1a2e4` seeds built-in scan bounds `0x080000..0x0ffffe`, clears candidate
+  counters, and calls `0x1a616`. The scanner walks `IC32,IC15` resource
+  records, classifies signatures through `0x1b9c0`, and hands accepted font
+  records to `0x1a9be`. These paths read resource bytes but do not consume PCL
+  parser records.
+- Candidate-window writers:
+  `0x1a9be` writes candidate pointer list `0x782324`, total count
+  `0x78278e`, class/range counters `0x782790..0x78279e`, and cursor windows
+  `0x7827a0..0x7827b4`. For the verified built-ins the resulting state is
+  24 candidates: 12 class-one low-window entries and 12 class-zero low-window
+  entries.
+- Parser/font-selection consumers:
+  parsed symbol and font requests consume the candidate windows through
+  `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, and `0x14398`. These helpers
+  write active candidate window `0x78287c/0x7827b8`, active symbol words,
+  selected slot `0x7828a8`, selected contexts `0x782ee6/0x782ef6`, and active
+  maps `0x782f32/0x783032` through `0x144d2` and `0x14c64`.
+- Printable object consumer:
+  `0xd04a -> 0x1393a` consumes selected slot `0x782f06`, selected context,
+  and active map. It captures the mapped glyph byte, `0xd3b2` or `0xd824`
+  marks the page-root context slot live, and `0x12f2e -> 0x1387c` queues a
+  compact object under current root `+0x1c`.
+- Publication and render consumers:
+  `0xff1e -> 0x1ed84 -> 0x1edc6` copies the page-root object graph and
+  context slots into a render record. `0x1ef6a -> 0x1efc2 -> 0x1effe` reaches
+  compact glyph resolution, where `0x1f354` consumes the selected context,
+  captured glyph byte, resource glyph table entry, and bitmap payload bytes.
+- Boundary split:
+  verified built-in records and glyph rows through firmware address
+  `0x0bffff` are ROM-local resource data. Optional cartridge windows and the
+  secondary segment-57 continuation after `0x0bffff` are hardware/external
+  resource data boundaries, not parser, page-object, bridge, or render-dispatch
+  gaps.
+
+State classification for this map:
+
+- Canonical:
+  built-in `HEAD` records, accepted font records, candidate pointer list
+  `0x782324`, candidate counts/windows, active candidate window, selected slot
+  `0x7828a8`, selected contexts/maps, page-root context slots, compact payload
+  glyph bytes, render context slots, and resource glyph-entry fields.
+- Derived/cache:
+  scan cursor `0x782884`, bounds `0x78288c/0x782890`, active candidate marks,
+  decoded height/pitch values, active symbol words, map patch results,
+  selected context longwords, and render helper source pointers.
+- Parser scratch:
+  parsed symbol/font request records and original printable bytes. They choose
+  resource consumers but are not produced by the resource scan.
+- Firmware bookkeeping:
+  classifier state, candidate insert/delete helpers, dirty refresh bytes
+  `0x782f2c/0x782f2d`, page-root context install state, publication flag, and
+  optional-window scheduler state.
+- Hardware/external and unknown:
+  optional cartridge contents, physical optional-window gates, and physical
+  continuation decode after verified address `0x0bffff`. No ROM-local scan,
+  candidate-window, filter, context-install, printable-object, bridge, or
+  compact-render middle edge remains unknown for the documented built-in
+  streams.
+
+Evidence:
+[Resource Scan Outcome Matrix](#resource-scan-outcome-matrix),
+[Resource Bytes To Visible Consumer
+Map](resource-rom.md#resource-bytes-to-visible-consumer-map),
+[Symbol State To Visible Consumer
+Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map),
+[Font State To Visible Consumer
+Map](font-context-metrics.md#font-state-to-visible-consumer-map),
+[Page Object To Visible Consumer
+Map](page-record-storage.md#page-object-to-visible-consumer-map),
+`generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`,
+`generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`, and
+`generated/analysis/ic32_ic15_font_records.md`.
+
 ## Evidence
 
 Primary disassembly:

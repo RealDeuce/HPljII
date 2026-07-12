@@ -4958,7 +4958,8 @@ Evidence:
 
 - Checked-in explanations:
   [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix),
-  [built-in-resource-scan.md](built-in-resource-scan.md),
+  [Candidate Windows To Visible Consumer
+  Map](built-in-resource-scan.md#candidate-windows-to-visible-consumer-map),
   [font-context-metrics.md](font-context-metrics.md),
   `Built-In Font Selection To Visible Text` in
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Font

@@ -224,6 +224,51 @@ Canonical data-chain frames:
 - Frame `+0x0a`: environment snapshot chain pointer for execute/call frames;
   zero for the non-replay overlay frame.
 
+Data-chain byte-source contract:
+
+- `0xa904..0xa970` makes an active data-chain frame the byte source before
+  ring input or direct hardware input. It reads `0x782d76`, tests frame count
+  `+0x04`, calls `0x9f6a` while the count is positive, and returns the
+  resulting `D7` byte to the same parser wrapper used for live host bytes.
+- Frame count `+0x04 == -1` is the explicit end marker. `0xa904..0xa97c`
+  clears the count, calls frame cleanup `0xe22c`, and restarts byte-source
+  selection rather than returning a byte from the exhausted frame.
+- `0x9f6a..0x9f86` reads the current frame pointer from `0x782d76`, loads the
+  chunk head pointer from frame `+0x00`, adds byte-source offset `+0x08`, and
+  returns the byte at that address as `D7`. The frame offset is therefore both
+  canonical replay position and parser scratch for the next host-byte turn.
+- `0x9f88..0x9fac` advances the frame. When offset `+0x08` is below `0xff`,
+  it increments that byte by one. When offset `+0x08` has reached `0xff`, it
+  resets the offset to `4`, loads the current chunk's next pointer from the
+  first longword, and stores that pointer back to frame `+0x00`.
+- `0x9fac..0x9fb4` decrements frame count `+0x04` after every returned byte.
+  When the count becomes zero, it writes `-1` to `+0x04`; the following
+  `0xa904` pass consumes that marker through `0xe22c`.
+- `0x9fb8..0x9fca` reports replayed `0x1a` bytes through helper `0x9ec0`
+  before returning the same byte value in `D7`. This side effect matches the
+  live/direct host-byte paths in `0xa904` that also call `0x9ec0` for `0x1a`.
+
+State grouping for the byte-source contract:
+
+- Canonical state:
+  active frame pointer `0x782d76`, frame chunk head `+0x00`, remaining count
+  `+0x04`, byte-source offset `+0x08`, frame kind `+0x09`, and snapshot
+  pointer `+0x0a`.
+- Derived/cache state:
+  current chunk byte address `frame(+0x00) + frame(+0x08)` and the next chunk
+  head read from the current chunk's first longword.
+- Parser scratch:
+  returned byte `D7`, the temporary `D5` copy used by `0x9f6a`, and the
+  parser wrapper state that receives that byte after `0xa904` returns.
+- Firmware bookkeeping:
+  host gate bit state, end marker `+0x04 = -1`, cleanup helper `0xe22c`, and
+  `0x9ec0` side reporting for replayed `0x1a`.
+- Unknown:
+  no ROM-local byte-source middle edge remains between a positive-count
+  data-chain frame and parser admission. Any later unknown belongs to the
+  command-family owner reached by the replayed byte or to the documented
+  context/overlay physical-name boundaries.
+
 Canonical overlay state:
 
 - `0x782a92`: overlay/page-parser state. Selector `4` enables overlay, selector
@@ -599,8 +644,9 @@ page objects and pixels.
   writes active frame `0x782d76` with record head/count at `+0x00/+0x04`,
   source offset `+0x08 = 4`, kind `+0x09 = 2` or `3`, and snapshot pointer
   `+0x0a`. `0xa904` is the first consumer outside the macro selector layer;
-  it gives that frame priority over live host input, and `0x9f6a` reads the
-  payload bytes. The next boundary is exact:
+  it gives that frame priority over live host input, and `0x9f6a` reads each
+  payload byte by combining frame head `+0x00`, offset `+0x08`, count `+0x04`,
+  and the chunk next pointer. The next boundary is exact:
   `0xa904 -> 0xda9a -> 0x11774`; from there, replayed bytes belong to normal
   owners such as printable `0xd04a`, CR `0xf02c`, line-termination `0xedf8`,
   raster payload `0x105d0`, rectangle/rule `0x10898`, or transparent data

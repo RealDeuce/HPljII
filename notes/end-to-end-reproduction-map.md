@@ -6753,7 +6753,8 @@ Address-level cluster map:
 - Printable text cluster:
   `0xa904 -> 0xda9a -> 0x11774 -> 0xd04a -> 0x1393a ->
   0x12f2e -> 0x1387c -> 0xff1e -> 0x1ed84 -> 0x1edc6 ->
-  0x1ef6a -> 0x1effe`. Owner notes are
+  0x1ef6a -> 0x1effe -> 0x1f034/0x1f0d2/0x1f1f0/0x1f264 -> row-copy
+  tables/helpers`. Owner notes are
   [font-context-metrics.md](font-context-metrics.md),
   [page-record-storage.md](page-record-storage.md), and
   [page-raster-imaging.md](page-raster-imaging.md). Normal unmatched
@@ -6868,7 +6869,7 @@ Address-level cluster map:
   cursor change can flush that pending block through `0xf34a -> 0x12714 ->
   0x126e2`, materializing selector-`0x4000` segment-list objects under
   page-root `+0x1c`; publication then bridges them through `0x1edc6` and
-  segment-list renderer `0x1f812`.
+  segment-list renderer `0x1f812 -> 0x1f862`.
   Concrete direct-control and layout streams are now part of the route index.
   `ESC &k1G!\r!` reaches `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`;
   mode byte `0x80` makes CR apply CR+LF, and the second glyph queues in
@@ -7344,9 +7345,12 @@ Address-level cluster map:
   payloads install glyph records through `0x16498`; the following printable
   byte resolves that state through `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c`;
   publication and pixels then cross `0xff1e -> 0x1ed84 -> 0x1edc6 ->
-  0x1ef6a -> 0x1effe`. Supported visible branches include short compact
-  `0x1fe76`, wide compact `0x1f0d2`, segmented `0x1f1f0`, segmented-wide
-  `0x1f264`, and mixed rule/raster composition with `0x1f446` / `0x1f88e`.
+  0x1ef6a -> 0x1effe`, then the compact row-store route selected by object
+  selector bits. Supported visible branches include short compact `0x1f034`
+  / `0x1fe76` row-copy paths, wide compact `0x1f0d2`, segmented `0x1f1f0`,
+  segmented-wide `0x1f264`, and mixed rule/raster composition with
+  `0x1f446 -> 0x1f596/0x1f4e0` or
+  `0x1f88e -> 0x1f8da/0x1f8e6/0x1f920/0x1f9c6`.
   The normal offset-table downloaded-glyph stream is concrete:
   host-fetched `ESC )s80W` restores record `80 57 00 50 00 00`, enters
   `0x16c14`, validates the 64-byte descriptor through `0x16fae`, allocates
@@ -7396,9 +7400,10 @@ Address-level cluster map:
   payload-count cap before `0x16498`.
 - Raster and rectangle cluster:
   rectangle state and rule production run through `0x10898 -> 0x10b80 ->
-  0x13386 -> 0x133aa -> 0x1f446`; raster state and encoded rows run through
-  `0x10808`, `0x1075a`, `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 ->
-  0x13070 -> 0x13250 -> 0x1f88e`. Owners are
+  0x13386 -> 0x133aa -> 0x1f446 -> 0x1f596/0x1f4e0 -> 0x1f626`; raster state
+  and encoded rows run through `0x10808`, `0x1075a`,
+  `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 -> 0x13070 -> 0x13250 ->
+  0x1f88e -> 0x1f8da/0x1f8e6/0x1f920/0x1f9c6`. Owners are
   [rectangle-graphics.md](rectangle-graphics.md) and
   [raster-graphics.md](raster-graphics.md). Rectangle bytes follow
   `ESC *c#A/#B/#H/#V/#G/#P`: dimension writers `0x10e68`, `0x10e22`,
@@ -7407,14 +7412,16 @@ Address-level cluster map:
   clips against cursor/orientation/extents; `0x13386 -> 0x133aa` queues the
   rule object under page-root `+0x24`; `0x1edc6` bridges it to render-record
   `+0x1c`; and `0x1f446` dispatches solid selector `7` to `0x1f596` or
-  gray/pattern selectors to `0x1f4e0`. Raster bytes follow `ESC *t#R`,
+  gray/pattern selectors to `0x1f4e0`, with destination helper `0x1f626`
+  selecting current-band or fallback rows. Raster bytes follow `ESC *t#R`,
   `ESC *r#A/#B`, and delayed `ESC *b#W`: `0x10808` writes resolution-derived
   mode/scale while inactive; `0x1075a` seeds origin, limit, and active state;
   `0x107fa` clears only the active byte; `0x11f82 -> 0x121cc -> 0x12218`
   restores the transfer record; `0x105d0` gates/caps/drains payload bytes;
   `0x13070 -> 0x13250` queues encoded objects under page-root `+0x1c`; and
-  `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders modes `0..3`. Raster state is the
-  block rooted at `0x783170`: row `+0x02`, accepted byte count `+0x04`,
+  `0x1ef6a -> 0x1efc2 -> 0x1f88e` renders modes `0..3` through helper
+  `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`. Raster state is the block
+  rooted at `0x783170`: row `+0x02`, accepted byte count `+0x04`,
   overflow/drain count `+0x06`, encoded mode `+0x08`, baseline/origin
   `+0x0a`, scale `+0x0e`, row byte limit `+0x10`, and active flag `+0x12`.
   `0x10808` writes scale/mode only when active flag `+0x12` is clear;
@@ -7440,7 +7447,7 @@ Address-level cluster map:
   Retried no-room publication can requeue the same selector path after
   `0x10d22 -> 0xff1e -> 0x10084`; render bridge `0x1edc6` copies the rule
   list to render-record `+0x1c`, and `0x1f446` dispatches solid selector `7`
-  to `0x1f596`. Primary raster stream
+  to `0x1f596`, which writes through destination helper `0x1f626`. Primary raster stream
   `ESC *t300R ESC *r1A ESC *b4W f0 0f aa 55` queues mode-0 raster object
   `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` under page-root `+0x1c`; its
   class byte `0x80` selects encoded raster dispatch, mode byte `0` selects
@@ -7530,7 +7537,8 @@ Address-level cluster map:
   publication copies it into pool-header word `+0x0c`. The scheduler then
   promotes the record through `0x780eae`; `0x1ed84` / `0x1edc6` copy header
   words, bucket root `+0x1c`, and context slots before
-  `0x1ef6a -> 0x1effe` renders the compact object. Evidence is
+  `0x1ef6a -> 0x1effe -> 0x1f034` renders the compact object through the
+  compact row-copy table. Evidence is
   [publication-commands.md](publication-commands.md) and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
   Publication-cluster state classification: canonical state is the current
@@ -8126,8 +8134,8 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   The storage layer has no pixels by itself, but it determines which objects
   exist, their list order, and which render dispatcher later consumes them:
   compact and raster bucket dispatch through `0x1efc2`, segment-list spans
-  through `0x1f812`, rules through `0x1f446`, and fixed-list rows through
-  `0x1f756`.
+  through `0x1f812 -> 0x1f862`, rules through `0x1f446 -> 0x1f596/0x1f4e0`,
+  and fixed-list rows through `0x1f756 -> 0x1f7b0`.
   Concrete output evidence includes fixtures `0x10084-modeled page-root
   allocation side effects`, `0x10110 page-root initializer installs selected
   context slot`, `0x1381c stream allocator chunks display-list storage`,

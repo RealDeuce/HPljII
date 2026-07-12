@@ -1659,16 +1659,20 @@ A byte-stream renderer must preserve:
   fields; `0x1ef6a` and its object-class helpers are where those records become
   band-buffer pixels.
 
-## Confidence
+## Evidence Status
 
-High for page-root creation, initializer fields, stream allocator accounting,
-bucket reuse/new-head behavior, rule/fixed insertion order, no-room returns,
-publication root/header fields, and render-record bridge copies because each is
-backed by disassembly and named fixtures. High for allocator provenance at the
-page-record boundary because disassembly plus addressed page-record checks pin
-the `0x1381c` results and bridge state, while the shared `0x170c` / `0x1710`
-/ `0x18b4` heap contract is covered by the macro/parser firmware checkpoint.
-This is not a remaining software-visible page-record edge.
+The page-record storage claims are disassembly-backed for page-root creation,
+initializer fields, stream allocator accounting, bucket reuse/new-head
+behavior, rule/fixed insertion order, no-room returns, publication root/header
+fields, and render-record bridge copies. The cited fixtures are supporting
+checks that exercise those documented routes; they are not a separate evidence
+standard.
+
+Allocator provenance at the page-record boundary is pinned by disassembly plus
+addressed page-record checks for the `0x1381c` results and bridge state. The
+shared `0x170c` / `0x1710` / `0x18b4` heap contract is covered by the
+macro/parser firmware checkpoint. This is not a remaining software-visible
+page-record edge.
 
 ## Remaining Edges
 

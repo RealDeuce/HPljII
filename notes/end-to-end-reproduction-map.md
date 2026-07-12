@@ -94,9 +94,10 @@ read or written by those instructions. Semantic names and output effects are
 interpretations derived from that static evidence. Fixture scripts and generated
 checks are model-consistency aids: they exercise the documented interpretation
 against selected byte streams, but they are not evidence from a running printer
-or an executing ROM. "Confidence" therefore means how directly the disassembly
-supports a claim, with fixtures cited only as reproducible checks of the
-interpretation.
+or an executing ROM. Evidence strength means how directly ROM bytes, decoded
+tables, instruction listings, and RAM field accesses support a claim. Fixture
+citations are reproducible checks of the interpretation, not the deliverable
+and not an external pixel oracle.
 
 Documentation coverage means a checked-in note names the ROM address range,
 field writers, field readers/consumers, visible or state output, field
@@ -8091,10 +8092,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [Fixed-List Outcome
   Matrix](page-record-storage.md#fixed-list-outcome-matrix) in
   [page-record-storage.md](page-record-storage.md).
-  Confidence is high for the pending state writers, metric gates, object byte
-  shapes, orientation split, bridge shape, and ROM-derived row construction
-  because each cited edge has handler, field, or render-helper evidence; fixtures
-  only exercise the documented path and state shape.
+  Evidence strength is high for the pending state writers, metric gates,
+  object byte shapes, orientation split, bridge shape, and ROM-derived row
+  construction because each cited edge has handler, field, or render-helper
+  evidence. Fixtures only exercise the documented path and state shape.
   No unresolved ROM-local middle edge remains for this pending-span-to-page
   object handoff; remaining work is selected-font or byte-stream variants that
   change source-object fields, unflagged/flagged metric fields, pending span
@@ -8154,10 +8155,11 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Shared
   Page-Record Storage And Allocator` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for first-root setup, shared stream allocation, producer
-  roots, chunk rollover, no-room preservation, publication, bridge copies, and
-  render-dispatch ownership because the cited fixtures cover multiple writer
-  families and the shared consumers.
+  Evidence strength is high for first-root setup, shared stream allocation,
+  producer roots, chunk rollover, no-room preservation, publication, bridge
+  copies, and render-dispatch ownership because the cited disassembly and
+  owner notes name multiple writer families and the shared consumers. Fixtures
+  are supporting checks for those routes.
   No unresolved ROM-local producer-to-root-to-render mapping remains for the
   listed object classes; remaining work starts from byte streams that create a
   new object shape, root field, bridge value, continuation state, or rendered
@@ -8222,10 +8224,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
   Rectangle Rule` plus `Worked Path: Rectangle Rule Selectors And Clipping` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for parser handler order, selector mapping, clipping and
-  reject gates, source-record bytes, rule object bytes, ordered insertion,
-  bridge normalization, solid/pattern dispatch, band continuation, and no-room
-  retry output.
+  Evidence strength is high for parser handler order, selector mapping,
+  clipping and reject gates, source-record bytes, rule object bytes, ordered
+  insertion, bridge normalization, solid/pattern dispatch, band continuation,
+  and no-room retry output.
   No unresolved software-visible middle edge remains for the covered
   selector-7, gray, pattern, landscape-remap, clipping, no-room, addressed
   storage, publication, and mixed text/rule/raster streams.
@@ -8358,7 +8360,8 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   And Default Environment`, `Worked Path: FF Publication`, and `Worked Path:
   Publication Commands To ROM-Derived Page Rows` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for parser handler order, pre-command object preservation,
+  Evidence strength is high for parser handler order, pre-command object
+  preservation,
   reset/FF/geometry/page-length-zero/paper-source/copies side-effect ordering,
   pool-header defaults and copy-count field, current-root clearing, bridge
   preservation, and ROM-derived row construction for the direct publication
@@ -8427,7 +8430,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), surfaced first as
   `Worked Path: Published Record To Active Bands` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for source-root copying, context-slot copying,
+  Evidence strength is high for source-root copying, context-slot copying,
   rule/fixed normalization, render-root ownership, and ROM-derived row-write
   paths after the bridge.
   No unresolved ROM-local bridge edge remains for the documented compact,
@@ -8490,11 +8493,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path:
   Published Record To Active Bands` plus `Band Scheduling Route Index` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for pool-head versus cursor roles, candidate selection,
-  `0x780eaa -> 0x780eae`, work-record alternation, `0x783a18`,
-  same-geometry reuse, active-loop branches, wait-object transitions, and
-  the ROM-local path from scheduler-produced band words to render-entry
-  calls.
+  Evidence strength is high for pool-head versus cursor roles, candidate
+  selection, `0x780eaa -> 0x780eae`, work-record alternation, `0x783a18`,
+  same-geometry reuse, active-loop branches, wait-object transitions, and the
+  ROM-local path from scheduler-produced band words to render-entry calls.
   Remaining edges are bounded hardware/MMIO timing and naming edges:
   `0x0d52..0x0f7a`, `0x0f84..0x102e`, `0x10bc..0x1282`, and
   `0x1cf8..0x1ea8` are modeled as firmware-visible scheduler and wait-object
@@ -8573,10 +8575,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Render
   Dispatch And Pixel Composition` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for render-root ownership, call order, bucket class split,
-  compact subdispatch, segment-list layout, encoded raster modes, rule/fixed
-  selectors, destination arithmetic, row-copy table targets, and row-level
-  output derived from the cited object and render-helper paths.
+  Evidence strength is high for render-root ownership, call order, bucket
+  class split, compact subdispatch, segment-list layout, encoded raster modes,
+  rule/fixed selectors, destination arithmetic, row-copy table targets, and
+  row-level output derived from the cited object and render-helper paths.
   No unresolved shared render-dispatch edge remains for the documented object
   classes. Remaining ROM-local work starts from byte streams that create
   different object fields, selected-font contexts, helper targets,
@@ -8646,7 +8648,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [page-raster-imaging.md](page-raster-imaging.md),
   [raster-graphics.md](raster-graphics.md), and
   [rectangle-graphics.md](rectangle-graphics.md).
-  Confidence is high for parser handler order, delayed raster scratch,
+  Evidence strength is high for parser handler order, delayed raster scratch,
   addressed object addresses, published page-record fields, bridge state,
   render call order, bucket-chain order, rule carry, and ROM-derived row
   construction.
@@ -8776,7 +8778,7 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   [semantic-state-model.md](semantic-state-model.md), and `Worked Path: Font
   Selection To Visible Glyphs` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for primary/secondary selection, symbol fallback,
+  Evidence strength is high for primary/secondary selection, symbol fallback,
   final-`X` success and non-selected exits, page-root slot install/reuse,
   glyph-map consumption, bridge preservation, and ROM-derived row construction.
   No unresolved ROM-local middle edge remains for the documented primary and
@@ -8919,13 +8921,13 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   `Downloaded Glyph`, `Downloaded Glyph Rule/Raster Composition`,
   `Nonzero Resource Payload`, and `Fixed-Record Resource Object` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md).
-  Confidence is high for descriptor dispatch, current-record state,
+  Evidence strength is high for descriptor dispatch, current-record state,
   zero-drain success boundaries, resource allocation, candidate insertion,
-  selected map consumption, short/wide/segmented downloaded glyph rendering,
-  FF publication, and mixed rule/raster/downloaded-glyph composition in the
-  cited ROM paths. The fixtures named above drive those parser branches and
-  check internal helper transcriptions; the semantic claims come from the
-  checked-in handler, field, page-object, bridge, and render-helper notes.
+  selected map consumption, short/wide/segmented downloaded glyph rendering, FF
+  publication, and mixed rule/raster/downloaded-glyph composition in the cited
+  ROM paths. The fixtures named above drive those parser branches and check
+  internal helper transcriptions; the semantic claims come from the checked-in
+  handler, field, page-object, bridge, and render-helper notes.
   Resolved middle boundaries include `0x15dc6 -> 0x16498 -> 0x15dcc ->
   0x12328`, `0x16c14..0x16c68 -> 0x12328`, fixed-record current and
   continuation routes through `0x16606` and `0x15c4c`, resource-header
@@ -9383,10 +9385,10 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   coordinate `0x9001`; the covered `ESC &l0P` stream selects fallback page code
   `2`, mirrors `0x780e8f = 0x80`, signals `0x780e26 = 1`, writes text bottom
   `3240`, and reloads extent `3300`.
-  Confidence is high for table lookups, page-size/orientation state writes,
-  publication-before-mutation ordering, nonzero and zero page-length branches,
-  and following printable placement because the cited fixtures cover both
-  handler-level state and ROM-derived row construction.
+  Evidence strength is high for table lookups, page-size/orientation state
+  writes, publication-before-mutation ordering, nonzero and zero page-length
+  branches, and following printable placement because the cited handlers and
+  fixtures cover both handler-level state and ROM-derived row construction.
   No unresolved ROM-local middle edge remains for the documented
   `ESC &l#A`, `ESC &l#O`, `ESC &l66P`, `ESC &l0P`, `ESC &l#C/#D`,
   `ESC &l#E`, or `ESC &l#F` paths. Remaining geometry work starts only when a
@@ -9399,8 +9401,8 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed `ESC *b#W`,
   lowercase transfer chaining, active-raster resolution behavior, row caps,
   beyond-extent drains, and modes 0/1/2/3. Evidence: [Raster Command-To-Pixel Owner
-  Summary](raster-graphics.md#owner-summary),
-  [raster-graphics.md](raster-graphics.md), `Raster Transfer Gate And Encoded Rows` in
+  Summary](raster-graphics.md#owner-summary), [raster-graphics.md](raster-graphics.md),
+  `Raster Transfer Gate And Encoded Rows` in
   [semantic-state-model.md](semantic-state-model.md), `Worked Path: Raster Transfer
   Gates And Modes` in [firmware-dataflow-model.md](firmware-dataflow-model.md),
   host-fetched raster fixtures, and supporting report
@@ -9458,18 +9460,18 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   `host-fetched text rectangle and raster page record feeds 0x1ed84 and 0x1ef6a` and
   `addressed text/rule/raster field groups reach publication and render entry` exercises
   the documented page-root, publication, bridge, and band-render path shared by encoded
-  raster objects, compact text, and rule objects. Confidence is high for delayed-record
-  restore, `0x105d0` gate outcomes, root boundary, encoded object layout, bridge
-  preservation, mode helpers, active-resolution behavior, lowercase `*b` chaining, dense
-  capped-new-chunk/current-tail allocation through `0x132b6..0x13382`, and ROM-derived
-  row construction for the cited streams. No unresolved ROM-local raster object, bridge,
-  or render edge remains for the documented paths. Remaining work is new byte streams
-  that expose different `0x105d8..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, or
-  `0x132b6..0x13382` gate outcomes, accepted counts or drains, allocator state
-  `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, encoded object bytes
-  `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte `0x782996`,
-  packed-key advance through `0x332ee`, or mode-specific `0x1f88e` row-construction
-  paths.
+  raster objects, compact text, and rule objects. Evidence strength is high for
+  delayed-record restore, `0x105d0` gate outcomes, root boundary, encoded object layout,
+  bridge preservation, mode helpers, active-resolution behavior, lowercase `*b`
+  chaining, dense capped-new-chunk/current-tail allocation through `0x132b6..0x13382`,
+  and ROM-derived row construction for the cited streams. No unresolved ROM-local raster
+  object, bridge, or render edge remains for the documented paths. Remaining work is new
+  byte streams that expose different `0x105d8..0x10752`, `0x10084..0x10218`,
+  `0x13070..0x13250`, or `0x132b6..0x13382` gate outcomes, accepted counts or drains,
+  allocator state `0x782a70/0x782a72/0x782a76`, split capacity `0x782a80`, encoded
+  object bytes `+0x04/+0x05/+0x06/+0x08/+0x0a..`, bridge bucket roots, copy-stop byte
+  `0x782996`, packed-key advance through `0x332ee`, or mode-specific `0x1f88e`
+  row-construction paths.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule
@@ -9563,10 +9565,11 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   the same rule list composes with compact text and encoded raster objects
   through the shared
   `0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path.
-  Confidence is high for parser handler order, dimension and fill-selector
-  mapping, clipping/reject gates, rule object bytes, ordered insertion, bridge
-  normalization, solid/pattern dispatch, continuation mutation across bands,
-  no-room retry output, and mixed text/rule/raster composition.
+  Evidence strength is high for parser handler order, dimension and
+  fill-selector mapping, clipping/reject gates, rule object bytes, ordered
+  insertion, bridge normalization, solid/pattern dispatch, continuation
+  mutation across bands, no-room retry output, and mixed text/rule/raster
+  composition.
   No unresolved software-visible middle edge remains for the covered
   selector-7, gray-selector, pattern-selector, landscape-remap, clipping,
   no-room retry, addressed-storage, publication, and mixed text/rule/raster
@@ -9689,12 +9692,12 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   VFC channel jumps either move the following printable coordinate on the same
   page or publish the old page before the following printable queues on a fresh
   page.
-  Confidence is high for parser handler order, host-byte draining, `0xff1e`
-  pool headers, command side effects, VFC table bytes, delayed payload
-  restoration, lowercase delayed-record preservation, cursor-only VFC paths,
-  page-publishing VFC paths, render bridge fields, and final rows for the
-  cited streams. Medium only for manual-facing names of derived line-count
-  fields `0x782ede`, `0x782edf`, and `0x782ee0`.
+  Evidence strength is high for parser handler order, host-byte draining,
+  `0xff1e` pool headers, command side effects, VFC table bytes, delayed
+  payload restoration, lowercase delayed-record preservation, cursor-only VFC
+  paths, page-publishing VFC paths, render bridge fields, and final rows for
+  the cited streams. Manual-facing names of derived line-count fields
+  `0x782ede`, `0x782edf`, and `0x782ee0` remain unresolved.
   No ROM-local parser-to-publication, publication-to-render, VFC table-load,
   or VFC channel-jump middle edge remains for the documented streams.
   Remaining work is new byte streams that change page-record bucket shape,
@@ -9815,13 +9818,13 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   adds replayed page objects to the page being finalized, and then publishes
   the combined base page plus overlay text/raster/span objects through the same
   bridge and render entry.
-  Confidence is high for selector dispatch, record lookup, payload chunk
-  format, execute/call frame metadata, data-chain byte-source priority,
+  Evidence strength is high for selector dispatch, record lookup, payload
+  chunk format, execute/call frame metadata, data-chain byte-source priority,
   replayed parser dispatch, bridge/render equivalence, overlay replay before
   publication, repeated overlay publication, and overlay skip gates.
-  Medium for manual-facing names of macro context-stack bytes and overlay
-  state `0x782a92`; the ROM effects are documented even where names are
-  inferred.
+  Manual-facing names of macro context-stack bytes and overlay state
+  `0x782a92` remain unresolved; the ROM effects are documented even where
+  names are inferred.
   No remaining macro execute/call replay, font-context refresh, overlay
   publication, repeated enabled-overlay publication, mixed-control overlay,
   cursor-position overlay, chained-margin overlay, raster overlay, multi-row
@@ -10050,12 +10053,13 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   bounded to byte streams that change source-object fields, selected-map
   results, HMI/cursor advance, compact selector class, bridge context slots,
   helper dispatch, fallback splitting, or row-construction inputs.
-  Confidence is high for source field meanings, paired writer behavior,
+  Evidence strength is high for source field meanings, paired writer behavior,
   `0x12f2e` short/segmented object shapes, selector bits, queue no-room retry,
-  compact subdispatch, and row output for the cited fixtures. It remains
-  medium for broader source-class cross-products. The exact unresolved ROM
-  boundary is not between parser and compact renderer for the documented
-  cases; it starts at new byte-stream
+  compact subdispatch, and row output where the cited handlers and helpers
+  define those fields. Broader source-class cross-products remain future
+  documentation work only if they change object bytes or helper inputs. The
+  exact unresolved ROM boundary is not between parser and compact renderer for
+  the documented cases; it starts at new byte-stream
   variants through `0xd04a..0x12f2e` or compact helper variants through
   `0x1f034..0x1f264` that alter the object bytes or ROM-derived row
   construction.

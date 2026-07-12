@@ -2086,32 +2086,32 @@ It must preserve:
 - following printable object coordinates after every cursor or margin command;
 - page-record bridging and render-entry rows after those objects are queued.
 
-## Confidence
+## Evidence Status
 
-High for line-termination bits, CR/LF/FF/HT/BS cursor effects, HMI conversion,
+Line-termination bits, CR/LF/FF/HT/BS cursor effects, HMI conversion,
 page-record compact coordinates, and representative ROM-derived row
-construction because the claims are backed by disassembly plus byte-stream
-fixtures that start at modeled host byte fetch and reach `0x1387c`,
-`0x1edc6`, `0x1ed84`, and `0x1ef6a`. The fixtures drive ROM-local branches;
-they are not external rendered-output comparisons.
+construction are backed by disassembly plus byte-stream checks that start at
+modeled host byte fetch and reach `0x1387c`, `0x1edc6`, `0x1ed84`, and
+`0x1ef6a`. The checks drive ROM-local branches; they are not external
+rendered-output comparisons.
 
-High for SO/SI selected-context switching, `ESC 9`, `ESC =`, cursor-stack,
-underline/span, and perforation-skip representative output effects because
-each has a named parser/page-record fixture and concrete handler evidence.
+SO/SI selected-context switching, `ESC 9`, `ESC =`, cursor-stack,
+underline/span, and perforation-skip representative output effects each have a
+named parser/page-record check and concrete handler evidence.
 
-High for `ESC &s#C` selector handling and printable precheck consumption,
-because the `0xedb0` writer and paired `0xd28a` / `0xd6bc` consumers are pinned
-by fixtures and by disassembly reads of `0x783190`.
+`ESC &s#C` selector handling and printable precheck consumption are pinned by
+writer `0xedb0`, paired consumers `0xd28a` / `0xd6bc`, and disassembly reads
+of `0x783190`.
 
-High for printable source capture and compact object publication from
-`0xd04a` / `0xd0f0` through `0x1393a`, `0xd3b2` / `0xd824`, and `0x12f2e`,
-because the source fields, branch decisions, compact object shapes, allocation
-retry, and span-consumer handoff are now enumerated in the
+Printable source capture and compact object publication from `0xd04a` /
+`0xd0f0` through `0x1393a`, `0xd3b2` / `0xd824`, and `0x12f2e` are documented
+by source fields, branch decisions, compact object shapes, allocation retry,
+and span-consumer handoff in the
 [Printable Source Outcome Matrix](#printable-source-outcome-matrix).
 
-Medium only for manual-facing latch names and byte-stream variants that would
-change a named field, object byte, allocation outcome, or render-helper input
-outside the documented matrix.
+Manual-facing latch names remain unresolved. New byte-stream work belongs here
+only when it changes a named field, object byte, allocation outcome, or
+render-helper input outside the documented matrix.
 
 ## Remaining Edges
 

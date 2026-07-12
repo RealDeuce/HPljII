@@ -469,7 +469,8 @@ Display-functions direct reader:
   bytes through `0xd04a`.
 - Alternate/data `0x12120` writes literal prefix `ESC Y` and each normalized
   loop value through append sink `0xe002`. This path has no immediate pixels;
-  it creates stored bytes for later macro/data-chain replay.
+  it creates stored bytes for later macro/data-chain replay through `0xe418`
+  or `0xe4f4` frame construction and `0xa904 -> 0x11774` parser reentry.
 
 Local Control-Z and display-off siblings:
 
@@ -524,7 +525,11 @@ Writers, readers, and output effects:
 - Readers/consumers:
   `0xa904` supplies direct loop bytes; `0x12452` and `0x12536` consume filter
   fields and selected slot state; `0xd04a` / `0xd0f0` consume normalized values;
-  macro/data replay later consumes bytes appended by `0xe002`.
+  macro/data replay later consumes bytes appended by `0xe002`, via the display
+  owner checkpoint [Append-State Reentry
+  Boundary](display-functions.md#append-state-reentry-boundary) and the macro
+  owner [Macro Replay To Visible Consumer
+  Map](macro-data-chain.md#macro-replay-to-visible-consumer-map).
 - Output effect:
   transparent and normal-display printable routes can queue compact text
   objects, advance cursor spacing, publish through later `0xff1e`, bridge
@@ -2945,7 +2950,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   [Transparent Payload To Visible Consumer
   Map](transparent-print-data.md#transparent-payload-to-visible-consumer-map);
   display-loop and local Control-Z routing details are in [Display Byte To Visible
-  Consumer Map](display-functions.md#display-byte-to-visible-consumer-map).
+  Consumer Map](display-functions.md#display-byte-to-visible-consumer-map) and
+  [Append-State Reentry
+  Boundary](display-functions.md#append-state-reentry-boundary).
   When these readers route bytes to `0xd04a` or `0xd0f0`, their pixel endpoint
   is the same compact row-store route as ordinary printable bytes; when they
   append through `0xe002`, there is no row-store endpoint until replay feeds

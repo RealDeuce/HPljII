@@ -7103,10 +7103,13 @@ Address-level cluster map:
   Y\x05\x80\x1aX! ESC Z` normalizes `1a 58` to `0x7f`, routes all six values through
   `0xd04a`, and queues object prefix `00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02
   20 06 04 1a 53 05 59 06 06`. Alternate/data reader `0x12120` appends payload `21 1a 58
-  1b 5a` as stored stream `1b 59 21 7f 1b 5a` through `0xe002`. Evidence is [Transparent
+  1b 5a` as stored stream `1b 59 21 7f 1b 5a` through `0xe002`; those bytes have no
+  row-store endpoint until `0xe418` or `0xe4f4` builds a replay frame and
+  `0xa904 -> 0x11774` returns them to ordinary parser owners. Evidence is [Transparent
   Payload Decision
   Checkpoint](transparent-print-data.md#transparent-payload-decision-checkpoint),
-  [display-functions.md](display-functions.md), and
+  [display-functions.md](display-functions.md), [Append-State Reentry
+  Boundary](display-functions.md#append-state-reentry-boundary), and
   [pcl-command-map.md](pcl-command-map.md#supported-stream-dispatch-matrix).
   Transparent/display state classification: canonical transparent parser state
   is command-record count `+2`, cursor `0x78299e`, delayed pending flag

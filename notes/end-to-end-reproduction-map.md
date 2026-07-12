@@ -1044,7 +1044,10 @@ Completion audit queue:
   record or local direct-reader state, handler address, RAM fields written,
   downstream consumer, output/no-output effect, evidence, and exact residual
   boundary if any. A generated table row, fixture name, or handler listing
-  alone does not pass this audit.
+  alone does not pass this audit. The checked-in working ledger is
+  [supported-stream-dispatch-audit.md](supported-stream-dispatch-audit.md);
+  it currently records the transparent/display/status byte-reader cluster and
+  leaves the remaining command families explicitly pending.
 - Owner-route audit:
   for each command-family owner, verify that the first semantic effect is
   classified as page-image object, delayed state, append/replay input,

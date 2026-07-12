@@ -294,6 +294,18 @@ for following queued page objects into visible output.
   copy this root to render `+0x18`; `0x1ef6a -> 0x1efc2` then dispatches
   object byte `+4` to compact `0x1effe`, segment-list `0x1f812`, or
   encoded-raster `0x1f88e`.
+- Bucket-chain ordering:
+  bucket arrays are ordered at two levels. Producer helpers use `0x782a7c` as
+  the bucket index; `0x1387c` reuses a matching selector object while its
+  count word `+0x06` remains below capacity, otherwise it allocates a new
+  object and links it at the selected bucket head by copying the prior head to
+  new `+0x00`. Raster helper `0x13250` uses the same selected bucket index and
+  links each new class-`0x80` object at the head. Bridge `0x1edc6` copies the
+  bucket array pointer without reordering it, and render dispatcher `0x1efc2`
+  walks `object+0` links from head to tail. Output effect: entries appended to
+  a reused compact or segment object keep producer append order inside that
+  object, while a full selector or new raster object becomes earlier in the
+  same-bucket render walk than the previous head.
 - Rule-list consumers:
   rectangle/rule producers `0x10898 -> 0x13386 -> 0x133aa` write ordered nodes
   under root `+0x24`. Bridge `0x1edc6` copies that root to render `+0x1c`,
@@ -365,6 +377,7 @@ Evidence:
 `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
 `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
 `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`,
+`generated/analysis/ic30_ic13_compact_bucket_allocator.md`,
 [active-render-scheduler.md](active-render-scheduler.md#scheduler-outcome-matrix),
 and [page-raster-imaging.md](page-raster-imaging.md#render-entry-outcome-matrix).
 

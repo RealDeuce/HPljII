@@ -2145,6 +2145,19 @@ which is the page/control bucket array copied from source offset
 masks object byte `+4` with `0xc0`, and uses the result as the first
 class split:
 
+Within the selected bucket, the walk is head-to-tail through object `+0x00`
+links. Producer order is therefore part of the pixel contract, not an
+unspecified renderer policy: `0x1387c` reuses a matching compact/segment object
+until its count reaches the producer-supplied capacity, otherwise it links a
+new object at the bucket head; raster helper `0x13250` also links each new
+encoded object at the bucket head. `0x1edc6` copies the page-root bucket array
+to render `+0x18` without reordering, so `0x1efc2` sees the exact head order
+created by those producers. Evidence:
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+`generated/disasm/ic30_ic13_raster_object_queue_013070.lst`,
+`generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`, and
+`generated/analysis/ic30_ic13_compact_bucket_allocator.md`.
+
 - `0x00..0x3f`
   - Render path: compact branch `0x1effe`; table `0x1f024` selected by
     byte `+4` bits `0x10/0x20`

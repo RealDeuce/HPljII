@@ -251,9 +251,9 @@ fields, continue in that owner note before claiming equivalent output.
   page/image path is ordinary compact text: `0xd04a -> 0x1393a -> 0xd550 -> 0xd824 ->
   0x12f2e -> 0x1387c` queues the two-entry compact object under current page-root bucket
   `+0x1c`, prefix `00 00 00 00 00 00 00 02 20 00 01 20 02 02`. Publication/render uses
-  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe`; transparent print
-  data has no separate renderer. Evidence: `Minimal Transparent Payload Walkthrough` in
-  this file and
+  `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe` and the
+  selected compact row-store helper; transparent print data has no separate renderer.
+  Evidence: `Minimal Transparent Payload Walkthrough` in this file and
   [Transparent Payload Outcome
   Matrix](transparent-print-data.md#transparent-payload-outcome-matrix) plus
   [Transparent Payload To Visible Consumer
@@ -271,7 +271,7 @@ fields, continue in that owner note before claiming equivalent output.
   page-record text object in the pinned flagged built-in path. The resulting compact
   object prefix is `00 00 00 00 00 00 00 02 20 00 01 20 06 04`; publication/render is
   still the ordinary compact route `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2
-  -> 0x1effe`. Evidence:
+  -> 0x1effe` and the selected compact row-store helper. Evidence:
   [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint).
 - Secondary transparent high-control `SO ESC &p3X!\x80!`: SO byte `0x0e` reaches
   `0xc6b8`, calls `0xc428(1)`, installs secondary context `0xc00ae122`, and sets
@@ -285,7 +285,8 @@ fields, continue in that owner note before claiming equivalent output.
   01 00 01 5f 00 1c 01 00 00 00 00`. Render path `0x1ef6a -> 0x1efc2 -> 0x1effe ->
   0x1f354 -> 0x1f1f0` resolves glyph entry file offset `0x02e122`, segment `0x39`, and
   firmware source `0x0bfe22..0x0c0321`; bytes `0x0c0000..0x0c0321` are the exact missing
-  external resource range. Evidence:
+  external resource range. The parser, object, bridge, compact dispatch, and segmented
+  compact row-store route are documented before that stop. Evidence:
   [transparent-print-data.md](transparent-print-data.md#transparent-payload-decision-checkpoint)
   and
   [unresolved-boundaries.md](unresolved-boundaries.md#secondary-segment-57-resource-source).
@@ -318,11 +319,11 @@ fields, continue in that owner note before claiming equivalent output.
   page; publishing siblings such as `! ESC &l0V !` take branch `0x1299c..0x129c4`, run
   `0xf06e -> 0xf34a -> 0xf34a -> 0xf124`, publish the old page through `0xff1e`, reset
   x/y to `10`/`126`, and let the next `!` queue on a fresh root at compact coordinate
-  `0x9001`. Published pre-VFC rows render through `0x1ed84 -> 0x1edc6 -> 0x1ef6a`;
-  post-VFC rows render when the fresh page is later published. Evidence: `Minimal VFC
-  Walkthrough` in this file, [VFC State To Visible Consumer
-  Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map), and `Worked Path:
-  VFC Table And Channel Branch Matrix` in
+  `0x9001`. Published pre-VFC rows render through `0x1ed84 -> 0x1edc6 -> 0x1ef6a` and
+  the object-class row-store helpers; post-VFC rows render when the fresh page is later
+  published. Evidence: `Minimal VFC Walkthrough` in this file, [VFC State To Visible
+  Consumer Map](vertical-forms-control.md#vfc-state-to-visible-consumer-map), and
+  `Worked Path: VFC Table And Channel Branch Matrix` in
   [firmware-dataflow-model.md](firmware-dataflow-model.md#worked-path-vfc-table-and-channel-branch-matrix).
 - Reset/page boundary `! ESC E !`: the first `!` enters through `0xa904 -> 0xda9a ->
   0x11774` and queues the compact object `00 00 00 00 00 00 00 01 20 00 01` through the
@@ -630,7 +631,8 @@ fields, continue in that owner note before claiming equivalent output.
   `0xf02c`. The queued object is the same compact text object as the live printable
   path, prefix `00 00 00 00 00 00 00 01 20 00 01`, under page-root bucket array `+0x1c`.
   Later publication/render uses `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 ->
-  0x1effe -> 0x1f354`; macro replay has no separate pixel renderer. Evidence:
+  0x1effe -> 0x1f354` and the selected compact row-copy helper; macro replay has no
+  separate pixel renderer. Evidence:
   [macro-data-chain.md](macro-data-chain.md#macro-replay-outcome-matrix), [Macro Replay
   To Visible Consumer Map](macro-data-chain.md#macro-replay-to-visible-consumer-map),
   and `Worked Path: Macro Execute Replay` in
@@ -5380,8 +5382,8 @@ Page-object and render effect:
   `0x78297a`, and exposes the compact object to render entry.
 - `0x1ed84` seeds the active render record, `0x1edc6` copies bucket/context
   roots, and `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches the replay-produced
-  compact object to the same compact text renderer used by live host bytes.
-  Macro execute replay has no macro-specific renderer.
+  compact object through `0x1f354` to the same compact row-copy helper used by
+  live host bytes. Macro execute replay has no macro-specific renderer.
 
 State classification:
 
@@ -6326,7 +6328,8 @@ Publication, bridge, and pixels:
   current root pointer `0x78297a`.
 - The next printable byte allocates or reuses a fresh current page root through
   the normal `0xd04a -> 0xd824 -> 0x12f2e -> 0x1387c` path.
-- Published pre-VFC rows render through `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+- Published pre-VFC rows render through `0x1ed84`, `0x1edc6`, `0x1ef6a`, and
+  the object-class row-store helpers selected by the old root's queued objects.
   Post-VFC rows render from the fresh page root when that later page is
   published.
 
@@ -9259,10 +9262,11 @@ and [pcl-command-map.md](pcl-command-map.md#alternatedata-dispatch-decision-chec
   substituted space queue a compact object instead of cursor-only spacing.
   Printable transparent values re-enter the ordinary text/page path:
   `0xd04a -> 0x1393a -> 0xd824/0xd3b2 -> 0x12f2e -> 0x1387c -> 0xff1e ->
-  0x1ed84 -> 0x1edc6 -> 0x1ef6a`. Canonical state is the restored count word
-  `+2`, selected slot `0x782f06`, cursor `0x782c8a`, current page root
-  `0x78297a`, compact text object, published record, and render-record
-  bucket/context roots. Derived/cache state is selected context byte
+  0x1ed84 -> 0x1edc6 -> 0x1ef6a -> 0x1efc2 -> 0x1effe` and the selected
+  compact row-store helper. Canonical state is the restored count word `+2`,
+  selected slot `0x782f06`, cursor `0x782c8a`, current page root `0x78297a`,
+  compact text object, published record, render-record bucket/context roots,
+  and compact row-store inputs. Derived/cache state is selected context byte
   `0x782eea + 0x10 * slot`, fallback filter `0x782efa`, high-character flags,
   compact coordinates, and render-band fields. Parser scratch is the delayed
   payload state `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, command-record
@@ -10324,8 +10328,9 @@ shape, publication boundary, or render helper inputs.
    `! ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0`, and span flush
    `ESC &a6L!`. These payloads replay through the normal parser and queue
    compact text, span, rule, or raster page objects before the same
-   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` render path. Evidence fixtures
-   include `macro overlay finalization replays before page publication`,
+   `0xff1e -> 0x1ed84 -> 0x1edc6 -> 0x1ef6a` dispatch and object-class
+   row-store helpers used by live host bytes. Evidence fixtures include
+   `macro overlay finalization replays before page publication`,
    `macro overlay replays across repeated page publications`, `macro overlay
    skip gates preserve base page publication`, `macro overlay mixed-control
    payload publishes with page rule`, `macro overlay cursor-position payload

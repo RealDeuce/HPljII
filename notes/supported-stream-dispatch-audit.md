@@ -13,12 +13,12 @@ Audit state:
 
 - Complete in this ledger:
   transparent/display/status byte-reader cluster below; printable/direct C0
-  control cluster below.
+  control cluster below; cursor, motion, margin, and span command cluster
+  below.
 - Still pending in this ledger:
-  cursor and layout command families beyond direct C0 controls, publication
-  and VFC, raster transfer, rectangle/rule imaging, font selection and
-  downloaded glyphs, macro definition/replay, parser-only rows, and
-  page/render owner crosswalk rows.
+  page-environment publication and VFC, raster transfer, rectangle/rule
+  imaging, font selection and downloaded glyphs, macro definition/replay,
+  parser-only rows, and page/render owner crosswalk rows.
 
 ## Transparent, Display, And Status Byte Readers
 
@@ -327,3 +327,175 @@ work in this area belongs to broader cursor/layout command families that use
 parameterized ESC handlers, or to byte streams that change compact selector
 shape, selected context, span object bytes, page-publication fields, or render
 inputs.
+
+## Cursor, Motion, Margin, And Span Commands
+
+This cluster covers parameterized placement and text-state commands whose
+first semantic effect is delayed state, plus the span path that can turn that
+state into a segment-list page object. It starts after parser dispatch has
+selected a normal table handler for `ESC &k`, `ESC &s`, `ESC &a`, `ESC *p`,
+`ESC 9`, `ESC =`, `ESC &f#S`, or `ESC &d`, and it ends when later printable,
+span, raster, rectangle, VFC, or publication paths consume the updated state.
+Page-environment commands that own paper size, page length, copies, VFC table
+payloads, or page-root publication remain in the publication/VFC audit cluster.
+
+### Audited Rows
+
+- `ESC &k#G`, line termination mode:
+  parser dispatch reaches handler `0xedf8`, which rewinds command record
+  cursor `0x78299e`, reads record word `+2`, normalizes negative selectors to
+  absolute values, and writes canonical mode byte `0x78318f`. Selector `0`
+  writes `0x00`, selector `1` writes `0x80`, selector `2` writes `0x60`, and
+  selector `3` writes `0xe0`. CR `0xf02c` consumes bit `7`, LF `0xf08c`
+  consumes bit `6`, and FF `0xf0f0` consumes bit `5`; the visible result is
+  either a later compact coordinate after `0xd04a`, pending-span publication,
+  or page-root publication through `0xf124 -> 0xff1e`. Owner evidence is
+  [Line-Termination Route
+  Checkpoint](direct-control-codes.md#line-termination-route-checkpoint),
+  [Direct-Control Outcome
+  Matrix](direct-control-codes.md#direct-control-outcome-matrix), and
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`.
+
+- `ESC &k#H`, HMI:
+  parser dispatch reaches handler `0xca8c`. It consumes the six-byte
+  `ESC &k#H/h` record at `0x78299e`, reads integer word `+2` and fractional
+  word `+4`, rejects integer values above `0x348`, scales the accepted value,
+  and stores packed HMI in `0x78315c`. The command queues no page object.
+  First consumers are printable placement `0xd04a`, HT `0xf1cc`, BS
+  `0xf2a8`, margin writers `0xeb58` / `0xec0c`, and cursor-position handler
+  `0xf39e`; raster and rectangle can observe the change only after one of
+  those consumers has committed cursor or margin fields. Owner evidence is
+  [HMI Route Checkpoint](direct-control-codes.md#hmi-route-checkpoint) and
+  `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`.
+
+- `ESC &s#C`, wrap mode:
+  parser dispatch reaches handler `0xedb0`. It reads record word `+2`,
+  writes wrap byte `0x783190 = 1` for selector `0`, clears `0x783190` for
+  selector `1`, and leaves the byte unchanged for other selectors. Unflagged
+  precheck `0xd28a` and flagged precheck `0xd6bc` consume that byte before
+  compact object queueing; wrap clear rejects horizontal overflow, while wrap
+  set calls recovery helper `0xf054` and can allow the same printable source
+  to continue into `0x12f2e -> 0x1387c`. Owner evidence is
+  [Wrap Mode Route Checkpoint](direct-control-codes.md#wrap-mode-route-checkpoint),
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`, and
+  `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`.
+
+- `ESC 9` and `ESC &a#L/#M`, margin reset and margin writers:
+  direct `ESC 9` reaches `0xe9ba`, clears left margin `0x782dd6`, copies page
+  width `0x782db8` to right margin `0x782dda`, and clears fraction companion
+  `0x782ddc`. `ESC &a#L` reaches `0xeb58`, converts the absolute column count
+  through HMI `0x78315c`, and writes accepted left margin `0x782dd6`.
+  `ESC &a#M` reaches `0xec0c`, converts `abs(parameter) + 1` columns through
+  HMI, writes right margin `0x782dda`, and may set right-limit latch
+  `0x782a57` or move current x `0x782c8a`. Visible consumers are CR helper
+  `0xf06e`, HT/BS, printable prechecks, following printable `0xd04a`, and
+  pending span flush `0xf34a -> 0x12714 -> 0x126e2`. Owner evidence is
+  [Margin Route Checkpoint](direct-control-codes.md#margin-route-checkpoint),
+  [Span Flush Producers](direct-control-codes.md#span-flush-producers), and
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`.
+
+- `ESC =`, half-line feed:
+  parser dispatch reaches handler `0xf176`. The handler ensures current page
+  root `0x78297a` through `0x10084`, flushes pending spans through `0xf34a`,
+  converts VMI `0x783160` through `0x104fe`, halves it, converts the half-step
+  through `0x104d8`, adds it to vertical cursor `0x782c8e` through
+  `0x10518`, runs overflow/perforation helper `0xf36c`, and clears
+  `0x782a6d`. It creates no object directly; following printable, raster,
+  rectangle, VFC, or publication paths consume the shifted y. Owner evidence is
+  [Half-Line Feed Route
+  Checkpoint](direct-control-codes.md#half-line-feed-route-checkpoint) and
+  `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`.
+
+- `ESC &a#C/#H/#R/#V` and `ESC *p#X/#Y`, cursor and dot positioning:
+  horizontal column `0xf39e`, horizontal decipoint `0xf416`, and horizontal
+  dot `0xf48c` commit through helper `0xf4ca` into horizontal cursor
+  `0x782c8a`. Vertical row `0xf560`, vertical decipoint `0xf60a`, and
+  vertical dot `0xf692` commit through helper `0xf6e2` into vertical cursor
+  `0x782c8e`. Parser record bit `0` is the relative flag for these handlers.
+  `0xf4ca` clamps against page width `0x782db8` and right margin
+  `0x782dda`; `0xf6e2` ensures a root, flushes pending spans, adds absolute
+  positions to top offset `0x782dce` or relative positions to current y,
+  clamps against vertical bounds, and can materialize span output. First
+  visible consumers are following printable `0xd04a`, raster start `0x1075a`,
+  rectangle clipper `0x10b80`, VFC jumps, or publication. Owner evidence is
+  [Cursor And Dot Position Route
+  Checkpoint](direct-control-codes.md#cursor-and-dot-position-route-checkpoint)
+  and `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`.
+
+- `ESC &f#S`, cursor stack:
+  parser mode `17` dispatches `S/s` to `0xf75e` in the normal table.
+  Selector `0` pushes cursor words into stack storage `0x782c96..0x782d36`;
+  selector `1` pops, subtracts vertical offset source `0x782dbe`, clamps the
+  restored x/y against current extents, clears latches, and can flush pending
+  spans. Other selectors, full-stack pushes, and empty-stack pops return
+  without page output. Alternate/data table rows suppress the stack mutation
+  until replay: uppercase `S` is blank and lowercase `s` only rewinds through
+  `0x11f4c`. First visible consumers are following printable `0xd04a`, raster
+  start `0x1075a`, or rectangle clipper `0x10b80`. Owner evidence is
+  [Cursor Stack State
+  Checkpoint](direct-control-codes.md#cursor-stack-state-checkpoint) and
+  `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`.
+
+- `ESC &d#D` and `ESC &d@`, underline/span state:
+  parser dispatch reaches handler `0x12622`, which writes underline/text
+  attribute selector `0x783185` for accepted terminal forms and arms pending
+  span state through `0x126e2`. Printable consumers `0xd4ac` and `0xd8fc`
+  update pending span fields `0x783184..0x78318a`; terminal `&d@`, CR, margin
+  changes, or vertical cursor changes can flush the pending span through
+  `0xf34a -> 0x12714 -> 0x126e2`. The page effect is a selector-`0x4000`
+  segment-list object under page-root `+0x1c`, later bridged and rendered by
+  the segment-list renderer. Owner evidence is
+  [Span Flush Producers](direct-control-codes.md#span-flush-producers),
+  [Underline And Span Outcome
+  Matrix](direct-control-codes.md#underline-and-span-outcome-matrix), and
+  `generated/disasm/ic30_ic13_text_span_flush_012714.lst`.
+
+### Field Classification
+
+- Canonical parser state:
+  mode byte `0x782999`, active six-byte command record at `0x78299e`,
+  command-family lowercase chaining state, parsed integer/fraction words,
+  final byte, and record bit `0` for relative cursor positioning.
+- Canonical placement and text state:
+  horizontal cursor `0x782c8a`, vertical cursor `0x782c8e`, margins
+  `0x782dd6` / `0x782dda`, page width `0x782db8`, top offset `0x782dce`,
+  vertical bounds `0x782dc6` / `0x782dca`, HMI `0x78315c`, VMI `0x783160`,
+  line-termination byte `0x78318f`, wrap byte `0x783190`, current page root
+  `0x78297a`, and selected text context used by following printable output.
+- Canonical span/stack state:
+  cursor-stack storage `0x782c96..0x782d36`, cursor-stack pointer
+  `0x782d36`, pending span fields `0x783184..0x78318a`, and underline/span
+  selector byte `0x783185`.
+- Derived/cache state:
+  converted packed coordinates from helpers `0x104d8`, `0x104fe`, and
+  `0x10518`, tab-stop and margin candidates, compact coordinates produced
+  after `0xd04a`, segment-list span object bytes after `0x12714`, and
+  render-band products after publication.
+- Firmware bookkeeping:
+  right-limit latch `0x782a57`, previous-width latches `0x782a58..0x782a5c`,
+  pending text/cursor latch `0x782a6d`, span flush helper `0xf34a`, page-root
+  ensure helper `0x10084`, and lowercase command-record rewind helper
+  `0x11f4c` for alternate/data stored command forms.
+- Hardware/external state:
+  none for these ROM-local parser-to-state and state-to-page-object edges.
+  Physical paper motion after later publication remains external.
+- Unknown:
+  manual-facing HP names for latches `0x782a57`, `0x782a58..0x782a5c`,
+  `0x782a6d`, and `0x783185` remain unknown; their ROM-local writers and
+  consumers are documented by the cited handlers.
+
+### Output And Boundary Result
+
+This cluster has no direct raster row-store endpoint at handler entry. Its
+ROM-local contract is delayed state: the handlers write cursor, margin, HMI,
+wrap, line-termination, stack, or span fields; following printable, span,
+raster, rectangle, VFC, overflow, or publication paths consume those fields.
+The one page object created inside this cluster is the pending-span
+segment-list route through `0x12714 -> 0x126e2`; text pixels otherwise enter
+through the already audited compact path after `0xd04a`.
+
+No ROM-local middle edge remains for the documented cursor/motion/margin/span
+rows. Remaining work starts only when a byte stream changes page-environment
+fields, VFC tables/channels, raster transfer objects, rectangle/rule objects,
+font/downloaded-glyph selection, macro replay, parser-only behavior, or final
+page/render crosswalk evidence.

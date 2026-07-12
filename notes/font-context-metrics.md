@@ -280,6 +280,110 @@ Evidence:
 Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix), and
 fixtures named in this note's Evidence list.
 
+### Font State To Visible Consumer Map
+
+This map composes the font, symbol, pitch, SI/SO, and final-`X` state cluster
+from parsed command handlers to the first visible glyph consumers. The
+low-level branch ledger remains in `Font Request Outcome Matrix`,
+`Byte-To-Glyph Flow`, `Page-Root Context Install`, `Printable Source Capture
+Checkpoint`, and `Span Metric Consumers`; this section names the canonical
+semantic route a reader should follow.
+
+- Request writers:
+  font-attribute wrappers `0x12046`, `0x1206e`, `0x12082`, `0x12096`,
+  `0x120aa`, and `0x1205a` call writers `0xc6ec`, `0xc780`, `0xc930`,
+  `0xc89c`, `0xc840`, and `0xc7e0`; pitch compatibility `0xc390` rewrites
+  the active parser record before `0xc89c -> 0xc580`; symbol/font
+  designation `0x120be -> 0x1be22` writes requested symbol or final-`X`
+  state; font-id helper `0x17708` can select a candidate directly. These
+  handlers write request, dirty, or selected-candidate state and queue no
+  page object.
+- Refresh, context, and map:
+  common refresh `0xc580` consumes dirty flags, selected slot `0x782f06`,
+  page-root live flags `0x78297f..0x78298e`, and transient context
+  `0x782992`. Candidate and map selection flows through
+  `0x13eb8 -> 0x14398 -> 0x144d2 -> 0x14c64 -> 0x14f16 -> 0x1440c`, writing
+  current-font contexts `0x782ee6` / `0x782ef6`, maps `0x782f32` /
+  `0x783032`, selected candidate `0x7828a8`, selected target `0x7828de`,
+  active symbol words `0x783144` / `0x783146`, and snapshots `0x783148` /
+  `0x783152`.
+- Page-root context install:
+  `0xc580` and SI/SO handlers `0xc68a` / `0xc6b8` call `0xc428`, which calls
+  `0xc4fc` to reuse or install the selected context under page-root
+  `+0x2c..+0x68` and write selected page-root slot `0x78297e`. A context
+  install alone has no pixels; `0xd3b2` or `0xd824` later marks live flag
+  `0x78297f + slot` when a printable byte is placed.
+- Printable consumer:
+  `0xd04a -> 0x1393a` is the first visible consumer of font state. It reads
+  selected slot `0x782f06`, selected context `0x782ee6` or `0x782ef6`, active
+  map `0x782f32` or `0x783032`, and selected page-root slot `0x78297e`. It
+  writes source `0x782d7e` fields `+0x00`, `+0x04`, `+0x0a/+0x0b`, `+0x10`,
+  and `+0x16`; `0xd3b2` or `0xd824` positions that source, and
+  `0x12f2e -> 0x1387c` queues compact text under page-root `+0x1c`.
+- Span consumer:
+  placement helpers `0xd4ac` and `0xd8fc` consume metric bytes from the
+  selected record behind source `+0x04`, including unflagged fields
+  `+0x2b/+0x2c/+0x2d` and flagged fields `+0x16/+0x18/+0x1a`. They update
+  pending span state `0x783184..0x78318a`; later flush
+  `0xf34a -> 0x12714 -> 0x126e2` creates segment-list or fixed-list page
+  objects rendered by `0x1f812` or `0x1f756`.
+- Render consumer:
+  publication `0xff1e -> 0x1ed84 -> 0x1edc6` copies compact buckets and
+  page-root font context slots into render records. Compact text dispatch
+  `0x1ef6a -> 0x1efc2 -> 0x1effe -> 0x1f354` consumes the copied render
+  context slot, compact mapped glyph byte, source-class flag, and fixed,
+  resource, or downloaded glyph record to resolve bitmap rows.
+- No-output boundaries:
+  alternate/data `ESC (s` / `ESC )s` ordinary attribute finals end at blank
+  rows or lowercase rewind helper `0x11f4c`; they do not call the font
+  writers or `0xc580`. Final-`X` non-selected exits and `0xc4fc` full-root
+  skips preserve prior selected context. Optional cartridge or absent resource
+  contents are external data for candidate records, not a ROM-local control
+  boundary for this map.
+
+State groups for this map:
+
+- Canonical state:
+  requested font and symbol fields, selected slot `0x782f06`, current
+  contexts `0x782ee6/0x782ef6`, maps `0x782f32/0x783032`, selected candidate
+  `0x7828a8`, selected target `0x7828de`, page-root context slots, selected
+  page-root slot `0x78297e`, source `0x782d7e`, compact text objects, and
+  span objects emitted by `0x12714`.
+- Derived/cache state:
+  transient context `0x782992`, selected-font snapshots
+  `0x783148/0x783152`, rebuilt map bytes, pending span bounds, compact
+  coordinates, and render-record copies of page-root context slots.
+- Parser scratch:
+  active command records at `0x78299e`, synthetic pitch records from
+  `0xc390`, symbol/designation setup records, final byte, integer parameter,
+  fractional parameter, and alternate/data records that do not reach a
+  canonical writer.
+- Firmware bookkeeping:
+  dirty flags `0x782f2c/0x782f2d`, live flags `0x78297f..0x78298e`,
+  full-root flag `0x78298f`, `0xc4fc` full-status return, publication flag
+  `0x782996`, candidate helper marker `0x78287b`, and scheduler progress
+  after publication.
+- Hardware/external and unknown:
+  no hardware/MMIO edge is involved after the byte stream reaches these ROM
+  handlers. External optional-resource contents can affect selected candidate
+  data. No ROM-local edge is unresolved for documented built-in,
+  inline/downloaded, pitch, symbol, SI/SO, final-`X`, printable-source,
+  span-metric, or compact-render consumers; remaining downloaded-glyph helper
+  boundaries are tracked in
+  [downloaded-fonts.md](downloaded-fonts.md#owner-summary) and
+  [firmware-dataflow-model.md](firmware-dataflow-model.md).
+
+Evidence:
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+`generated/disasm/ic30_ic13_font_update_common_00c580.lst`,
+`generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+`generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`,
+`generated/disasm/ic30_ic13_font_id_select_017708.lst`,
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`,
+`generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`,
+`generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`, and
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`.
+
 ## Concept
 
 The firmware does not render text directly from the current PCL font request.

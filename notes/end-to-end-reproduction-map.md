@@ -7674,6 +7674,8 @@ Address-level cluster map:
   pitch-mode `ESC &k#S`; for symbol-set streams also include `ESC (0N`,
   `ESC (10U`, `ESC (11U`, and the secondary `ESC )...` forms before the
   printable tail. Start with
+  [Font State To Visible Consumer
+  Map](font-context-metrics.md#font-state-to-visible-consumer-map),
   [symbol-set-selection.md](symbol-set-selection.md),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md),

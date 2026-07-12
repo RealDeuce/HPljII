@@ -1561,6 +1561,8 @@ Output effect and evidence:
 Evidence and unresolved boundaries:
 
 - Detail owners are [symbol-set-selection.md](symbol-set-selection.md),
+  [Font State To Visible Consumer
+  Map](font-context-metrics.md#font-state-to-visible-consumer-map),
   [Font Request Outcome
   Matrix](font-context-metrics.md#font-request-outcome-matrix),
   [built-in-resource-scan.md](built-in-resource-scan.md),

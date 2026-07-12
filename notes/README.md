@@ -409,8 +409,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   documented `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump
   output effects.
 - [font-context-metrics.md](font-context-metrics.md#owner-summary) - documented font
-  context selection, page-root slot install, glyph maps, and descriptor/span
-  metric checkpoints.
+  context selection, page-root slot install, glyph maps, descriptor/span metric
+  checkpoints, and the [Font State To Visible Consumer
+  Map](font-context-metrics.md#font-state-to-visible-consumer-map).
 - [symbol-set-selection.md](symbol-set-selection.md#owner-summary) - documented
   `ESC (` / `ESC )` symbol-set, final-`@`, and final-`X` paths into
   font-context refresh and glyph-map selection.

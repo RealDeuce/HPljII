@@ -1188,6 +1188,101 @@ HT/BS instruction boundaries:
   span metrics through `0xd8fc` or `0xd4ac`. Neither HT nor BS queues a compact
   object; the following printable byte consumes the committed x in `0xd04a`.
 
+### Previous-Width Backspace Checkpoint
+
+This checkpoint composes the BS handler with the next printable source path.
+It starts at direct-control dispatch to `0xf2a8`, and it ends when printable
+text either queues a compact object or suppresses queueing after its precheck.
+The ROM-local contract is delayed placement: BS changes cursor state and sets
+one pending latch, while the next printable byte decides how that pending state
+changes the text object's x coordinate.
+
+Writers:
+
+- BS `0xf2a8..0xf2e4` ensures a page root with `0x10084`, reads current x
+  from `0x782c8a`, and chooses the backspace distance. Normal metric mode
+  reads HMI `0x78315c`; alternate metric mode `0x78318e != 0` reads previous
+  width word `0x782a5a` and shifts it left 16 bits.
+- BS `0xf2e6..0xf310` clamps the candidate against left margin `0x782dd6` and
+  zero, writes the result to canonical cursor `0x782c8a`, sets pending
+  previous-width latch `0x782a58 = 1`, and clears right-limit and pending
+  cursor latches `0x782a57` / `0x782a6d`.
+- Unflagged printable placement `0xd1b6..0xd1c2` stores previous advance
+  `0x782a5c = D4` and previous width `0x782a5a = source-width-byte` only when
+  `0x782a58` is clear.
+- Flagged printable placement `0xd5b6..0xd5bc` stores the same advance latch
+  and stores previous width from the flagged source width word when
+  `0x782a58` is clear.
+- Shared span flush `0xf34a..0xf35c` clears `0x782a58` before any optional
+  span publication through `0x12714`.
+
+Readers and consumers:
+
+- BS `0xf2bc..0xf2d2` reads `0x78318e`, `0x782a5a`, and `0x78315c` to choose
+  the backspace distance.
+- Unflagged printable placement `0xd16a..0xd1ae` reads `0x78318e`,
+  `0x782a58`, `0x782a5c`, and `0x782a5a`. When alternate metrics and the
+  pending latch are both set, it subtracts the current source width byte from
+  `0x782a5a`, halves the delta with the ROM's signed rounding adjustment, adds
+  that delta to `0x782c8a`, and clamps negative x to zero before continuing.
+- Flagged printable placement `0xd586..0xd5ae` performs the same pending-width
+  adjustment with the flagged source width word in local `(-$6,A6)` and the
+  same `0x782a5c` / `0x782a5a` latches.
+- Printable commit `0xd248..0xd25e` and `0xd67a..0xd690` writes the final x to
+  `0x782c8a`, clears `0x782a58`, and either queues text through
+  `0xd3b2` / `0xd824` or skips object creation when precheck result
+  `0x782a6e` is nonzero.
+
+State classification:
+
+- Canonical state: horizontal cursor `0x782c8a`, left margin `0x782dd6`, HMI
+  `0x78315c`, selected source/context path, and compact object coordinates
+  emitted by `0x12f2e` when queueing occurs.
+- Derived/cache state: current printable source width, source flag byte
+  `+0x10`, source scratch `0x782d7e`, and precheck result `0x782a6e`.
+- Parser scratch: the admitted BS byte and the following printable byte before
+  `0xd04a`; the previous-width latches survive beyond parser scratch until a
+  printable or span-flush consumer clears them.
+- Firmware bookkeeping: pending latch `0x782a58`, previous width
+  `0x782a5a`, previous advance `0x782a5c`, alternate metric mode
+  `0x78318e`, right-limit latch `0x782a57`, and pending cursor latch
+  `0x782a6d`.
+- Hardware/external state: none. This checkpoint is fully ROM-local through
+  compact object queueing or precheck suppression.
+- Unknown: manual-facing names for `0x782a58/0x782a5a/0x782a5c` and
+  `0x78318e` remain unknown, but their cited writer and consumer roles are
+  fixed for the documented paths.
+
+Output effect:
+
+- BS alone emits no page object and writes no pixels. Its visible effect is
+  the next printable byte's placement: normal mode backs up by HMI, while
+  alternate metric mode backs up by the previous width and then lets the next
+  printable center or reconcile its current width against that previous width.
+- If printable precheck `0x782a6e != 0` suppresses queueing, the same commit
+  path still writes the cursor and clears `0x782a58`; no compact object is
+  emitted for that byte.
+- If `0xf34a` runs before the next printable consumer, pending previous-width
+  state is cancelled before any span object is materialized, so a byte-stream
+  renderer must not let `0x782a58` survive a forced span flush.
+
+Evidence:
+`generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
+`0xf2a8..0xf34a`,
+`generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+`0xd16a..0xd24e` and `0xd586..0xd680`,
+the [Printable Source Outcome Matrix](#printable-source-outcome-matrix),
+and fixture anchors `BS subtracts HMI and sets pending previous-width latch`,
+`BS alternate metrics subtracts previous width word`, and
+`control stream HT then BS updates tab and previous-width state`.
+
+No ROM-local middle edge remains open for this state block between BS and the
+documented unflagged or flagged printable consumers. Future work belongs here
+only when a byte stream changes the writer at `0xf2a8..0xf310`, the flush
+boundary at `0xf34a`, the unflagged consumer at `0xd16a..0xd24e`, the flagged
+consumer at `0xd586..0xd680`, or the compact object inputs named in the
+Printable Source Outcome Matrix.
+
 ### Wrap Mode Route Checkpoint
 
 `ESC &s#C` is a state-only command whose visible effect is delayed until

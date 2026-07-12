@@ -4820,7 +4820,8 @@ Evidence:
 - Checked-in explanations:
   [Symbol/Font Designation Outcome
   Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
-  [symbol-map-patching.md](symbol-map-patching.md),
+  [Map Patch To Visible Consumer
+  Map](symbol-map-patching.md#map-patch-to-visible-consumer-map),
   [font-context-metrics.md](font-context-metrics.md),
   [built-in-resource-scan.md](built-in-resource-scan.md), and
   `Symbol Set And Map Patch Boundary` in

@@ -520,6 +520,8 @@ The symbol-specific consumer chain is:
    mapped by `0x1393a`.
 
 The `0x14f16` patch algorithm and consumer boundary are documented in
+[Map Patch To Visible Consumer
+Map](symbol-map-patching.md#map-patch-to-visible-consumer-map) and
 [Map Patch Outcome Matrix](symbol-map-patching.md#map-patch-outcome-matrix).
 It only table-patches maps when the selected font normalizes to Roman-8
 (`0x0115`), then uses active symbol words `0x783144` / `0x783146` to select

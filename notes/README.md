@@ -425,7 +425,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   font-context refresh and glyph-map selection.
 - [symbol-map-patching.md](symbol-map-patching.md#owner-summary) - documented
   `0x14f16` Roman-8 map patching, hard-coded `0E` / `0U` cases, and the
-  `0x14fce` patch table consumed before printable glyph mapping.
+  `0x14fce` patch table consumed before printable glyph mapping, with a
+  [Map Patch To Visible Consumer
+  Map](symbol-map-patching.md#map-patch-to-visible-consumer-map).
 - [built-in-resource-scan.md](built-in-resource-scan.md#owner-summary) - documented
   IC32/IC15 resource scan, candidate windows, built-in record filters, and
   glyph-row evidence.

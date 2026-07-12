@@ -78,6 +78,80 @@ Output effect:
 - It does not emit page records, publish pages, schedule render work, or draw
   into output buffers.
 
+### Map Patch To Visible Consumer Map
+
+This map names the concrete consumer chain for `0x14f16` patch outcomes. The
+patcher changes map bytes, and those bytes become visible only when a later
+printable byte captures the patched glyph index into a page object.
+
+- Base-map producer:
+  `0x14c64` calls `0x14d9c`, `0x14e24`, or `0x14eb6` before `0x14f16`.
+  These helpers rebuild selected map `0x782f32` or `0x783032` from the
+  selected resource or inline/downloaded context. The rebuilt map is
+  canonical selected-font state.
+- Patch gate and writers:
+  `0x14f16` reads selected candidate `0x7828a8`, selected slot `0x7828de`,
+  and active word `0x783144` or `0x783146`. It uses `0x15890` or `0x158be`
+  to require selected-font Roman-8 word `0x0115`, then either returns with
+  the base map unchanged, hard-patches active word `0x0005` or `0x0015`,
+  table-patches through `0x14fce`, and clears upper-half map bytes on patch
+  paths.
+- Derived/cache side effect:
+  patch paths that reach `0x14fb2..0x14fc8` clear
+  `0x783132 + 0x7828de`. That flag is surrounding font/map cache state; it
+  is not a page object and is not consumed by render helpers.
+- Printable consumer:
+  later printable bytes enter `0xd04a -> 0x1393a`. Source capture selects
+  map `0x782f32` or `0x783032` using selected text slot `0x782f06`, reads
+  `map[original_host_char]`, and stores the resulting glyph byte in source
+  word `+0x0a` / source byte `+0x0b`.
+- Page-object consumer:
+  `0xd3b2` or `0xd824` passes the source object to `0x12f2e`; compact queueing
+  writes the captured glyph byte into a compact page object under current root
+  `+0x1c`. From this point onward, the page object carries a glyph index, not
+  a reference back to the patch algorithm.
+- Render consumer:
+  `0xff1e -> 0x1ed84 -> 0x1edc6` publishes and bridges the compact object and
+  context slot. `0x1ef6a -> 0x1efc2 -> 0x1effe` dispatches compact rendering,
+  and the compact glyph helper resolves pixels from the copied context and the
+  captured glyph byte. Render helpers do not re-read `0x782f32` /
+  `0x783032` or re-run `0x14f16`.
+- No-output boundaries:
+  non-Roman selected fonts, patch-table misses, and patch commands followed by
+  no later printable byte have no page-output effect by themselves. Compact
+  text queued before `0x14f16` keeps its already captured glyph byte.
+
+State classification for this map:
+
+- Canonical:
+  selected candidate `0x7828a8`, slot `0x7828de`, active words
+  `0x783144/0x783146`, selected maps `0x782f32/0x783032`, later source glyph
+  byte `+0x0b`, compact page object bytes, and copied render context slots.
+- Derived/cache:
+  `0x783132/0x783133`, selected-font snapshots, local patch-table pointers,
+  pair-copy loop registers, and compact-object keys produced after printable
+  capture.
+- Parser scratch:
+  none inside `0x14f16`. Parser records are consumed earlier by
+  `0x120be -> 0x1be22 -> 0xc580 -> 0x156de`.
+- Firmware bookkeeping:
+  ROM table cursor `0x14fce`, selected candidate bit-6 helper selection,
+  pair loop counters, page-root live flags marked by `0xd3b2` / `0xd824`, and
+  publication/bridge state after the later printable object exists.
+- Hardware/external and unknown:
+  no hardware state participates in this ROM-local map-to-glyph route. No
+  branch target, table target, printable consumer, page-object handoff, or
+  render-dispatch middle edge remains unknown for the documented patch paths.
+
+Evidence: `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`,
+`generated/analysis/ic30_ic13_symbol_set_patch_tables.md`,
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`, [Symbol State To Visible
+Consumer Map](symbol-set-selection.md#symbol-state-to-visible-consumer-map), [Printable
+Source Outcome Matrix](direct-control-codes.md#printable-source-outcome-matrix), [Page
+Object To Visible Consumer
+Map](page-record-storage.md#page-object-to-visible-consumer-map), and [Resource Bytes To
+Visible Consumer Map](resource-rom.md#resource-bytes-to-visible-consumer-map).
+
 ## Entry Conditions
 
 `0x14c64` calls `0x14f16` after one of the selected-map builders has run:

@@ -1697,7 +1697,8 @@ Evidence and unresolved edges:
 - Evidence:
   [Symbol/Font Designation Outcome
   Matrix](symbol-set-selection.md#symbolfont-designation-outcome-matrix),
-  [symbol-map-patching.md](symbol-map-patching.md),
+  [Map Patch To Visible Consumer
+  Map](symbol-map-patching.md#map-patch-to-visible-consumer-map),
   [Font Request Outcome
   Matrix](font-context-metrics.md#font-request-outcome-matrix),
   `Worked Path: Font Selection To Visible Glyphs`,

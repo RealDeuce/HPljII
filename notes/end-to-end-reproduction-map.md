@@ -10528,17 +10528,18 @@ Priority ROM-local documentation targets:
    matrix](page-record-storage.md#fixed-list-outcome-matrix). Raster streams should
    start only when they change accepted-byte counts, row advancement, object bytes, or
    render inputs beyond the [raster transfer gate outcome
-   matrix](raster-graphics.md#transfer-gate-outcome-matrix) or [encoded raster object
-   outcome matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Rule-list
-   streams should start only when they change clipped source fields, ordered insertion,
-   object bytes, bridge continuation fields, selector dispatch, or row construction
-   beyond the [rule-list outcome
-   matrix](page-record-storage.md#rule-list-outcome-matrix). Rectangle streams should
-   start only when they change a clipped source field, allocation/rollover outcome,
-   retry publication field, rule object byte, bridge field, render dispatch,
-   continuation mutation, or row construction beyond the [rectangle outcome
-   matrix](rectangle-graphics.md#rectangle-outcome-matrix), [Rectangle State To Visible
-   Consumer Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map),
+   matrix](raster-graphics.md#transfer-gate-outcome-matrix), [Raster State To Visible
+   Consumer Map](raster-graphics.md#raster-state-to-visible-consumer-map), or [encoded
+   raster object outcome
+   matrix](raster-graphics.md#encoded-raster-object-outcome-matrix). Rule-list streams
+   should start only when they change clipped source fields, ordered insertion, object
+   bytes, bridge continuation fields, selector dispatch, or row construction beyond the
+   [rule-list outcome matrix](page-record-storage.md#rule-list-outcome-matrix).
+   Rectangle streams should start only when they change a clipped source field,
+   allocation/rollover outcome, retry publication field, rule object byte, bridge field,
+   render dispatch, continuation mutation, or row construction beyond the [rectangle
+   outcome matrix](rectangle-graphics.md#rectangle-outcome-matrix), [Rectangle State To
+   Visible Consumer Map](rectangle-graphics.md#rectangle-state-to-visible-consumer-map),
    [rule-list outcome matrix](page-record-storage.md#rule-list-outcome-matrix), and
    [remaining-edge owner note](rectangle-graphics.md#remaining-edges). Publication
    examples for reset, FF, page-size, orientation, paper-source, and copies are now

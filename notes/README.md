@@ -394,7 +394,9 @@ parser route, field value, object layout, bridge copy, or helper input.
   documented `ESC &p#X` delayed payload handling, text/fixed-space routing,
   page-record re-entry, and the secondary segmented resource boundary.
 - [raster-graphics.md](raster-graphics.md#owner-summary) - documented `ESC *t`,
-  `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
+  `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output, with a
+  [Raster State To Visible Consumer
+  Map](raster-graphics.md#raster-state-to-visible-consumer-map).
 - [rectangle-graphics.md](rectangle-graphics.md#owner-summary) - documented
   `ESC *c` rectangle/rule path to solid and patterned rule rendering, with a
   [Rectangle State To Visible Consumer

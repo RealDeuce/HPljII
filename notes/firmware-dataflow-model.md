@@ -3051,7 +3051,9 @@ the first ROM field where each byte-stream family becomes page-image state.
   `0x783170..0x783182`, including baseline/origin, encoded mode `+0x08`,
   scale `+0x0e`, row limit `+0x10`, and active byte `+0x12`. The first
   page-image state still starts at delayed transfer consumer `0x105d0`; setup
-  state only changes where and how later encoded raster objects are queued.
+  state only changes where and how later encoded raster objects are queued. The
+  field-to-consumer route is in [Raster State To Visible Consumer
+  Map](raster-graphics.md#raster-state-to-visible-consumer-map).
 - Rectangle/rule fill:
   chained `ESC *c` parser records reach size/fill handlers `0x10e68`,
   `0x10e22`, `0x10a40`, `0x10ae0`, and `0x10dce`; fill reaches

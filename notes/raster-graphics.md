@@ -794,6 +794,76 @@ modeled state setup. The documentation claim is still ROM-local: the evidence
 is the restored record, gate stores, object bytes or no-object outcome, and
 handler addresses above, not a comparison to a physical printed raster row.
 
+### Raster State To Visible Consumer Map
+
+This map is the shortest route from raster command-family state to the first
+page/render consumer. It preserves the detailed transfer and encoded-object
+matrices while making the delayed state model explicit for a byte-stream
+reader.
+
+- Resolution and active-state setup:
+  `ESC *t#R -> 0x10808` writes mode byte `+0x08`, scale `+0x0e`, and row byte
+  limit `+0x10` in raster block `0x783170` only when active byte `+0x12` is
+  clear. `ESC *r#A -> 0x1075a` writes active byte `+0x12`, origin `+0x0a`,
+  baseline `+0x00`, and limit `+0x10`. `ESC *r#B -> 0x107fa` clears only
+  `+0x12`. The first visible consumer is not setup itself; it is delayed
+  transfer handler `0x105d0`, which reads the mode, scale, origin, row, and
+  limit fields before deciding whether a payload row can become a page object.
+  Evidence: ranges `0x10808..0x10896`, `0x1075a..0x107ee`, and
+  `0x107fa..0x10806`.
+- Delayed transfer restore:
+  `ESC *b#W/w -> 0x11f82 -> 0x121cc` stores saved handler
+  `0x782a1c = 0x105d0` and saved record `0x782a20..0x782a25`. Restore
+  `0x12218` copies that record back to `0x78299e` and calls `0x105d0` when
+  alternate/data flag `0x782c18` is clear. With alternate/data active,
+  `0x12218 -> 0x12358` drains positive payload bytes through `0xdace` and
+  appends them through `0xe002`; the first visible consumer is then a later
+  macro/data-chain replay frame, not the raster owner. No raster block, root,
+  encoded object, bridge, or render input changes on that alternate/data
+  handler instance.
+- Transfer gate outcomes:
+  `0x105d0` consumes the restored byte count, raster block `0x783170`,
+  cursor/page extent fields, and payload source. Beyond-extent paths
+  `0x1065c..0x10698` drain through `0xdace` before root allocation and create
+  no object. Negative-row paths ensure root `0x78297a`, write row word
+  `+0x02`, drain through `0xdace`, and skip `0x13070`. In-range paths write
+  accepted count `+0x04`, overflow/drain count `+0x06`, row word `+0x02`, and
+  call `0x13070`; the first page-image consumer is therefore
+  `0x10084 -> 0x13070`, not the parser record. If `0x13070` reports no room,
+  `0x106d2..0x106f2` marks retry bit `root+0x15.0`, publishes through
+  `0xff1e`, and ensures a fresh root.
+- Encoded object production:
+  `0x13070 -> 0x13250 -> 0x138de` consumes the raster state block and live
+  payload bytes. It derives bucket index `0x782a7c`, packed key `0x782a7e`,
+  split capacity `0x782a80`, and writes encoded raster objects under
+  page-root `+0x1c`: class byte `+0x04 = 0x80`, mode byte `+0x05`, count
+  `+0x06`, key `+0x08`, and payload bytes `+0x0a..`. Split rows create
+  multiple objects and advance the packed key through `0x332ee`; allocation
+  failure or copy-stop routes drain remaining accepted/overflow bytes through
+  `0x12328` and return to the transfer gate outcome.
+- Bridge and encoded-span rendering:
+  publication `0xff1e` preserves page-root bucket `+0x1c`; bridge
+  `0x1ed84 -> 0x1edc6` copies that bucket root to render-record `+0x18`.
+  Render entry `0x1ef6a -> 0x1efc2` dispatches high-bit class objects to
+  `0x1f88e`. The helper consumes object byte `+0x05 & 3`, count `+0x06`,
+  key `+0x08`, payload `+0x0a..`, band/fallback state, and expansion tables:
+  mode `0` reaches `0x1f8da`, mode `1` reaches `0x1f8e6`, mode `2` reaches
+  `0x1f920`, and mode `3` reaches `0x1f9c6`.
+- State grouping:
+  canonical raster state is block `0x783170` fields `+0x00`, `+0x02`,
+  `+0x04`, `+0x06`, `+0x08`, `+0x0a`, `+0x0e`, `+0x10`, and `+0x12`;
+  canonical page/image state is current root `0x78297a`, bucket `+0x1c`,
+  encoded object fields, and bridged render root `+0x18`;
+  derived/cache state is `0x782a7c`, `0x782a7e`, `0x782a80`, packed-key
+  advance, row/band/fallback caches, and expansion tables; parser scratch is
+  delayed-payload state `0x782a1a/0x782a1c/0x782a20..0x782a25`, restored
+  record cursor `0x78299e`, and unconsumed payload bytes; firmware
+  bookkeeping is allocator state `0x782a70/0x782a72/0x782a76`, copy-stop byte
+  `0x782996`, retry bit `root+0x15.0`, and transfer completion state.
+  Unresolved work begins only when a stream changes one of those fields, an
+  accepted/drained byte boundary, bridge bucket root, packed-key advance, or a
+  mode-specific `0x1f88e` row-construction input.
+
 For rows that pass the beyond-extent test, `0x105d0` ensures a page root through
 `0x10084`, writes current row word `+0x02`, and either drains a negative row or
 calls `0x13070` with the raster state block. If `0x13070` reports no room, it

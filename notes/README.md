@@ -91,6 +91,12 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   Those notes, not generated tables, own parsed inputs, RAM fields,
   downstream consumers, page/output effects, cited evidence, and exact
   residual boundaries for the selected terminal handler.
+  After the owner note explains the command-family state, use
+  [Command-Family To Page-Object
+  Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk)
+  to decide whether the route creates compact, raster, rule, fixed-list, or
+  publication state, or whether it is status/no-output/append-only state until
+  later replay or later printable input.
 - Manual PCL command names and syntax rows are indexed by
   [pcl4-language.md](pcl4-language.md#owner-summary). Its ROM Semantic Index maps PCL
   Level IV families to first parser handlers, representative byte streams, page-object
@@ -224,13 +230,16 @@ checked-in ROM model:
    command-dispatch anchors in [firmware-dataflow-model.md](firmware-dataflow-model.md)
    summarize the common terminal-handler handoffs before the full flattened table. The
    `Command Family Owner Matrix` in the same file gives the compact handler-to-owner
-   handoff and output class for each command family. For text/font routes, use `Font
-   Context And Glyph Source Boundary` to connect selected contexts and maps to printable
-   source objects, and use `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`,
-   final `X`, or final `@` changes requested symbols, maps, or `0x14f16` patching. Then
-   use `Downloaded Glyph Boundary Decision Rules` for downloaded-glyph helper and
-   payload stop points. For transparent/display readers, use `Transparent And Display
-   Reader Boundary` before crossing into text output, alternate/data append, or status
+   handoff and output class for each command family; the [Command-Family To Page-Object
+   Crosswalk](firmware-dataflow-model.md#command-family-to-page-object-crosswalk) then
+   names the first page-image field, status/no-output state, append/replay boundary, or
+   explicit no-page-object outcome. For text/font routes, use `Font Context And Glyph
+   Source Boundary` to connect selected contexts and maps to printable source objects,
+   and use `Symbol Set And Map Patch Boundary` when `ESC (` / `ESC )`, final `X`, or
+   final `@` changes requested symbols, maps, or `0x14f16` patching. Then use
+   `Downloaded Glyph Boundary Decision Rules` for downloaded-glyph helper and payload
+   stop points. For transparent/display readers, use `Transparent And Display Reader
+   Boundary` before crossing into text output, alternate/data append, or status
    behavior. For layout routes, use `Page Geometry And Layout State Boundary` to connect
    page-length, VMI, LPI, top-margin, text-length, wrap, and perforation commands to
    later placement, overflow, publication, and render effects. For VFC routes, use [VFC
@@ -260,7 +269,8 @@ checked-in ROM model:
    [Dispatch Class Checkpoint](pcl-command-map.md#dispatch-class-checkpoint), [Parser
    Handler Owner Matrix](pcl-command-map.md#parser-handler-owner-matrix), and [Supported
    Stream Dispatch Matrix](pcl-command-map.md#supported-stream-dispatch-matrix).
-5. When a command creates visible page content, cross into
+5. When the crosswalk or owner note shows that a command creates visible page content,
+   cross into
    [page-record-storage.md](page-record-storage.md#owner-summary): compact/raster
    buckets live under root `+0x1c`, rules under `+0x24`, fixed-list objects under
    `+0x28`, and context slots under `+0x2c..+0x68`. The shared `Shared Page-Object

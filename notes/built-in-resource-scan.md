@@ -531,8 +531,10 @@ Unresolved middle edges:
   `0x080000..0x0bffff` bytes. The exact physical source for
   `0x0c0000..0x0ffffe` remains outside the dumped resource image.
 - `0x1a616` optional cartridge scans over `0x200000..0x5ffffe` are
-  decoded at the handler level but lack cartridge image data, so their
-  candidate contents remain an external-resource boundary.
+  decoded at the handler level. The verified `C2053A #C06` image supplies 16
+  candidate records for one `0x40000`-byte cartridge region; other cartridge
+  contents and the slot-window mapping after that region remain an external
+  boundary.
 - `0x14398 -> 0x144d2 -> 0x1393a` is no longer an unresolved middle edge for
   the documented primary and secondary built-in paths. Remaining variants only
   matter when they change selected context longword, active map, page-root
@@ -651,7 +653,9 @@ Unknown:
   service-manual terminology remains unresolved.
 - Manual-facing names for non-signature optional-resource boundary records
   reached after `0x1b9c0` returns `-1`. The ROM branch behavior is
-  documented, but no physical cartridge image has supplied those records.
+  documented. The verified C06 image supplies only its `HEAD` chain and 16
+  type-`0x14` font records, so it does not provide a concrete example of this
+  non-signature branch.
 
 ## Writers
 

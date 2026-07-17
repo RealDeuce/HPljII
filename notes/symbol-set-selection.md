@@ -233,7 +233,13 @@ printable byte arrives.
   `0x1be22 -> 0x1bec8` dispatches table `0x1bde2`. Parameters `0`, `1`, and
   `2` copy default or primary requested symbol words; parameter `3` enters the
   default-font helper path through `0x1b250` or `0x1ad66`; other parameters
-  restore the old requested word and return without dirty flags.
+  restore the old requested word and return without dirty flags. The
+  cartridge-default tie-break for that helper path is documented in
+  [font-context-metrics.md](font-context-metrics.md): retained current default
+  from `0x1b250` wins first; otherwise `0x1ad66` searches cartridge window
+  `0x200000..0x3ffffe` through `0x1adaa(1)` before searching
+  `0x400000..0x5ffffe` through `0x1adaa(2)`, and falls back to internal
+  candidates through `0x1ae7e` only after both cartridge windows miss.
 - Dirty-1 refresh, non-selected slot:
   `0xc580` handles ordinary-final and final-`@` dirty state. If parsed slot
   differs from selected text slot `0x782f06`, `0xc5d8..0xc618` calls

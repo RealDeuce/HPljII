@@ -41,7 +41,7 @@ Boundary classes:
   physical device identity or connector timing is not proven.
 - Optional external data:
   optional cartridge/resource windows whose ROM control flow is documented but
-  whose contents are not present.
+  whose contents are only partly represented by the verified cartridge dumps.
 - Manual/physical correlation:
   ROM behavior whose service-manual or user-facing name is not assigned.
 
@@ -85,8 +85,10 @@ Use the classification column before continuing work:
 - Hardware/MMIO boundary: the ROM-visible polling, status, or handshake
   behavior is documented, but the physical device, connector, or timing
   identity is not.
-- Optional external data: the ROM control flow is documented, but optional
-  cartridge/resource-window contents are not available.
+- Optional external data: the ROM control flow is documented. The verified
+  `C2053A #C06` image supplies one `0x40000`-byte cartridge region and the
+  verified `92286PC` image supplies two such regions (`0x80000` bytes total).
+  Other cartridges and slot-window decode beyond each image are not available.
 - Manual/physical correlation: the ROM behavior is documented, but user-facing
   names or service-manual labels are not assigned.
 
@@ -250,21 +252,27 @@ Optional external resource windows:
   optional external data.
 - Exact stop:
   optional resource windows `0x200000..0x3ffffe` and
-  `0x400000..0x5ffffe`.
+  `0x400000..0x5ffffe`. For `C2053A #C06`, logical image offsets
+  `0x00000..0x3ffff` are verified. For `92286PC`, offsets
+  `0x00000..0x7ffff` are verified. The physical values returned for later slot
+  offsets remain unknown.
 - Covered upstream state:
   page/font scheduler handoff, optional-window scan control flow, candidate
   table updates, and font-resource caller return behavior are documented.
 - Output effect:
-  optional data can change font/resource candidates and later glyph rows, but
-  absent cartridge contents cannot be inferred from the base ROM.
+  the C06 image supplies 16 concrete font records and 1,729 glyph payloads.
+  The 92286PC image supplies 65 fixed-font records and 6,175 glyph payloads.
+  Other cartridge contents and post-image slot decode can still change the
+  candidate scan and cannot be inferred from the formatter ROM.
 - Evidence:
   [page-font-scheduler.md](page-font-scheduler.md#page-font-scheduler-outcome-matrix),
   [resource-rom.md](resource-rom.md#resource-rom-outcome-matrix), and
   `Page/Font Scheduler Handoff` in
   [semantic-state-model.md](semantic-state-model.md).
 - Needed to close:
-  physical cartridge/resource images or emulator memory-map data for those
-  windows.
+  physical images for other cartridges plus board or cartridge decode evidence
+  after each verified image (`0x040000..0x1fffff` for C06 and
+  `0x080000..0x1fffff` for 92286PC).
 
 Manual and service-name correlation:
 
@@ -704,7 +712,8 @@ non-pixel result.
   helpers can update candidate lists, current-record state, canonical windows,
   and active contexts.
 - What remains:
-  physical optional-resource contents and board/emulator memory-map evidence.
+  physical contents for undumped cartridges and board/emulator decode beyond
+  the verified C06 `0x40000` and 92286PC `0x80000` images.
 - Evidence:
   [page-font-scheduler.md](page-font-scheduler.md),
   [resource-rom.md](resource-rom.md), and

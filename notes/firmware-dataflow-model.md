@@ -10562,8 +10562,9 @@ Current top-level boundaries include:
   and `CPRDY` remains physical timing work.
 - Missing external resource data: optional resource windows
   `0x200000..0x3ffffe` and `0x400000..0x5ffffe`. The ROM scan and scheduler
-  state are documented; cartridge/external resource contents are not present in
-  the verified local ROM set.
+  state are documented. The verified local `C2053A #C06` image now supplies
+  one `0x40000`-byte region with 16 font records; other cartridges and the
+  physical slot decode after image offset `0x03ffff` remain unavailable.
 - Missing physical memory-map data: built-in resource continuation
   `0x0c0000..0x0c0321`. Transparent secondary segment-57 rendering reaches
   source range `0x0bfe22..0x0c0321`; only `0x0bfe22..0x0bffff` is inside the

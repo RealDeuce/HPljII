@@ -108,6 +108,18 @@ High-value facts:
 - Paper tray: 200 sheets input, 100 sheets top output, 20 sheets face-up
   rear output.
 
+### `92286PC.pdf`
+
+HP ProCollection Font Cartridge manual for product `92286PC`. This local
+reference supplies the ProCollection's published font table, product naming,
+and family compatibility statement. The manual is a catalog source, not proof
+of cartridge ROM contents or firmware resource-selection behavior. The
+separately verified physical ROM dump and extracted inventory are documented
+in [rom-dump-manifest.md](rom-dump-manifest.md#92286pc-procollection-cartridge)
+and
+[font-cartridge-catalog.md](font-cartridge-catalog.md) for the broader bitmap
+cartridge index and its evidence boundary.
+
 ### `manualsplus_06859.pdf`
 
 LaserJet III User's Manual archive. Mostly HP 33449/PCL5, but useful for

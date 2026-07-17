@@ -1575,6 +1575,49 @@ Current-default lookup:
   `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`, and
   fixture notes in `generated/analysis/ic30_ic13_renderer_fixture_harness.md`.
 
+Cartridge-default conflict rule:
+
+- Manual boundary:
+  the Series II Technical Reference says font defaults can come from a user
+  control-panel selection, a font cartridge with a default font, or the
+  factory internal font. The ROM path below is the cartridge/default resolver
+  used after no retained current default is available from `0x1b250`.
+- ROM path:
+  `0x1acb0` first calls `0x1b250`. If that retained current-default lookup
+  succeeds, `0x1acbe..0x1acfc` installs the same selected candidate for both
+  primary and secondary contexts through `0x1b332`; no cartridge-window
+  conflict search runs. If `0x1b250` misses, `0x1ad00..0x1ad5a` clears
+  `0x782da3`, `0x78289f`, and `0x78289e`, then calls `0x1ad66` once for
+  primary and once for secondary.
+- Cartridge-window priority:
+  `0x1ad66` clears scratch candidate pointer `0x7828a0`, calls
+  `0x1adaa(1)`, and exits immediately at `0x1ad80..0x1ada2` if that call
+  wrote a nonzero candidate. Only if range 1 misses does it call
+  `0x1adaa(2)` at `0x1ad88..0x1ad92`; only if both range searches miss does
+  it fall through to internal/default fallback `0x1ae7e`.
+- Window meaning:
+  inside `0x1adaa`, search kind `1` accepts only candidate low-24-bit
+  addresses `0x200000..0x3ffffe`, while search kind `2` accepts only
+  `0x400000..0x5ffffe`. The high-nibble flag bits
+  `(candidate >> 28) & 3` are masked by `1` for primary default search and
+  `2` for secondary default search, derived from `0x78289e`.
+- Result:
+  with two cartridges that both expose an admissible default candidate for the
+  same primary/secondary context, the first cartridge window
+  `0x200000..0x3ffffe` wins. The second cartridge window
+  `0x400000..0x5ffffe` is considered only if the first window has no matching
+  candidate for that context. Internal built-in fallback via `0x1ae7e` is
+  considered only after both cartridge windows miss. Within a window, the
+  first matching candidate in the scanned candidate-list order wins.
+- Evidence:
+  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`
+  `0x1acb0..0x1ad5c`, `0x1ad66..0x1ae7c`, and `0x1ae7e..0x1af34`;
+  `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`
+  `0x1ab14..0x1ab7c` for cartridge-range candidate partitioning; and
+  `tools/render_fixture_harness.py` helpers
+  `default_font_range_candidate_search_via_1adaa()` and
+  `default_font_candidate_search_via_1ad66()`.
+
 Current-context install:
 
 - ROM path:

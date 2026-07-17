@@ -123,6 +123,10 @@ confirming it.
 - `tools/probe_resource_window.py`: Verifies the local ROM evidence for
   the transparent segment-57 `0x0c0000` resource-window boundary without
   committing ROM bytes.
+- `tools/extract_resource_fonts.py`: Extracts cartridge `HEAD`/type-`0x14`
+  records or fixed `FONT` chains into a versioned, ROM-relative JSON asset
+  containing complete selection fields, glyph slots, placement metrics, and
+  bitmap payloads.
 - `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`:
   HP LaserJet Series II Technical Reference Manual; primary PCL4 source.
 - `hplaserjetclassicsiiiii.pdf`: LaserJet II/III combined service
@@ -133,6 +137,8 @@ confirming it.
   for compatibility boundaries and overlapping behavior.
 - `TC531000AP.PDF`: Toshiba TC531000P mask ROM datasheet used for dump
   setup.
+- `92286PC.pdf`: HP ProCollection cartridge font inventory and compatibility
+  reference.
 
 ## ROM summary
 
@@ -192,6 +198,30 @@ regenerating all reports:
 ```sh
 tools/probe_resource_window.py
 ```
+
+To create the slot-independent emulator asset for the verified Bar Codes &
+More cartridge:
+
+```sh
+tools/extract_resource_fonts.py \
+  generated/roms/cartridges/c2053a-c06/c2053a-c06-even-b-odd-a.bin \
+  --label 'C2053A #C06 Bar Codes & More' \
+  --output generated/roms/cartridges/c2053a-c06/fonts.json
+```
+
+To create the corresponding 65-font asset from the verified ProCollection
+image:
+
+```sh
+tools/extract_resource_fonts.py \
+  generated/roms/cartridges/92286pc/92286pc.bin \
+  --label '92286PC ProCollection' \
+  --output generated/roms/cartridges/92286pc/fonts.json
+```
+
+Omit `--base-address` for an asset that can be mapped into either cartridge
+slot. Pass `--base-address 0x200000` or `0x400000` only when generating an
+asset tied to the firmware's left or right cartridge window.
 
 The tools expect MAME `unidasm` at `../mame/unidasm` when disassembly
 output is needed.

@@ -162,6 +162,10 @@ outputs, raw ROM-derived payload dumps, and ROM images remain local-only.
   `IC32,IC15` bytes to selected contexts, compact page objects, renderer glyph
   reads, and the remaining transparent secondary segment-57 continuation
   boundary at `0x0c0000..0x0c0321`.
+- Physical cartridge provenance and exact interleaves are in
+  [rom-dump-manifest.md](rom-dump-manifest.md). The published cartridge
+  inventory and the verified C2053A C06 and 92286PC record inventories are in
+  [font-cartridge-catalog.md](font-cartridge-catalog.md).
 - Exact remaining stop points are indexed in
   [unresolved-boundaries.md](unresolved-boundaries.md), grouped as ROM-local
   invalid-target/source, ROM-local unresolved caller, missing external

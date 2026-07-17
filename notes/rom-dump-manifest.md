@@ -1,6 +1,7 @@
 # ROM Dump Manifest
 
-Sources: local TC531000P reads; `TC531000AP.PDF`; `data/rom_manifest.json`.
+Sources: local TC531000P, TC531001CP/TC531001CP-F076, and VT231025 reads;
+`TC531000AP.PDF`; `data/rom_manifest.json`.
 
 The verified ROM images are local-only artifacts and are intentionally
 ignored by Git. Track filenames, hashes, package locations, read method,
@@ -23,6 +24,13 @@ Primary route:
 - `IC32,IC15` interleaves into the built-in resource/font image. It owns the
   verified resource bytes consumed by font and glyph lookup until the
   documented resource-window boundary at firmware address `0x0c0000`.
+- The two anonymous `C2053A #C06` packages interleave as package B on the
+  even lane and package A on the odd lane. This produces a separate optional
+  cartridge resource image; it is not part of the built-in resource window.
+- The four numbered `92286PC` packages form two fixed-`FONT` banks. Package
+  `1818-4521` is the even lane with `1818-4519` odd in bank 0; package
+  `1818-4522` is even with `1818-4520` odd in bank 1. The banks contain 39 and
+  26 real font records, respectively.
 - Rejected reverse orders are negative evidence only. They are not valid
   firmware or resource sources for semantic claims.
 
@@ -129,6 +137,107 @@ Built-in resource interleave:
   [built-in-resource-scan.md](built-in-resource-scan.md#resource-scan-outcome-matrix),
   `generated/analysis/ic32_ic15_header.txt`, and
   `generated/analysis/ic32_ic15_resource_markers.txt`.
+
+## C2053A C06 Cartridge Resource Interleave
+
+- ROM path:
+  anonymous package B on the even byte lane and package A on the odd byte
+  lane, producing
+  `generated/roms/cartridges/c2053a-c06/c2053a-c06-even-b-odd-a.bin`.
+- Device and read method:
+  both packages are `TC531001CP-F076` 128K x 8 mask ROMs, read twice with a
+  T48 and `minipro -y -p M27C1001@DIP32`; each package's two reads matched.
+- Raw SHA-256:
+  package A is
+  `791b5c1920dbf93977f59bb1caf4ad4d4f019ff7c3d87b947712b99e279eff67`;
+  package B is
+  `a26ee6be2a85f83d23146b0bb6c4623be0815624117dfb05545392aec2b63aea`.
+- Logical-image SHA-256:
+  `b5d002e54b3e572458770c7507958f48ce35a17e3f54f05b29042079314681c9`.
+- Structural evidence:
+  the image starts with `HEAD`, walks 16 consecutive type-`0x14` records,
+  and reaches a zero terminator at `0x03f91c`. The reverse order begins
+  `EHDA` and fails the firmware's `HEAD` scanner.
+- Output effect:
+  this supplies immutable optional font and symbol resources. The extracted
+  records are six `LtrGothic`, one `OCR A`, one `OCR B`, two `Line Draw`, two
+  `Code 3of9`, one `UPC 13mil`, one `UPC 10mil`, and two `USPS ZIP` records.
+- Emulator asset:
+  `tools/extract_resource_fonts.py` writes the slot-independent
+  `hp-laserjet-resource-fonts-v1` JSON asset at
+  `generated/roms/cartridges/c2053a-c06/fonts.json`. It preserves all 2,242
+  table slots, 1,729 mode-1 glyph payloads, 513 absent slots, selection
+  fields, complete glyph-entry prefixes, signed placement, dimensions, row
+  padding, and 235,965 bitmap bytes.
+- Evidence:
+  `data/rom_manifest.json`, `tools/extract_resource_fonts.py`, and the
+  local-only package, logical image, and generated font asset named above.
+
+## 92286PC ProCollection Cartridge
+
+The local cartridge contains four 128K x 8 mask ROMs. Packages `1818-4519`,
+`1818-4521`, and `1818-4522` are marked `VT231025`; package `1818-4520` is
+marked `TC531001CP`. All were read with a T48 using
+`minipro -y -p M27C1001@DIP32`. The reader reports ID `0x0000` rather than
+the EPROM profile's `0x2005`, as expected for these mask ROMs.
+
+Verified package reads:
+
+| Package | Verified reads | SHA-256 | Tail marker |
+| --- | --- | --- | --- |
+| `1818-4519` | read 1 = read 2 | `797f4e61ad0b33de8facae120f3b56108901733b42fdd8e086989a6ac62eb416` | `1818-4519-2830` |
+| `1818-4520` | read 1 = read 2 | `c03d74d9fba838cd567209e4327eb9d31903ff082bbb1af9bb2bc56f279fa604` | `1818-4520-2830` |
+| `1818-4521` | read 1 = read 2 | `a930b544bbb0197dac586f96af91e99cfcd6567bcd895f5b0412091ffb77ae53` | `1818-4521-2830` |
+| `1818-4522` | read 6 = read 7 | `cf12b7dd987bebaace2d176ab1fb612d994329f073dca15f42efe2e5d2962106` | `1818-4522-2830` |
+
+The first five `1818-4522` reads varied while the package had poor contact.
+They were deleted after cleaning, reseating, and obtaining matching reads 6
+and 7. They are not evidence and no known-bad canonical dump remains.
+
+The valid lane and bank composition is:
+
+| Bank | Even lane | Odd lane | Logical SHA-256 | Structural result |
+| ---: | --- | --- | --- | --- |
+| 0 | `1818-4521` | `1818-4519` | `a0421299a399edd2c20c87d0c01eea0765f9cce6c581639f014f358c71687c82` | starts `FONTTmsRmn`; 39 real records |
+| 1 | `1818-4522` | `1818-4520` | `2a5f478a080d3e76186be2fc87fbdc388164a8478b5e1a1e9f2be8cd195a5783` | starts `FONTLtrGothic`; 26 real records |
+
+Both 256 KiB banks are complete fixed-record chains. A record starts with
+`FONT`, carries its ten-byte padded name at `+0x04`, and reaches the next
+record by adding longword `+0x2e`. Bank 0 reaches `FONTDUMMY` at `0x03c1ee`
+and a zero terminator at `0x03c22e`; bank 1 reaches `FONTDUMMY` at combined
+image offset `0x07bc4c` and a zero terminator at `0x07bc8c`. The package
+number sequence groups `4519/4521` as bank 0 and `4520/4522` as bank 1.
+
+Concatenating the banks in that order produces the canonical local image
+`generated/roms/cartridges/92286pc/92286pc.bin`, 524,288 bytes with SHA-256
+`8cdddc5f62b92a734dcabcdc0350d5814c2c0e669d4dc200ead92875133003b7`.
+The 39 plus 26 real records exactly match the manual's 65-font inventory.
+Their names are 16 `Courier`, 14 `TmsRmn`, 12 `LtrGothic`, 12 `Pres Elite`,
+9 `Helv`, and 2 `Line Print` records.
+
+`tools/extract_resource_fonts.py` recognizes this fixed-`FONT` form separately
+from the C06 `HEAD`/type-`0x14` form. For each font it preserves the raw
+64-byte header and all 96 eight-byte glyph-table entries. The firmware-backed
+entry interpretation is:
+
+- `0x14e24..0x14eb6` probes entry `record + 0x40 + 8 * glyph`; bytes `+0/+1`
+  and the low 24 bits of longword `+4` decide whether the slot is usable;
+- `0x1f3a0..0x1f3d2` reads byte `+0` as stored row span, byte `+1` as row
+  count, and adds the longword's low 24 bits to the record base for bitmap
+  data; and
+- an odd span greater than one is stored as row-prefix bytes followed by one
+  trailing-byte plane, matching `A3 = A2 + (span - 1) * rows` at
+  `0x1f3c6..0x1f3d0`.
+
+The generated slot-independent asset is
+`generated/roms/cartridges/92286pc/fonts.json`, schema
+`hp-laserjet-resource-fonts-v1`, resource format `fixed-FONT-chain`. It is
+5,076,821 bytes with SHA-256
+`3cb93d9b474f2fc96d307521248c119603dddd5220f34c4ea57f7546079861f6`.
+It preserves 6,240 slots: 6,175 exact bitmap payloads, 65 absent slots, and
+576,866 payload bytes. The supporting disassembly is
+`generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst` and
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`.
 
 Rejected interleave orders:
 

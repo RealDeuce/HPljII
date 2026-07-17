@@ -1341,6 +1341,18 @@ it. A real-backed `@0`/`@1`/`@2`/`@3` caller stream now routes through
 ROM terminal handler `0x120be` and consumes those table/default-font
 words through the same default-table/copy/default-font subdispatch.
 
+For cartridge defaults, `0x1ad66` is the concrete two-slot tie-breaker after
+the retained current-default lookup `0x1b250` misses. It clears scratch
+candidate pointer `0x7828a0`, calls `0x1adaa(1)` for cartridge window
+`0x200000..0x3ffffe`, and returns as soon as that call writes a nonzero
+candidate. It calls `0x1adaa(2)` for `0x400000..0x5ffffe` only when the first
+window misses, and reaches internal/default fallback `0x1ae7e` only when both
+cartridge windows miss. Therefore two installed cartridges with admissible
+default candidates do not merge or alternate: the first cartridge window wins
+for the matching primary or secondary context, with the second window used only
+as fallback. The exact state/evidence checkpoint is in
+`notes/font-context-metrics.md` under "Cartridge-default conflict rule."
+
 The current-default install boundary is now explicit. `0x1acb0` first calls
 `0x1b250` to resolve the retained current default. When that succeeds,
 `0x1acbe..0x1acfc` copies resolver class byte `0x78289f` to active class
@@ -1733,8 +1745,11 @@ Unknown:
   expose a different page-object form; external device output, if captured,
   would be optional correlation for the full internal-font sample page, while
   the ROM-side candidate order and rendered-surface digest are fixture-backed;
-- optional cartridge/resource candidate windows are bounded by ROM addresses,
-  but no physical cartridge image is present in this repo.
+- optional cartridge/resource candidate windows are bounded by ROM addresses.
+  The local-only `C2053A #C06` image supplies 16 verified records in its first
+  `0x40000` bytes. The local-only `92286PC` image supplies 65 verified
+  fixed-`FONT` records in `0x80000` bytes. Other cartridges and physical slot
+  behavior after either image remain outside the verified data.
 
 Writers:
 
@@ -1832,8 +1847,9 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - `0x1a616` optional cartridge windows `0x200000..0x5ffffe` remain
-  software-bounded but physically unverified because no cartridge/resource
-  image is present.
+  software-bounded. The C06 image verifies `0x40000` bytes and the 92286PC
+  image verifies `0x80000` bytes of cartridge data, but physical decode after
+  either image and contents of undumped cartridges remain unresolved.
 - `0x13eb8` lower-level refresh flow is modeled at fixture boundaries;
   parser-to-visible primary and secondary output is covered. Remaining useful
   ROM work is new selection/filter cases that change selected context, map

@@ -95,5 +95,156 @@
       "sha256": "16e4ea937a2c9f089789fb16d80f230829ef2ad1dd36fb1f16455cb3b9c965ff",
       "reason_rejected": "Resource header strings are garbled in this order."
     }
+  ],
+  "cartridge_roms": [
+    {
+      "product": "C2053A #C06",
+      "catalog_name": "Bar Codes & More",
+      "chip_device": "Toshiba TC531001CP-F076",
+      "organization": "128K x 8 mask ROM",
+      "reader": "T48 with minipro 0.7.4",
+      "read_profile": "M27C1001@DIP32",
+      "read_options": "-y; the mask ROM returns electronic ID 0x0000 rather than the EPROM profile ID 0x2005",
+      "raw_packages": [
+        {
+          "package_label": "anonymous A; first package dumped",
+          "filename": "generated/roms/cartridges/c2053a-c06/rom-a.bin",
+          "size_bytes": 131072,
+          "sha256": "791b5c1920dbf93977f59bb1caf4ad4d4f019ff7c3d87b947712b99e279eff67",
+          "verification": "two reads matched byte-for-byte"
+        },
+        {
+          "package_label": "anonymous B; second package dumped",
+          "filename": "generated/roms/cartridges/c2053a-c06/rom-b.bin",
+          "size_bytes": 131072,
+          "sha256": "a26ee6be2a85f83d23146b0bb6c4623be0815624117dfb05545392aec2b63aea",
+          "verification": "two reads matched byte-for-byte"
+        }
+      ],
+      "logical_image": {
+        "byte_order": [
+          "anonymous B",
+          "anonymous A"
+        ],
+        "generated_file": "generated/roms/cartridges/c2053a-c06/c2053a-c06-even-b-odd-a.bin",
+        "size_bytes": 262144,
+        "sha256": "b5d002e54b3e572458770c7507958f48ce35a17e3f54f05b29042079314681c9",
+        "evidence": "Starts with HEAD, walks 16 consecutive type-0x14 records, and reaches a zero terminator at 0x03f91c before the 0x040000 cartridge boundary.",
+        "font_asset": {
+          "extractor": "tools/extract_resource_fonts.py",
+          "generated_file": "generated/roms/cartridges/c2053a-c06/fonts.json",
+          "schema": "hp-laserjet-resource-fonts-v1",
+          "size_bytes": 1961824,
+          "sha256": "276c76721fb5967014393b1f95bb81cdfdbc4c570367c4005bf509728e6405fa",
+          "record_count": 16,
+          "glyph_slots": 2242,
+          "extracted_glyphs": 1729,
+          "absent_glyphs": 513,
+          "payload_bytes": 235965
+        }
+      },
+      "negative_order_probe": {
+        "byte_order": [
+          "anonymous A",
+          "anonymous B"
+        ],
+        "generated_file": "generated/roms/cartridges/c2053a-c06/c2053a-c06-even-a-odd-b.bin",
+        "sha256": "7c25eaf96cec9fc68392c080506c2585a6621ca9a71698c8a149a007a272533c",
+        "reason_rejected": "Starts with EHDA and is not accepted by the firmware HEAD-record walker."
+      }
+    },
+    {
+      "product": "92286PC",
+      "catalog_name": "ProCollection",
+      "organization": "four 128K x 8 mask ROMs; two byte lanes in each of two 256 KiB logical banks",
+      "reader": "T48 with minipro 0.7.4",
+      "read_profile": "M27C1001@DIP32",
+      "read_options": "-y; the mask ROMs return electronic ID 0x0000 rather than the EPROM profile ID 0x2005",
+      "raw_packages": [
+        {
+          "package_label": "1818-4519",
+          "chip_device": "VT231025",
+          "filename": "generated/roms/cartridges/92286pc/1818-4519.bin",
+          "size_bytes": 131072,
+          "sha256": "797f4e61ad0b33de8facae120f3b56108901733b42fdd8e086989a6ac62eb416",
+          "verification": "read1 and read2 matched byte-for-byte",
+          "tail_marker": "1818-4519-2830"
+        },
+        {
+          "package_label": "1818-4520",
+          "chip_device": "TC531001CP",
+          "filename": "generated/roms/cartridges/92286pc/1818-4520.bin",
+          "size_bytes": 131072,
+          "sha256": "c03d74d9fba838cd567209e4327eb9d31903ff082bbb1af9bb2bc56f279fa604",
+          "verification": "read1 and read2 matched byte-for-byte",
+          "tail_marker": "1818-4520-2830"
+        },
+        {
+          "package_label": "1818-4521",
+          "chip_device": "VT231025",
+          "filename": "generated/roms/cartridges/92286pc/1818-4521.bin",
+          "size_bytes": 131072,
+          "sha256": "a930b544bbb0197dac586f96af91e99cfcd6567bcd895f5b0412091ffb77ae53",
+          "verification": "read1 and read2 matched byte-for-byte",
+          "tail_marker": "1818-4521-2830"
+        },
+        {
+          "package_label": "1818-4522",
+          "chip_device": "VT231025",
+          "filename": "generated/roms/cartridges/92286pc/1818-4522.bin",
+          "size_bytes": 131072,
+          "sha256": "cf12b7dd987bebaace2d176ab1fb612d994329f073dca15f42efe2e5d2962106",
+          "verification": "read6 and read7 matched byte-for-byte after the package pins were cleaned and reseated; unstable earlier reads were deleted",
+          "tail_marker": "1818-4522-2830"
+        }
+      ],
+      "logical_banks": [
+        {
+          "bank": 0,
+          "byte_order": [
+            "1818-4521",
+            "1818-4519"
+          ],
+          "generated_file": "generated/roms/cartridges/92286pc/bank-tmsrmn-even-4521-odd-4519.bin",
+          "size_bytes": 262144,
+          "sha256": "a0421299a399edd2c20c87d0c01eea0765f9cce6c581639f014f358c71687c82",
+          "evidence": "This lane order starts with FONTTmsRmn and walks 39 real FONT records followed by FONTDUMMY and a zero terminator. The package-number sequence pairs 1818-4519 with 1818-4521 as bank 0."
+        },
+        {
+          "bank": 1,
+          "byte_order": [
+            "1818-4522",
+            "1818-4520"
+          ],
+          "generated_file": "generated/roms/cartridges/92286pc/bank-ltrgothic-even-4522-odd-4520.bin",
+          "size_bytes": 262144,
+          "sha256": "2a5f478a080d3e76186be2fc87fbdc388164a8478b5e1a1e9f2be8cd195a5783",
+          "evidence": "This lane order starts with FONTLtrGothic and walks 26 real FONT records followed by FONTDUMMY and a zero terminator. The package-number sequence pairs 1818-4520 with 1818-4522 as bank 1."
+        }
+      ],
+      "logical_image": {
+        "bank_order": [
+          "TmsRmn-starting bank 0",
+          "LtrGothic-starting bank 1"
+        ],
+        "generated_file": "generated/roms/cartridges/92286pc/92286pc.bin",
+        "size_bytes": 524288,
+        "sha256": "8cdddc5f62b92a734dcabcdc0350d5814c2c0e669d4dc200ead92875133003b7",
+        "evidence": "The two independently valid 0x40000-byte FONT chains contain 39 and 26 real records, exactly matching the cartridge's published 65-font inventory; package numbering selects the recorded bank order.",
+        "font_asset": {
+          "extractor": "tools/extract_resource_fonts.py",
+          "generated_file": "generated/roms/cartridges/92286pc/fonts.json",
+          "schema": "hp-laserjet-resource-fonts-v1",
+          "resource_format": "fixed-FONT-chain",
+          "size_bytes": 5076821,
+          "sha256": "3cb93d9b474f2fc96d307521248c119603dddd5220f34c4ea57f7546079861f6",
+          "record_count": 65,
+          "glyph_slots": 6240,
+          "extracted_glyphs": 6175,
+          "absent_glyphs": 65,
+          "payload_bytes": 576866
+        }
+      }
+    }
   ]
 }
